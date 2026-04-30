@@ -8,13 +8,13 @@ Diese Tickets stabilisieren die Appwrite Function-Architektur phasenweise. Das Z
 
 ## Zielarchitektur
 
-| Gruppe | Functions |
-| --- | --- |
-| Core | `scriptony-auth`, `scriptony-projects`, `scriptony-structure`, `scriptony-script`, `scriptony-characters`, `scriptony-worldbuilding`, `scriptony-timeline`, `scriptony-editor-readmodel` |
-| Media | `scriptony-assets`, `scriptony-audio`, `scriptony-image`, `scriptony-video`, `scriptony-media-worker` |
-| Workflows | `scriptony-audio-production`, `scriptony-stage`, `scriptony-stage2d`, `scriptony-stage3d`, `scriptony-style`, `scriptony-style-guide`, `scriptony-sync`, `scriptony-gym` |
-| Platform | `scriptony-ai`, `scriptony-assistant`, `scriptony-jobs`, `scriptony-observability`, `scriptony-admin`, `scriptony-mcp-appwrite`, `scriptony-storage`, `scriptony-collaboration` |
-| Legacy | `jobs-handler`, `make-server-3b52693b` |
+| Gruppe    | Functions                                                                                                                                                                                |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Core      | `scriptony-auth`, `scriptony-projects`, `scriptony-structure`, `scriptony-script`, `scriptony-characters`, `scriptony-worldbuilding`, `scriptony-timeline`, `scriptony-editor-readmodel` |
+| Media     | `scriptony-assets`, `scriptony-audio`, `scriptony-image`, `scriptony-video`, `scriptony-media-worker`                                                                                    |
+| Workflows | `scriptony-audio-production`, `scriptony-stage`, `scriptony-stage2d`, `scriptony-stage3d`, `scriptony-style`, `scriptony-style-guide`, `scriptony-sync`, `scriptony-gym`                 |
+| Platform  | `scriptony-ai`, `scriptony-assistant`, `scriptony-jobs`, `scriptony-observability`, `scriptony-admin`, `scriptony-mcp-appwrite`, `scriptony-storage`, `scriptony-collaboration`          |
+| Legacy    | `jobs-handler`, `make-server-3b52693b`                                                                                                                                                   |
 
 ## Arbeitsregeln
 
@@ -122,30 +122,30 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 
 ## Ticket-Reihenfolge
 
-| Ticket | Phase | Titel | Status | Abhaengigkeiten |
-| --- | --- | --- | --- | --- |
-| T00 | 0 | Echte Appwrite Deployments inventarisieren | **done** | keine |
-| T01 | 1 | Backend Domain Map anlegen | **done** | T00 |
-| T02 | 1 | Shimwrappercheck Refactor Gate klaeren | **done** | T01 |
-| T03 | 2 | `scriptony-script` Schema planen und provisionieren | **done** | T01, T02 |
-| T04 | 2 | `scriptony-script` Basis-API implementieren | **done** | T03 |
-| T05 | 3 | `scriptony-assets` Schema planen und provisionieren | **done** | T01, T02 |
-| T06 | 3 | `scriptony-assets` Upload-, Link- und Query-API implementieren | **done** | T05 |
-| T07 | 4 | `scriptony-audio-story` als `scriptony-audio-production` abgrenzen | **done** | T01 |
-| T08 | 5 | Audio Production Orchestration an Script, Audio, Assets und Jobs anbinden | **done** | T04, T06, T07 |
-| T09 | 5 | `scriptony-audio` auf technische Audiofaehigkeiten begrenzen | **done** | T06, T08 |
-| T10 | 6 | `scriptony-image` bereinigen | **done** | T01, T02 |
-| T11 | 6 | `scriptony-assistant` bereinigen | **done** | T01, T02 |
-| T12 | 7 | `scriptony-editor-readmodel` bauen | todo | T04, T06, T08 |
-| T13 | 8 | Timeline-Konsolidierung vorbereiten | todo | T04, T06, T12 |
-| T14 | 9 | `scriptony-jobs` konsolidieren | todo | T02, T08 |
-| T15 | 9 | `scriptony-media-worker` als Worker-Grenze einrichten | todo | T14 |
-| T16 | 10 | Observability und Admin konsolidieren | todo | T01, T02 |
-| T17 | 10 | Legacy markieren, pruefen und entfernen | todo | T16 |
-| T18 | laufend | `_shared` Business-Logik kontrolliert herausziehen | todo | T01 |
-| T19 | laufend | UI/UX und Frontend-Aufrufer je Phase pruefen | todo | alle Implementierungstickets |
-| T20 | laufend | `scriptony-storage` Zielmodell und Provider Boundary vorbereiten | todo | T01, T05, T06 |
-| T21 | laufend | `scriptony-collaboration` Zielmodell und Access-Helper vorbereiten | todo | T01, T03, T04 |
+| Ticket | Phase   | Titel                                                                     | Status   | Abhaengigkeiten              |
+| ------ | ------- | ------------------------------------------------------------------------- | -------- | ---------------------------- |
+| T00    | 0       | Echte Appwrite Deployments inventarisieren                                | **done** | keine                        |
+| T01    | 1       | Backend Domain Map anlegen                                                | **done** | T00                          |
+| T02    | 1       | Shimwrappercheck Refactor Gate klaeren                                    | **done** | T01                          |
+| T03    | 2       | `scriptony-script` Schema planen und provisionieren                       | **done** | T01, T02                     |
+| T04    | 2       | `scriptony-script` Basis-API implementieren                               | **done** | T03                          |
+| T05    | 3       | `scriptony-assets` Schema planen und provisionieren                       | **done** | T01, T02                     |
+| T06    | 3       | `scriptony-assets` Upload-, Link- und Query-API implementieren            | **done** | T05                          |
+| T07    | 4       | `scriptony-audio-story` als `scriptony-audio-production` abgrenzen        | **done** | T01                          |
+| T08    | 5       | Audio Production Orchestration an Script, Audio, Assets und Jobs anbinden | **done** | T04, T06, T07                |
+| T09    | 5       | `scriptony-audio` auf technische Audiofaehigkeiten begrenzen              | **done** | T06, T08                     |
+| T10    | 6       | `scriptony-image` bereinigen                                              | **done** | T01, T02                     |
+| T11    | 6       | `scriptony-assistant` bereinigen                                          | **done** | T01, T02                     |
+| T12    | 7       | `scriptony-editor-readmodel` bauen                                        | **done** | T04, T06, T08                |
+| T13    | 8       | Timeline-Konsolidierung vorbereiten                                       | **done** | T04, T06, T12                |
+| T14    | 9       | `scriptony-jobs` konsolidieren                                            | **done** | T02, T08                     |
+| T15    | 9       | `scriptony-media-worker` als Worker-Grenze einrichten                     | **done** | T14                          |
+| T16    | 10      | Observability und Admin konsolidieren                                     | todo     | T01, T02                     |
+| T17    | 10      | Legacy markieren, pruefen und entfernen                                   | todo     | T16                          |
+| T18    | laufend | `_shared` Business-Logik kontrolliert herausziehen                        | todo     | T01                          |
+| T19    | laufend | UI/UX und Frontend-Aufrufer je Phase pruefen                              | todo     | alle Implementierungstickets |
+| T20    | laufend | `scriptony-storage` Zielmodell und Provider Boundary vorbereiten          | todo     | T01, T05, T06                |
+| T21    | laufend | `scriptony-collaboration` Zielmodell und Access-Helper vorbereiten        | todo     | T01, T03, T04                |
 
 ---
 
@@ -1197,3 +1197,89 @@ Ein Nutzer kann ein Projekt direkt mit einer anderen Person teilen, ohne vorher 
 ### Verifizierungsmarker
 
 `ARCH-REF-T21-DONE`
+
+---
+
+## T22: AGENTS.md Post-Audit - Code Quality Gate
+
+### Status
+
+Offen
+
+### Abhaengigkeiten
+
+Alle Implementierungstickets in diesem Dokument (T2-T21) sowie alle offenen Puppet-Layer-System-Tickets (T1, T8-T12) mit Done markiert.
+
+### Ziel
+
+Jeder Code, der durch die Architektur-Refactor-Tickets und Puppet-Layer-System-Tickets entstanden ist, muss den AGENTS.md-Regeln entsprechen.
+
+### Scope
+
+Dies ist KEIN Feature-Ticket. Es ist ein abschliessendes Qualitaets-Gate, das **nach** der Umsetzung aller offenen Tickets laeuft.
+
+### Pruefkriterien
+
+1. **Dateigroessen-Regel (File Size)**
+   - Keine neu erstellte oder geaenderte .ts/.tsx Datei in src/ darf 300 Zeilen ueberschreiten (soft limit).
+   - Hard limit: 500 Zeilen - absolut kein neuer Code darf dies ueberschreiten.
+   - React Components: max 150 Zeilen.
+
+2. **Backend (Functions)**
+   - Keine neue Function-Datei in functions/ darf 300 Zeilen ueberschreiten.
+   - Hard limit: 500 Zeilen.
+   - Service-Logik in services/, Route-Handler maximal 150 Zeilen.
+
+3. **Automatisierter Check**
+   - `CHECK_MODE=full SHIM_RUN_PROJECT_RULES=1 npm run checks`
+   - Muss gruen durchlaufen fuer alle neuen/geaenderten Dateien.
+
+4. **Keine neuen TODOs/FIXMEs**
+   - Neue TODO/FIXME/HACK/XXX Marker im Ticket-Scope muessen dokumentiert oder behoben sein.
+
+5. **Keine neuen console.log in Produktionscode**
+   - Strukturiertes Logging oder Entfernung vor Merge.
+
+6. **Struktur-Regeln**
+   - Keine Business-Logik in Komponenten (Hooks/Services).
+   - Alle Appwrite-Calls ueber `src/lib/api/` (Frontend).
+   - Keine direkten Provider-SDK-Imports in Produkt-Domaenen (Backend).
+
+### Akzeptanzkriterien
+
+- [ ] `npm run checks` laeuft durch mit `CHECK_MODE=full` und `SHIM_RUN_PROJECT_RULES=1`
+- [ ] `scripts/checks/project-rules.sh` zeigt 0 Hard Violations fuer alle neuen Dateien
+- [ ] AI Review gibt `VERDICT: ACCEPT` oder listet nur akzeptable Low-Findings
+- [ ] Alle neuen Dateien sind in der `docs/backend-domain-map.md` korrekt eingetragen (falls Backend)
+- [ ] Dokumentation (`docs/`, `README.md`) ist aktualisiert, falls neue Patterns eingefuehrt wurden
+
+### Ausfuehrung
+
+Dieses Ticket darf erst begonnen werden, wenn:
+
+1. Alle Implementierungstickets mit Done markiert sind.
+2. Der Worktree committed ist (keine uncommitted Aenderungen).
+
+Wenn der Check FAIL gibt:
+
+- Ein neues Ticket pro Ueberschreitung anlegen (z.B. T22.1 — Split Component X).
+- Kein Code-Commit ohne Fix.
+- Kein Merge in main ohne gruenen Check.
+
+### Rollback
+
+Ist nur ein Audit-Ticket - kein Code. Falls Blocker gefunden werden, werden separate Refactor-Tickets angelegt.
+
+### Verifikation
+
+```bash
+CHECK_MODE=full SHIM_RUN_PROJECT_RULES=1 npm run checks
+bash scripts/checks/project-rules.sh
+npm run lint
+npm run typecheck
+npm run test:run
+```
+
+### Verifizierungsmarker
+
+`ARCH-REF-T22-DONE`

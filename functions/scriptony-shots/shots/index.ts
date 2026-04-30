@@ -3,6 +3,7 @@
  *
  * T13 TIMELINE DOMAIN: Shot-CRUD und Reorder.
  *   Neue Timeline-Features nur mit expliziter Zielentscheidung.
+ *   Legacy: Character-Audio-Routen sind Asset/Audio-Domain, nicht hier.
  *   Siehe docs/timeline-domain-decision.md
  */
 
@@ -10,15 +11,19 @@ import { requireUserBootstrap } from "../../_shared/auth";
 import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getQuery,
-  readJsonBody,
   type RequestLike,
   type ResponseLike,
+  readJsonBody,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendServerError,
   sendUnauthorized,
 } from "../../_shared/http";
+import {
+  getAccessibleProject,
+  getUserOrganizationIds,
+} from "../../_shared/scriptony";
 import { getShots, mapShot, normalizeShotInput } from "../../_shared/timeline";
 
 export default async function handler(
@@ -40,6 +45,17 @@ export default async function handler(
         return;
       }
 
+      const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
+      const project = await getAccessibleProject(
+        projectId,
+        bootstrap.user.id,
+        organizationIds,
+      );
+      if (!project) {
+        sendJson(res, 403, { error: "Project not found or access denied" });
+        return;
+      }
+
       const shots = await getShots({ projectId });
       sendJson(res, 200, { shots: shots.map(mapShot) });
       return;
@@ -58,6 +74,17 @@ export default async function handler(
           res,
           "scene_id, project_id, and shot_number are required",
         );
+        return;
+      }
+
+      const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
+      const project = await getAccessibleProject(
+        shotInput.project_id,
+        bootstrap.user.id,
+        organizationIds,
+      );
+      if (!project) {
+        sendJson(res, 403, { error: "Project not found or access denied" });
         return;
       }
 

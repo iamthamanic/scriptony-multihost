@@ -3,14 +3,13 @@
  */
 
 import { z } from "zod";
-import { requireUserBootstrap } from "../../_shared/auth";
+import { requireAuth } from "../../_shared/auth-http";
 import {
-  readJsonBody,
   type RequestLike,
   type ResponseLike,
+  readJsonBody,
   sendJson,
   sendServerError,
-  sendUnauthorized,
 } from "../../_shared/http";
 import { cleanupOldJobs } from "../_shared/job-service";
 
@@ -22,9 +21,13 @@ export async function handleCleanup(
   req: RequestLike,
   res: ResponseLike,
 ): Promise<void> {
-  const bootstrap = await requireUserBootstrap(req);
-  if (!bootstrap) {
-    sendUnauthorized(res);
+  const user = await requireAuth(req, res);
+  if (!user) return;
+
+  if (user.defaultRole !== "superadmin") {
+    sendJson(res, 403, {
+      error: "Forbidden: cleanup requires superadmin privileges",
+    });
     return;
   }
 
@@ -39,13 +42,16 @@ export async function handleCleanup(
   const olderThanHours = parsed.data.hours ?? 24;
 
   try {
-    const { deleted, failed } = await cleanupOldJobs(olderThanHours);
+    const { deleted, failed, capped } = await cleanupOldJobs(olderThanHours);
 
     sendJson(res, 200, {
       success: true,
       deleted,
       failed,
-      message: `Cleaned up ${deleted} old jobs (${failed} failed)`,
+      capped,
+      message: capped
+        ? `Cleaned up ${deleted} old jobs (${failed} failed). More jobs may remain; cap=100 per call.`
+        : `Cleaned up ${deleted} old jobs (${failed} failed)`,
     });
   } catch (error) {
     sendServerError(res, error);

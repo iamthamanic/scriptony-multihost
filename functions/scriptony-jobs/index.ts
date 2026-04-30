@@ -14,22 +14,25 @@
  *   POST /v1/jobs/cleanup         — Alte Jobs aufräumen
  */
 
+import { z } from "zod";
+import { createAppwriteHandler } from "../_shared/appwrite-handler";
 import {
   type RequestLike,
   type ResponseLike,
   sendJson,
   sendNotFound,
+  sendServerError,
 } from "../_shared/http";
-import { createAppwriteHandler } from "../_shared/appwrite-handler";
+import { SUPPORTED_JOBS } from "./config/supported-jobs";
+import { handleCleanup } from "./handlers/cleanup";
+import { handleCancel, handleRetry } from "./handlers/lifecycle";
 import {
   handleCreateJob,
   handleGetResult,
   handleGetStatus,
 } from "./handlers/read";
-import { handleCancel, handleRetry } from "./handlers/lifecycle";
-import { handleCleanup } from "./handlers/cleanup";
 
-import { SUPPORTED_JOBS } from "./config/supported-jobs";
+const JobIdParam = z.string().min(1).max(64);
 
 const HEALTH_DATA = {
   status: "ok",
@@ -59,24 +62,44 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
 
     const statusMatch = pathname.match(/^\/v1\/jobs\/([^/]+)\/status$/);
     if (statusMatch && req.method === "GET") {
+      const valid = JobIdParam.safeParse(statusMatch[1]);
+      if (!valid.success) {
+        sendJson(res, 400, { error: "Invalid jobId" });
+        return;
+      }
       await handleGetStatus(req, res, statusMatch[1]);
       return;
     }
 
     const resultMatch = pathname.match(/^\/v1\/jobs\/([^/]+)\/result$/);
     if (resultMatch && req.method === "GET") {
+      const valid = JobIdParam.safeParse(resultMatch[1]);
+      if (!valid.success) {
+        sendJson(res, 400, { error: "Invalid jobId" });
+        return;
+      }
       await handleGetResult(req, res, resultMatch[1]);
       return;
     }
 
     const cancelMatch = pathname.match(/^\/v1\/jobs\/([^/]+)\/cancel$/);
     if (cancelMatch && req.method === "POST") {
+      const valid = JobIdParam.safeParse(cancelMatch[1]);
+      if (!valid.success) {
+        sendJson(res, 400, { error: "Invalid jobId" });
+        return;
+      }
       await handleCancel(req, res, cancelMatch[1]);
       return;
     }
 
     const retryMatch = pathname.match(/^\/v1\/jobs\/([^/]+)\/retry$/);
     if (retryMatch && req.method === "POST") {
+      const valid = JobIdParam.safeParse(retryMatch[1]);
+      if (!valid.success) {
+        sendJson(res, 400, { error: "Invalid jobId" });
+        return;
+      }
       await handleRetry(req, res, retryMatch[1]);
       return;
     }

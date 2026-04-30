@@ -1,5 +1,10 @@
 /**
  * Single clip: GET / PUT / DELETE
+ *
+ * T13 TIMELINE DOMAIN: Clip-CRUD.
+ *   Neue Timeline-Features nur mit expliziter Zielentscheidung.
+ *   Legacy: Stage/Asset-Routen sind Stage/Asset-Domain, nicht hier.
+ *   Siehe docs/timeline-domain-decision.md
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";
@@ -94,15 +99,13 @@ export default async function handler(
 
       if (body.lane_index !== undefined || body.laneIndex !== undefined) {
         const v = body.lane_index ?? body.laneIndex;
-        updates.lane_index = typeof v === "number"
-          ? v
-          : parseInt(String(v), 10) || 0;
+        updates.lane_index =
+          typeof v === "number" ? v : parseInt(String(v), 10) || 0;
       }
       if (body.order_index !== undefined || body.orderIndex !== undefined) {
         const v = body.order_index ?? body.orderIndex;
-        updates.order_index = typeof v === "number"
-          ? v
-          : parseInt(String(v), 10) || 0;
+        updates.order_index =
+          typeof v === "number" ? v : parseInt(String(v), 10) || 0;
       }
       const si = body.source_in_sec ?? body.sourceInSec;
       const so = body.source_out_sec ?? body.sourceOutSec;
@@ -113,12 +116,14 @@ export default async function handler(
         updates.source_out_sec = so === null ? null : Number(so);
       }
 
-      const nextStart = updates.start_sec !== undefined
-        ? Number(updates.start_sec)
-        : Number(row.start_sec);
-      const nextEnd = updates.end_sec !== undefined
-        ? Number(updates.end_sec)
-        : Number(row.end_sec);
+      const nextStart =
+        updates.start_sec !== undefined
+          ? Number(updates.start_sec)
+          : Number(row.start_sec);
+      const nextEnd =
+        updates.end_sec !== undefined
+          ? Number(updates.end_sec)
+          : Number(row.end_sec);
       if (
         !Number.isFinite(nextStart) ||
         !Number.isFinite(nextEnd) ||

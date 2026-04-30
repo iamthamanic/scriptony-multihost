@@ -1,14 +1,26 @@
 /**
  * Shot item routes for the Scriptony HTTP API.
+ *
+ * T13 TIMELINE DOMAIN: Shot-CRUD (GET / PUT / DELETE single shot).
+ *   Neue Timeline-Features nur mit expliziter Zielentscheidung.
+ *   Legacy: Character-Audio-Routen sind Asset/Audio-Domain, nicht hier.
+ *   Siehe docs/timeline-domain-decision.md
  */
 
+import { Query } from "node-appwrite";
+import { z } from "zod";
+import {
+  C,
+  deleteDocument,
+  listDocumentsFull,
+} from "../../../_shared/appwrite-db";
 import { requireUserBootstrap } from "../../../_shared/auth";
 import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
-  readJsonBody,
   type RequestLike,
   type ResponseLike,
+  readJsonBody,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
@@ -16,17 +28,17 @@ import {
   sendServerError,
   sendUnauthorized,
 } from "../../../_shared/http";
-import { Query } from "node-appwrite";
 import {
-  C,
-  deleteDocument,
-  listDocumentsFull,
-} from "../../../_shared/appwrite-db";
+  getAccessibleProject,
+  getUserOrganizationIds,
+} from "../../../_shared/scriptony";
 import {
   getShotById,
   mapShot,
   normalizeShotInput,
 } from "../../../_shared/timeline";
+
+const shotIdSchema = z.string().min(1).max(128);
 
 export default async function handler(
   req: RequestLike,
@@ -39,29 +51,38 @@ export default async function handler(
       return;
     }
 
-    const shotId = getParam(req, "id");
-    if (!shotId) {
+    const rawShotId = getParam(req, "id");
+    const parsedShotId = shotIdSchema.safeParse(rawShotId);
+    if (!parsedShotId.success) {
       sendBadRequest(res, "id is required");
+      return;
+    }
+    const shotId = parsedShotId.data;
+
+    const row = await getShotById(shotId);
+    if (!row) {
+      sendNotFound(res, "Shot not found");
+      return;
+    }
+
+    const projectId = String(row.project_id || "");
+    const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
+    const project = await getAccessibleProject(
+      projectId,
+      bootstrap.user.id,
+      organizationIds,
+    );
+    if (!project) {
+      sendJson(res, 403, { error: "Project not found or access denied" });
       return;
     }
 
     if (req.method === "GET") {
-      const row = await getShotById(shotId);
-      if (!row) {
-        sendNotFound(res, "Shot not found");
-        return;
-      }
       sendJson(res, 200, { shot: mapShot(row) });
       return;
     }
 
     if (req.method === "PUT" || req.method === "PATCH") {
-      const existing = await getShotById(shotId);
-      if (!existing) {
-        sendNotFound(res, "Shot not found");
-        return;
-      }
-
       const body = await readJsonBody<Record<string, any>>(req);
       const updates = normalizeShotInput(body);
       delete updates.scene_id;
@@ -162,11 +183,11 @@ export default async function handler(
               ? { duration: updates.duration }
               : {}),
             ...(updates.shotlength_minutes !== undefined &&
-                updates.shotlength_minutes !== null
+            updates.shotlength_minutes !== null
               ? { shotlength_minutes: updates.shotlength_minutes }
               : {}),
             ...(updates.shotlength_seconds !== undefined &&
-                updates.shotlength_seconds !== null
+            updates.shotlength_seconds !== null
               ? { shotlength_seconds: updates.shotlength_seconds }
               : {}),
             ...(updates.stage2d_file_id !== undefined
@@ -184,7 +205,7 @@ export default async function handler(
       );
 
       sendJson(res, 200, {
-        shot: mapShot(updated.update_shots_by_pk || existing),
+        shot: mapShot(updated.update_shots_by_pk || row),
       });
       return;
     }

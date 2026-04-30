@@ -17,6 +17,7 @@ const KNOWN_FUNCTIONS = new Set([
   "scriptony-gym",
   "scriptony-image",
   "scriptony-jobs",
+  "scriptony-media-worker",
   "scriptony-mcp-appwrite",
   "scriptony-project-nodes",
   "scriptony-projects",

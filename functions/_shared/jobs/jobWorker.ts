@@ -3,9 +3,8 @@
  * Functions call these to report progress/completion when running as jobs
  */
 
-import { dbId, getDatabases } from "../appwrite-db";
+import { updateDocument } from "../appwrite-db";
 
-const DATABASE_ID = dbId();
 const JOBS_COLLECTION = "jobs";
 
 interface JobContext {
@@ -45,67 +44,52 @@ export function stripJobFields(
 }
 
 /**
- * Update job progress (0-100)
+ * Update job progress (0-100).
+ * Throws on DB error so caller knows state is out of sync.
  */
 export async function reportJobProgress(
   jobId: string,
   progress: number,
 ): Promise<void> {
-  try {
-    const db = getDatabases();
-    await db.updateDocument(DATABASE_ID, JOBS_COLLECTION, jobId, {
-      progress: Math.min(100, Math.max(0, progress)),
-      updated_at: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error(`Failed to update job progress:`, error);
-  }
+  await updateDocument(JOBS_COLLECTION, jobId, {
+    progress: Math.min(100, Math.max(0, progress)),
+    updated_at: new Date().toISOString(),
+  });
 }
 
 /**
- * Mark job as completed with result
+ * Mark job as completed with result.
+ * Throws on DB error so caller knows state is out of sync.
  */
-export async function completeJob<T>(
-  jobId: string,
-  result: T,
-): Promise<void> {
-  try {
-    const db = getDatabases();
-    await db.updateDocument(DATABASE_ID, JOBS_COLLECTION, jobId, {
-      status: "completed",
-      result_json: JSON.stringify(result),
-      progress: 100,
-      completed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error(`Failed to complete job:`, error);
-  }
+export async function completeJob<T>(jobId: string, result: T): Promise<void> {
+  await updateDocument(JOBS_COLLECTION, jobId, {
+    status: "completed",
+    result_json: JSON.stringify(result),
+    progress: 100,
+    completed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
 }
 
 /**
- * Mark job as failed
+ * Mark job as failed.
+ * Throws on DB error so caller knows state is out of sync.
  */
-export async function failJob(
-  jobId: string,
-  error: string,
-): Promise<void> {
-  try {
-    const db = getDatabases();
-    await db.updateDocument(DATABASE_ID, JOBS_COLLECTION, jobId, {
-      status: "failed",
-      error: error.slice(0, 2000),
-      completed_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-  } catch (err) {
-    console.error(`Failed to fail job:`, err);
-  }
+export async function failJob(jobId: string, error: string): Promise<void> {
+  await updateDocument(JOBS_COLLECTION, jobId, {
+    status: "failed",
+    error: error.slice(0, 2000),
+    completed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
 }
 
 /**
- * Wrap any async operation with job reporting
+ * Wrap any async operation with job reporting.
  * Usage: const result = await wrapWithJobReporting(jobContext, async () => { ... });
+ *
+ * Progress-report failures are logged but do NOT abort the main operation.
+ * Completion / start-status failures propagate so the worker knows state is inconsistent.
  */
 export async function wrapWithJobReporting<T>(
   context: JobContext | null,
@@ -117,11 +101,22 @@ export async function wrapWithJobReporting<T>(
   }
 
   try {
-    // Mark as processing
-    await reportJobProgress(context.jobId, 0);
+    // Mark as processing + record start time
+    await updateDocument(JOBS_COLLECTION, context.jobId, {
+      status: "processing",
+      started_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
 
-    const result = await operation(async (progress) => {
-      await reportJobProgress(context.jobId, progress);
+    const result = await operation((progress) => {
+      // Fire-and-forget progress updates — a failed progress report
+      // must not kill a long-running operation.
+      reportJobProgress(context.jobId, progress).catch((err) => {
+        console.error(
+          `[jobWorker] progress report failed for ${context.jobId}:`,
+          err,
+        );
+      });
     });
 
     // Mark as complete
@@ -129,9 +124,16 @@ export async function wrapWithJobReporting<T>(
 
     return result;
   } catch (error) {
-    // Mark as failed
+    // Mark as failed — guarantee original error propagates even if failJob throws
     const errorMessage = error instanceof Error ? error.message : String(error);
-    await failJob(context.jobId, errorMessage);
+    try {
+      await failJob(context.jobId, errorMessage);
+    } catch (failErr) {
+      console.error(
+        `[jobWorker] failJob also failed for ${context.jobId}; original error will still propagate:`,
+        failErr,
+      );
+    }
     throw error;
   }
 }

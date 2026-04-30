@@ -65,6 +65,10 @@ const bundles = [
     entry: join(here, "scriptony-jobs", "index.ts"),
   },
   {
+    name: "scriptony-media-worker",
+    entry: join(here, "scriptony-media-worker", "index.ts"),
+  },
+  {
     name: "scriptony-mcp-appwrite",
     entry: join(here, "scriptony-mcp-appwrite", "index.ts"),
   },

@@ -1,4 +1,4 @@
-# Scriptony Business-Logik-Manifest
+wel# Scriptony Business-Logik-Manifest
 
 > **Status:** Living Document — bei jeder Feature-Änderung oder Erweiterung aktualisieren.  
 > **Letzte Änderung:** 2026-04-23  
@@ -32,8 +32,6 @@ Act → Sequence → Scene → Shot → Clip
 ```
 Season → Episode → Act → Sequence → Scene → Shot → Clip
 ```
-- Aktuell **gleiche Hierarchie wie Film**; Episode = zusätzlicher Wrapper ohne eigene Shot-Logik.
-- Zukünftige Erweiterung: Staffel-/Episoden-Management mit spezifischer Serie-Logik (später).
 
 ### 2.3 Hörbuch / Hörspiel (`audio`)
 ```
@@ -48,7 +46,7 @@ Act → Sequence → Scene → [Text Section / Content Block]
 ```
 - Der Text lebt auf `Scene.content` (TipTap JSON oder Plaintext).
 - `wordCount` ist auf Act-, Sequence- und Scene-Ebene verfügbar.
-- Scene.content ist der Leaf-Node (keine Paragraph/Chapter-Ebene unten). Wortzählung erfolgt rekursiv über den Content.
+- [TBD] Ob es eine explizite Paragraph/Chapter-Ebene unter Scene gibt, oder ob Scene.content der Leaf-Node ist.
 
 ---
 
@@ -66,7 +64,7 @@ Jeder Projekttyp hat **drei Kern-Ansichten**, die 1:1 synchron gehalten werden m
 - **Horizontal, zeitbasiert.**
 - Film/Serie: Video-Spuren, Shot-Lanes, Beats.
 - Hörbuch: **Mehrere Audio-Spuren übereinander wie FL Studio** (Dialog-Spuren pro Charakter, SFX, Music, Atmo).
-- Buch: **Lesedauer-Timeline**. Nicht schnittbasiert — dient als Vorschau für Lesedauer/Lesegeschwindigkeit (WPM). Hier kann eine KI-Stimme das Buch vorlesen und die Geschwindigkeit eingestellt werden. Damit kann jedes Buch direkt als Hörbuch (rein Vorlese-Option) exportiert werden. Die Buch-Timeline existiert in der Codebase, könnte aber beim Refactor verloren gegangen sein und muss wiederhergestellt werden.
+- Buch: Vermutlich nicht zeitbasiert oder als Kapitel-Struktur [TBD].
 
 ### 3.3 Native (= Schriftbasiert / Writing)
 - Volltext-Ansicht des gesamten Projekts.
@@ -91,7 +89,7 @@ Jeder Projekttyp hat **drei Kern-Ansichten**, die 1:1 synchron gehalten werden m
 | **Character Voice Casting** | ❌ | ❌ | ❌ | ✅ |
 | **Recording Sessions** | ❌ | ❌ | ❌ | ✅ |
 | **Beats (Struktur-Marken)** | ✅ | ✅ | ✅ | ✅ |
-| **Timeline mit Spuren** | ✅ | ✅ | ✅ (Lesedauer-Timeline) | ✅ (Audio-basiert) |
+| **Timeline mit Spuren** | ✅ | ✅ | ⚠️ [TBD] | ✅ (Audio-basiert) |
 | **Style-Guide** | ✅ | ✅ | ✅ | ✅ |
 | **Character-Verwaltung** | ✅ | ✅ | ✅ | ✅ |
 | **Projekt-Informationen** | ✅ | ✅ | ✅ | ✅ |
@@ -149,13 +147,8 @@ Audio-Tracks werden **wie Chatnachrichten** dargestellt:
 | `sfx` | Sound Effects |
 | `atmo` | Atmosphäre / Ambience |
 
-- Tracks sind **frei hinzufügbar**. Keine harte Begrenzung.
-
-### 6.4 Audio-Track Defaults (bei neuem Audio-Projekt)
-- **1 SFX-Spur** (Default).
-- **1 Sprecher-Spur** (Default).
-- Pro Charakter im Projekt gibt es **eine eigene Sprecher-Spur** (Dialog-Lane).
-- Nutzer können **unendlich viele** zusätzliche Spuren hinzufügen (auch "pro Serie" im Sinne von unbegrenzt).
+- Tracks sind **frei hinzufügbar**. Es gibt keine harte Begrenzung.
+- [TBD] Ob per Default z. B. 3 SFX-Spuren angelegt werden, oder ob der Nutzer komplett frei startet.
 
 ### 6.4 Voice Casting & Recording
 - Jedem Charakter kann eine Stimme zugewiesen werden (`human` oder `tts`).
@@ -169,7 +162,7 @@ Audio-Tracks werden **wie Chatnachrichten** dargestellt:
 - **Beats sind Struktur-Elemente**, die auf Act-, Sequence- und Scene-Ebene existieren.
 - Sie definieren das narrativ-strukturelle Rückgrat (z. B. "Aufbruch", "Konfrontation", "Lösung").
 - **Primäre Visualisierung:** In der Timeline als vertikale Marker (ähnlich FL Studio Markers).
-- **Sekundäre Darstellung:** Im Dropdown als farbige Labels / Abzeichen auf Act/Sequence/Scene-Ebene. **Aktuell nicht implementiert** (zu komplex, aufgeschoben).
+- **Sekundäre Darstellung:** Im Dropdown als farbige Labels / Abzeichen auf Act/Sequence/Scene-Ebene.
 - Beats sind **keine eigene Daten-Ebene** — sie sind Metadaten auf Acts, Sequences oder Scenes (via `summary` und `beat_template`).
 
 ---
@@ -248,9 +241,13 @@ Langfristig ist ein **Feature-Plugin-System** sinnvoll:
 
 | # | Punkt | Blockiert Manifest? | Priorität |
 |---|-------|---------------------|-----------|
-| 1 | **Buch-Timeline wiederherstellen:** Lesedauer-Timeline + KI-Vorlesen (TTS). Prüfen ob Code beim Refactor verloren ging. | Ja | High |
-| 2 | **Hörbuch → Film Konversion:** Szenenbilder aus `audio` als Shots übernehmbar? Konvertierungslogik? Future Feature. | Nein | Low (Future) |
-| 3 | **Podcast / Theater:** Keine aktuellen Pläne, Plugin-System evaluieren bei >5 Typen. | Nein | Low |
+| 1 | **Buch-Timeline:** Gibt es eine zeitbasierte Timeline für Bücher, oder ist die Timeline-Ansicht bei `book` eine Kapitel-Struktur? | Nein | Medium |
+| 2 | **Serien-Hierarchie-Korrektur:** Nutzer hat `Season → Episode → Act → Sequence → Clip` geschrieben (ohne Scene und Shot). Codebase hat `Episode` und `Scene.episodeId`. Korrekt: `Season → Episode → Act → Sequence → Scene → Shot → Clip`? | Nein | Low |
+| 3 | **Hörbuch → Film Konversion:** Szenenbilder aus `audio` als Shots übernehmbar? Konvertierungslogik? | Nein | Low (Future) |
+| 4 | **Audio-Track Defaults:** Per Default 3 SFX-Spuren anlegen oder komplett frei? Werden Atmo und Music getrennt von SFX behandelt? | Nein | Medium (UX-Design) |
+| 5 | **Beat-Definition in Dropdown:** Soll die Dropdown-Ansicht Beats als farbige Labels auf Act/Sequence-Ebene anzeigen, oder nur in der Timeline? | Nein | Medium |
+| 6 | **Book Native View:** Ist das die TipTap-Editor-Ansicht oder eine reine Text-Preview? | Nein | Low |
+| 7 | **Podcast / Theater:** Keine aktuellen Pläne, aber Plugin-System-Architektur sollte es ermöglichen. | Nein | Low |
 
 ---
 
@@ -259,7 +256,6 @@ Langfristig ist ein **Feature-Plugin-System** sinnvoll:
 | Datum | Änderung | Autor |
 |-------|----------|-------|
 | 2026-04-23 | Manifest erstellt aus Agenten-Konversation + Codebase-Analyse | AI Agent |
-| 2026-04-23 | TBDs geklärt: Buch-Timeline, Audio-Track Defaults, Beats in Dropdown, Serien-Hierarchie | AI Agent |
 
 ---
 

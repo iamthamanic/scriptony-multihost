@@ -809,3 +809,45 @@ export async function getRecursiveChildren(
 
   return result.map(mapNode);
 }
+
+export interface Timeline {
+  acts: JsonRecord[];
+  sequences: JsonRecord[];
+  scenes: JsonRecord[];
+}
+
+export function buildTimeline(nodes: JsonRecord[]): Timeline {
+  return {
+    acts: nodes.filter((n) => typeof n.level === "number" && n.level === 1),
+    sequences: nodes.filter(
+      (n) => typeof n.level === "number" && n.level === 2,
+    ),
+    scenes: nodes.filter((n) => typeof n.level === "number" && n.level === 3),
+  };
+}
+
+export function stripContentFromNodes(nodes: JsonRecord[]): JsonRecord[] {
+  return nodes.map((node) => {
+    if (!node || typeof node !== "object") return node;
+    const metadata =
+      node.metadata === null
+        ? null
+        : typeof node.metadata === "object"
+          ? { ...(node.metadata as JsonRecord) }
+          : undefined;
+    if (metadata && "content" in metadata) {
+      const { content: _, ...restMeta } = metadata;
+      const { content: __, ...restNode } = node;
+      return { ...restNode, metadata: restMeta };
+    }
+    const { content: __, ...restNode } = node;
+    return { ...restNode, metadata };
+  });
+}
+
+export function getProjectIdFromShot(shot: JsonRecord | null): string | null {
+  if (!shot || typeof shot !== "object") return null;
+  const pid = shot.project_id;
+  if (typeof pid === "string") return pid;
+  return null;
+}

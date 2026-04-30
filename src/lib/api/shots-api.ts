@@ -1,6 +1,10 @@
 /**
  * Shot API Client
  *
+ * @deprecated Use `timeline-domain-api.ts` for new code.
+ *   This module remains functional for backward compatibility.
+ *   See docs/timeline-domain-decision.md (T13).
+ *
  * 🚀 MIGRATED TO API GATEWAY + AUDIO MICROSERVICE
  *
  * Helper functions for Shot CRUD operations, file uploads, and character management.

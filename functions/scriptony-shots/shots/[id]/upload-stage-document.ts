@@ -1,15 +1,20 @@
 /**
  * POST /shots/:id/upload-stage-document — StageDocument-JSON in Storage, Shot-Feld setzen.
  * Body: { kind: "stage2d" | "stage3d", json: string } oder { kind, document: object }
+ *
+ * @deprecated LEGACY — Stage document management belongs to scriptony-stage / scriptony-assets.
+ *   This route is frozen; do not extend.
  */
+
+import { Buffer } from "node:buffer";
 import { requireUserBootstrap } from "../../../_shared/auth";
 import { getStorageBucketId } from "../../../_shared/env";
 import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
-  readJsonBody,
   type RequestLike,
   type ResponseLike,
+  readJsonBody,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
@@ -17,13 +22,12 @@ import {
   sendServerError,
   sendUnauthorized,
 } from "../../../_shared/http";
-import { uploadFileToStorage } from "../../../_shared/storage";
 import {
   getAccessibleProject,
   getUserOrganizationIds,
 } from "../../../_shared/scriptony";
+import { uploadFileToStorage } from "../../../_shared/storage";
 import { getShotById, mapShot } from "../../../_shared/timeline";
-import { Buffer } from "node:buffer";
 
 const MAX_JSON_BYTES = 15 * 1024 * 1024;
 
@@ -67,21 +71,23 @@ export default async function handler(
     }
 
     const body = await readJsonBody<Record<string, unknown>>(req);
-    const kind = body.kind === "stage3d"
-      ? "stage3d"
-      : body.kind === "stage2d"
-      ? "stage2d"
-      : null;
+    const kind =
+      body.kind === "stage3d"
+        ? "stage3d"
+        : body.kind === "stage2d"
+          ? "stage2d"
+          : null;
     if (!kind) {
       sendBadRequest(res, 'kind must be "stage2d" or "stage3d"');
       return;
     }
 
-    const json = typeof body.json === "string"
-      ? body.json
-      : body.document !== undefined
-      ? JSON.stringify(body.document)
-      : null;
+    const json =
+      typeof body.json === "string"
+        ? body.json
+        : body.document !== undefined
+          ? JSON.stringify(body.document)
+          : null;
     if (typeof json !== "string" || !json.trim()) {
       sendBadRequest(res, "json (string) or document (object) required");
       return;

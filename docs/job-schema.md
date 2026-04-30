@@ -6,49 +6,52 @@
 
 ## Active Function
 
-| Function | Runtime | Status | Entrypoint |
-|----------|---------|--------|------------|
-| `scriptony-jobs` | node-16.0 | **active** | `index.js` |
-| `jobs-handler` | Deno | **LEGACY_DO_NOT_EXTEND** | N/A (nicht deployed) |
+| Function         | Runtime   | Status                   | Entrypoint           |
+| ---------------- | --------- | ------------------------ | -------------------- |
+| `scriptony-jobs` | node-16.0 | **active**               | `index.js`           |
+| `jobs-handler`   | Deno      | **LEGACY_DO_NOT_EXTEND** | N/A (nicht deployed) |
 
 ## Collection: `jobs`
 
 Location: Database `scriptony`, Collection `jobs` (per `functions/_shared/appwrite-db.ts` C.jobs)
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `function_name` | String | ✅ | Job-Typ (z.B. `style-guide`, `image-generate`) |
-| `status` | Enum | ✅ | `pending`, `processing`, `completed`, `failed` |
-| `payload_json` | String (JSON) | ✅ | Serialized Job-Payload |
-| `user_id` | String | ✅ | Ersteller |
-| `progress` | Integer | ❌ | 0–100 |
-| `result_json` | String (JSON) | ❌ | Serializeiertes Ergebnis |
-| `error` | String | ❌ | Fehlertext (max 2000 Zeichen) |
-| `created_at` | DateTime | ✅ | ISO-8601 |
-| `updated_at` | DateTime | ✅ | ISO-8601 |
-| `completed_at` | DateTime | ❌ | ISO-8601 |
+| Field           | Type          | Required | Description                                                 |
+| --------------- | ------------- | -------- | ----------------------------------------------------------- |
+| `function_name` | String        | ✅       | Job-Typ (z.B. `style-guide`, `image-generate`)              |
+| `status`        | Enum          | ✅       | `pending`, `processing`, `completed`, `failed`, `cancelled` |
+| `payload_json`  | String (JSON) | ✅       | Serialized Job-Payload                                      |
+| `user_id`       | String        | ✅       | Ersteller                                                   |
+| `progress`      | Integer       | ❌       | 0–100                                                       |
+| `result_json`   | String (JSON) | ❌       | Serializeiertes Ergebnis                                    |
+| `error`         | String        | ❌       | Fehlertext (max 2000 Zeichen)                               |
+| `created_at`    | DateTime      | ✅       | ISO-8601                                                    |
+| `updated_at`    | DateTime      | ✅       | ISO-8601                                                    |
+| `started_at`    | DateTime      | ❌       | ISO-8601 — gesetzt wenn Status → `processing`               |
+| `completed_at`  | DateTime      | ❌       | ISO-8601                                                    |
 
 ## Collection: `job_snapshots`
 
 Location: Database `scriptony`, Collection `job_snapshots` (T08)
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `project_id` | String | ✅ | Zugehöriges Projekt |
-| `scene_id` | String | ❌ | Optionale Szene |
-| `script_id` | String | ❌ | Optionales Script |
-| `script_block_ids` | String[] | ❌ | Referenzierte Blöcke |
-| `snapshot_json` | String (JSON) | ✅ | Serialized Snapshot (< 50 KB) |
-| `created_by` | String | ✅ | Ersteller |
-| `created_at` | DateTime | ✅ | ISO-8601 |
-| `updated_at` | DateTime | ✅ | ISO-8601 |
+| Field              | Type          | Required | Description                   |
+| ------------------ | ------------- | -------- | ----------------------------- |
+| `project_id`       | String        | ✅       | Zugehöriges Projekt           |
+| `scene_id`         | String        | ❌       | Optionale Szene               |
+| `script_id`        | String        | ❌       | Optionales Script             |
+| `script_block_ids` | String[]      | ❌       | Referenzierte Blöcke          |
+| `snapshot_json`    | String (JSON) | ✅       | Serialized Snapshot (< 50 KB) |
+| `created_by`       | String        | ✅       | Ersteller                     |
+| `created_at`       | DateTime      | ✅       | ISO-8601                      |
+| `updated_at`       | DateTime      | ✅       | ISO-8601                      |
 
 ## API Endpoints
 
 ### POST /v1/jobs/:functionName
+
 Erstellt einen Job und triggered asynchrone Ausführung.
 
 **Request:**
+
 ```json
 {
   "payload": { "projectId": "...", "param": "..." }
@@ -56,6 +59,7 @@ Erstellt einen Job und triggered asynchrone Ausführung.
 ```
 
 **Response (201):**
+
 ```json
 {
   "jobId": "...",
@@ -66,9 +70,11 @@ Erstellt einen Job und triggered asynchrone Ausführung.
 ```
 
 ### GET /v1/jobs/:jobId/status
+
 Schneller Status-Check.
 
 **Response (200):**
+
 ```json
 {
   "success": true,
@@ -83,9 +89,11 @@ Schneller Status-Check.
 ```
 
 ### GET /v1/jobs/:jobId/result
+
 Holt das Ergebnis (nur wenn `status === "completed"`).
 
 **Response (200 completed):**
+
 ```json
 {
   "success": true,
@@ -95,6 +103,7 @@ Holt das Ergebnis (nur wenn `status === "completed"`).
 ```
 
 **Response (202 processing):**
+
 ```json
 {
   "success": false,
@@ -105,6 +114,7 @@ Holt das Ergebnis (nur wenn `status === "completed"`).
 ```
 
 **Response (500 failed):**
+
 ```json
 {
   "success": false,
@@ -114,9 +124,12 @@ Holt das Ergebnis (nur wenn `status === "completed"`).
 ```
 
 ### POST /v1/jobs/cleanup
+
 Löscht abgeschlossene/fehlgeschlagene Jobs älter als N Stunden.
+**Security:** Nur `superadmin` darf diesen Endpoint aufrufen (403 für andere Rollen).
 
 **Request:**
+
 ```json
 { "hours": 24 }
 ```
@@ -131,8 +144,8 @@ keinen HTTP-Overhead wollen, können Jobs **direkt in die Collection schreiben**
 
 ### Aktuelle Nutzer
 
-| Function | Pfad | Methode |
-|----------|------|---------|
+| Function                | Pfad                                                     | Methode                       |
+| ----------------------- | -------------------------------------------------------- | ----------------------------- |
 | `scriptony-audio-story` | `functions/scriptony-audio-story/_shared/job-service.ts` | `createDocument(C.jobs, ...)` |
 
 ### Warum Direct-Write?
@@ -172,6 +185,9 @@ const job = await createDocument(dbId(), C.jobs, ID.unique(), {
 });
 ```
 
+> **Hinweis:** Worker, die den Job auf `processing` setzen, müssen auch `started_at`
+> füllen (siehe `functions/_shared/jobs/jobWorker.ts`).
+
 > **Hinweis:** Der Direct-Write-Pfad ist kein Bug. Er ist ein bewusstes
 > Architektur-Muster für interne Function-zu-Function-Kommunikation.
 > Für externe Clients (Frontend, Third-Party) bleibt der HTTP-Endpoint
@@ -183,16 +199,17 @@ const job = await createDocument(dbId(), C.jobs, ID.unique(), {
 
 Aktive Job-Typen (in `functions/scriptony-jobs/index.ts`):
 
-| Job-Typ | Ziel-Function | Timeout | Auth |
-|---------|--------------|---------|------|
-| `style-guide` | `scriptony-style-guide` | 120s | ✅ |
-| `image-generate` | `scriptony-image` | 180s | ✅ |
-| `audio-process` | `scriptony-audio` | 300s | ✅ |
-| `audio-production-generate` | `scriptony-audio-story` | 300s | ✅ |
-| `audio-production-preview` | `scriptony-audio-story` | 300s | ✅ |
-| `audio-production-export` | `scriptony-audio-story` | 600s | ✅ |
+| Job-Typ                     | Ziel-Function           | Timeout | Auth |
+| --------------------------- | ----------------------- | ------- | ---- |
+| `style-guide`               | `scriptony-style-guide` | 120s    | ✅   |
+| `image-generate`            | `scriptony-image`       | 180s    | ✅   |
+| `audio-process`             | `scriptony-audio`       | 300s    | ✅   |
+| `audio-production-generate` | `scriptony-audio-story` | 300s    | ✅   |
+| `audio-production-preview`  | `scriptony-audio-story` | 300s    | ✅   |
+| `audio-production-export`   | `scriptony-audio-story` | 600s    | ✅   |
 
 **Neue Job-Typen nur mit:**
+
 1. Eintrag in `SUPPORTED_JOBS`
 2. Ziel-Function muss `__jobId` + `__userId` aus Payload extrahieren
 3. Ziel-Function reportet Fortschritt via `_shared/jobs/jobWorker.ts`
@@ -202,7 +219,12 @@ Aktive Job-Typen (in `functions/scriptony-jobs/index.ts`):
 Worker-Functions nutzen `_shared/jobs/jobWorker.ts`:
 
 ```typescript
-import { extractJobContext, reportJobProgress, completeJob, failJob } from "../_shared/jobs/jobWorker";
+import {
+  extractJobContext,
+  reportJobProgress,
+  completeJob,
+  failJob,
+} from "../_shared/jobs/jobWorker";
 
 const jobContext = extractJobContext(body);
 if (jobContext?.isJob) {
@@ -213,11 +235,11 @@ if (jobContext?.isJob) {
 
 ## Legacy / Removed
 
-| Komponent | Status | Grund |
-|-----------|--------|-------|
-| `jobs-handler/` (Deno) | LEGACY | `Deno.serve`, `npm:hono`, nicht Node-kompatibel |
-| `_shared/jobs/jobService.ts` | @deprecated | Deno-only, broken imports |
-| `_shared/jobs/jobRunner.ts` | @deprecated | Nutzt jobService (broken) |
+| Komponent                    | Status      | Grund                                           |
+| ---------------------------- | ----------- | ----------------------------------------------- |
+| `jobs-handler/` (Deno)       | LEGACY      | `Deno.serve`, `npm:hono`, nicht Node-kompatibel |
+| `_shared/jobs/jobService.ts` | @deprecated | Deno-only, broken imports                       |
+| `_shared/jobs/jobRunner.ts`  | @deprecated | Nutzt jobService (broken)                       |
 
 ## Field-Name-Konvention
 

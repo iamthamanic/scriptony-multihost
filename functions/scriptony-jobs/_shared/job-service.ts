@@ -3,6 +3,7 @@
  */
 
 import { ID, Query } from "node-appwrite";
+import { z } from "zod";
 import {
   createDocument,
   dbId,
@@ -20,26 +21,74 @@ export interface JobCreateRequest {
   payload: Record<string, unknown>;
 }
 
+const JobDocSchema = z.object({
+  $id: z.string().min(1),
+  function_name: z.string().min(1),
+  status: z.enum(["pending", "processing", "completed", "failed", "cancelled"]),
+  payload_json: z.string().default("{}"),
+  result_json: z.string().nullable().optional(),
+  error: z.string().nullable().optional(),
+  progress: z.number().int().min(0).max(100).nullable().optional(),
+  user_id: z.string().nullable().optional(),
+  started_at: z.string().nullable().optional(),
+  created_at: z.string().min(1),
+  updated_at: z.string().min(1),
+  completed_at: z.string().nullable().optional(),
+});
+
+function safeJsonParse(
+  raw: string | null | undefined,
+  fallback: unknown,
+): unknown {
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    console.error("[job-service] corrupt JSON in job doc:", raw.slice(0, 200));
+    return fallback;
+  }
+}
+
+function mapJobDoc(doc: Record<string, unknown>): Job {
+  const parsed = JobDocSchema.safeParse(doc);
+  if (!parsed.success) {
+    console.error(
+      "[job-service] mapJobDoc validation failed:",
+      parsed.error.issues,
+    );
+    throw new Error(`Invalid job document: ${parsed.error.issues[0]?.message}`);
+  }
+  const d = parsed.data;
+
+  return {
+    $id: d.$id,
+    functionName: d.function_name,
+    status: d.status as JobStatus,
+    payload: safeJsonParse(d.payload_json, {}) as Record<string, unknown>,
+    result: safeJsonParse(d.result_json, undefined),
+    error: d.error ?? undefined,
+    progress: d.progress ?? undefined,
+    user_id: d.user_id ?? undefined,
+    startedAt: d.started_at ?? undefined,
+    createdAt: d.created_at,
+    updatedAt: d.updated_at,
+    completedAt: d.completed_at ?? undefined,
+  };
+}
+
 export async function getJobById(jobId: string): Promise<Job | null> {
   try {
     const doc = await getDocument(DATABASE_ID, JOBS_COLLECTION, jobId);
-    return {
-      $id: doc.$id,
-      functionName: doc.function_name as string,
-      status: doc.status as JobStatus,
-      payload: JSON.parse((doc.payload_json as string) || "{}"),
-      result: doc.result_json
-        ? JSON.parse(doc.result_json as string)
-        : undefined,
-      error: doc.error as string | undefined,
-      progress: doc.progress as number | undefined,
-      user_id: (doc.user_id as string) || undefined,
-      createdAt: doc.created_at as string,
-      updatedAt: doc.updated_at as string,
-      completedAt: doc.completed_at as string | undefined,
-    };
-  } catch {
-    return null;
+    return mapJobDoc(doc);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    // Appwrite getDocument throws when the document does not exist.
+    // Only swallow the "not found" case; propagate real DB errors.
+    if (/not found|Document with the requested ID/i.test(msg)) {
+      return null;
+    }
+    console.error(`[job-service] getJobById DB error for ${jobId}:`, msg);
+    throw err;
   }
 }
 
@@ -63,19 +112,24 @@ export async function createJobEntry(
     completed_at: null,
   });
 
-  return {
-    $id: doc.$id,
-    functionName: doc.function_name as string,
-    status: doc.status as JobStatus,
-    payload: JSON.parse((doc.payload_json as string) || "{}"),
-    result: doc.result_json ? JSON.parse(doc.result_json as string) : undefined,
-    error: doc.error as string | undefined,
-    progress: doc.progress as number | undefined,
-    user_id: (doc.user_id as string) || undefined,
-    createdAt: doc.created_at as string,
-    updatedAt: doc.updated_at as string,
-    completedAt: doc.completed_at as string | undefined,
-  };
+  return mapJobDoc(doc);
+}
+
+export async function startJobDoc(jobId: string): Promise<void> {
+  await updateDocument(DATABASE_ID, JOBS_COLLECTION, jobId, {
+    status: "processing",
+    started_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
+}
+
+export async function failJobDoc(jobId: string, error: string): Promise<void> {
+  await updateDocument(DATABASE_ID, JOBS_COLLECTION, jobId, {
+    status: "failed",
+    error: error.slice(0, 2000),
+    completed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  });
 }
 
 export async function cancelJobDoc(jobId: string): Promise<void> {
@@ -142,7 +196,7 @@ export async function triggerFunctionExecution(
 
 export async function cleanupOldJobs(
   olderThanHours: number,
-): Promise<{ deleted: number; failed: number }> {
+): Promise<{ deleted: number; failed: number; capped: boolean }> {
   const cutoff = new Date();
   cutoff.setHours(cutoff.getHours() - olderThanHours);
 
@@ -167,5 +221,5 @@ export async function cleanupOldJobs(
     }
   }
 
-  return { deleted, failed };
+  return { deleted, failed, capped: oldJobs.length >= 100 };
 }

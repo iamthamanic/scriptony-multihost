@@ -1,5 +1,7 @@
 /**
  * Direct shot lookup route for the Scriptony HTTP API.
+ *
+ * T13 TIMELINE DOMAIN: Shot-CRUD.
  */
 
 import { requireUserBootstrap } from "../../../_shared/auth";
@@ -14,6 +16,10 @@ import {
   sendServerError,
   sendUnauthorized,
 } from "../../../_shared/http";
+import {
+  getAccessibleProject,
+  getUserOrganizationIds,
+} from "../../../_shared/scriptony";
 import { getShotById, mapShot } from "../../../_shared/timeline";
 
 export default async function handler(
@@ -41,6 +47,18 @@ export default async function handler(
     const shot = await getShotById(shotId);
     if (!shot) {
       sendNotFound(res, "Shot not found");
+      return;
+    }
+
+    const projectId = String(shot.project_id || "");
+    const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
+    const project = await getAccessibleProject(
+      projectId,
+      bootstrap.user.id,
+      organizationIds,
+    );
+    if (!project) {
+      sendJson(res, 403, { error: "Project not found or access denied" });
       return;
     }
 

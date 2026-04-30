@@ -2,18 +2,16 @@
  * T14 Job Handlers — Cancel + Retry.
  */
 
-import { requireUserBootstrap } from "../../_shared/auth";
 import {
   type RequestLike,
   type ResponseLike,
   sendJson,
-  sendNotFound,
   sendServerError,
-  sendUnauthorized,
 } from "../../_shared/http";
+import { requireJobOwner } from "../_shared/job-auth";
 import {
   cancelJobDoc,
-  getJobById,
+  failJobDoc,
   resetJobForRetry,
   triggerFunctionExecution,
 } from "../_shared/job-service";
@@ -24,22 +22,10 @@ export async function handleCancel(
   res: ResponseLike,
   jobId: string,
 ): Promise<void> {
-  const bootstrap = await requireUserBootstrap(req);
-  if (!bootstrap) {
-    sendUnauthorized(res);
-    return;
-  }
+  const result = await requireJobOwner(req, res, jobId);
+  if (!result) return;
 
-  const job = await getJobById(jobId);
-  if (!job) {
-    sendNotFound(res, "Job not found");
-    return;
-  }
-
-  if (job.user_id && job.user_id !== bootstrap.user.id) {
-    sendJson(res, 403, { error: "Forbidden: not your job" });
-    return;
-  }
+  const { job } = result;
 
   if (job.status !== "pending" && job.status !== "processing") {
     sendJson(res, 409, {
@@ -67,22 +53,10 @@ export async function handleRetry(
   res: ResponseLike,
   jobId: string,
 ): Promise<void> {
-  const bootstrap = await requireUserBootstrap(req);
-  if (!bootstrap) {
-    sendUnauthorized(res);
-    return;
-  }
+  const result = await requireJobOwner(req, res, jobId);
+  if (!result) return;
 
-  const job = await getJobById(jobId);
-  if (!job) {
-    sendNotFound(res, "Job not found");
-    return;
-  }
-
-  if (job.user_id && job.user_id !== bootstrap.user.id) {
-    sendJson(res, 403, { error: "Forbidden: not your job" });
-    return;
-  }
+  const { job, user } = result;
 
   if (job.status !== "failed" && job.status !== "cancelled") {
     sendJson(res, 409, {
@@ -102,15 +76,31 @@ export async function handleRetry(
   try {
     await resetJobForRetry(jobId);
 
-    triggerFunctionExecution(
-      config.functionId,
-      jobId,
-      job.payload,
-      bootstrap.user.id,
-    ).catch((err) => {
-      console.error(`[jobs] retry trigger failed for ${jobId}:`, err);
-      // Fire-and-forget; client polls status for actual result
-    });
+    // Intentionally fire-and-forget: we return 200 immediately.
+    // The catch handler ensures zombie jobs are marked failed even if
+    // the serverless runtime freezes after the HTTP response.
+    void (async () => {
+      try {
+        await triggerFunctionExecution(
+          config.functionId,
+          jobId,
+          job.payload,
+          user.id,
+        );
+      } catch (err: unknown) {
+        try {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`[jobs] retry trigger failed for ${jobId}:`, err);
+          // Avoid zombie jobs: mark as failed so client stops polling
+          await failJobDoc(jobId, `Retry trigger failed: ${msg}`);
+        } catch (innerErr) {
+          console.error(
+            `[jobs] failJobDoc also failed for ${jobId}:`,
+            innerErr,
+          );
+        }
+      }
+    })();
 
     sendJson(res, 200, {
       success: true,

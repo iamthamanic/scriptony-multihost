@@ -1,5 +1,9 @@
 /**
  * Clip API — editorial timeline segments (scriptony-clips).
+ *
+ * @deprecated Use `timeline-domain-api.ts` for new code.
+ *   This module remains functional for backward compatibility.
+ *   See docs/timeline-domain-decision.md (T13).
  */
 
 import {

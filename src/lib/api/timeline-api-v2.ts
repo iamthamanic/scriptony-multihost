@@ -316,26 +316,72 @@ export async function ultraBatchLoadProject(
     clips: number;
   };
 }> {
+  // Compatibility: legacy includeShots=false still hits the old endpoint
+  // because the new read-model always includes shots in full mode.
+  if (options?.includeShots === false) {
+    console.log(
+      "[Timeline API V2] 🚀🚀🚀 LEGACY ULTRA BATCH loading project:",
+      projectId,
+    );
+    const timerLabel = `[Timeline API V2] LEGACY ULTRA Batch Load ${projectId}`;
+    console.time(timerLabel);
+
+    const params = new URLSearchParams({ project_id: projectId });
+    params.set("include_shots", "false");
+    if (options?.excludeContent) {
+      params.set("exclude_content", "true");
+    }
+
+    const result = await apiGet(`/nodes/ultra-batch-load?${params.toString()}`);
+    const data = unwrapApiResult(result);
+
+    console.timeEnd(timerLabel);
+    console.log(
+      "[Timeline API V2] LEGACY ULTRA Batch load stats:",
+      data?.stats,
+    );
+
+    return {
+      timeline: {
+        acts: data?.timeline?.acts || [],
+        sequences: data?.timeline?.sequences || [],
+        scenes: data?.timeline?.scenes || [],
+      },
+      characters: data?.characters || [],
+      shots: data?.shots || [],
+      clips: data?.clips || [],
+      stats: data?.stats || {
+        totalNodes: 0,
+        acts: 0,
+        sequences: 0,
+        scenes: 0,
+        characters: 0,
+        shots: 0,
+        clips: 0,
+      },
+    };
+  }
+
   console.log(
-    "[Timeline API V2] 🚀🚀🚀 ULTRA BATCH loading project:",
+    "[Timeline API V2] 🚀🚀🚀 ULTRA BATCH loading project via editor-readmodel:",
     projectId,
   );
   const timerLabel = `[Timeline API V2] ULTRA Batch Load ${projectId}`;
   console.time(timerLabel);
 
-  const params = new URLSearchParams({ project_id: projectId });
-  if (options?.includeShots === false) {
-    params.set("include_shots", "false");
-  }
+  const params = new URLSearchParams();
   if (options?.excludeContent) {
     params.set("exclude_content", "true");
   }
 
-  const result = await apiGet(`/nodes/ultra-batch-load?${params.toString()}`);
+  const route = `/editor/projects/${projectId}/state${
+    params.toString() ? `?${params.toString()}` : ""
+  }`;
+  const result = await apiGet(route);
   const data = unwrapApiResult(result);
 
   console.timeEnd(timerLabel);
-  console.log("[Timeline API V2] ULTRA Batch load stats:", data.stats);
+  console.log("[Timeline API V2] ULTRA Batch load stats:", data?.stats);
 
   return {
     timeline: {

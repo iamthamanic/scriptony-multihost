@@ -19,7 +19,7 @@ export interface Job<T = unknown> {
   error?: string;
   progress?: number; // 0-100 for progress bars
   user_id?: string; // T14: Ownership for auth checks
-  startedAt?: string;
+  startedAt?: string; // T14: ISO-8601 when status changed to processing
   completedAt?: string;
   createdAt: string;
   updatedAt: string;
@@ -38,10 +38,4 @@ export interface JobStatusResponse<T = unknown> {
   error?: string;
   createdAt: string;
   updatedAt: string;
-}
-
-// Interface for functions that support async execution
-export interface IAsyncJobHandler<TPayload, TResult> {
-  execute(payload: TPayload): Promise<TResult>;
-  getJobId(payload: TPayload): string;
 }

@@ -1,11 +1,8 @@
 /**
- * Appwrite function entrypoint for the clips service (editorial timeline).
- */
-
-/**
  * Appwrite function entrypoint: scriptony-clips — T13 Timeline Domain.
- *   Ziel: scriptony-timeline. Keine neuen Timeline-Features ohne
- *   Zielentscheidung. Siehe docs/timeline-domain-decision.md
+ *   Ziel: scriptony-timeline. Clip-CRUD und Timing für den Editor.
+ *   Neue Timeline-Features nur mit expliziter Zielentscheidung.
+ *   Siehe docs/timeline-domain-decision.md
  */
 
 import clipsCollectionHandler from "./clips/index";

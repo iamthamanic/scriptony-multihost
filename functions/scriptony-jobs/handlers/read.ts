@@ -3,18 +3,18 @@
  */
 
 import { z } from "zod";
-import { requireUserBootstrap } from "../../_shared/auth";
+import { requireAuth } from "../../_shared/auth-http";
 import {
-  readJsonBody,
   type RequestLike,
   type ResponseLike,
+  readJsonBody,
   sendJson,
-  sendNotFound,
   sendServerError,
-  sendUnauthorized,
 } from "../../_shared/http";
+import { requireJobOwner } from "../_shared/job-auth";
 import {
   createJobEntry,
+  failJobDoc,
   getJobById,
   triggerFunctionExecution,
 } from "../_shared/job-service";
@@ -29,11 +29,8 @@ export async function handleCreateJob(
   res: ResponseLike,
   functionName: string,
 ): Promise<void> {
-  const bootstrap = await requireUserBootstrap(req);
-  if (!bootstrap) {
-    sendUnauthorized(res);
-    return;
-  }
+  const user = await requireAuth(req, res);
+  if (!user) return;
 
   const config = SUPPORTED_JOBS[functionName];
   if (!config) {
@@ -54,17 +51,34 @@ export async function handleCreateJob(
     const job = await createJobEntry(
       functionName,
       parsed.data.payload,
-      bootstrap.user.id,
+      user.id,
     );
 
-    triggerFunctionExecution(
-      config.functionId,
-      job.$id,
-      parsed.data.payload,
-      bootstrap.user.id,
-    ).catch((err: unknown) => {
-      console.error(`[jobs] trigger failed for ${job.$id}:`, err);
-    });
+    // Intentionally fire-and-forget: we return 201 immediately.
+    // The catch handler ensures zombie jobs are marked failed even if
+    // the serverless runtime freezes after the HTTP response.
+    void (async () => {
+      try {
+        await triggerFunctionExecution(
+          config.functionId,
+          job.$id,
+          parsed.data.payload,
+          user.id,
+        );
+      } catch (err: unknown) {
+        try {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(`[jobs] trigger failed for ${job.$id}:`, err);
+          // Avoid zombie jobs: mark as failed so client stops polling
+          await failJobDoc(job.$id, `Trigger failed: ${msg}`);
+        } catch (innerErr) {
+          console.error(
+            `[jobs] failJobDoc also failed for ${job.$id}:`,
+            innerErr,
+          );
+        }
+      }
+    })();
 
     sendJson(res, 201, {
       jobId: job.$id,
@@ -82,23 +96,10 @@ export async function handleGetStatus(
   res: ResponseLike,
   jobId: string,
 ): Promise<void> {
-  const bootstrap = await requireUserBootstrap(req);
-  if (!bootstrap) {
-    sendUnauthorized(res);
-    return;
-  }
+  const result = await requireJobOwner(req, res, jobId);
+  if (!result) return;
 
-  const job = await getJobById(jobId);
-  if (!job) {
-    sendNotFound(res, "Job not found");
-    return;
-  }
-
-  if (job.user_id && job.user_id !== bootstrap.user.id) {
-    sendJson(res, 403, { error: "Forbidden: not your job" });
-    return;
-  }
-
+  const { job } = result;
   sendJson(res, 200, {
     success: true,
     jobId: job.$id,
@@ -116,22 +117,10 @@ export async function handleGetResult(
   res: ResponseLike,
   jobId: string,
 ): Promise<void> {
-  const bootstrap = await requireUserBootstrap(req);
-  if (!bootstrap) {
-    sendUnauthorized(res);
-    return;
-  }
+  const result = await requireJobOwner(req, res, jobId);
+  if (!result) return;
 
-  const job = await getJobById(jobId);
-  if (!job) {
-    sendNotFound(res, "Job not found");
-    return;
-  }
-
-  if (job.user_id && job.user_id !== bootstrap.user.id) {
-    sendJson(res, 403, { error: "Forbidden: not your job" });
-    return;
-  }
+  const { job } = result;
 
   if (job.status === "pending" || job.status === "processing") {
     sendJson(res, 202, {

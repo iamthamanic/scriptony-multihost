@@ -8,14 +8,19 @@
  * Verboten: Schreiboperationen, Provider-Calls, Job-Erstellung.
  */
 
+import { z } from "zod";
+import { createAppwriteHandler } from "../_shared/appwrite-handler";
 import {
   type RequestLike,
   type ResponseLike,
   sendJson,
   sendNotFound,
 } from "../_shared/http";
-import { createAppwriteHandler } from "../_shared/appwrite-handler";
 import editorStateHandler from "./routes/editor-state";
+
+const projectIdSchema = z
+  .string()
+  .regex(/^[a-zA-Z0-9_-]{1,128}$/, "Invalid projectId format");
 
 function getPathname(req: RequestLike): string {
   const direct =
@@ -56,10 +61,13 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
 
   const stateMatch = pathname.match(/^\/editor\/projects\/([^/]+)\/state$/);
   if (stateMatch && req.method === "GET") {
-    await editorStateHandler(
-      withParams(req, { projectId: stateMatch[1] }),
-      res,
-    );
+    const projectId = stateMatch[1];
+    const parsed = projectIdSchema.safeParse(projectId);
+    if (!parsed.success) {
+      sendJson(res, 400, { error: "Invalid projectId format" });
+      return;
+    }
+    await editorStateHandler(withParams(req, { projectId }), res);
     return;
   }
 

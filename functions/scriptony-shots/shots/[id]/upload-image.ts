@@ -1,5 +1,8 @@
 /**
  * Shot image upload route for the Scriptony HTTP API.
+ *
+ * @deprecated LEGACY — Asset uploads belong to scriptony-assets.
+ *   This route is frozen; do not extend.
  */
 
 import { requireUserBootstrap } from "../../../_shared/auth";
@@ -7,9 +10,9 @@ import { getStorageBucketId } from "../../../_shared/env";
 import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
-  readJsonBody,
   type RequestLike,
   type ResponseLike,
+  readJsonBody,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
@@ -17,11 +20,11 @@ import {
   sendServerError,
   sendUnauthorized,
 } from "../../../_shared/http";
-import { ensureFile, uploadFileToStorage } from "../../../_shared/storage";
 import {
   getAccessibleProject,
   getUserOrganizationIds,
 } from "../../../_shared/scriptony";
+import { ensureFile, uploadFileToStorage } from "../../../_shared/storage";
 import { getShotById } from "../../../_shared/timeline";
 
 export default async function handler(
@@ -94,9 +97,10 @@ export default async function handler(
       },
     });
 
-    const mime = typeof file.type === "string" && file.type.startsWith("image/")
-      ? file.type
-      : "image/jpeg";
+    const mime =
+      typeof file.type === "string" && file.type.startsWith("image/")
+        ? file.type
+        : "image/jpeg";
 
     await requestGraphql(
       `
