@@ -1,6 +1,10 @@
 /**
  * Freshness Model (Ticket 11) — canonical stale-status helpers.
  *
+ * @deprecated T18 — Fachliche Freshness-Logik. Ziel: `scriptony-shots/_shared/freshness-domain.ts`
+ *          oder `scriptony-timeline/_shared/freshness-domain.ts`.
+ *          Verbleibt bis zur Domain-Extraction. Neue Freshness-Regeln gehoeren zu scriptony-shots.
+ *
  * These helpers deterministically compute whether a shot's data is stale
  * based on revision counters and timestamps stored on the `shots` collection.
  *

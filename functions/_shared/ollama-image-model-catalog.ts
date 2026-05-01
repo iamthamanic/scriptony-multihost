@@ -2,6 +2,9 @@
  * Image-generation model IDs for Ollama Cloud: /api/tags only lists pulled models;
  * we merge /v1/models plus this list so Flux and peers stay selectable before pull.
  * Location: functions/_shared/ollama-image-model-catalog.ts
+ *
+ * @deprecated T18 — Fachliche Ollama-Model-Katalog-Logik. Ziel: `scriptony-ai/_shared/ollama-catalog-domain.ts`.
+ *          Verbleibt bis zur Domain-Extraction. Neue Model-Kataloge gehoeren zu scriptony-ai.
  */
 
 const CTX = 8192;

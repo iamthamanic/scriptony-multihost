@@ -1,6 +1,10 @@
 /**
  * Shared access-control and coercion helpers for puppet-layer services.
  *
+ * @deprecated T18 — Fachliche Puppet-Layer-Logik. Ziel: `scriptony-stage/_shared/puppet-domain.ts`
+ *          oder future `scriptony-puppet/_shared/puppet-domain.ts`.
+ *          Verbleibt bis zur Domain-Extraction. Neue Puppet-Helpers gehoeren zu scriptony-stage.
+ *
  * DRY: extracted from stage2d-service, stage3d-service, sync-service
  * where they were duplicated verbatim.
  */

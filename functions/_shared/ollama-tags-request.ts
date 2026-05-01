@@ -2,6 +2,9 @@
  * Fetches Ollama GET /api/tags using Node http/https (no dependency on global fetch).
  * Appwrite function runtimes may use Node without fetch; this avoids silent failures there.
  * Location: functions/_shared/ollama-tags-request.ts
+ *
+ * @deprecated T18 — Fachliche Ollama-API-Request-Logik. Ziel: `scriptony-ai/_shared/ollama-request-domain.ts`.
+ *          Verbleibt bis zur Domain-Extraction. Neue Ollama-API-Requests gehoeren zu scriptony-ai.
  */
 
 import * as http from "node:http";

@@ -1,6 +1,9 @@
 /**
  * Fetches Ollama OpenAI-compatible GET /v1/models (catalog; often broader than /api/tags).
  * Location: functions/_shared/ollama-v1-models-request.ts
+ *
+ * @deprecated T18 — Fachliche Ollama-API-Request-Logik. Ziel: `scriptony-ai/_shared/ollama-request-domain.ts`.
+ *          Verbleibt bis zur Domain-Extraction. Neue Ollama-API-Requests gehoeren zu scriptony-ai.
  */
 
 import * as http from "node:http";

@@ -2,6 +2,9 @@
  * POST /api/show for a single Ollama model — reads model_info (and related fields) for context length.
  * Uses Node http/https (same constraints as ollama-tags-request).
  * Location: functions/_shared/ollama-show-request.ts
+ *
+ * @deprecated T18 — Fachliche Ollama-API-Request-Logik. Ziel: `scriptony-ai/_shared/ollama-request-domain.ts`.
+ *          Verbleibt bis zur Domain-Extraction. Neue Ollama-API-Requests gehoeren zu scriptony-ai.
  */
 
 import * as http from "node:http";
