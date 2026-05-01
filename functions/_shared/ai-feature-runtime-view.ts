@@ -1,3 +1,9 @@
+/**
+ * @deprecated T18 — Fachliche AI-Runtime-Logik. Ziel: scriptony-ai/_shared/ai-runtime-domain.ts
+ *          oder scriptony-ai/services/feature-runtime.ts.
+ *          Verbleibt bis zur Domain-Extraction. Neue AI-Runtime-Logik gehoert zu scriptony-ai.
+ */
+
 import {
   type CanonicalAiFeature,
   type ResolvedFeatureRuntime,
@@ -97,12 +103,10 @@ function credentialError(
   ) {
     return "Ollama Cloud: Bitte API-Key in den KI-Integrationen hinterlegen.";
   }
-  return `Bitte API-Key für ${
-    providerDisplayName(
-      runtime,
-      ollamaMode,
-    )
-  } in den KI-Integrationen hinterlegen.`;
+  return `Bitte API-Key für ${providerDisplayName(
+    runtime,
+    ollamaMode,
+  )} in den KI-Integrationen hinterlegen.`;
 }
 
 export function describeResolvedFeatureRuntime(
@@ -209,10 +213,11 @@ async function fetchModelsForRuntime(
     return { models: registryModels, source: "registry" };
   }
 
-  const providerForFetch = runtime.config.provider === "ollama_local" ||
-      runtime.config.provider === "ollama_cloud"
-    ? "ollama"
-    : runtime.config.provider;
+  const providerForFetch =
+    runtime.config.provider === "ollama_local" ||
+    runtime.config.provider === "ollama_cloud"
+      ? "ollama"
+      : runtime.config.provider;
 
   const remote = await fetchUnifiedModels({
     provider: providerForFetch,
@@ -258,17 +263,17 @@ export async function getFeatureRuntimeView(
   );
   const selectedModel = runtime.config.model.trim()
     ? findModelByIdLoose(models, runtime.config.model) || {
-      id: runtime.config.model.trim(),
-      name: modelDisplayName(
-        runtime.config.provider,
-        runtime.config.model.trim(),
-      ),
-      context_window: defaultContextWindow(
-        runtime.config.provider,
-        models,
-        runtime.config.model.trim(),
-      ),
-    }
+        id: runtime.config.model.trim(),
+        name: modelDisplayName(
+          runtime.config.provider,
+          runtime.config.model.trim(),
+        ),
+        context_window: defaultContextWindow(
+          runtime.config.provider,
+          models,
+          runtime.config.model.trim(),
+        ),
+      }
     : null;
 
   return {

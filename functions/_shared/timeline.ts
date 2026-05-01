@@ -3,6 +3,20 @@
  *
  * This module normalizes node, character, shot, and audio payloads so multiple
  * file-based handlers can stay small and consistent.
+ *
+ * @deprecated T18 — Fachliche Logik muss in Domain-Functions extrahiert werden.
+ * Extraction-Plan:
+ *   - `normalizeNodeInput`, `mapNode`, `getNodeById`, `getTimelineChildren`,
+ *     `getAllProjectNodes`, `buildNodePath`, `getRecursiveChildren`, `buildTimeline`
+ *     → `scriptony-structure/_shared/timeline-domain.ts` oder Handler-Services
+ *   - `normalizeCharacterInput`, `mapCharacter`, `getCharactersByProject`,
+ *     `getCharacterById` → `scriptony-characters/_shared/character-domain.ts`
+ *   - `normalizeShotInput`, `mapShot`, `mapShotAudio`, `getShots`, `getShotById`
+ *     → `scriptony-shots/_shared/shot-domain.ts` (future `scriptony-timeline`)
+ *   - `getProjectById` → `scriptony-projects/_shared/project-domain.ts`
+ *   - Primitive helpers (`compact`, `optionalUrlField`, `optionalIdField`, `asArray`)
+ *     → bleiben in `_shared` oder `scriptony-<domain>/_shared/primitives.ts`
+ * Verboten: Neue fachliche Timeline/Character/Shot-Logik hier hinzufuegen.
  */
 
 import { requestGraphql } from "./graphql-compat";

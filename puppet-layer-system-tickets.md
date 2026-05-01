@@ -25,6 +25,12 @@ Neue Felder:
 - latestRenderJobId (string)
 - acceptedRenderJobId (string)
 
+### AGENTS.md Compliance (MUST)
+
+- Max 300 lines per file, hard limit 500.
+- Database migration scripts and schema definitions count as code files.
+- If any collection definition file exceeds 300 lines, split into separate files per collection.
+
 ---
 
 ## TICKET 2: scriptony-ai (Central Hub) ✅
@@ -171,6 +177,12 @@ Endpoints:
 
 Only View State, never Authoring
 
+### AGENTS.md Compliance (MUST)
+
+- Max 300 lines per file, hard limit 500.
+- Route handler files must stay under 150 lines; extract service logic into `services/` if needed.
+- Function entrypoint (index.ts) must not exceed 300 lines.
+
 ---
 
 ## TICKET 9: Local Bridge
@@ -183,6 +195,12 @@ Node.js Daemon:
 - Callback to stage
 
 NO product decisions!
+
+### AGENTS.md Compliance (MUST)
+
+- Max 300 lines per file, hard limit 500.
+- Bridge modules are code files; split protocol handlers into separate modules if limit is exceeded.
+- No business logic in entry/main files.
 
 ---
 
@@ -197,15 +215,27 @@ Required features:
 5. API Key / Auth
 6. Status display
 
+### AGENTS.md Compliance (MUST)
+
+- Max 300 lines per file, hard limit 500.
+- Addon Python files count as code files; split panels/operators/utils into separate modules.
+- Keep individual operator **init** + execute logic under 150 lines.
+
 ---
 
-## TICKET 11: Freshness Model ✅
+## TICKET 11: Freshness Model
 
 Rules:
 
 - guides stale: guideBundleRevision < blenderSyncRevision
 - render stale: renderRevision < guideBundleRevision OR renderRevision < styleProfileRevision
 - preview stale: !lastPreviewAt OR !lastBlenderSyncAt OR lastPreviewAt < lastBlenderSyncAt
+
+### AGENTS.md Compliance (MUST)
+
+- Max 300 lines per file, hard limit 500.
+- Freshness calculation logic must live in a dedicated util/module, not inlined in route handlers.
+- If freshness rules are implemented inside a larger file, extract them before merge.
 
 ---
 
@@ -228,3 +258,10 @@ Official Reject:
 
 - reviewStatus = rejected
 - shots UNCHANGED (acceptedRenderJobId stays)
+
+### AGENTS.md Compliance (MUST)
+
+- Max 300 lines per file, hard limit 500.
+- Max 150 lines per React component.
+- New/modified components and hooks must pass the Project Rules Check (`scripts/checks/project-rules.sh`).
+- If a component exceeds the limit, split into sub-components or custom hooks BEFORE merging.

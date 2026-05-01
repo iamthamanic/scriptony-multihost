@@ -1,6 +1,10 @@
 /**
  * Direct Appwrite DB access for ai_chat_settings (scriptony-image only).
  * Location: functions/_shared/image-function-settings-db.ts
+ *
+ * @deprecated T18 — Fachliche AI-Settings-Logik. Ziel: `scriptony-ai/_shared/ai-settings-domain.ts`
+ *          oder `scriptony-ai/services/settings-service.ts`.
+ *          Verbleibt bis zur Domain-Extraction. Neue AI-Settings-Logik gehoert zu `scriptony-ai`.
  */
 
 import { ID, Query } from "node-appwrite";

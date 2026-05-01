@@ -3,6 +3,10 @@
  *
  * The goal is to keep provider-specific request/response mapping in one place
  * while the route handler focuses on persistence and auth.
+ *
+ * @deprecated T18 — Fachliche AI-Provider-Logik. Ziel: `scriptony-ai/_shared/ai-domain.ts`
+ *          oder `scriptony-ai/services/`. Verbleibt bis zur Domain-Extraction.
+ *          Neue AI-Provider-Adapter muessen in `scriptony-ai` implementiert werden.
  */
 
 type ChatMessage = {
@@ -85,13 +89,15 @@ async function callOpenAiCompatible(
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const errorMessage = payload?.error?.message ||
+    const errorMessage =
+      payload?.error?.message ||
       payload?.message ||
       `Provider request failed with status ${response.status}`;
     throw new Error(errorMessage);
   }
 
-  const text = payload?.choices?.[0]?.message?.content ||
+  const text =
+    payload?.choices?.[0]?.message?.content ||
     payload?.choices?.[0]?.text ||
     "";
 
@@ -135,7 +141,8 @@ async function callAnthropic(
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const errorMessage = payload?.error?.message ||
+    const errorMessage =
+      payload?.error?.message ||
       payload?.message ||
       `Provider request failed with status ${response.status}`;
     throw new Error(errorMessage);
@@ -143,9 +150,9 @@ async function callAnthropic(
 
   const text = Array.isArray(payload?.content)
     ? payload.content
-      .map((entry: any) => entry?.text || "")
-      .join("\n")
-      .trim()
+        .map((entry: any) => entry?.text || "")
+        .join("\n")
+        .trim()
     : "";
 
   if (!text) {
@@ -164,11 +171,9 @@ async function callGoogle(settings: ProviderSettings, messages: ChatMessage[]) {
     }));
 
   const response = await fetchWithTimeout(
-    `https://generativelanguage.googleapis.com/v1beta/models/${
-      encodeURIComponent(
-        settings.model,
-      )
-    }:generateContent?key=${encodeURIComponent(settings.apiKey)}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
+      settings.model,
+    )}:generateContent?key=${encodeURIComponent(settings.apiKey)}`,
     {
       method: "POST",
       headers: {
@@ -189,7 +194,8 @@ async function callGoogle(settings: ProviderSettings, messages: ChatMessage[]) {
 
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const errorMessage = payload?.error?.message ||
+    const errorMessage =
+      payload?.error?.message ||
       payload?.message ||
       `Provider request failed with status ${response.status}`;
     throw new Error(errorMessage);
@@ -197,9 +203,9 @@ async function callGoogle(settings: ProviderSettings, messages: ChatMessage[]) {
 
   const text = Array.isArray(payload?.candidates?.[0]?.content?.parts)
     ? payload.candidates[0].content.parts
-      .map((entry: any) => entry?.text || "")
-      .join("\n")
-      .trim()
+        .map((entry: any) => entry?.text || "")
+        .join("\n")
+        .trim()
     : "";
 
   if (!text) {
@@ -223,12 +229,14 @@ export async function generateAiResponse(input: {
   inputTokens: number;
   outputTokens: number;
 }> {
-  const rag = typeof input.retrievalContext === "string"
-    ? input.retrievalContext.trim()
-    : "";
-  const effectiveSystemPrompt = rag.length > 0
-    ? `${input.settings.systemPrompt}${RAG_CONTEXT_SEPARATOR}${rag}`
-    : input.settings.systemPrompt;
+  const rag =
+    typeof input.retrievalContext === "string"
+      ? input.retrievalContext.trim()
+      : "";
+  const effectiveSystemPrompt =
+    rag.length > 0
+      ? `${input.settings.systemPrompt}${RAG_CONTEXT_SEPARATOR}${rag}`
+      : input.settings.systemPrompt;
 
   const settingsForCall: ProviderSettings = {
     ...input.settings,
@@ -241,7 +249,7 @@ export async function generateAiResponse(input: {
     { role: "user", content: input.latestMessage },
   ]);
 
-  let content = "";
+  let content: string;
   if (input.settings.provider === "anthropic") {
     content = await callAnthropic(settingsForCall, messages);
   } else if (input.settings.provider === "google") {

@@ -1,11 +1,15 @@
 /**
  * Resolves per-feature LLM settings from ai_chat_settings + settings_json overrides.
  * Location: functions/_shared/ai-feature-profile.ts
+ *
+ * @deprecated T18 — Fachliche AI-Feature-Logik. Ziel: scriptony-ai/_shared/ai-feature-domain.ts
+ *          oder scriptony-ai/services/feature-profile.ts.
+ *          Verbleibt bis zur Domain-Extraction. Neue Feature-Config gehoert zu scriptony-ai.
  */
 
+import process from "node:process";
 import type { ProviderSettings } from "./ai";
 import { normalizeAssistantSystemPrompt } from "./default-assistant-system-prompt";
-import process from "node:process";
 
 export type AiFeatureId = "assistant" | "gym" | "stage";
 
@@ -94,12 +98,10 @@ export function inferOllamaMode(
 ): OllamaConnectionMode {
   const m = json.ollama?.mode;
   if (m === "cloud" || m === "local") return m;
-  const base = typeof row.ollama_base_url === "string"
-    ? row.ollama_base_url.trim()
-    : "";
-  const key = typeof row.ollama_api_key === "string"
-    ? row.ollama_api_key.trim()
-    : "";
+  const base =
+    typeof row.ollama_base_url === "string" ? row.ollama_base_url.trim() : "";
+  const key =
+    typeof row.ollama_api_key === "string" ? row.ollama_api_key.trim() : "";
   if (base) return "local";
   if (key) return "cloud";
   return "local";
@@ -152,18 +154,15 @@ function byokKeyForProvider(
     const json = parseSettingsJsonField(row?.settings_json);
     const om = inferOllamaMode(row, json);
     if (om === "cloud") {
-      const key = typeof row.ollama_api_key === "string"
-        ? row.ollama_api_key.trim()
-        : "";
+      const key =
+        typeof row.ollama_api_key === "string" ? row.ollama_api_key.trim() : "";
       return key || null;
     }
-    const base = typeof row.ollama_base_url === "string"
-      ? row.ollama_base_url.trim()
-      : "";
+    const base =
+      typeof row.ollama_base_url === "string" ? row.ollama_base_url.trim() : "";
     if (!base) return null;
-    const key = typeof row.ollama_api_key === "string"
-      ? row.ollama_api_key.trim()
-      : "";
+    const key =
+      typeof row.ollama_api_key === "string" ? row.ollama_api_key.trim() : "";
     return key || OLLAMA_LOCAL;
   }
   const keyName = `${provider}_api_key` as const;
@@ -198,8 +197,8 @@ export function resolveAiFeatureProfile(
   }
   const mode: AiBillingMode = json.ai_mode === "hosted" ? "hosted" : "byok";
 
-  const baseProvider = (row?.active_provider as ProviderSettings["provider"]) ||
-    "openai";
+  const baseProvider =
+    (row?.active_provider as ProviderSettings["provider"]) || "openai";
   const baseModel =
     (typeof row?.active_model === "string" && row.active_model) ||
     "gpt-4o-mini";
@@ -219,16 +218,18 @@ export function resolveAiFeatureProfile(
   const provider = ov.provider ?? baseProvider;
   const pp = json.provider_profiles?.[provider] ?? {};
   const model = ov.model ?? pp.model ?? baseModel;
-  const temperature = typeof ov.temperature === "number"
-    ? ov.temperature
-    : typeof pp.temperature === "number"
-    ? pp.temperature
-    : baseTemp;
-  const maxTokens = typeof ov.max_tokens === "number"
-    ? ov.max_tokens
-    : typeof pp.max_tokens === "number"
-    ? pp.max_tokens
-    : baseMax;
+  const temperature =
+    typeof ov.temperature === "number"
+      ? ov.temperature
+      : typeof pp.temperature === "number"
+        ? pp.temperature
+        : baseTemp;
+  const maxTokens =
+    typeof ov.max_tokens === "number"
+      ? ov.max_tokens
+      : typeof pp.max_tokens === "number"
+        ? pp.max_tokens
+        : baseMax;
 
   let systemPrompt = baseSystem;
   if (
@@ -238,7 +239,7 @@ export function resolveAiFeatureProfile(
     systemPrompt = `${baseSystem}\n\n${ov.system_prompt_extra.trim()}`;
   }
 
-  let apiKey: string | null = null;
+  let apiKey: string | null;
   if (mode === "hosted") {
     apiKey = hostedApiKeyForProvider(provider);
     if (!apiKey) {
@@ -256,9 +257,10 @@ export function resolveAiFeatureProfile(
         const om = inferOllamaMode(row ?? {}, json);
         return {
           ok: false,
-          error: om === "cloud"
-            ? "Ollama Cloud: Bitte API-Key (ollama.com/settings/keys) in den KI-Einstellungen hinterlegen."
-            : "Ollama (lokal): Bitte Basis-URL (z. B. http://localhost:11434) in den KI-Einstellungen setzen.",
+          error:
+            om === "cloud"
+              ? "Ollama Cloud: Bitte API-Key (ollama.com/settings/keys) in den KI-Einstellungen hinterlegen."
+              : "Ollama (lokal): Bitte Basis-URL (z. B. http://localhost:11434) in den KI-Einstellungen setzen.",
           json,
         };
       }
@@ -275,11 +277,12 @@ export function resolveAiFeatureProfile(
   let ollamaMode: OllamaConnectionMode | undefined;
   if (provider === "ollama") {
     ollamaMode = inferOllamaMode(row ?? {}, json);
-    ollamaBaseUrl = ollamaMode === "cloud"
-      ? OLLAMA_CLOUD_ORIGIN
-      : typeof row?.ollama_base_url === "string"
-      ? row.ollama_base_url.trim()
-      : undefined;
+    ollamaBaseUrl =
+      ollamaMode === "cloud"
+        ? OLLAMA_CLOUD_ORIGIN
+        : typeof row?.ollama_base_url === "string"
+          ? row.ollama_base_url.trim()
+          : undefined;
   }
 
   return {
@@ -339,9 +342,8 @@ export function getEffectiveImageProviderForFeature(
   if (explicit) return explicit;
   const flags = getImageFeatureFlags(json);
   if (!flags[fid]) return undefined;
-  const fallback = json?.image?.provider === "openrouter"
-    ? "openrouter"
-    : "ollama";
+  const fallback =
+    json?.image?.provider === "openrouter" ? "openrouter" : "ollama";
   return fallback;
 }
 
@@ -364,10 +366,10 @@ export function getEffectiveImageModelForFeature(
 
 export type ResolveCoverImageRouteResult =
   | {
-    ok: true;
-    provider: ImageProviderId;
-    model: string;
-  }
+      ok: true;
+      provider: ImageProviderId;
+      model: string;
+    }
   | { ok: false; error: string };
 
 /** Resolves provider + model + enabled state for POST /ai/image/generate-cover */
@@ -391,7 +393,8 @@ export function resolveCoverImageRoute(
         "Kein Image-Provider für Cover zugewiesen. Bitte unter Image einen Anbieter konfigurieren und Cover zuweisen.",
     };
   }
-  const model = (bodyModel && bodyModel.trim()) ||
+  const model =
+    (bodyModel && bodyModel.trim()) ||
     getEffectiveImageModelForFeature(json, "cover") ||
     "gpt-image-1";
   return { ok: true, provider, model };
@@ -405,12 +408,10 @@ export function mergeSettingsJson(
   let feature_profiles = cur.feature_profiles;
   if (patch.feature_profiles) {
     feature_profiles = { ...cur.feature_profiles };
-    for (
-      const [key, val] of Object.entries(patch.feature_profiles) as [
-        AiFeatureId,
-        AiFeatureProfileOverride | null | undefined,
-      ][]
-    ) {
+    for (const [key, val] of Object.entries(patch.feature_profiles) as [
+      AiFeatureId,
+      AiFeatureProfileOverride | null | undefined,
+    ][]) {
       if (val === null) {
         delete feature_profiles[key as AiFeatureId];
         continue;
@@ -425,12 +426,10 @@ export function mergeSettingsJson(
   let provider_profiles = cur.provider_profiles;
   if (patch.provider_profiles) {
     provider_profiles = { ...cur.provider_profiles };
-    for (
-      const [key, val] of Object.entries(patch.provider_profiles) as [
-        LlmProviderId,
-        ProviderProfilePrefs | null | undefined,
-      ][]
-    ) {
+    for (const [key, val] of Object.entries(patch.provider_profiles) as [
+      LlmProviderId,
+      ProviderProfilePrefs | null | undefined,
+    ][]) {
       if (val === null) {
         delete provider_profiles[key as LlmProviderId];
         continue;
@@ -443,7 +442,7 @@ export function mergeSettingsJson(
     }
   }
   let ollama = cur.ollama;
-  if (Object.prototype.hasOwnProperty.call(patch, "ollama")) {
+  if (Object.hasOwn(patch, "ollama")) {
     if (patch.ollama === null) {
       ollama = undefined;
     } else if (patch.ollama && typeof patch.ollama === "object") {
@@ -451,21 +450,19 @@ export function mergeSettingsJson(
     }
   }
   let image = cur.image;
-  if (Object.prototype.hasOwnProperty.call(patch, "image")) {
+  if (Object.hasOwn(patch, "image")) {
     if (patch.image === null) {
       image = undefined;
     } else if (patch.image && typeof patch.image === "object") {
       image = { ...(cur.image ?? {}), ...patch.image };
       if (patch.image.feature_profiles) {
         const curFp = { ...(cur.image?.feature_profiles ?? {}) };
-        for (
-          const [key, val] of Object.entries(
-            patch.image.feature_profiles,
-          ) as [
-            ImageFeatureId,
-            ImageFeatureProfileOverride | null | undefined,
-          ][]
-        ) {
+        for (const [key, val] of Object.entries(
+          patch.image.feature_profiles,
+        ) as [
+          ImageFeatureId,
+          ImageFeatureProfileOverride | null | undefined,
+        ][]) {
           if (val === null) {
             delete curFp[key];
             continue;
@@ -476,9 +473,8 @@ export function mergeSettingsJson(
             ...val,
           };
         }
-        image.feature_profiles = Object.keys(curFp).length > 0
-          ? curFp
-          : undefined;
+        image.feature_profiles =
+          Object.keys(curFp).length > 0 ? curFp : undefined;
       }
       if (patch.image.provider_models) {
         image.provider_models = {
@@ -486,7 +482,7 @@ export function mergeSettingsJson(
           ...patch.image.provider_models,
         };
       }
-      if (Object.prototype.hasOwnProperty.call(patch.image, "ollama")) {
+      if (Object.hasOwn(patch.image, "ollama")) {
         if (patch.image.ollama === null) {
           delete image.ollama;
         } else if (
@@ -516,14 +512,14 @@ export function mergeSettingsJson(
     feature_profiles,
     provider_profiles,
   };
-  if (Object.prototype.hasOwnProperty.call(patch, "ollama")) {
+  if (Object.hasOwn(patch, "ollama")) {
     if (patch.ollama === null) {
       delete out.ollama;
     } else {
       out.ollama = ollama;
     }
   }
-  if (Object.prototype.hasOwnProperty.call(patch, "image")) {
+  if (Object.hasOwn(patch, "image")) {
     if (patch.image === null) {
       delete out.image;
     } else {

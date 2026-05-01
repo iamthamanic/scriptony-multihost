@@ -1,11 +1,15 @@
 /**
  * Builds a bounded text context from Scriptony projects / worlds / characters for assistant chat.
  * Location: functions/_shared/rag-chat-context.ts
+ *
+ * @deprecated T18 — Fachliche RAG-Logik fuer Assistant. Ziel: `scriptony-assistant/_shared/rag-domain.ts`
+ *          oder `scriptony-assistant/services/rag-context-builder.ts`.
+ *          Verbleibt bis zur Domain-Extraction. Neue RAG-Logik gehoert zu `scriptony-assistant`.
  */
 
 import { requestGraphql } from "./graphql-compat";
-import { getCharacterById } from "./timeline";
 import { getAccessibleProject, getUserOrganizationIds } from "./scriptony";
+import { getCharacterById } from "./timeline";
 
 const MAX_TOTAL_CHARS = 12_000;
 const MAX_BEATS_PER_PROJECT = 24;

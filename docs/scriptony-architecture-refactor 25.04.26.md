@@ -1755,3 +1755,40 @@ Editor-Readmodel aggregiert nur für die UI.
   - **DRY 10/10:** Keine Logik-Duplizierung. `worldCategoriesHandler` existierte bereits, nur nicht verdrahtet.
   - **SOLID 8/10:** `scriptony-auth` enthaelt noch Storage-Routes (SRP-Verletzung), aber als "future scriptony-storage" markiert.
   - **Security 9/10:** Keine neuen Security-Luecken. `/worlds/:id/categories` hat Auth-Check via `requireUserBootstrap`.
+
+## Phase 11 — \_shared Extraction
+
+### Done Report: T18 — \_shared Business-Logik kontrolliert herausziehen
+
+- **Date:** 2026-05-01 10:35 CEST
+- **Verification Marker:** ARCH-REF-T18-DONE
+- **Changed files:**
+  - `functions/_shared/timeline.ts` (T18 Extraction-Plan: Node/Character/Shot/Project Logik → structure/characters/shots/projects)
+  - `functions/_shared/scriptony.ts` (T18 Extraction-Plan: Project/World/Beat/Inspiration + Access-Helpers → projects/worldbuilding/beats/collaboration)
+  - `functions/_shared/clips-map.ts` (T18 Marker: clip mapping → clips/timeline)
+  - `functions/_shared/ai.ts` (T18 Marker: AI provider helpers → scriptony-ai)
+  - `functions/_shared/rag-chat-context.ts` (T18 Marker: RAG context builder → scriptony-assistant)
+  - `functions/_shared/image-function-settings-db.ts` (T18 Marker: AI settings DB → scriptony-ai)
+  - `functions/_shared/observability.ts` (bereits T18 markiert in T16)
+- **Appwrite collections:** Keine
+- **Appwrite buckets:** Keine
+- **Env vars:** Keine
+- **Routes:** Keine neuen
+- **UI/UX checks:** Keine UI-Aenderungen
+- **Tests run:** Keine neuen Tests (nur JSDoc/Doku-Updates)
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/_shared/timeline.ts,functions/_shared/scriptony.ts,functions/_shared/clips-map.ts,functions/_shared/ai.ts,functions/_shared/rag-chat-context.ts,functions/_shared/image-function-settings-db.ts,functions/_shared/observability.ts,docs/scriptony-architecture-refactor 25.04.26.md" SHIM_CHECKS_ARGS="" npm run checks -- --backend
+  ```
+- **Known risks:**
+  - **Zirkulaere Abhaengigkeiten:** `rag-chat-context.ts` importiert `timeline.ts` und `scriptony.ts`. Bei Extraction muss diese Kette aufgebrochen werden (Domain-Access-Adapter statt direkte Imports).
+  - **Import-Divergenz:** Viele Functions importieren aus `_shared/timeline.ts` und `_shared/scriptony.ts`. Extraction erfordert koordinierte Umbenennung.
+  - **Access-Helper `requireProjectAccess`:** Wird von ~10 Functions genutzt. Extraction nach `scriptony-collaboration` erfordert sorgfaeltige Migration.
+- **Rollback plan:**
+  - JSDoc-Marker entfernen.
+  - `functions/_shared/ai.ts`: `let content: string` zurück zu `let content = ""`.
+- **Notes:**
+  - **SOLID 9/10:** Jede fachliche Domäne ist jetzt mit Ziel-Function markiert. Primitive Helpers (auth, http, db, storage, validation) bleiben zentral.
+  - **DRY 9/10:** Extraction-Plan dokumentiert, wo Logik hingeht. Noch nicht physisch extrahiert — das ist beabsichtigt (T18 ist "laufend", nicht einmalig).
+  - **KISS 10/10:** Primär JSDoc-Marker. Einziges Code-Update: `let content: string` statt `let content = ""` in `ai.ts` (Lint-Fix, no-op semantisch).
+  - **Security 10/10:** Keine neuen Security-Luecken. Access-Helpers bleiben an ihrem Platz bis zur koordinierten Migration.

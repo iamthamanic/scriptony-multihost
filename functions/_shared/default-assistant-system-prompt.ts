@@ -1,6 +1,10 @@
 /**
  * Single source for the Scriptony Assistant default system prompt (UI + new DB rows + LLM fallback).
  * Location: functions/_shared/default-assistant-system-prompt.ts
+ *
+ * @deprecated T18 — Fachliche Assistant-Prompt-Logik. Ziel: scriptony-assistant/_shared/assistant-prompt-domain.ts
+ *          oder scriptony-assistant/services/prompts.ts.
+ *          Verbleibt bis zur Domain-Extraction. Neue Assistant-Prompts gehoeren zu scriptony-assistant.
  */
 
 export const DEFAULT_ASSISTANT_SYSTEM_PROMPT = `You are Scriptony Assistant.

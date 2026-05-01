@@ -5,23 +5,27 @@
  * - feature-scoped provider/model assignments
  * - feature/provider API keys
  * - legacy assistant/image compatibility settings
+ *
+ * @deprecated T18 — Fachliche AI-Konfigurations-Logik. Ziel: `scriptony-ai/_shared/ai-config-domain.ts`
+ *          oder `scriptony-ai/services/central-store.ts`.
+ *          Verbleibt bis zur Domain-Extraction. Neue AI-Config-Logik gehoert zu `scriptony-ai`.
  */
 
+import process from "node:process";
 import { Client, Databases, ID, Query } from "node-appwrite";
-import { docToRow } from "./appwrite-db";
 import {
   type AiSettingsJsonV1,
   mergeSettingsJson,
   OLLAMA_CLOUD_ORIGIN,
   parseSettingsJsonField,
 } from "./ai-feature-profile";
+import { docToRow } from "./appwrite-db";
 import { DEFAULT_ASSISTANT_SYSTEM_PROMPT } from "./default-assistant-system-prompt";
 import {
   getAppwriteApiKey,
   getAppwriteEndpoint,
   getAppwriteProjectId,
 } from "./env";
-import process from "node:process";
 
 const AI_DB_ID = (process.env.AI_DATABASE_ID || "scriptony_ai").trim();
 const API_KEYS_COLLECTION = "api_keys";
@@ -229,7 +233,7 @@ async function listDocuments(
     [...queries, Query.limit(200)],
   );
   return response.documents.map((doc) =>
-    docToRow(doc as Record<string, unknown>)
+    docToRow(doc as Record<string, unknown>),
   );
 }
 
@@ -333,18 +337,19 @@ function materializeFeatureConfigMap(
 }
 
 function toUserSettingsRow(doc: Record<string, any>): UserSettingsRow {
-  const settings_json = typeof doc.settings_json === "string"
-    ? doc.settings_json
-    : "{}";
+  const settings_json =
+    typeof doc.settings_json === "string" ? doc.settings_json : "{}";
   return {
     id: String(doc.id),
     user_id: String(doc.user_id),
     active_provider:
       (cleanNullableString(doc.active_provider) as CanonicalProvider | null) ||
       DEFAULT_USER_SETTINGS.active_provider,
-    active_model: cleanNullableString(doc.active_model) ||
+    active_model:
+      cleanNullableString(doc.active_model) ||
       DEFAULT_USER_SETTINGS.active_model,
-    system_prompt: cleanNullableString(doc.system_prompt) ||
+    system_prompt:
+      cleanNullableString(doc.system_prompt) ||
       DEFAULT_USER_SETTINGS.system_prompt,
     temperature: cleanNumber(
       doc.temperature,
@@ -499,7 +504,8 @@ function applyAssistantFeatureProfileSync(
   }
 
   const coverProvider = settingsJson.image?.feature_profiles?.cover?.provider;
-  const coverModel = settingsJson.image?.feature_profiles?.cover?.model ||
+  const coverModel =
+    settingsJson.image?.feature_profiles?.cover?.model ||
     settingsJson.image?.provider_models?.[
       coverProvider || imageProviderFromJson(settingsJson)
     ] ||
@@ -552,9 +558,7 @@ export async function updateFeatureConfig(
   return getFeatureConfig(userId, feature);
 }
 
-export async function listMaskedApiKeys(
-  userId: string,
-): Promise<
+export async function listMaskedApiKeys(userId: string): Promise<
   Array<{
     feature: string;
     provider: string;
@@ -571,9 +575,10 @@ export async function listMaskedApiKeys(
         feature: normalizeFeature(row.feature) || "global",
         provider: row.provider,
         has_key: true as const,
-        key_preview: apiKey.length > 12
-          ? `${apiKey.slice(0, 8)}...${apiKey.slice(-4)}`
-          : `${apiKey.slice(0, 4)}...`,
+        key_preview:
+          apiKey.length > 12
+            ? `${apiKey.slice(0, 8)}...${apiKey.slice(-4)}`
+            : `${apiKey.slice(0, 4)}...`,
       };
     });
 }
@@ -623,12 +628,14 @@ export async function resolveFeatureRuntime(
     } else if (config.provider === "ollama_local") {
       baseUrl = userSettings.ollama_base_url || undefined;
     } else {
-      const mode = userSettings.settings_json_parsed.ollama?.mode === "cloud"
-        ? "cloud"
-        : "local";
-      baseUrl = mode === "cloud"
-        ? OLLAMA_CLOUD_ORIGIN
-        : userSettings.ollama_base_url || undefined;
+      const mode =
+        userSettings.settings_json_parsed.ollama?.mode === "cloud"
+          ? "cloud"
+          : "local";
+      baseUrl =
+        mode === "cloud"
+          ? OLLAMA_CLOUD_ORIGIN
+          : userSettings.ollama_base_url || undefined;
     }
   }
 
@@ -706,10 +713,10 @@ export async function updateLegacyAssistantSettings(
       ...nextFeatureMap.assistant_chat,
       ...(cleanNullableString(patch.active_provider)
         ? {
-          provider: cleanNullableString(
-            patch.active_provider,
-          ) as CanonicalProvider,
-        }
+            provider: cleanNullableString(
+              patch.active_provider,
+            ) as CanonicalProvider,
+          }
         : {}),
       ...(cleanNullableString(patch.active_model)
         ? { model: cleanNullableString(patch.active_model) || "" }
@@ -748,15 +755,16 @@ export async function updateLegacyAssistantSettings(
 
   let mergedSettingsJson = currentUserSettings.settings_json_parsed;
   if (patch.settings_json !== undefined && patch.settings_json !== null) {
-    mergedSettingsJson = typeof patch.settings_json === "string"
-      ? mergeSettingsJson(
-        currentUserSettings.settings_json,
-        parseSettingsJsonField(patch.settings_json),
-      )
-      : mergeSettingsJson(
-        currentUserSettings.settings_json,
-        patch.settings_json as Partial<AiSettingsJsonV1>,
-      );
+    mergedSettingsJson =
+      typeof patch.settings_json === "string"
+        ? mergeSettingsJson(
+            currentUserSettings.settings_json,
+            parseSettingsJsonField(patch.settings_json),
+          )
+        : mergeSettingsJson(
+            currentUserSettings.settings_json,
+            patch.settings_json as Partial<AiSettingsJsonV1>,
+          );
   }
 
   userSettingsChanges.settings_json = serializeSettingsJson(mergedSettingsJson);
@@ -764,9 +772,10 @@ export async function updateLegacyAssistantSettings(
     ...nextFeatureMap.assistant_chat,
     provider: mergedSettingsJson.feature_profiles?.assistant?.provider
       ? (mergedSettingsJson.feature_profiles.assistant
-        .provider as CanonicalProvider)
+          .provider as CanonicalProvider)
       : nextFeatureMap.assistant_chat.provider,
-    model: mergedSettingsJson.feature_profiles?.assistant?.model ||
+    model:
+      mergedSettingsJson.feature_profiles?.assistant?.model ||
       nextFeatureMap.assistant_chat.model,
   };
   nextFeatureMap.creative_gym = {
@@ -774,7 +783,8 @@ export async function updateLegacyAssistantSettings(
     provider: mergedSettingsJson.feature_profiles?.gym?.provider
       ? (mergedSettingsJson.feature_profiles.gym.provider as CanonicalProvider)
       : nextFeatureMap.creative_gym.provider,
-    model: mergedSettingsJson.feature_profiles?.gym?.model ||
+    model:
+      mergedSettingsJson.feature_profiles?.gym?.model ||
       nextFeatureMap.creative_gym.model,
   };
 
@@ -836,9 +846,8 @@ export async function getLegacyImageSettings(
     user_id: userSettings.user_id,
     settings_json,
     settings_json_parsed: userSettings.settings_json_parsed,
-    image_provider: imageConfig.provider === "openrouter"
-      ? "openrouter"
-      : "ollama",
+    image_provider:
+      imageConfig.provider === "openrouter" ? "openrouter" : "ollama",
     ollama_image_api_key:
       findApiKeyRow(apiRows, "ollama", "image_generation")?.api_key || "",
     openrouter_image_api_key:
@@ -859,15 +868,16 @@ export async function updateLegacyImageSettings(
 
   let mergedSettingsJson = currentUserSettings.settings_json_parsed;
   if (patch.settings_json !== undefined && patch.settings_json !== null) {
-    mergedSettingsJson = typeof patch.settings_json === "string"
-      ? mergeSettingsJson(
-        currentUserSettings.settings_json,
-        parseSettingsJsonField(patch.settings_json),
-      )
-      : mergeSettingsJson(
-        currentUserSettings.settings_json,
-        patch.settings_json as Partial<AiSettingsJsonV1>,
-      );
+    mergedSettingsJson =
+      typeof patch.settings_json === "string"
+        ? mergeSettingsJson(
+            currentUserSettings.settings_json,
+            parseSettingsJsonField(patch.settings_json),
+          )
+        : mergeSettingsJson(
+            currentUserSettings.settings_json,
+            patch.settings_json as Partial<AiSettingsJsonV1>,
+          );
   }
 
   const provider =
@@ -886,7 +896,8 @@ export async function updateLegacyImageSettings(
 
   const coverProvider =
     mergedSettingsJson.image?.feature_profiles?.cover?.provider || provider;
-  const coverModel = mergedSettingsJson.image?.feature_profiles?.cover?.model ||
+  const coverModel =
+    mergedSettingsJson.image?.feature_profiles?.cover?.model ||
     mergedSettingsJson.image?.provider_models?.[coverProvider] ||
     mergedSettingsJson.image?.model ||
     currentFeatureMap.image_generation.model;

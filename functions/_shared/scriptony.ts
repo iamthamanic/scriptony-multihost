@@ -2,13 +2,29 @@
  * Shared Scriptony data helpers for HTTP functions.
  *
  * These helpers normalize request payloads and centralize access checks.
+ *
+ * @deprecated T18 — Fachliche Logik muss in Domain-Functions extrahiert werden.
+ * Extraction-Plan:
+ *   - `normalizeProjectInput`, `hydrateProjectRow`, `hydrateProjectRows`
+ *     → `scriptony-projects/_shared/project-domain.ts`
+ *   - `normalizeWorldInput`, `worldsInsertPayload`, `worldsUpdatePayload`
+ *     → `scriptony-worldbuilding/_shared/world-domain.ts`
+ *   - `normalizeBeatInput` → `scriptony-beats/_shared/beat-domain.ts`
+ *   - `getUserOrganizationIds`, `getAccessibleProject`, `requireProjectAccess`
+ *     → `scriptony-collaboration/_shared/access-helpers.ts` (T21)
+ *   - `getProjectInspirations`, `setProjectInspirations`, `deleteProjectInspirations`,
+ *     `hydrateProjectWithInspirations`, `hydrateProjectsWithInspirations`
+ *     → `scriptony-projects/_shared/inspirations-domain.ts`
+ *   - Primitive helpers (`hasOwn`, `pickProvided`, `serializeConceptBlocks`,
+ *     `parseConceptBlocks`) → bleiben in `_shared` oder `_shared/primitives.ts`
+ * Verboten: Neue fachliche Project/World/Beat/Inspiration-Logik hier hinzufuegen.
  */
 
 import { requestGraphql } from "./graphql-compat";
 import { type ResponseLike, sendNotFound } from "./http";
 
 function hasOwn(body: Record<string, any>, key: string): boolean {
-  return Object.prototype.hasOwnProperty.call(body, key);
+  return Object.hasOwn(body, key);
 }
 
 function pickProvided(body: Record<string, any>, ...keys: string[]): any {
@@ -112,7 +128,8 @@ export function normalizeWorldInput(
   body: Record<string, any>,
 ): Record<string, any> {
   // Appwrite `worlds` collection uses `cover_image_url` only (no separate `image_url` attribute).
-  const cover = body.cover_image_url ??
+  const cover =
+    body.cover_image_url ??
     body.coverImageUrl ??
     body.image_url ??
     body.imageUrl ??
@@ -162,7 +179,7 @@ export function worldsUpdatePayload(
   const n = normalizeWorldInput(body);
   const out: Record<string, unknown> = {};
   for (const k of WORLD_DOC_KEYS) {
-    if (Object.prototype.hasOwnProperty.call(n, k)) {
+    if (Object.hasOwn(n, k)) {
       out[k] = n[k];
     }
   }

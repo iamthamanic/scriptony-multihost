@@ -1,5 +1,9 @@
 /**
  * Validation and JSON serialization helpers for Puppet-Layer style profiles.
+ *
+ * @deprecated T18 — Fachliche Style-Profile-Logik. Ziel: scriptony-style/_shared/style-profile-domain.ts
+ *          oder scriptony-style/services/style-profile-schema.ts.
+ *          Verbleibt bis zur Domain-Extraction. Neue Style-Profile-Validation gehoert zu scriptony-style.
  */
 
 import { z } from "zod";

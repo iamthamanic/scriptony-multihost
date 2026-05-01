@@ -1,6 +1,10 @@
 /**
  * Zod schemas for Style Guide API (project_visual_style + items).
  * Single source of validation for scriptony-style-guide handlers.
+ *
+ * @deprecated T18 — Fachliche Style-Guide-Logik. Ziel: scriptony-style-guide/_shared/style-guide-domain.ts
+ *          oder scriptony-style-guide/services/style-guide-schema.ts.
+ *          Verbleibt bis zur Domain-Extraction. Neue Style-Guide-Validation gehoert zu scriptony-style-guide.
  */
 
 import { z } from "zod";

@@ -2,6 +2,10 @@
  * Unified model capability rows for Assistant + Image model browsers.
  * Uses official provider metadata and heuristics (no live image probe).
  * Location: functions/_shared/model-capabilities.ts
+ *
+ * @deprecated T18 — Fachliche Model-Capability-Logik. Ziel: scriptony-ai/_shared/model-capabilities-domain.ts
+ *          oder scriptony-ai/services/model-capabilities.ts.
+ *          Verbleibt bis zur Domain-Extraction. Neue Model-Capabilities gehoert zu scriptony-ai.
  */
 
 import { OLLAMA_CLOUD_ORIGIN } from "./ai-feature-profile";
@@ -263,9 +267,10 @@ function toLegacy(
   return rows.map((r) => ({
     id: r.model_id,
     name: r.display_name || r.model_id,
-    context_window: typeof r.context_window === "number" && r.context_window > 0
-      ? r.context_window
-      : 8192,
+    context_window:
+      typeof r.context_window === "number" && r.context_window > 0
+        ? r.context_window
+        : 8192,
   }));
 }
 
@@ -350,9 +355,8 @@ async function fetchOpenrouterUnified(
     const id = String(m.id || "").trim();
     if (!id) continue;
     const row = baseRow("openrouter", id, String(m.name || id));
-    row.context_window = typeof m.context_length === "number"
-      ? m.context_length
-      : null;
+    row.context_window =
+      typeof m.context_length === "number" ? m.context_length : null;
     applyInferred(row, inferFromOpenrouterModel(m));
     rows.push(row);
   }
@@ -388,12 +392,10 @@ async function fetchGenericUnified(
         .map((id) => {
           const r = baseRow("openai", id);
           r.context_window = 128000;
-          r.image_gen = id.includes("image") || id.includes("dall")
-            ? TRUE
-            : FALSE;
-          r.vision = id.includes("vision") || id.includes("gpt-4o")
-            ? TRUE
-            : UNKNOWN;
+          r.image_gen =
+            id.includes("image") || id.includes("dall") ? TRUE : FALSE;
+          r.vision =
+            id.includes("vision") || id.includes("gpt-4o") ? TRUE : UNKNOWN;
           r.tools = TRUE;
           r.thinking = /^o\d/.test(id) ? TRUE : UNKNOWN;
           r.video_gen = FALSE;

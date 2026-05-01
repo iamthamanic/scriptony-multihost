@@ -1,5 +1,10 @@
 /**
  * Appwrite Storage helpers for multipart uploads from function routes.
+ *
+ * Status: Primitive Infrastruktur. Bleibt in _shared (kein T18).
+ * T20-Ziel: scriptony-storage KONSUMENT dieses Primitives, nicht OWNER.
+ *          Storage-Provider-OAuth/Connections gehoert zu scriptony-storage.
+ *          Upload/Multipart-Helpers bleiben als _shared/storage.ts.
  */
 
 import { Client, ID, Permission, Role, Storage } from "node-appwrite";
