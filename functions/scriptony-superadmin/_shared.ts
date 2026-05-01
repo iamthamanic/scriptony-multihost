@@ -1,5 +1,8 @@
 /**
- * Shared helpers for superadmin compatibility routes.
+ * T16 — Shared helpers for superadmin compatibility routes (legacy).
+ *
+ * Ziel: `scriptony-admin` (Appwrite Function).
+ * @deprecated T16 — Wird in `scriptony-admin` konsolidiert.
  */
 
 import { requireUserBootstrap } from "../_shared/auth";
@@ -17,8 +20,9 @@ export async function requireSuperadmin(req: RequestLike, res: ResponseLike) {
     return null;
   }
 
-  const role = (typeof bootstrap.user.metadata?.role === "string" &&
-    bootstrap.user.metadata.role) ||
+  const role =
+    (typeof bootstrap.user.metadata?.role === "string" &&
+      bootstrap.user.metadata.role) ||
     bootstrap.user.defaultRole ||
     "user";
 

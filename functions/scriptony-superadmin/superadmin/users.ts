@@ -1,5 +1,11 @@
 /**
- * Superadmin users route for the Scriptony HTTP API.
+ * T16 — Superadmin users (legacy Next.js API Route).
+ *
+ * Ziel: `scriptony-admin` (Appwrite Function).
+ * Security-Kontext: superadmin-only (Least Privilege).
+ *
+ * @deprecated T16 — Wird in `scriptony-admin` konsolidiert.
+ * Neue Admin-Features duerfen hier nicht ergaenzt werden.
  */
 
 import { requestGraphql } from "../../_shared/graphql-compat";

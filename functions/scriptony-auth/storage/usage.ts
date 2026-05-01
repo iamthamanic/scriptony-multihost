@@ -1,7 +1,12 @@
 /**
  * Storage usage endpoint for the Scriptony auth service.
+ *
+ * @deprecated T17 — Fachlich gehoert zu scriptony-storage. Verbleibt als Compat-Route
+ *          bis Migration. Neue Storage-Usage-Queries muessen ueber scriptony-observability gehen.
  */
 
+import { requireUserBootstrap } from "../../_shared/auth";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   type RequestLike,
   type ResponseLike,
@@ -9,8 +14,6 @@ import {
   sendMethodNotAllowed,
   sendUnauthorized,
 } from "../../_shared/http";
-import { requireUserBootstrap } from "../../_shared/auth";
-import { requestGraphql } from "../../_shared/graphql-compat";
 
 export default async function handler(
   req: RequestLike,

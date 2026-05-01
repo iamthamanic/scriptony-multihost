@@ -1,8 +1,9 @@
 /**
- * @deprecated T14 — Nutzt jobService (Deno-only, broken in Node).
+ * @deprecated T14/T17 — Nutzt jobService (Deno-only, broken in Node).
  *
  * Fuer neue Async-Jobs: nutze scriptony-jobs (Node.js).
  * Fuer Worker-Progress-Reporting: nutze _shared/jobs/jobWorker.ts
+ * Verbleibt als Archiv-Referenz bis zur vollstaendigen Entfernung.
  */
 
 import { jobService } from "./jobService.ts";

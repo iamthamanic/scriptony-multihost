@@ -3,10 +3,13 @@
  *
  * Redirects the user to the storage provider's OAuth consent page.
  * Query: provider (google_drive | dropbox | onedrive | kdrive), redirect_uri (frontend URL to return to).
+ *
+ * @deprecated T17 — Fachlich gehoert zu scriptony-storage. Verbleibt als Compat-Route
+ *          bis Migration. Neue Storage-Provider-OAuth muss ueber scriptony-storage laufen.
  */
 
+import { Buffer } from "node:buffer";
 import { getOptionalEnv } from "../../../_shared/env";
-import { isRedirectUriAllowed } from "../../../_shared/oauth-redirect";
 import {
   getQuery,
   type RequestLike,
@@ -16,7 +19,7 @@ import {
   sendRedirect,
   sendServerError,
 } from "../../../_shared/http";
-import { Buffer } from "node:buffer";
+import { isRedirectUriAllowed } from "../../../_shared/oauth-redirect";
 
 const PROVIDERS: Record<
   string,

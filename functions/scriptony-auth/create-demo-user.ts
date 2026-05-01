@@ -2,16 +2,19 @@
  * Demo-user bootstrap endpoint for local testing.
  *
  * This preserves the old helper used by the app's debug and seed utilities.
+ *
+ * @deprecated T17 — Nur fuer lokale Entwicklung/Seed. Nicht fuer Production.
+ *          Verbleibt als Compat-Route. Neue Demo-User-Logik muss explizit opt-in sein.
  */
 
-import { getDemoUserCredentials } from "../_shared/env";
-import { ensureUserBootstrap } from "../_shared/auth";
 import {
   createEmailPasswordUser,
   findUserByEmail,
   isAppwriteConflictError,
   toAuthUser,
 } from "../_shared/appwrite-users";
+import { ensureUserBootstrap } from "../_shared/auth";
+import { getDemoUserCredentials } from "../_shared/env";
 import {
   type RequestLike,
   type ResponseLike,

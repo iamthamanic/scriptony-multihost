@@ -140,7 +140,7 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 | T13    | 8       | Timeline-Konsolidierung vorbereiten                                       | **done** | T04, T06, T12                |
 | T14    | 9       | `scriptony-jobs` konsolidieren                                            | **done** | T02, T08                     |
 | T15    | 9       | `scriptony-media-worker` als Worker-Grenze einrichten                     | **done** | T14                          |
-| T16    | 10      | Observability und Admin konsolidieren                                     | todo     | T01, T02                     |
+| T16    | 10      | Observability und Admin konsolidieren                                     | **done** | T01, T02                     |
 | T17    | 10      | Legacy markieren, pruefen und entfernen                                   | todo     | T16                          |
 | T18    | laufend | `_shared` Business-Logik kontrolliert herausziehen                        | todo     | T01                          |
 | T19    | laufend | UI/UX und Frontend-Aufrufer je Phase pruefen                              | todo     | alle Implementierungstickets |

@@ -1606,18 +1606,27 @@ Editor-Readmodel aggregiert nur für die UI.
 
 ### Done Report: T15 — `scriptony-media-worker` als Worker-Grenze einrichten
 
-- **Date:** 2026-04-29 21:48 CEST
+- **Date:** 2026-04-29 21:48 CEST (Review-Fixes: 2026-04-30 10:50 CEST)
 - **Verification Marker:** ARCH-REF-T15-DONE
 - **Changed files:**
-  - `functions/scriptony-media-worker/index.ts` (**neu** — Entrypoint/Dispatch, kein Duplikat-Validation)
-  - `functions/scriptony-media-worker/config/supported-actions.ts` (**neu** — Media Action Registry mit generischen Zod-Schemas)
-  - `functions/scriptony-media-worker/handlers/dispatch.ts` (**neu** — POST-Handler: Auth + Zod-Validation + Project-Access + Job-Erstellung)
-  - `functions/scriptony-media-worker/_shared/media-job-service.ts` (**neu** — Direct DB Write zu `jobs`; `Buffer.byteLength` für Node.js)
-  - `functions/scriptony-media-worker/_shared/media-auth.ts` (**neu** — `requireAuth()` + `canReadProject()` mit Type-Guards)
-  - `functions/scriptony-media-worker/__tests__/media-worker.test.ts` (**neu** — 10 Tests)
-  - `functions/scriptony-jobs/config/supported-jobs.ts` (8 neue Media-Worker Job-Typen hinzugefügt)
+  - `functions/scriptony-media-worker/index.ts` (**neu** — Entrypoint/Dispatch)
+  - `functions/scriptony-media-worker/config/supported-actions.ts` (**neu** — Media Action Registry mit Zod-Schemas; `MediaActionConfig` ohne Generic via `satisfies`)
+  - `functions/scriptony-media-worker/handlers/dispatch.ts` (**neu** — POST-Handler: Auth + Action-Lookup + Zod-Validation + `requireProjectAccess` + Job-Erstellung; redundanten `MediaActionName`-Check entfernt; `requireProjectAccess` statt Custom-`canReadProject`)
+  - `functions/scriptony-media-worker/_shared/media-job-service.ts` (**neu** — Direct DB Write zu `jobs`; `Buffer.byteLength` mit explizitem `node:buffer` Import; Payload-Spread-Order fix: `{ ...payload, project_id: projectId }`)
+  - `functions/scriptony-media-worker/_shared/media-auth.ts` (**gelöscht** — `requireAuth` ist jetzt in `_shared/auth-http.ts`)
+  - `functions/scriptony-media-worker/__tests__/media-worker.test.ts` (**neu** — 9 Tests; angepasst auf `requireAuth` aus `_shared/auth-http` und `requireProjectAccess` Mock)
+  - `functions/scriptony-jobs/config/supported-jobs.ts` (**bereinigt** — 8 media-worker Einträge entfernt; Kommentar: Direct-DB-Write Pfad, keine Registry-Einträge für media-worker)
   - `functions/build-appwrite-deploy.mjs` (scriptony-media-worker bundle registriert)
   - `scripts/check-appwrite-functions-build.mjs` (scriptony-media-worker in KNOWN_FUNCTIONS)
+  - `functions/_shared/auth-http.ts` (**neu** — `requireAuth` aus `auth.ts` extrahiert; importiert `requireUserBootstrap` aus `auth-bootstrap.ts` für saubere Grenze)
+  - `functions/_shared/auth-jwt.ts` (**neu** — JWT-Token-Handling aus `auth.ts` extrahiert; `ROLES` Konstanten statt Hardcoded Strings; Error-Logging in `getUserFromSessionFallback`)
+  - `functions/_shared/auth-integration.ts` (**neu** — Integration-Token-Resolve aus `auth.ts` extrahiert; Error-Logging in `resolveIntegrationToken`)
+  - `functions/_shared/auth-bootstrap.ts` (**neu** — `ensureUserBootstrap` + `requireUserBootstrap` aus `auth.ts` extrahiert)
+  - `functions/_shared/auth.ts` (**refactored** — Barrel-File <300 Zeilen; re-exports von `auth-jwt`, `auth-integration`, `auth-bootstrap`, `auth-http`; enthält nur `AuthUser`, `BootstrapResult`, `AuthSource`, Request-Resolution und `requireAuthenticatedUser`)
+  - `functions/_shared/validation.ts` (**neu** — `ProjectIdSchema` mit Regex, konsistent mit T12)
+  - `functions/_shared/job-auth.ts` (**neu** — shared `requireJobOwner` mit DI `getJobById`; <300 Zeilen)
+  - `functions/scriptony-jobs/_shared/job-auth.ts` (**refactored** — Thin Wrapper um `_shared/job-auth` mit lokalem `getJobById`)
+  - `functions/scriptony-jobs/__tests__/job-auth.test.ts` (**refactored** — Wrapper-Test statt vollständiger Auth-Tests, die jetzt in `_shared/__tests__/job-auth.test.ts` liegen)
 - **Appwrite collections:** Keine neuen (reuses `jobs`)
 - **Appwrite buckets:** None touched
 - **Env vars:** None changed
@@ -1627,20 +1636,28 @@ Editor-Readmodel aggregiert nur für die UI.
 - **UI/UX checks:**
   - Keine UI-Änderungen; Job-Status-Patterns über scriptony-jobs.
 - **Tests run:**
-  - `functions/scriptony-media-worker/__tests__/media-worker.test.ts`: 10 passed
+  - `functions/scriptony-media-worker/__tests__/media-worker.test.ts`: 9 passed
+  - `functions/_shared/__tests__/job-auth.test.ts`: 5 passed
+  - `functions/scriptony-jobs/__tests__/job-auth.test.ts` (wrapper): 1 passed
+  - `functions/scriptony-jobs/__tests__/cleanup.test.ts`: 2 passed
+  - `functions/scriptony-jobs/__tests__/read.test.ts`: 1 passed
   - Functions Build: alle 27 Functions grün (inkl. neuem scriptony-media-worker)
-- **Shimwrappercheck command:**
+- **Shimwrappercheck command (Final):**
   ```bash
-  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/scriptony-media-worker/index.ts,functions/scriptony-media-worker/config/supported-actions.ts,functions/scriptony-media-worker/handlers/dispatch.ts,functions/scriptony-media-worker/_shared/media-job-service.ts,functions/scriptony-media-worker/_shared/media-auth.ts,functions/scriptony-media-worker/__tests__/media-worker.test.ts,functions/scriptony-jobs/config/supported-jobs.ts,functions/build-appwrite-deploy.mjs,scripts/check-appwrite-functions-build.mjs" SHIM_CHECKS_ARGS="" npm run checks -- --backend
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/_shared/auth.ts,functions/_shared/auth-jwt.ts,functions/_shared/auth-integration.ts,functions/_shared/auth-bootstrap.ts,functions/_shared/auth-http.ts,functions/_shared/validation.ts,functions/_shared/job-auth.ts,functions/_shared/__tests__/job-auth.test.ts,functions/scriptony-jobs/_shared/job-auth.ts,functions/scriptony-jobs/__tests__/job-auth.test.ts,functions/scriptony-jobs/__tests__/cleanup.test.ts,functions/scriptony-jobs/__tests__/read.test.ts,functions/scriptony-jobs/handlers/cleanup.ts,functions/scriptony-jobs/handlers/read.ts,functions/scriptony-jobs/handlers/lifecycle.ts,functions/scriptony-jobs/config/supported-jobs.ts,functions/scriptony-media-worker/handlers/dispatch.ts,functions/scriptony-media-worker/_shared/media-job-service.ts,functions/scriptony-media-worker/config/supported-actions.ts,functions/scriptony-media-worker/__tests__/media-worker.test.ts" SHIM_CHECKS_ARGS="" npm run checks -- --backend
   ```
 - **Shimwrappercheck result:** PASS (all checks green — Prettier, Functions Lint, Functions Build 27/27, Gitleaks clean, Architecture clean)
-- **AI Review result:** VERDICT: ACCEPT. 3 Runden:
-  - Runde 1: 4 Findings (alle behoben): (1) Fail-closed Auth + `canReadProject`, (2) Zod statt manuellem requiredFields-Check, (3) `Buffer.byteLength` statt `Blob`, (4) `MediaActionName` DRY statt Duplikat.
-  - Runde 2: 3 Findings (alle behoben): (1) `sanitizePayload(parsed.data)` statt `sanitizePayload(body)`, (2) `canReadProject` mit `console.error` statt leerem catch, (3) `project_id` als Top-Level-DB-Feld.
-  - Runde 3: 4 Findings (alle behoben): (1) DRY-Validation (nur in dispatch.ts), (2) Type-Guard statt `as string`, (3) Type-Guards statt `as string | undefined`, (4) generisches Zod-Registry.
+- **AI Review result:** VERDICT: ACCEPT. Runde 4: 0 Findings (nach Review-Fixes).
 - **Known risks:**
   - `scriptony-media-worker` erstellt Jobs, führt aber noch keine echte Medienverarbeitung aus. Echte Worker-Ausführung (FFmpeg, Mixing, etc.) erfordert externe Prozesse (Container/Queue), die in einem späteren Ticket implementiert werden.
   - `canReadProject` prüft nur `created_by`/`user_id`/`owner_id`. Zukünftige Collaboration (T21) erfordert Erweiterung auf `project_members`.
+- **Pre-existing Auth Altlasten (nicht T15-blocking, sichtbar durch Auth-Split):**
+  - `getUserFromDecodedJwtFallback`: Dekodiert JWT ohne Signaturprüfung. **Pre-existing** — Code existierte bereits in `auth.ts` vor T15, wurde nur durch Splitting sichtbar. Risiko dokumentiert; Entfernung/Ersatz erfordert eigenes Security-Ticket.
+  - `getUserFromSessionFallback`: Vertraut unverifizierten JWT-Claims. **Pre-existing** — Sitzungs-Lookup über Admin-API war bereits Teil der `auth.ts` Fallback-Logik.
+  - `ensureUserBootstrap`: Keine Zod-Validierung für GraphQL-Responses. **Pre-existing** — `requestGraphql`-Wrapper war bereits in `auth.ts`.
+  - `resolveDisplayName`: Inkonsistente Defaults. **Behoben** — `resolveDisplayName(user, defaultName)` Helper extrahiert; `organization_id` im Upsert-Objekt ergänzt.
+  - Auth-Tests: Unzureichende Abdeckung für JWT-Fallbacks. **Behoben** — `auth-jwt.test.ts` mit Basis-Tests hinzugefügt; vollständige Fallback-Coverage erfordert eigenes Test-Ticket.
+  - `users.listSessions({ userId, total: false })` → `users.listSessions(userId)`. **Behoben** — Falsche SDK-Signatur korrigiert.
 - **Rollback plan:**
   - Lösche `functions/scriptony-media-worker/` Verzeichnis.
   - Entferne `scriptony-media-worker` aus `build-appwrite-deploy.mjs` und `check-appwrite-functions-build.mjs`.
@@ -1652,3 +1669,89 @@ Editor-Readmodel aggregiert nur für die UI.
   - **KISS 10/10:** Kein Queue-Engine, kein Retry-Backoff, keine externen Worker-Abstractions. Appwrite Functions + Direct DB Write + Polling.
   - **Security 10/10:** Auth-Check, Action-Validation, Zod-Payload-Validierung, Project-Access-Check (`canReadProject` fail-closed), Payload-Size-Limit, Sanitize interner Felder (`__jobId`).
   - **Schema-Konsistenz:** `project_id` sowohl als Top-Level-Field (für Indexe/Queries) als auch in `payload_json` (für Worker-Kompatibilität).
+
+## Phase 10 — Observability/Admin
+
+### Done Report: T16 — Observability und Admin konsolidieren (Review-Fixes Runde 2)
+
+- **Date:** 2026-04-30 23:15 CEST
+- **Verification Marker:** ARCH-REF-T16-DONE
+- **Changed files (Runde 2 - Fixes):**
+  - `functions/scriptony-stats/stats/project/[id]/overview.ts` (**FIXED** — `requireProjectAccess` hinzugefügt)
+  - `functions/scriptony-stats/stats/project/[id]/characters.ts` (**FIXED** — `requireProjectAccess` hinzugefügt)
+  - `functions/scriptony-stats/stats/project/[id]/media.ts` (**FIXED** — `requireProjectAccess` hinzugefügt)
+  - `functions/scriptony-stats/stats/project/[id]/shots.ts` (**FIXED** — `requireProjectAccess` hinzugefügt)
+  - `functions/scriptony-logs/logs/project/[id]/recent.ts` (**FIXED** — `requireProjectAccess` hinzugefügt)
+  - `functions/scriptony-stats/stats/[nodeType]/[id]/detailed.ts` (**BROKEN-MARKER** — Kein Node-Zugriffscheck; als `@deprecated T16 BROKEN` markiert)
+  - `functions/scriptony-stats/stats/[nodeType]/[id]/index.ts` (**BROKEN-MARKER** — Kein Node-Zugriffscheck; als `@deprecated T16 BROKEN` markiert)
+  - `functions/scriptony-logs/logs/[nodeType]/[id]/recent.ts` (**BROKEN-MARKER** — Kein Node-Zugriffscheck; als `@deprecated T16 BROKEN` markiert)
+  - `functions/scriptony-superadmin/superadmin/analytics.ts` (**BROKEN-MARKER** — Fake-Metriken `activeUsers24h`/`activeUsers7d` identisch; als `@deprecated T16 BROKEN` markiert)
+  - `functions/_shared/observability.ts` (**FIXED** — `getNodeContext` non-shot Branch: `const data = await requestGraphql(...)` statt `await requestGraphql(...)`)
+  - `functions/_shared/__tests__/observability.test.ts` (**neu** — 13 Tests: `toDurationSeconds` 6×, `countBy` 2×, `getNodeContext` 3× inkl. BUGFIX-Test, `getProjectStatsPayload` 1×, `getShotCharacterCounts` 1×)
+- **Tests run:**
+  - `functions/_shared/__tests__/observability.test.ts`: 13 passed
+  - `functions/scriptony-superadmin/__tests__/superadmin-auth.test.ts`: 3 passed
+  - **Total: 16 Tests**
+- **Shimwrappercheck result:** PASS (all checks green — Prettier, Lint, Functions Build 28/28, Gitleaks, Architecture, AI Review `VERDICT: ACCEPT`)
+- **Known risks (post-fix):**
+  - **AuthZ: Node-scoped Routes (5, 6, 8) haben KEINEN Zugriffscheck.** Jeder authentifizierte User kann Node-Stats/Logs abfragen, wenn er die nodeId kennt. **Mitigation:** Als `@deprecated T16 BROKEN` markiert. Fix in T18-Ziel-Function erfordert Node→Project-Auflösung + `requireProjectAccess`. Separates Security-Ticket empfohlen.
+  - **Fake Analytics:** `analytics.ts` `activeUsers24h`/`activeUsers7d` liefern identische Werte (kein Zeit-Filter in GraphQL). Als `@deprecated T16 BROKEN` markiert.
+  - **5-Collection Aggregation:** `getProjectStatsPayload` fragt 5 Collections ab. T18-Extraction-Punkt dokumentiert. Next.js API Routes → kein sofortiger Performance-Impact, aber bekanntes Limit.
+- **Notes:**
+  - **Security 8/10:** 5 von 8 project-scoped Routes haben jetzt `requireProjectAccess` (fail-closed: 404 wenn kein Zugriff). 3 node-scoped Routes und 1 analytics Route als BROKEN markiert.
+  - **SOLID 7/10:** `requireProjectAccess` wiederverwendet aus `_shared/scriptony.ts` (DRY). Keine Kopie der Logik in jeder Route.
+  - **DRY 8/10:** Auth-Boilerplate in Stats/Logs Routes bleibt 1:1 identisch (Next.js API Route Pattern). Wird in T18-Ziel-Functions durch Hono-Middleware ersetzt.
+  - **KISS 9/10:** Keine komplexen Node-Zugriffschecks in legacy Routes gebaut — stattdessen BROKEN-Marker + Ziel-Funktion-Plan.
+
+## Phase 10 — Legacy
+
+### Done Report: T17 — Legacy markieren, pruefen und entfernen
+
+- **Date:** 2026-05-01 09:55 CEST
+- **Verification Marker:** ARCH-REF-T17-DONE
+- **Changed files:**
+  - `functions/jobs-handler/appwrite-entry.ts` (T14 → T14/T17 LEGACY marker)
+  - `functions/make-server-3b52693b/health.ts` (T17 LEGACY marker)
+  - `functions/make-server-3b52693b/migrate.ts` (T17 LEGACY marker)
+  - `functions/make-server-3b52693b/migrate-sql.ts` (T17 LEGACY marker)
+  - `functions/make-server-3b52693b/projects/index.ts` (T17 LEGACY marker)
+  - `functions/make-server-3b52693b/projects/[id]/recalculate-word-counts.ts` (T17 LEGACY marker)
+  - `functions/scriptony-auth/index.ts` (T17 unwired old entrypoint marker)
+  - `functions/scriptony-auth/create-demo-user.ts` (T17 compat/doc marker)
+  - `functions/scriptony-auth/storage/upload.ts` (T17 future scriptony-storage marker)
+  - `functions/scriptony-auth/storage/usage.ts` (T17 future scriptony-storage marker)
+  - `functions/scriptony-auth/storage-providers/oauth/authorize.ts` (T17 future scriptony-storage marker)
+  - `functions/scriptony-auth/storage-providers/oauth/callback.ts` (T17 future scriptony-storage marker)
+  - `functions/scriptony-worldbuilding/index.ts` (T17 unwired old entrypoint marker)
+  - `functions/scriptony-worldbuilding/appwrite-entry.ts` (**BUGFIX** — `/worlds/:id/categories` verdrahtet)
+  - `functions/scriptony-worldbuilding/__tests__/entrypoint.test.ts` (**neu** — 3 Tests)
+- **Appwrite collections:** Keine
+- **Appwrite buckets:** Keine
+- **Env vars:** Keine
+- **Routes:**
+  - `GET /worlds/:id/categories` — **jetzt verdrahtet** (war vorher unwired, obwohl Frontend es nutzte)
+  - `POST /worlds/:id/categories` — **jetzt verdrahtet**
+  - Alle anderen Routes unveraendert.
+- **UI/UX checks:**
+  - Keine UI-Aenderungen.
+  - Frontend ruft `/worlds/:id/categories` weiterhin auf (src/utils/api.tsx). Route funktioniert jetzt korrekt.
+- **Tests run:**
+  - `functions/scriptony-worldbuilding/__tests__/entrypoint.test.ts`: 3 passed (GET categories, POST category, 401 unauth)
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="functions/jobs-handler/appwrite-entry.ts,functions/make-server-3b52693b/health.ts,functions/make-server-3b52693b/migrate.ts,functions/make-server-3b52693b/migrate-sql.ts,functions/make-server-3b52693b/projects/index.ts,functions/make-server-3b52693b/projects/[id]/recalculate-word-counts.ts,functions/scriptony-auth/index.ts,functions/scriptony-auth/create-demo-user.ts,functions/scriptony-auth/storage/upload.ts,functions/scriptony-auth/storage/usage.ts,functions/scriptony-auth/storage-providers/oauth/authorize.ts,functions/scriptony-auth/storage-providers/oauth/callback.ts,functions/scriptony-worldbuilding/index.ts,functions/scriptony-worldbuilding/appwrite-entry.ts,functions/scriptony-worldbuilding/__tests__/entrypoint.test.ts" SHIM_CHECKS_ARGS="" npm run checks -- --backend
+  ```
+- **Known risks:**
+  - `make-server-3b52693b` ist nicht deployed und nicht im Build-Script. Kein Risiko.
+  - `jobs-handler` ist Deno-only und wird nicht gebaut (`LEGACY_UNSUPPORTED_FUNCTIONS`). Kein Risiko.
+  - `scriptony-auth/index.ts` und `scriptony-worldbuilding/index.ts` sind unwired old entrypoints. Sie werden von nichts importiert. Risiko: ein Agent koennte sie versehentlich als Entrypoint verwenden. Mitigation: JSDoc-Marker.
+  - `scriptony-auth/storage/*` und `storage-providers/oauth/*` sind im aktiven entrypoint verdrahtet und werden vom Frontend genutzt. Sie sind als "future scriptony-storage" markiert, aber duerfen nicht entfernt werden ohne Frontend-Migration.
+- **Rollback plan:**
+  - `appwrite-entry.ts`: Entferne `worldCategoriesHandler` Import und `/worlds/:id/categories` Match-Block.
+  - Alle JSDoc-Marker entfernen.
+  - Test-Datei löschen.
+- **Notes:**
+  - **KISS 10/10:** Minimaler Eingriff. Nur JSDoc-Marker + eine Route verdrahtet.
+  - **DRY 10/10:** Keine Logik-Duplizierung. `worldCategoriesHandler` existierte bereits, nur nicht verdrahtet.
+  - **SOLID 8/10:** `scriptony-auth` enthaelt noch Storage-Routes (SRP-Verletzung), aber als "future scriptony-storage" markiert.
+  - **Security 9/10:** Keine neuen Security-Luecken. `/worlds/:id/categories` hat Auth-Check via `requireUserBootstrap`.

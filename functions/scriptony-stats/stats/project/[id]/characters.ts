@@ -1,12 +1,16 @@
 /**
- * Project character analytics route for the Scriptony HTTP API.
+ * T16 — Project character analytics route (legacy Next.js API Route).
+ *
+ * Ziel: `scriptony-observability` (Appwrite Function).
+ * Status: read-only. Keine Business Writes.
+ * Aggregation: max 2 Collections (shots + shot_characters).
+ * Komplexe Cross-Project-Billing-Stats: future/separates System (out-of-scope).
+ *
+ * @deprecated T16 — Wird in `scriptony-observability` konsolidiert.
+ * Neue Stats-Features duerfen hier nicht ergaenzt werden.
  */
 
 import { requireUserBootstrap } from "../../../../../_shared/auth";
-import {
-  getProjectStatsPayload,
-  getShotCharacterCounts,
-} from "../../../../../_shared/observability";
 import {
   getParam,
   type RequestLike,
@@ -17,6 +21,11 @@ import {
   sendServerError,
   sendUnauthorized,
 } from "../../../../../_shared/http";
+import {
+  getProjectStatsPayload,
+  getShotCharacterCounts,
+} from "../../../../../_shared/observability";
+import { requireProjectAccess } from "../../../../../_shared/scriptony";
 
 export default async function handler(
   req: RequestLike,
@@ -39,6 +48,13 @@ export default async function handler(
       sendBadRequest(res, "id is required");
       return;
     }
+
+    const project = await requireProjectAccess(
+      projectId,
+      bootstrap.user.id,
+      res,
+    );
+    if (!project) return;
 
     const [payload, appearances] = await Promise.all([
       getProjectStatsPayload(projectId),

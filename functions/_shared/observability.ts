@@ -1,5 +1,19 @@
 /**
- * Shared observability helpers for stats, logs, and admin compatibility routes.
+ * T16/T18 — Shared observability helpers for stats, logs, and admin compatibility routes.
+ *
+ * Status: Business-Logik fuer Next.js API Routes (legacy).
+ *          Wird NICHT von Appwrite Functions genutzt.
+ * Ziel-Function: `scriptony-observability` (Stats/Logs) und `scriptony-admin` (Admin).
+ * Extraction-Plan T18:
+ *   - `getProjectStatsPayload` → `scriptony-observability/handlers/project-stats.ts`
+ *   - `getShotCharacterCounts` → `scriptony-observability/handlers/character-stats.ts`
+ *   - `getNodeContext` → `scriptony-observability/handlers/node-stats.ts`
+ *   - `toDurationSeconds`, `countBy` → `scriptony-observability/_shared/stat-utils.ts`
+ * Verboten: Neue fachliche Observability-Logik hier hinzufuegen.
+ *
+ * @deprecated T18 — FIXED: `getNodeContext` non-shot Branch `data` zugewiesen (Zeile 242).
+ *                     Trotzdem deprecated — Fachliche Aggregation wird in Domain-Functions extrahiert.
+ *                     Primitive _shared helpers (auth, http, db) bleiben zentral.
  */
 
 import { requestGraphql } from "./graphql-compat";
@@ -225,7 +239,7 @@ export async function getNodeContext(
     };
   }
 
-  await requestGraphql<{
+  const data = await requestGraphql<{
     timeline_nodes_by_pk: JsonRecord | null;
     timeline_nodes: JsonRecord[];
     shots: JsonRecord[];
@@ -267,7 +281,8 @@ export async function getNodeContext(
 
   return {
     sequences: data.timeline_nodes.filter((entry) => entry.level === 2).length,
-    scenes: data.timeline_nodes.filter((entry) => entry.level === 3).length +
+    scenes:
+      data.timeline_nodes.filter((entry) => entry.level === 3).length +
       (nodeType === "scene" ? 1 : 0),
     shots: data.shots.length,
     characters: uniqueCharacters.size,

@@ -1,5 +1,12 @@
 /**
- * Project activity log route for the Scriptony HTTP API.
+ * T16 — Project activity logs (legacy Next.js API Route).
+ *
+ * Ziel: `scriptony-observability` (Appwrite Function).
+ * Status: read-only. Keine Business Writes.
+ * Limit: max 100 Eintraege pro Query.
+ *
+ * @deprecated T16 — Wird in `scriptony-observability` konsolidiert.
+ * Neue Log-Features duerfen hier nicht ergaenzt werden.
  */
 
 import { requireUserBootstrap } from "../../../../../_shared/auth";
@@ -15,6 +22,7 @@ import {
   sendServerError,
   sendUnauthorized,
 } from "../../../../../_shared/http";
+import { requireProjectAccess } from "../../../../../_shared/scriptony";
 
 export default async function handler(
   req: RequestLike,
@@ -37,6 +45,13 @@ export default async function handler(
       sendBadRequest(res, "id is required");
       return;
     }
+
+    const project = await requireProjectAccess(
+      projectId,
+      bootstrap.user.id,
+      res,
+    );
+    if (!project) return;
 
     const limit = Math.min(Number(getQuery(req, "limit") || "50"), 100);
     const data = await requestGraphql<{

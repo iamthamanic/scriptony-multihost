@@ -3,13 +3,13 @@
  *
  * Receives the OAuth code from the provider, exchanges it for access/refresh tokens,
  * and redirects the user back to the frontend with tokens in the URL hash (client-only).
+ *
+ * @deprecated T17 — Fachlich gehoert zu scriptony-storage. Verbleibt als Compat-Route
+ *          bis Migration. Neue Storage-Provider-OAuth muss ueber scriptony-storage laufen.
  */
 
+import { Buffer } from "node:buffer";
 import { getOptionalEnv } from "../../../_shared/env";
-import {
-  getAppBaseUrl,
-  isRedirectUriAllowed,
-} from "../../../_shared/oauth-redirect";
 import {
   getQuery,
   type RequestLike,
@@ -19,7 +19,10 @@ import {
   sendRedirect,
   sendServerError,
 } from "../../../_shared/http";
-import { Buffer } from "node:buffer";
+import {
+  getAppBaseUrl,
+  isRedirectUriAllowed,
+} from "../../../_shared/oauth-redirect";
 
 interface StatePayload {
   redirect_uri: string;
@@ -83,8 +86,8 @@ async function exchangeDropboxCode(
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: "Basic " +
-        Buffer.from(`${appKey}:${appSecret}`).toString("base64"),
+      Authorization:
+        "Basic " + Buffer.from(`${appKey}:${appSecret}`).toString("base64"),
     },
     body: new URLSearchParams({
       code,
@@ -111,12 +114,10 @@ function sendErrorRedirect(res: ResponseLike, message: string): void {
     sendServerError(res, new Error("App URL not configured"));
     return;
   }
-  const redirectUri = `${
-    base.replace(
-      /\/+$/,
-      "",
-    )
-  }/settings?storage_oauth=error&error=${encodeURIComponent(message)}`;
+  const redirectUri = `${base.replace(
+    /\/+$/,
+    "",
+  )}/settings?storage_oauth=error&error=${encodeURIComponent(message)}`;
   sendRedirect(res, 302, redirectUri);
 }
 

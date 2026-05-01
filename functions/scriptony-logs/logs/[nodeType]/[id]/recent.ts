@@ -1,5 +1,14 @@
 /**
- * Timeline-node activity log route for the Scriptony HTTP API.
+ * T16 — Timeline-node activity logs (legacy Next.js API Route).
+ *
+ * Ziel: `scriptony-observability` (Appwrite Function).
+ * Status: read-only. Keine Business Writes.
+ * Limit: max 100 Eintraege pro Query.
+ * Security: BROKEN — Kein Node-Zugriffscheck. Jeder authentifizierte User kann Logs
+ *          zu jedem Node abfragen, wenn er die nodeId kennt. Fix in T18-Ziel-Function.
+ *
+ * @deprecated T16 BROKEN — Wird in `scriptony-observability` konsolidiert.
+ * Neue Log-Features duerfen hier nicht ergaenzt werden.
  */
 
 import { requireUserBootstrap } from "../../../../../_shared/auth";

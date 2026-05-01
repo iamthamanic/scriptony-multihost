@@ -1,10 +1,19 @@
 /**
- * Timeline node stats route for the Scriptony HTTP API.
+ * T16 — Timeline node stats (legacy Next.js API Route).
+ *
+ * Ziel: `scriptony-observability` (Appwrite Function).
+ * Status: read-only. Keine Business Writes.
+ * Aggregation: read-only. Nutzt _shared/observability.ts (multi-Collection).
+ * T18: Fachliche Aggregation wird in Ziel-Function extrahiert.
+ * Security: BROKEN — Kein Node-Zugriffscheck. Jeder authentifizierte User kann Daten
+ *          zu jedem Node abfragen, wenn er die nodeId kennt. Fix in T18-Ziel-Function.
+ *
+ * @deprecated T16 BROKEN — Wird in `scriptony-observability` konsolidiert.
+ * Neue Stats-Features duerfen hier nicht ergaenzt werden.
  */
 
 import { requireUserBootstrap } from "../../../../../_shared/auth";
 import { requestGraphql } from "../../../../../_shared/graphql-compat";
-import { toDurationSeconds } from "../../../../../_shared/observability";
 import {
   getParam,
   type RequestLike,
@@ -16,6 +25,7 @@ import {
   sendServerError,
   sendUnauthorized,
 } from "../../../../../_shared/http";
+import { toDurationSeconds } from "../../../../../_shared/observability";
 import {
   getAllProjectNodes,
   getNodeById,
@@ -101,13 +111,14 @@ export default async function handler(
 
     const allNodes = await getAllProjectNodes(node.project_id);
     const descendants = collectDescendants(allNodes, id);
-    const descendantScenes = nodeType === "scene"
-      ? [node]
-      : descendants.filter((entry) => entry.level === 3);
+    const descendantScenes =
+      nodeType === "scene"
+        ? [node]
+        : descendants.filter((entry) => entry.level === 3);
     const shots = descendantScenes.length
       ? await Promise.all(
-        descendantScenes.map((scene) => getShots({ sceneId: scene.id })),
-      ).then((rows) => rows.flat())
+          descendantScenes.map((scene) => getShots({ sceneId: scene.id })),
+        ).then((rows) => rows.flat())
       : [];
 
     const durations = shots.map(toDurationSeconds);

@@ -1,19 +1,24 @@
 /**
  * Appwrite function entrypoint for the worldbuilding service.
+ *
+ * @deprecated T17 — Unwired old entrypoint. Aktiver Entrypoint ist appwrite-entry.ts.
+ *          Nicht in build-appwrite-deploy.mjs registriert. Nicht deployed.
+ *          Verbleibt als Archiv-Referenz bis zur vollstaendigen Entfernung.
  */
 
-import healthHandler from "./health";
-import worldsHandler from "./worlds/index";
-import worldByIdHandler from "./worlds/[id]";
+import { createAppwriteHandler } from "../_shared/appwrite-handler";
 import {
   type RequestLike,
   type ResponseLike,
   sendNotFound,
 } from "../_shared/http";
-import { createAppwriteHandler } from "../_shared/appwrite-handler";
+import healthHandler from "./health";
+import worldByIdHandler from "./worlds/[id]";
+import worldsHandler from "./worlds/index";
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) ||
+  const direct =
+    (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {

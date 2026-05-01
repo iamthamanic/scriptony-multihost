@@ -1,5 +1,14 @@
 /**
- * Superadmin analytics route for the Scriptony HTTP API.
+ * T16 — Superadmin analytics (legacy Next.js API Route).
+ *
+ * Ziel: `scriptony-admin` (Appwrite Function).
+ * Security-Kontext: superadmin-only (Least Privilege).
+ * Security: BROKEN — activeUsers24h und activeUsers7d liefern identische Werte,
+ *          da die GraphQL-Query keinen Zeit-Filter hat. Irrefuehrend fuer UI.
+ *          Fix: Zeitfilter in Query oder Separate Queries. In T18-Ziel-Function.
+ *
+ * @deprecated T16 BROKEN — Wird in `scriptony-admin` konsolidiert.
+ * Neue Admin-Features duerfen hier nicht ergaenzt werden.
  */
 
 import { requestGraphql } from "../../_shared/graphql-compat";

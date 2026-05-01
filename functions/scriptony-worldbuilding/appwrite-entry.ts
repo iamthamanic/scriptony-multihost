@@ -4,13 +4,14 @@ import {
   sendRouteNotFound,
   withParams,
 } from "../_shared/appwrite-handler";
+import type { RequestLike, ResponseLike } from "../_shared/http";
+import worldCategoriesHandler from "./worlds/[id]/categories/index";
+import worldCharactersHandler from "./characters";
 import healthHandler from "./health";
-import worldsHandler from "./worlds/index";
 import worldByIdHandler from "./worlds/[id]";
 import worldItemsHandler from "./worlds/[id]/items";
 import worldUploadImageHandler from "./worlds/[id]/upload-image";
-import worldCharactersHandler from "./characters";
-import type { RequestLike, ResponseLike } from "../_shared/http";
+import worldsHandler from "./worlds/index";
 
 async function dispatch(req: RequestLike, res: ResponseLike) {
   const pathname = getPathname(req);
@@ -28,6 +29,14 @@ async function dispatch(req: RequestLike, res: ResponseLike) {
     return;
   }
 
+  const categoriesMatch = pathname.match(/^\/worlds\/([^/]+)\/categories$/);
+  if (categoriesMatch) {
+    await worldCategoriesHandler(
+      withParams(req, { id: categoriesMatch[1] }),
+      res,
+    );
+    return;
+  }
   const itemsMatch = pathname.match(/^\/worlds\/([^/]+)\/items$/);
   if (itemsMatch) {
     await worldItemsHandler(withParams(req, { id: itemsMatch[1] }), res);

@@ -1,5 +1,15 @@
 /**
- * Detailed node stats route for the Scriptony HTTP API.
+ * T16 — Detailed node stats (legacy Next.js API Route).
+ *
+ * Ziel: `scriptony-observability` (Appwrite Function).
+ * Status: read-only. Keine Business Writes.
+ * Aggregation: read-only. Nutzt _shared/observability.ts (multi-Collection).
+ * T18: Fachliche Aggregation wird in Ziel-Function extrahiert.
+ * Security: BROKEN — Kein Node-Zugriffscheck. Jeder authentifizierte User kann Daten
+ *          zu jedem Node abfragen, wenn er die nodeId kennt. Node-Scope erfordert
+ *          Projekt-Auflösung + `requireProjectAccess`. Fix in T18-Ziel-Function.
+ * @deprecated T16 BROKEN — Wird in `scriptony-observability` konsolidiert.
+ * Neue Stats-Features duerfen hier nicht ergaenzt werden.
  */
 
 import { requireUserBootstrap } from "../../../../../../_shared/auth";

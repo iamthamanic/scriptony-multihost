@@ -1,5 +1,8 @@
 /**
- * Minimal health endpoint for legacy routes still pointing at the old main server.
+ * @deprecated T17 LEGACY_DO_NOT_EXTEND — Nicht in build-appwrite-deploy.mjs registriert.
+ *          Nicht deployed. Keine Frontend-Aufrufer. Keine Execution-Logs.
+ *          Verbleibt als Archiv bis zur vollstaendigen T17-Entfernung.
+ *          Ersatz: scriptony-projects (project listing), Appwrite Console (migrations).
  */
 
 import {

@@ -1,10 +1,18 @@
 /**
- * Project media analytics route for the Scriptony HTTP API.
+ * T16 — Project media analytics (legacy Next.js API Route).
+ *
+ * Ziel: `scriptony-observability` (Appwrite Function).
+ * Status: read-only. Keine Business Writes.
+ * Aggregation: read-only. Nutzt _shared/observability.ts (multi-Collection).
+ * T18: Fachliche Aggregation wird in Ziel-Function extrahiert.
+ * Komplexe Cross-Project-Billing-Stats: future/separates System (out-of-scope).
+ *
+ * @deprecated T16 — Wird in `scriptony-observability` konsolidiert.
+ * Neue Stats-Features duerfen hier nicht ergaenzt werden.
  */
 
 import { requireUserBootstrap } from "../../../../../_shared/auth";
 import { requestGraphql } from "../../../../../_shared/graphql-compat";
-import { getProjectStatsPayload } from "../../../../../_shared/observability";
 import {
   getParam,
   type RequestLike,
@@ -15,6 +23,8 @@ import {
   sendServerError,
   sendUnauthorized,
 } from "../../../../../_shared/http";
+import { getProjectStatsPayload } from "../../../../../_shared/observability";
+import { requireProjectAccess } from "../../../../../_shared/scriptony";
 
 export default async function handler(
   req: RequestLike,
@@ -37,6 +47,13 @@ export default async function handler(
       sendBadRequest(res, "id is required");
       return;
     }
+
+    const project = await requireProjectAccess(
+      projectId,
+      bootstrap.user.id,
+      res,
+    );
+    if (!project) return;
 
     const [payload, audioCount] = await Promise.all([
       getProjectStatsPayload(projectId),

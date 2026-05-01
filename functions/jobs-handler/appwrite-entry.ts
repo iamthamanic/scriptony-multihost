@@ -1,5 +1,5 @@
 /**
- * @deprecated T14 LEGACY_DO_NOT_EXTEND — Deno-only, nicht Node-kompatibel.
+ * @deprecated T14/T17 LEGACY_DO_NOT_EXTEND — Deno-only, nicht Node-kompatibel.
  *
  * Dieser Handler nutzt Deno APIs (Deno.serve, Deno.env, npm:hono) und
  * laeuft nicht im Appwrite Node-16 Runtime.
@@ -9,13 +9,14 @@
  * scriptony-jobs laufen.
  *
  * Siehe docs/job-schema.md fuer das einheitliche Job-Schema.
+ * Entfernung: Nach 30 Tagen ohne Execution-Logs. Aktuell: nicht deployed.
  */
 
+import type { Context } from "npm:hono";
 import { Hono } from "npm:hono";
 import { cors } from "npm:hono/cors";
 import { getJobStatus } from "../_shared/jobs/jobRunner.ts";
 import { jobService } from "../_shared/jobs/jobService.ts";
-import type { Context } from "npm:hono";
 
 const app = new Hono();
 

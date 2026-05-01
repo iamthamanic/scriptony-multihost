@@ -1,8 +1,8 @@
 /**
- * Legacy word-count recalculation endpoint.
- *
- * Historical no-op: book scene word counts were once recalculated server-side.
- * This endpoint remains so older admin UI calls do not hard-fail until ported.
+ * @deprecated T17 LEGACY_DO_NOT_EXTEND — Nicht in build-appwrite-deploy.mjs registriert.
+ *          Nicht deployed. Keine Frontend-Aufrufer. Keine Execution-Logs.
+ *          Verbleibt als Archiv bis zur vollstaendigen T17-Entfernung.
+ *          Ersatz: scriptony-projects (project listing), Appwrite Console (migrations).
  */
 
 import {
@@ -33,7 +33,6 @@ export default async function handler(
     success: true,
     updated: 0,
     projectId,
-    note:
-      "Word-count recalculation has not been ported to the Appwrite-backed stack yet.",
+    note: "Word-count recalculation has not been ported to the Appwrite-backed stack yet.",
   });
 }

@@ -1,11 +1,12 @@
 /**
- * @deprecated T14 — Deno-only, nicht Node-kompatibel.
+ * @deprecated T14/T17 — Deno-only, nicht Node-kompatibel.
  *
  * JobService nutzt Deno APIs (Deno.env, npm:node-appwrite@14.2.0) und
  * getDatabaseClient() (nicht existent in _shared/appwrite-db.ts).
  *
  * Die aktive Job-Control-Plane ist scriptony-jobs (Node.js).
  * Dieser Code bleibt als Archiv-Referenz und wird nicht exportiert.
+ * Verbleibt bis zur vollstaendigen Entfernung.
  *
  * Fuer Worker-Progress-Reporting: nutze _shared/jobs/jobWorker.ts
  * Fuer Job-Status-Abfrage: nutze scriptony-jobs API
