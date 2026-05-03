@@ -16,12 +16,14 @@ mkdir -p "$STAGE"
 # Bundle TS + `_shared` + `node-appwrite` into one CommonJS file (see functions/README.md).
 echo "Bundling scriptony-shots (esbuild)…"
 cd "$FUN"
-npx --yes esbuild scriptony-shots/index.ts \
+npx --yes esbuild scriptony-shots/appwrite-entry.ts \
   --bundle \
   --platform=node \
   --target=node16 \
   --format=cjs \
-  --outfile="$STAGE/index.js"
+  --outfile="$STAGE/index.js" \
+  --legal-comments=none \
+  --external:node:*
 
 echo "Deploying bundle (entrypoint index.js)…"
 npx --yes appwrite-cli functions create-deployment \

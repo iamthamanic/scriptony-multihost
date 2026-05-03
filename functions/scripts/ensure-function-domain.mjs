@@ -144,8 +144,8 @@ async function main() {
     env.VITE_APPWRITE_ENDPOINT ||
     ""
   ).replace(/\/+$/, "");
-  const projectId = env.APPWRITE_PROJECT_ID || env.VITE_APPWRITE_PROJECT_ID ||
-    "";
+  const projectId =
+    env.APPWRITE_PROJECT_ID || env.VITE_APPWRITE_PROJECT_ID || "";
   const apiKey = env.APPWRITE_API_KEY || "";
 
   // Try server API first
@@ -184,7 +184,8 @@ async function main() {
   console.log("");
   console.log("   Then re-run this script or verify with:");
   console.log(`     curl http://${domain}/`);
-  process.exit(1);
+  // Deploy/upload succeeded; proxy is optional for routing — do not fail the caller.
+  process.exit(0);
 }
 
 main().catch((err) => {

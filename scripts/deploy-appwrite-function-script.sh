@@ -10,24 +10,22 @@ mkdir -p "$STAGE"
 
 echo "Bundling scriptony-script (esbuild)…"
 cd "$FUN"
-npx esbuild scriptony-script/index.ts \
+npx --yes esbuild scriptony-script/appwrite-entry.ts \
   --bundle \
   --platform=node \
   --target=node16 \
   --format=cjs \
-  --outfile=scriptony-script/index.js \
+  --outfile="$STAGE/index.js" \
   --legal-comments=none \
   --external:node:*
 
-if [[ ! -s "$FUN/scriptony-script/index.js" ]]; then
-  echo "error: bundle is missing or empty: $FUN/scriptony-script/index.js" >&2
+if [[ ! -s "$STAGE/index.js" ]]; then
+  echo "error: bundle is missing or empty: $STAGE/index.js" >&2
   exit 1
 fi
 
-cp "$FUN/scriptony-script/index.js" "$STAGE/index.js"
-
 echo "Deploying bundle (entrypoint index.js)…"
-/opt/homebrew/bin/appwrite functions create-deployment \
+npx --yes appwrite-cli functions create-deployment \
   --function-id scriptony-script \
   --code ".deploy-staging/scriptony-script" \
   --activate true \

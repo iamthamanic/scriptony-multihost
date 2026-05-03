@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Deploy scriptony-jobs to Appwrite (T14 Konsolidierung; Function-ID: scriptony-jobs).
+# Deploy scriptony-project-nodes to Appwrite (appwrite-entry.ts).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 FUN="$ROOT/functions"
-STAGE="$FUN/.deploy-staging/scriptony-jobs"
+STAGE="$FUN/.deploy-staging/scriptony-project-nodes"
 
 rm -rf "$STAGE"
 mkdir -p "$STAGE"
 
-echo "Bundling scriptony-jobs (esbuild)…"
+echo "Bundling scriptony-project-nodes (esbuild)…"
 cd "$FUN"
-npx --yes esbuild scriptony-jobs/index.ts \
+npx --yes esbuild scriptony-project-nodes/appwrite-entry.ts \
   --bundle \
   --platform=node \
   --target=node16 \
@@ -26,11 +26,10 @@ fi
 
 echo "Deploying bundle (entrypoint index.js)…"
 npx --yes appwrite-cli functions create-deployment \
-  --function-id scriptony-jobs \
-  --code ".deploy-staging/scriptony-jobs" \
+  --function-id scriptony-project-nodes \
+  --code ".deploy-staging/scriptony-project-nodes" \
   --activate true \
   --entrypoint "index.js" \
   --commands ""
 
-echo ""
-echo "Done. scriptony-jobs deployed successfully."
+echo "Done. scriptony-project-nodes deployed."
