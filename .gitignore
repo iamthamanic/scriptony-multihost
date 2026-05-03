@@ -32,6 +32,10 @@ repo-visualization*.html
 .shimwrapper/
 .shim/
 
+# Local IDE / agent caches (not part of the app)
+.pi/
+**/.pi-lens/
+
 # LightRAG index data (local only)
 .rag/
 scriptony-blender-addon.zip

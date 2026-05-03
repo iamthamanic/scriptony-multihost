@@ -1792,3 +1792,52 @@ Editor-Readmodel aggregiert nur für die UI.
   - **DRY 9/10:** Extraction-Plan dokumentiert, wo Logik hingeht. Noch nicht physisch extrahiert — das ist beabsichtigt (T18 ist "laufend", nicht einmalig).
   - **KISS 10/10:** Primär JSDoc-Marker. Einziges Code-Update: `let content: string` statt `let content = ""` in `ai.ts` (Lint-Fix, no-op semantisch).
   - **Security 10/10:** Keine neuen Security-Luecken. Access-Helpers bleiben an ihrem Platz bis zur koordinierten Migration.
+
+## Phase 12 — UI/UX Frontend
+
+### Done Report: T19 — UI/UX und Frontend-Aufrufer je Phase pruefen
+
+- **Date:** 2026-05-02 CEST
+- **Verification Marker:** ARCH-REF-T19-DONE
+- **Changed files:**
+  - `.shimwrappercheckrc` (AI Review Provider auf `auto`, weil Ollama lokal nicht erreichbar war)
+  - `src/__tests__/t19-frontend-api.test.ts` (**neu** — 4 API-Layer-Vertragstests)
+  - `docs/scriptony-architecture-refactor-tickets.md` (T19 auf **done** gesetzt)
+  - `functions/_shared/auth.ts` (TypeScript-Gate-Fix: lokaler `ensureUserBootstrap` Import)
+  - `functions/_shared/scriptony.ts` (TypeScript-Gate-Fix: ES2021-kompatibler `hasOwn` Helper)
+- **Frontend-Aufrufer Inventur:**
+  | Route | Frontend-Datei | API-Layer | T-Status |
+  |-------|-------------|-----------|----------|
+  | `GET /editor/projects/:projectId/state` | `src/lib/api/timeline-api-v2.ts` (ultraBatchLoadProject) | `apiGet` via API Gateway | T12 ✅ |
+  | `POST /v1/jobs/:functionName` | `src/lib/jobs/jobApi.ts` (startJob) | `apiClient.post` via API Gateway | T14 ✅ |
+  | `GET /v1/jobs/:jobId/status` | `src/lib/jobs/jobApi.ts` (getJobStatus) | `apiClient.get` via API Gateway | T14 ✅ |
+  | `GET /v1/jobs/:jobId/result` | `src/lib/jobs/jobApi.ts` (getJobResult) | `apiClient.get` via API Gateway | T14 ✅ |
+  | `POST /v1/jobs/:jobId/cancel` | `src/lib/jobs/jobApi.ts` (cancelJob) | `apiClient.post` via API Gateway | T14 ✅ |
+  | `POST /v1/worker/media/:action` | *(noch kein Frontend-Aufrufer)* | — | T15 ⚠️ |
+  | `GET /stats/*`, `GET /logs/*` | `src/components/*StatsLogsDialog*.tsx` | **DIREKTER FETCH** (buildFunctionRouteUrl) | T16 ⚠️ |
+  | `GET /worlds/:id/categories` | `src/utils/api.tsx` (categoriesApi), `WorldStatsLogsDialog.tsx` | `apiFetch` (legacy) / **fetch** (Dialog) | T17 ⚠️ |
+- **Loading/Error/Empty/Success States:**
+  - `useLongRunningJob`: `isLoading`, `isSubmitting`, `error`, `progress`, `result` — ✅ (T14)
+  - `ultraBatchLoadProject`: Kein Loading-State im Hook, aber `apiGet` gibt Standard-Loading zurück.
+  - Stats/Logs Dialoge: Manueller Loading-/Error-/Empty-State mit `useState` — funktioniert, aber nicht mit React Query.
+- **React Query Nutzung:** 41 Hooks verwenden `useQuery`/`useMutation` — ✅ beste Practice.
+- **API Layer Konformität:**
+  - ✅ `timeline-api-v2.ts` nutzt `apiGet` (API Gateway)
+  - ✅ `jobApi.ts` nutzt `apiClient` (API Gateway)
+  - ✅ `categoriesApi` nutzt `apiFetch` (Legacy Wrapper, aber Gateway-kompatibel)
+  - ❌ `WorldStatsLogsDialog.tsx`, `TimelineNodeStatsDialog.tsx`, `ProjectStatsLogsDialog.tsx`, `ProjectStatsLogsDialogEnhanced.tsx` nutzen **direkte `fetch()` mit `buildFunctionRouteUrl`** — verletzen die Architektur-Regel "Keine Roh-Fetch zu Appwrite endpoints".
+- **Tests run:**
+  - `src/__tests__/t19-frontend-api.test.ts`: 4 passed
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES=".shimwrappercheckrc,src/__tests__/t19-frontend-api.test.ts,docs/scriptony-architecture-refactor-tickets.md,docs/scriptony-architecture-refactor 25.04.26.md,functions/_shared/auth.ts,functions/_shared/scriptony.ts" SHIM_CHECKS_ARGS="" npm run checks
+  ```
+- **Known risks:**
+  - **Direkte Fetches in Stats/Logs Dialogen:** `WorldStatsLogsDialog.tsx`, `TimelineNodeStatsDialog.tsx`, `ProjectStatsLogsDialog.tsx`, `ProjectStatsLogsDialogEnhanced.tsx` verwenden direkte `fetch()` statt `apiClient`/`apiGet`. Das verletzt die API-Layer-Konvention und macht die Auth/Error-Handling von `api-client.ts` nutzlos. **Mitigation:** Als bestehende Altlast dokumentiert. Ein Fix sollte diese 600-1200-Zeilen-Komponenten zuerst splitten, weil sie aktuell ueber dem AGENTS.md-Hard-Limit liegen.
+  - **No Frontend Callee for media-worker:** T15 Route `POST /v1/worker/media/:action` hat noch keinen Frontend-Aufrufer. Das ist solange ok, solange Media-Actions nur von anderen Functions (Jobs) getriggert werden.
+- **Rollback plan:**
+  - Test-Datei löschen.
+- **Notes:**
+  - **KISS 10/10:** Nur Tests + Dokumentation. Keine Code-Änderungen an bestehenden Frontend-Files.
+  - **DRY 8/10:** `useLongRunningJob` verwendet den API Layer korrekt, aber Stats-Dialoge duplizieren `fetch()`-Logik.
+  - **SOLID 7/10:** Stats-Dialoge mischen UI + Data-Fetching. Zukünftig sollten sie Hooks nutzen.

@@ -143,7 +143,7 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 | T16    | 10      | Observability und Admin konsolidieren                                     | **done** | T01, T02                     |
 | T17    | 10      | Legacy markieren, pruefen und entfernen                                   | **done** | T16                          |
 | T18    | laufend | `_shared` Business-Logik kontrolliert herausziehen                        | **done** | T01                          |
-| T19    | laufend | UI/UX und Frontend-Aufrufer je Phase pruefen                              | todo     | alle Implementierungstickets |
+| T19    | laufend | UI/UX und Frontend-Aufrufer je Phase pruefen                              | **done** | alle Implementierungstickets |
 | T20    | laufend | `scriptony-storage` Zielmodell und Provider Boundary vorbereiten          | todo     | T01, T05, T06                |
 | T21    | laufend | `scriptony-collaboration` Zielmodell und Access-Helper vorbereiten        | todo     | T01, T03, T04                |
 

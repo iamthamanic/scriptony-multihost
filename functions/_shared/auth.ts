@@ -5,6 +5,7 @@
  */
 
 import type { RequestLike } from "./http";
+import { ensureUserBootstrap } from "./auth-bootstrap";
 import { getBearerToken, getUserFromAuthHeader } from "./auth-jwt";
 import { resolveIntegrationToken } from "./auth-integration";
 
@@ -244,7 +245,7 @@ export async function requireAuthenticatedUser(
   return user;
 }
 
-export { ensureUserBootstrap } from "./auth-bootstrap";
+export { ensureUserBootstrap };
 
 export async function requireUserBootstrap(
   authSource?: AuthSource,

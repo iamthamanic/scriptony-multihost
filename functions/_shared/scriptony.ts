@@ -24,7 +24,7 @@ import { requestGraphql } from "./graphql-compat";
 import { type ResponseLike, sendNotFound } from "./http";
 
 function hasOwn(body: Record<string, any>, key: string): boolean {
-  return Object.hasOwn(body, key);
+  return Object.prototype.hasOwnProperty.call(body, key);
 }
 
 function pickProvided(body: Record<string, any>, ...keys: string[]): any {
@@ -179,7 +179,7 @@ export function worldsUpdatePayload(
   const n = normalizeWorldInput(body);
   const out: Record<string, unknown> = {};
   for (const k of WORLD_DOC_KEYS) {
-    if (Object.hasOwn(n, k)) {
+    if (hasOwn(n, k)) {
       out[k] = n[k];
     }
   }
