@@ -144,7 +144,7 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 | T17    | 10      | Legacy markieren, pruefen und entfernen                                   | **done** | T16                          |
 | T18    | laufend | `_shared` Business-Logik kontrolliert herausziehen                        | **done** | T01                          |
 | T19    | laufend | UI/UX und Frontend-Aufrufer je Phase pruefen                              | **done** | alle Implementierungstickets |
-| T20    | laufend | `scriptony-storage` Zielmodell und Provider Boundary vorbereiten          | todo     | T01, T05, T06                |
+| T20    | laufend | `scriptony-storage` Zielmodell und Provider Boundary vorbereiten          | **done** | T01, T05, T06                |
 | T21    | laufend | `scriptony-collaboration` Zielmodell und Access-Helper vorbereiten        | todo     | T01, T03, T04                |
 
 ---
@@ -1142,6 +1142,8 @@ Ein Nutzer verbindet Google Drive als Storage Provider. Spaeter koennen Assets p
 ### Verifizierungsmarker
 
 `ARCH-REF-T20-DONE`
+
+**Erledigt (2026-05-03):** Done Report und Details in `docs/scriptony-architecture-refactor 25.04.26.md` (Abschnitt „Phase 13 — Storage-Zielmodell“).
 
 ---
 

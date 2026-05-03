@@ -1,9 +1,11 @@
 # Architecture Refactor – Ziel-Domaenen
 
-Stand: 2026-04-24
+Stand: 2026-05-03
 
 Dieses Dokument enthaelt die Ziel-Domaenen fuer die Architektur-Refactor-Phasen.
 Es wird von `docs/scriptony-architecture-refactor-master.md` referenziert.
+
+**T20 Verifizierungsmarker:** `ARCH-REF-T20-DONE` (Zielmodell `scriptony-storage` und Grenze zu `scriptony-assets` / `scriptony-auth` in `docs/backend-domain-map.md` und hier verankert.)
 
 ---
 
@@ -23,7 +25,7 @@ scriptony-storage beantwortet:
 
 **Enthaelt:**
 - Storage Provider (Appwrite Storage, Google Drive, Dropbox, OneDrive)
-- Storage Provider OAuth
+- Storage Provider OAuth (z. B. Google Drive: **Storage-Kopplung**, nicht Scriptony-Login; siehe `docs/backend-domain-map.md` Abschnitt T20)
 - Storage Connections
 - Storage Targets
 - Storage Objects

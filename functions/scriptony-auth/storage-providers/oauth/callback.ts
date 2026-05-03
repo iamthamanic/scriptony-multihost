@@ -4,8 +4,8 @@
  * Receives the OAuth code from the provider, exchanges it for access/refresh tokens,
  * and redirects the user back to the frontend with tokens in the URL hash (client-only).
  *
- * @deprecated T17 — Fachlich gehoert zu scriptony-storage. Verbleibt als Compat-Route
- *          bis Migration. Neue Storage-Provider-OAuth muss ueber scriptony-storage laufen.
+ * @deprecated T17 — Ziel T20 (`scriptony-storage`): OAuth-Callback fuer Storage-Provider.
+ *          Compat-Route bis Migration. Siehe `docs/backend-domain-map.md`.
  */
 
 import { Buffer } from "node:buffer";

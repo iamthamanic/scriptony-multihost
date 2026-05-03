@@ -1,8 +1,9 @@
 /**
  * Generic storage upload endpoint for legacy frontend helpers.
  *
- * @deprecated T17 — Fachlich gehoert zu scriptony-storage. Verbleibt als Compat-Route
- *          bis Migration. Neue Storage-Uploads muessen ueber scriptony-assets/storage gehen.
+ * @deprecated T17 — Ziel T20 (`scriptony-storage`): physische Ablage gehoert dorthin.
+ *          Verbleibt als Compat-Route bis Migration. Neue Storage-Uploads ueber scriptony-assets.
+ *          Siehe `docs/backend-domain-map.md` (Storage-/OAuth-Grenze, Storage-Adapter).
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";

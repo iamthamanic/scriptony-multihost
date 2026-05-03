@@ -4,8 +4,9 @@
  * Redirects the user to the storage provider's OAuth consent page.
  * Query: provider (google_drive | dropbox | onedrive | kdrive), redirect_uri (frontend URL to return to).
  *
- * @deprecated T17 — Fachlich gehoert zu scriptony-storage. Verbleibt als Compat-Route
- *          bis Migration. Neue Storage-Provider-OAuth muss ueber scriptony-storage laufen.
+ * @deprecated T17 — Ziel T20 (`scriptony-storage`): **Storage-Provider-OAuth** (z. B. Google Drive),
+ *          nicht Scriptony-User-Login. Compat-Route bis Migration.
+ *          Siehe `docs/backend-domain-map.md` (T20 Abschnitt „Storage-Provider-OAuth vs. Login“).
  */
 
 import { Buffer } from "node:buffer";

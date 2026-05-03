@@ -5,6 +5,10 @@ import { getStorageBucketId } from "../../_shared/env";
  * StorageAdapter – schmale architektonische Nahtstelle für physische
  * Storage-Provider. Aktuell ein Wrapper um Appwrite Storage.
  *
+ * T20 (`scriptony-storage`): OAuth, externe Provider und `storage_*`-Collections
+ * leben künftig in der Storage-Domain; `scriptony-assets` behält Metadaten und
+ * spricht Bytes nur über diese (bzw. später erweiterte) Adapter.
+ *
  * Zukünftige Erweiterungspunkte (S3, GCS, R2 etc.) implementieren
  * StorageAdapter und werden über getDefaultStorageAdapter() injiziert.
  * Das Interface isoliert Asset-Logik von Provider-Details (SOLID/ISP).

@@ -1,8 +1,8 @@
 /**
  * Storage usage endpoint for the Scriptony auth service.
  *
- * @deprecated T17 — Fachlich gehoert zu scriptony-storage. Verbleibt als Compat-Route
- *          bis Migration. Neue Storage-Usage-Queries muessen ueber scriptony-observability gehen.
+ * @deprecated T17 — Ziel T20 (`scriptony-storage`). Compat-Route bis Migration.
+ *          Usage-Metriken koennten spaeter `scriptony-observability` kreuzen; siehe Domain Map.
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";

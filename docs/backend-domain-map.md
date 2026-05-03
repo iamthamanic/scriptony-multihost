@@ -1,7 +1,7 @@
 # Backend Domain Map
 
-Stand: 2026-04-26
-Verifizierungsmarker: ARCH-REF-T01-DONE
+Stand: 2026-05-03  
+Verifizierungsmarker: ARCH-REF-T01-DONE · **T20:** `ARCH-REF-T20-DONE` (Storage-Zielmodell, keine neue Function)
 
 ## Zweck
 
@@ -106,6 +106,23 @@ obigen Map.
 |---|---|---|---|
 | `scriptony-auth` (Storage-Provider-OAuth) | `scriptony-storage` | `future` | `storage-providers`, `integration-tokens` |
 | `scriptony-auth` (Organisationen) | `scriptony-collaboration` | `future` | `organizations`, `organization_members` |
+
+### T20 — Storage-Provider-OAuth vs. Login
+
+**Google Drive / Dropbox / OneDrive OAuth** unter `scriptony-auth/storage-providers/oauth/*` dient der **Kopplung eines Storage-Provider-Kontos** (Dateizugriff, `drive.file` o.ä.), **nicht** dem primären **User-Login** von Scriptony (Sessions/JWT bleiben bei `scriptony-auth`).
+
+- **Heute:** Routen bleiben unter `scriptony-auth` (Compat), siehe JSDoc in den betroffenen Handlers.
+- **Ziel:** Gleiche OAuth-Flows laufen unter `scriptony-storage` (`storage_connections`); `scriptony-auth` kennt dann keine Provider-Redirect-URLs mehr.
+
+### Storage-Adapter (`scriptony-assets`)
+
+Physische Bytes (Upload in Appwrite Storage, Bucket-Wahl) gehen über die schmale Nahtstelle **`functions/scriptony-assets/_shared/storage-adapter.ts`** (`StorageAdapter`, derzeit Appwrite-only). **Fachliche** Asset-Metadaten (`assets`-Collection, Owner/Purpose) bleiben ausschließlich in `scriptony-assets`.
+
+- **Ziel (T20):** `scriptony-storage` liefert pro `storage_target` die konkrete Schreib-/Lese-Implementierung; `scriptony-assets` ruft nur noch abstrahierte Storage-Operationen auf (kein OAuth, keine Provider-Tokens).
+
+### Appwrite Buckets (Kompatibilität)
+
+Die heute provisionierten Buckets und `SCRIPTONY_STORAGE_BUCKET_*` Overrides (`functions/_shared/env.ts`, `provision-appwrite-buckets.mjs`) bleiben **gültig**. `scriptony-storage` ergänzt später **zusätzliche** Ziele (externe IDs, Pfade), ohne bestehende Bucket-IDs zu invalidieren.
 
 ---
 

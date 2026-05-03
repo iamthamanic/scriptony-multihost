@@ -1841,3 +1841,34 @@ Editor-Readmodel aggregiert nur für die UI.
   - **KISS 10/10:** Nur Tests + Dokumentation. Keine Code-Änderungen an bestehenden Frontend-Files.
   - **DRY 8/10:** `useLongRunningJob` verwendet den API Layer korrekt, aber Stats-Dialoge duplizieren `fetch()`-Logik.
   - **SOLID 7/10:** Stats-Dialoge mischen UI + Data-Fetching. Zukünftig sollten sie Hooks nutzen.
+
+## Phase 13 — Storage-Zielmodell (Dokumentation)
+
+### Done Report: T20 — `scriptony-storage` Zielmodell und Provider Boundary vorbereiten
+
+- **Date:** 2026-05-03
+- **Verification Marker:** `ARCH-REF-T20-DONE`
+- **Scope:** Keine neue Appwrite Function, **keine UI-Änderung**. Dokumentation + präzisere JSDoc-Grenzen.
+- **Changed files:**
+  - `docs/backend-domain-map.md` — Stand, T20-Marker; Abschnitte **Storage-Provider-OAuth vs. Login**, **Storage-Adapter (`scriptony-assets`)**, **Appwrite Buckets (Kompatibilität)**
+  - `docs/architecture-refactor-domains.md` — Stand; T20-Marker; Klarstellung Google Drive unter Storage-Provider-OAuth
+  - `functions/scriptony-auth/storage/upload.ts`, `storage/usage.ts`, `storage-providers/oauth/authorize.ts`, `storage-providers/oauth/callback.ts` — JSDoc T20 / Verweise auf Domain Map
+  - `functions/scriptony-assets/_shared/storage-adapter.ts` — T20-Zielbild im Modul-Kommentar
+  - `docs/scriptony-architecture-refactor-tickets.md` — T20 Status **done**
+- **Akzeptanzkriterien (Mapping):**
+  - `scriptony-storage` in `docs/backend-domain-map.md` (Platform, `new`) — bereits vorhanden, um T20-Abschnitte ergänzt
+  - Zielarchitektur Platform: `docs/architecture-refactor-domains.md` § scriptony-storage — ergänzt inkl. Marker
+  - Datenmodelle `storage_connections`, `storage_targets`, `storage_objects` — in `architecture-refactor-domains.md` spezifiziert (unverändert, verifiziert)
+  - Google Drive OAuth als Storage-Provider-OAuth — in Domain Map + `authorize.ts` JSDoc explizit
+  - `scriptony-assets` fachlich / `scriptony-storage` physisch — Domain Map + Storage-Adapter-Abschnitt
+  - Buckets kompatibel — eigener Unterabschnitt in Domain Map
+  - Storage-Adapter-Konzept — Domain Map verweist auf `storage-adapter.ts`; Kommentar in Code erweitert
+- **Inventar (`rg`):** Storage-/OAuth unter `scriptony-auth`: `storage/upload.ts`, `storage/usage.ts`, `storage-providers/oauth/authorize.ts`, `storage-providers/oauth/callback.ts` (Routes weiterhin über `appwrite-entry.ts` verdrahtet).
+- **Tests:** Kein neues Verhalten — keine neuen Vitest-Dateien. Gate: `npm run checks` (Snippet) auf geänderte Dateien.
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="docs/backend-domain-map.md,docs/architecture-refactor-domains.md,docs/scriptony-architecture-refactor-tickets.md,docs/scriptony-architecture-refactor 25.04.26.md,functions/scriptony-auth/storage/upload.ts,functions/scriptony-auth/storage/usage.ts,functions/scriptony-auth/storage-providers/oauth/authorize.ts,functions/scriptony-auth/storage-providers/oauth/callback.ts,functions/scriptony-assets/_shared/storage-adapter.ts" SHIM_CHECKS_ARGS="" npm run checks
+  ```
+- **Known risks / Altlasten:** `scriptony-auth` enthält weiterhin aktive Storage-Routen (SRP); Migration zu `scriptony-storage` bleibt separates Implementierungs-Ticket.
+- **Rollback:** Git-Revert der genannten Dateien.
+- **Notes:** **KISS 10/10**, **DRY 9/10** (eine Domain Map als SSO), **SOLID 9/10** (Grenzen explizit). Security: keine Secrets in Doku; Least Privilege unverändert.
