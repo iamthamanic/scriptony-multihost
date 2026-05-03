@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
+export ROOT_DIR
 
 OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
 OLLAMA_MODEL="${SHIM_OLLAMA_MODEL:-kimi-k2.6:cloud}"
@@ -56,6 +57,16 @@ if [[ -z "${AI_REVIEW_DIFF_FILE:-}" ]]; then
       "$GIT_CMD" diff --no-index --no-color /dev/null "$file_path" >> "$DIFF_FILE" 2>/dev/null || true
     fi
   done < <(collect_scoped_files)
+fi
+
+if [[ ! -s "$DIFF_FILE" ]]; then
+  # shellcheck source=scripts/_shared/ai-review-append-base-diff.sh
+  source "$ROOT_DIR/scripts/_shared/ai-review-append-base-diff.sh"
+  _ai_base_rc=0
+  ai_review_append_base_ref_diff < <(collect_scoped_files) || _ai_base_rc=$?
+  if [[ "$_ai_base_rc" -eq 2 ]]; then
+    exit 1
+  fi
 fi
 
 if [[ ! -s "$DIFF_FILE" ]]; then

@@ -47,6 +47,9 @@ Checks are configured in the dashboard or `.shimwrappercheckrc` (toggles and ord
 - **Release/deploy gate**: Run `SHIM_RUN_NPM_AUDIT=1 CHECK_MODE=full SHIM_CHECKS_ARGS="" npm run checks -- --refactor`, then the relevant Appwrite verify/smoke scripts before any real deploy.
 - **Dependency-change gate**: If `package.json`, package lockfiles, or dependency tooling changed, also run `SHIM_RUN_NPM_AUDIT=1 CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks` or document why a known pre-existing vulnerability is out of scope.
 - **AI review**: Must stay enabled for ticket completion. Do not pass `--no-ai-review` and do not set `SKIP_AI_REVIEW=1` unless a human explicitly approves an exception.
+- **AI review diff when changes are already committed**: `scripts/ai-code-review.sh` first reviews unstaged and staged hunks for scoped paths. If that diff is empty (clean tree) but you still need a binding Codex/Ollama review, set a base commit-ish so the review compares **current tree vs base** for those paths: `SHIM_AI_REVIEW_BASE_REF=main` or `HEAD~1`, `origin/main`, etc. Example (snippet scope + committed ticket files):  
+  `SHIM_AI_REVIEW_BASE_REF=main CHECK_MODE=snippet SHIM_CHANGED_FILES="src/foo.ts,docs/bar.md" SHIM_CHECKS_ARGS="" npm run checks`  
+  Alias: `AI_REVIEW_BASE_REF` (same meaning). Invalid `SHIM_AI_REVIEW_BASE_REF` fails the check (fix the ref and rerun).
 - **AI provider failures**: Codex usage limits, CLI failures, or missing `VERDICT: ACCEPT` do not count as a passed gate. Keep the ticket open and rerun the same scoped Shim command when the provider is available.
 
 ### Currently disabled or conditional
