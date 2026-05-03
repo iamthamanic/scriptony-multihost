@@ -3,8 +3,8 @@
  * Ensures an Appwrite proxy rule exists mapping a subdomain to a function.
  *
  * Tries in order:
- *   1. Server API (needs API key with rules.read/write scopes)
- *   2. Appwrite CLI (needs `appwrite login` session)
+ *   1. Server API (`APPWRITE_API_KEY` — REST `X-Appwrite-Key`)
+ *   2. Appwrite CLI (`appwrite login` session — separate identity from the env key)
  *
  * Usage: node functions/scripts/ensure-function-domain.mjs \
  *          --function-id scriptony-stage \
@@ -62,6 +62,23 @@ function parseArgs(argv) {
   return out;
 }
 
+/** Short error text from Appwrite JSON body or raw response (for logs only). */
+async function responseHint(res) {
+  try {
+    const text = await res.text();
+    try {
+      const j = JSON.parse(text);
+      const msg = j.message ?? j.error ?? j.errors?.[0]?.message;
+      if (msg) return String(msg).slice(0, 240);
+    } catch {
+      /* not JSON */
+    }
+    return text.trim().slice(0, 240);
+  } catch {
+    return "";
+  }
+}
+
 async function tryServerApi(endpoint, projectId, apiKey, functionId, domain) {
   const headers = {
     "Content-Type": "application/json",
@@ -69,12 +86,16 @@ async function tryServerApi(endpoint, projectId, apiKey, functionId, domain) {
     "X-Appwrite-Key": apiKey,
   };
 
-  // List rules
-  const listRes = await fetch(
-    `${endpoint}/proxy/rules?queries[]=${encodeURIComponent("limit(100)")}`,
-    { headers },
-  );
-  if (!listRes.ok) return false;
+  const listUrl = `${endpoint}/proxy/rules?queries[]=${encodeURIComponent("limit(100)")}`;
+  const listRes = await fetch(listUrl, { headers });
+  if (!listRes.ok) {
+    const hint = await responseHint(listRes);
+    console.log(
+      `Server API GET proxy/rules failed: HTTP ${listRes.status}${hint ? ` — ${hint}` : ""}`,
+    );
+    return false;
+  }
+
   const listData = await listRes.json();
   const rules = listData.rules || listData.documents || [];
   if (rules.find((r) => r.domain === domain)) {
@@ -82,7 +103,6 @@ async function tryServerApi(endpoint, projectId, apiKey, functionId, domain) {
     return true;
   }
 
-  // Create rule
   const createRes = await fetch(`${endpoint}/proxy/rules`, {
     method: "POST",
     headers,
@@ -92,8 +112,15 @@ async function tryServerApi(endpoint, projectId, apiKey, functionId, domain) {
       resourceId: functionId,
     }),
   });
-  if (!createRes.ok) return false;
-  const _created = await createRes.json();
+  if (!createRes.ok) {
+    const hint = await responseHint(createRes);
+    console.log(
+      `Server API POST proxy/rules failed: HTTP ${createRes.status}${hint ? ` — ${hint}` : ""}`,
+    );
+    return false;
+  }
+
+  await createRes.json();
   console.log(`✅ Proxy rule created via API: ${domain} → ${functionId}`);
   return true;
 }
@@ -148,7 +175,7 @@ async function main() {
     env.APPWRITE_PROJECT_ID || env.VITE_APPWRITE_PROJECT_ID || "";
   const apiKey = env.APPWRITE_API_KEY || "";
 
-  // Try server API first
+  // Try server API first (uses APPWRITE_* from env — not the CLI session).
   if (endpoint && projectId && apiKey) {
     const ok = await tryServerApi(
       endpoint,
@@ -158,32 +185,42 @@ async function main() {
       domain,
     );
     if (ok) return;
-    console.log("Server API lacks proxy scope, falling back to CLI…");
+    console.log(
+      "Server API did not complete proxy setup (see HTTP lines above). Possible causes: missing scopes on this key, server version without this route, or SDK/server mismatch. Trying CLI session next…",
+    );
+  } else {
+    console.log(
+      "Skipping server API (need APPWRITE_ENDPOINT, APPWRITE_PROJECT_ID, APPWRITE_API_KEY). Trying CLI session…",
+    );
   }
 
-  // Try CLI
+  console.log(
+    "CLI fallback uses the Appwrite CLI login session (`appwrite login`), not APPWRITE_API_KEY.",
+  );
+
   const ok = tryCli(functionId, domain);
   if (ok) return;
 
-  // Neither worked
   console.log("");
-  console.log("⚠️  Could not create proxy rule automatically.");
-  console.log("   The API key lacks `rules.read/rules.write` scopes.");
+  console.log("⚠️  Could not create or verify the proxy rule automatically.");
   console.log("");
   console.log(
-    "   Fix option A: Create an API key with Proxy scope in the Appwrite Console:",
+    "   REST path failed? Check the HTTP status lines above (403 often = scopes; 404 = route/version).",
   );
   console.log(
-    "     → https://appwrite.scriptony.raccoova.com/console/api-keys",
+    "   CLI path failed? The CLI uses its own credentials — fix `appwrite login` / CLI project link or grant that identity proxy/rules permissions.",
   );
-  console.log("     → Add scopes: proxy:read, proxy:write");
-  console.log("     → Set it as APPWRITE_API_KEY in .env.server.local");
   console.log("");
-  console.log("   Fix option B: Add the domain manually in the Console:");
-  console.log(`     → Functions → ${functionId} → Domains → Add: ${domain}`);
+  console.log(
+    "   Manual fix: Console → Functions → " + functionId + " → Domains → Add:",
+  );
+  console.log(`     ${domain}`);
   console.log("");
-  console.log("   Then re-run this script or verify with:");
-  console.log(`     curl http://${domain}/`);
+  console.log("   Verify:");
+  console.log(
+    `     curl -sS -o /dev/null -w "%{http_code}\\n" https://${domain}/health`,
+  );
+  console.log(`     (or http://${domain}/health if you use HTTP only)`);
   // Deploy/upload succeeded; proxy is optional for routing — do not fail the caller.
   process.exit(0);
 }
