@@ -12,6 +12,10 @@ function getString(value: unknown): string | undefined {
   return undefined;
 }
 
+function isNonEmptyId(id: string): boolean {
+  return typeof id === "string" && id.trim().length > 0;
+}
+
 async function getDb(): Promise<Databases> {
   return getDatabases();
 }
@@ -22,24 +26,33 @@ async function getCreatorId(projectId: string): Promise<string | undefined> {
   return getString(doc.user_id) ?? getString(doc.created_by);
 }
 
+/** Single-user MVP: nur Ersteller/in. Keine Delegation Lesen→Manage (RBAC). */
+async function isProjectCreator(
+  userId: string,
+  projectId: string,
+): Promise<boolean> {
+  if (!isNonEmptyId(userId) || !isNonEmptyId(projectId)) return false;
+  const creator = await getCreatorId(projectId);
+  return userId === creator;
+}
+
 export async function canReadProject(
   userId: string,
   projectId: string,
 ): Promise<boolean> {
-  const creator = await getCreatorId(projectId);
-  return userId === creator;
+  return isProjectCreator(userId, projectId);
 }
 
 export async function canEditProject(
   userId: string,
   projectId: string,
 ): Promise<boolean> {
-  return canReadProject(userId, projectId);
+  return isProjectCreator(userId, projectId);
 }
 
 export async function canManageProject(
   userId: string,
   projectId: string,
 ): Promise<boolean> {
-  return canReadProject(userId, projectId);
+  return isProjectCreator(userId, projectId);
 }

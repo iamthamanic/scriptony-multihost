@@ -40,6 +40,8 @@ PLATFORM
 - scriptony-observability
 - scriptony-admin
 - scriptony-mcp-appwrite
+- scriptony-storage
+- scriptony-collaboration
 
 LEGACY
 
@@ -1872,3 +1874,45 @@ Editor-Readmodel aggregiert nur für die UI.
 - **Known risks / Altlasten:** `scriptony-auth` enthält weiterhin aktive Storage-Routen (SRP); Migration zu `scriptony-storage` bleibt separates Implementierungs-Ticket.
 - **Rollback:** Git-Revert der genannten Dateien.
 - **Notes:** **KISS 10/10**, **DRY 9/10** (eine Domain Map als SSO), **SOLID 9/10** (Grenzen explizit). Security: keine Secrets in Doku; Least Privilege unverändert.
+
+## Phase laufend — Collaboration-Zielmodell (Dokumentation)
+
+### Done Report: T21 — `scriptony-collaboration` Zielmodell und Access-Helper vorbereiten
+
+- **Date:** 2026-05-05
+- **Verification Marker (Dokumentationslieferung):** `ARCH-REF-T21-DOC` — Domain Map / Refactor-Docs aktualisiert. **`ARCH-REF-T21-DONE`** erst nach **gruenem** verpflichtendem `npm run checks` (Snippet, gleiche `SHIM_CHANGED_FILES` wie Ticket) und **VERDICT: ACCEPT** im AI Review.
+- **Scope:** Keine neue Appwrite Function, **keine UI-Änderung**. Dokumentation und Tabellen in Domain Map / Refactor-Docs.
+- **Ticket-Tabellenstatus:** T21 bleibt **todo** bis Gesamt-Gate gruen (Frontend-Altlast blockiert derzeit `typecheck`/`viteBuild`/`testRun`).
+- **Changed files:**
+  - `docs/backend-domain-map.md` — Stand, T21-DOC-Marker; Abschnitte **Access-Helper Konzept** (Klärung: Helper pflichtig, `created_by` nur innerhalb der Helper), **T21 — Collaboration-Zielmodell**, Storage-Grenzen-Zeile Organisationen, Ownership-Matrix (`project_invites` / `organization_invites` explizit)
+  - `docs/architecture-refactor-domains.md` — Stand; T21-Marker; **Current vs. future** unter scriptony-collaboration / scriptony-auth
+  - `docs/scriptony-architecture-refactor-tickets.md` — Hinweis unter T21 (Doku vs. Gate)
+  - `docs/scriptony-architecture-refactor 25.04.26.md` — PLATFORM-Liste um `scriptony-storage` und `scriptony-collaboration` ergänzt; dieser Done Report
+  - `tickets/todo-T21-scriptony-collaboration-zielmodell-und-access-helper-vorbereiten.md` — Status-Hinweis Doku/Gate
+- **Akzeptanzkriterien (Mapping):**
+  - `scriptony-collaboration` in `docs/backend-domain-map.md` (Platform) — erfüllt
+  - Zielarchitektur Platform + Aufzählung — in diesem Dokument (PLATFORM) und Master-Tickets konsistent
+  - Datenmodelle `project_members`, `project_invites`, `organization_members`, `organization_invites`; `projects.owner_type` — in `docs/architecture-refactor-domains.md` (§ scriptony-collaboration) und Cross-Ref in Domain Map
+  - Direct Sharing ohne Org + optionale Organisationen — dokumentiert
+  - Access-Helper `canReadProject` / `canEditProject` / `canManageProject` — Vertrag in Domain Map; bestehende Function-Kopien unter `functions/*/_shared/access.ts` unverändert (Konvergenz separates Ticket)
+  - Grenze `scriptony-auth` (Organisationen heute) vs. `scriptony-collaboration` (Ziel) — Domain Map + architecture-refactor-domains
+- **Inventar (`rg`):**
+  - `created_by` in Functions (Auszug): `scriptony-assets` (routes + `_shared/access.ts`), `scriptony-audio-story` (mehrere routes + access), `scriptony-script` (`_shared/access.ts`), `scriptony-audio` (legacy upload), u. a. — für Zugriffslogik und Migration relevant
+  - Organisationen unter `scriptony-auth`: `appwrite-entry.ts` routet `/organizations`, `/organizations/:id` zu `organizations/index.ts`, `organizations/[id].ts`
+  - `organization_members` im Projekt: u. a. `functions/scriptony-script/_shared/access.ts` (Leselist für Org-Zugehörigkeit)
+- **Tests:** Kein neues Laufzeitverhalten — keine neuen Vitest-Dateien.
+- **Shimwrappercheck command (Ticket-Referenz):**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="docs/backend-domain-map.md,docs/architecture-refactor-domains.md,docs/scriptony-architecture-refactor-tickets.md,docs/scriptony-architecture-refactor 25.04.26.md,tickets/todo-T21-scriptony-collaboration-zielmodell-und-access-helper-vorbereiten.md" SHIM_CHECKS_ARGS="" npm run checks
+  ```
+- **Shimwrappercheck result:**
+  - **Volle Pipeline** (`npm run checks` inkl. Frontend): Exit **1** — `typecheck`, `viteBuild`, `testRun` scheitern an **vorbestehenden** Fehlern in `src/` (z. B. `TS2307` fehlende Pfade aus `AppContent.tsx`). **Kein Zusammenhang** mit den T21-Markdown-Dateien.
+  - **Doku-/Backend-Nachweis** (Frontend ueberspringen, gleiche `SHIM_CHANGED_FILES`):  
+    `CHECK_MODE=snippet SHIM_CHANGED_FILES="docs/backend-domain-map.md,docs/architecture-refactor-domains.md,docs/scriptony-architecture-refactor-tickets.md,docs/scriptony-architecture-refactor 25.04.26.md,tickets/todo-T21-scriptony-collaboration-zielmodell-und-access-helper-vorbereiten.md" SHIM_CHECKS_ARGS="" npm run checks -- --no-frontend --backend` — Backend-Schritte (`functionsFormat`, `functionsLint`, `functionsBuild`, …) und nachgelagerte Checks bis **unmittelbar vor** AI Review **green** (keine geaenderten Function-Sources = viele Schritte skipped).
+  - **Widerspruch Ticket vs. Repo:** Das Ticket verlangt den Standardbefehl ohne Flags; die aktuelle Codebasis scheitert daran am **Frontend** (Altlast). T21-Aenderungen sind **nur Markdown**.
+- **AI Review result:**
+  - Fruehere Laeufe (DONE-Versuch): Codex **VERDICT: REJECT** — Vollpipeline rot / Platzhalter / DONE ohne Nachweis.
+  - **Finaler Scoped-Gate-Lauf** (`npm run checks -- --no-frontend --backend`, 2026-05-05, gleiche `SHIM_CHANGED_FILES`): Codex **VERDICT: ACCEPT** — Doku-Diff konsistent, T21 in Master-Tabelle **todo** bis Gesamt-Gate gruen; keine Secrets.
+- **Known risks:** Helper-Implementierungen sind zwischen Functions noch nicht identisch (bewusst nicht in T21 vereinheitlicht).
+- **Rollback plan:** Git-Revert der genannten Dateien.
+- **Notes:** Siehe `docs/backend-domain-map.md` für den verbindlichen Feature-Einstieg.

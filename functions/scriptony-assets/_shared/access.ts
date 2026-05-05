@@ -5,6 +5,10 @@ function getString(value: unknown): string | undefined {
   return undefined;
 }
 
+function isNonEmptyId(id: string): boolean {
+  return typeof id === "string" && id.trim().length > 0;
+}
+
 async function getCreatorId(projectId: string): Promise<string | undefined> {
   const database = await getDatabases();
   const doc = await database.getDocument(dbId(), "projects", projectId);
@@ -13,31 +17,38 @@ async function getCreatorId(projectId: string): Promise<string | undefined> {
   return getString(doc.user_id) ?? getString(doc.created_by);
 }
 
+/** Single-user MVP: nur Ersteller/in. Keine Delegation Lesen→Manage (RBAC). */
+async function isProjectCreator(
+  userId: string,
+  projectId: string,
+): Promise<boolean> {
+  if (!isNonEmptyId(userId) || !isNonEmptyId(projectId)) return false;
+  const creator = await getCreatorId(projectId);
+  return userId === creator;
+}
+
 /**
  * Project-Access-Helper (single-user MVP).
- *
- * ISP-Notiz: canEditProject und canManageProject delegieren aktuell
- * beide an canReadProject. Das ist bewusst für die initiale Single-User-
- * Phase; T21 Collaboration erweitert die Berechtigungen später.
+ * canRead / canEdit / canManage rufen jeweils dieselbe primitive Logik — nicht
+ * canManage → canRead, damit bei erweitertem Lesen (Kollaboration) keine Eskalation entsteht.
  */
 export async function canReadProject(
   userId: string,
   projectId: string,
 ): Promise<boolean> {
-  const creator = await getCreatorId(projectId);
-  return userId === creator;
+  return isProjectCreator(userId, projectId);
 }
 
 export async function canEditProject(
   userId: string,
   projectId: string,
 ): Promise<boolean> {
-  return canReadProject(userId, projectId);
+  return isProjectCreator(userId, projectId);
 }
 
 export async function canManageProject(
   userId: string,
   projectId: string,
 ): Promise<boolean> {
-  return canReadProject(userId, projectId);
+  return isProjectCreator(userId, projectId);
 }

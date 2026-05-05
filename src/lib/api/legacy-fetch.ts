@@ -7,20 +7,20 @@
 import { getAuthToken } from "../auth/getAuthToken";
 
 export async function fetchWithAuth(
-	url: string,
-	options?: Omit<RequestInit, "headers"> & { body?: unknown },
+  url: string,
+  options?: Omit<RequestInit, "headers"> & { body?: unknown },
 ): Promise<Response> {
-	const token = await getAuthToken();
-	const headers: Record<string, string> = {
-		"Content-Type": "application/json",
-	};
-	if (token) {
-		headers.Authorization = `Bearer ${token}`;
-	}
+  const token = await getAuthToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
-	return fetch(url, {
-		...options,
-		headers,
-		...(options?.body ? { body: JSON.stringify(options.body) } : {}),
-	});
+  return fetch(url, {
+    ...options,
+    headers,
+    ...(options?.body ? { body: JSON.stringify(options.body) } : {}),
+  });
 }

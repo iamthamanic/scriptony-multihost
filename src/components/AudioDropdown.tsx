@@ -79,12 +79,17 @@ export function AudioDropdown({ projectId, projectType }: AudioDropdownProps) {
     }) => {
       const token = await getAuthToken();
       if (!token) throw new Error("Nicht authentifiziert");
-      return createAudioTrack(sceneId, projectId, {
-        type: type as AudioTrack["type"],
-        content: "",
-        startTime: 0,
-        duration: 0,
-      }, token);
+      return createAudioTrack(
+        sceneId,
+        projectId,
+        {
+          type: type as AudioTrack["type"],
+          content: "",
+          startTime: 0,
+          duration: 0,
+        },
+        token,
+      );
     },
     onSuccess: () => {
       toast.success("Track hinzugefügt");

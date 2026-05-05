@@ -1200,6 +1200,8 @@ Ein Nutzer kann ein Projekt direkt mit einer anderen Person teilen, ohne vorher 
 
 `ARCH-REF-T21-DONE`
 
+**Hinweis (2026-05-05):** Dokumentations-Arbeit und Domain-Map-Updates sind im Done Report eingetragen; Tabellen-Status **todo** bleibt, bis der verpflichtende Shim `CHECK_MODE=snippet … npm run checks` ohne Frontend-Altlast **gruen** ist (siehe Done Report — AI Review / Vollpipeline).
+
 ---
 
 ## T22: AGENTS.md Post-Audit - Code Quality Gate

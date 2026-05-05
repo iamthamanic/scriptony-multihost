@@ -1,7 +1,7 @@
 # Backend Domain Map
 
-Stand: 2026-05-03  
-Verifizierungsmarker: ARCH-REF-T01-DONE · **T20:** `ARCH-REF-T20-DONE` (Storage-Zielmodell, keine neue Function)
+Stand: 2026-05-05  
+Verifizierungsmarker: ARCH-REF-T01-DONE · **T20:** `ARCH-REF-T20-DONE` · **T21:** `ARCH-REF-T21-DOC` (Collaboration-Doku in Map/Refactor-Docs; Shim-Gate Gesamtrepo siehe Done Report)
 
 ## Zweck
 
@@ -105,7 +105,7 @@ obigen Map.
 | Aktuelle Location | Ziel-Domain | Status | Beispiele |
 |---|---|---|---|
 | `scriptony-auth` (Storage-Provider-OAuth) | `scriptony-storage` | `future` | `storage-providers`, `integration-tokens` |
-| `scriptony-auth` (Organisationen) | `scriptony-collaboration` | `future` | `organizations`, `organization_members` |
+| `scriptony-auth` (Organisationen) | `scriptony-collaboration` | `future` | **Heute:** `GET/POST /organizations`, `GET/PATCH /organizations/:id` in `scriptony-auth` (Listen/Erstellen/Settings). **Ziel:** Mitgliedschaft, Einladungen, projektbezogene Access-Checks unter `scriptony-collaboration`; Auth bleibt Login/Identitaet. |
 
 ### T20 — Storage-Provider-OAuth vs. Login
 
@@ -206,7 +206,9 @@ async function canEditProject(userId: string, projectId: string): Promise<boolea
 async function canManageProject(userId: string, projectId: string): Promise<boolean>
 ```
 
-**Initiale Implementierung (Single-User):**
+**Regel (neue Domain-Functions):** Alle Projekt-Zugriffsentscheidungen laufen **nur** ueber diese drei Helper (pro Function als `_shared/access.ts` oder spaeter zentral in `functions/_shared/` — Konvergenz ist separates Refactor-Ticket). **Keine** `created_by`/`user_id`-Vergleiche in Route-Handlern; die Helper duerfen das intern tun.
+
+**Initiale Implementierung (Single-User / Compat):**
 ```typescript
 async function canEditProject(userId: string, projectId: string): Promise<boolean> {
   const project = await getProject(projectId);
@@ -214,7 +216,7 @@ async function canEditProject(userId: string, projectId: string): Promise<boolea
 }
 ```
 
-**Ziel-Implementierung (Multi-User):**
+**Ziel-Implementierung (Multi-User inkl. Direct Share + optionale Orgs):**
 ```typescript
 async function canEditProject(userId: string, projectId: string): Promise<boolean> {
   const project = await getProject(projectId);
@@ -226,14 +228,41 @@ async function canEditProject(userId: string, projectId: string): Promise<boolea
 }
 ```
 
-**Regel:** Neue Functions muessen Access-Helper nutzen. Direkte `created_by`-Checks sind verboten.
+Heute existieren Helper-Duplikate in mehreren Functions (z. B. `scriptony-assets`, `scriptony-script`, `scriptony-audio-story`); die Logik konvergiert bei Bedarf auf eine gemeinsame Implementierung, sobald `scriptony-collaboration` live ist.
+
+**Capability-Matrix und RBAC-Zielbild** (Rollen, keine Manage→Read-Delegation): **`docs/architecture-refactor-domains.md`** Abschnitt **scriptony-collaboration** (Tabellen *RBAC*, *Einladungen*).
+
+**Konvergenz / `created_by` — Referenz-Fahrplan (nicht binding Ticket-fuer-Ticket, aber Roadmap):**
+
+| Phase | Inhalt |
+|-------|--------|
+| 1 | `projects`: `owner_type`, `owner_id` ergaenzen; Default aus `user_id`/`created_by` |
+| 2 | Zentrale oder generierte Access-Module unter `functions/_shared/` (oder `scriptony-collaboration` nur fuer Checks); **Zod**-Validierung fuer IDs am Helper-Eingang |
+| 3 | Domain-Functions nacheinander auf gemeinsame Helper / Collaboration-Service umstellen |
+| 4 | Direkte `created_by`-Fallbacks in Helpern entfernen, wenn `project_members`/`organization_members` vollstaendig |
+
+**Invite-Security (Ziel-API):** `expires_at`, einmaliger Token, **Rate-Limit** fuer POST Einladungen — siehe `architecture-refactor-domains.md`.
 
 ---
 
-## Direct Project Sharing
+## T21 — Collaboration-Zielmodell (`scriptony-collaboration`)
 
-Ein Nutzer muss ein Projekt direkt mit einer anderen Person teilen koennen,
-ohne vorher eine Organisation zu erstellen. Organisationen sind optionaler Kontext.
+**Platform-Domain:** `scriptony-collaboration` (siehe Tabelle Platform). Verbindliche Detail-Skizze der Collections und von `projects.owner_type`: **`docs/architecture-refactor-domains.md`** Abschnitt **scriptony-collaboration**.
+
+| Geplantes Datenmodell | Zweck |
+|---|---|
+| `project_members` | Direktes Teilen: wer hat welche Rolle auf dem Projekt |
+| `project_invites` | Einladungen per E-Mail/Token fuer Projekt-Zugang |
+| `organization_members` | Mitgliedschaft und Rolle in einer Organisation/Workspace |
+| `organization_invites` | Einladungen in eine Organisation |
+
+**`projects` (Ziel):** `owner_type: 'user' \| 'organization'` und `owner_id` (Referenz auf User oder Organisation). Ergaenzt Legacy-Felder wie `created_by` / `user_id` bis Migration abgeschlossen ist.
+
+**Direct Project Sharing** ist Pflicht: Ein Nutzer kann ein Projekt mit einer anderen Person teilen **ohne** Organisation. Organisationen/Workspaces sind **optionaler** Owner-Kontext und koennen spaeter Projekte besitzen.
+
+---
+
+## Direct Project Sharing (Kurzskizze)
 
 ```typescript
 // project_members (fuer Direct Sharing)
@@ -267,7 +296,7 @@ ohne vorher eine Organisation zu erstellen. Organisationen sind optionaler Konte
 | `render_jobs` | `scriptony-stage` | `scriptony-stage2d`, `scriptony-stage3d` | — |
 | `jobs` | `scriptony-jobs` | `scriptony-media-worker`, `scriptony-stage` | — |
 | `storage_connections`, `storage_targets`, `storage_objects` | `scriptony-storage` | `scriptony-assets` | — |
-| `project_members`, `organization_members`, `invites` | `scriptony-collaboration` | `scriptony-auth` (Login check) | — |
+| `project_members`, `project_invites`, `organization_members`, `organization_invites` | `scriptony-collaboration` | `scriptony-auth` (Login/Identitaet), alle Domains (Read ueber Helper) | — |
 
 ---
 

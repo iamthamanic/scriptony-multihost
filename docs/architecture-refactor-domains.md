@@ -1,11 +1,13 @@
 # Architecture Refactor – Ziel-Domaenen
 
-Stand: 2026-05-03
+Stand: 2026-05-05
 
 Dieses Dokument enthaelt die Ziel-Domaenen fuer die Architektur-Refactor-Phasen.
 Es wird von `docs/scriptony-architecture-refactor-master.md` referenziert.
 
 **T20 Verifizierungsmarker:** `ARCH-REF-T20-DONE` (Zielmodell `scriptony-storage` und Grenze zu `scriptony-assets` / `scriptony-auth` in `docs/backend-domain-map.md` und hier verankert.)
+
+**T21 Verifizierungsmarker (Dokumentation):** `ARCH-REF-T21-DOC` — Zielmodell `scriptony-collaboration`, Access-Helper-Vertrag und Grenze zu `scriptony-auth` in `docs/backend-domain-map.md` und hier verankert. Gesamt-Ticket **T21** bleibt in der Master-Tabelle **todo**, bis der volle Shim-Gate gruen ist (siehe Done Report).
 
 ---
 
@@ -159,7 +161,8 @@ scriptony-collaboration besitzt Projektfreigaben, Mitglieder, Rollen, Einladunge
   token_hash: string,
   status: 'pending' | 'accepted' | 'rejected' | 'expired',
   invited_by: string,
-  expires_at: datetime,
+  expires_at: datetime,       // Pflicht; Default z. B. 7 Tage nach created_at
+  accepted_at: datetime | null, // gesetzt bei Annahme (einmaliger Token)
   created_at: datetime,
   updated_at: datetime
 }
@@ -194,29 +197,47 @@ scriptony-collaboration besitzt Projektfreigaben, Mitglieder, Rollen, Einladunge
 **Access-Helper:**
 
 ```typescript
-// Zukuenftige Helper-Implementierung
 canReadProject(userId: string, projectId: string): Promise<boolean>
 canEditProject(userId: string, projectId: string): Promise<boolean>
 canManageProject(userId: string, projectId: string): Promise<boolean>
 ```
 
+**RBAC (verbindlich):**
+
+| Helper | Bedeutung | Ziel-Rollen / Regeln |
+|--------|-----------|----------------------|
+| `canReadProject` | Projekt lesen (Struktur, Metadaten, ggf. geteilte Inhalte) | `project_members`: viewer, editor, owner; Org: viewer+; Owner-User/Org via `owner_type`/`owner_id` |
+| `canEditProject` | Inhalte bearbeiten (Scripts, Assets je nach Domain), keine Mitgliederverwaltung | `project_members`: editor, owner; Org-Mitglieder mit Schreibrecht gemaess Policy |
+| `canManageProject` | Mitgliederverwaltung, Einladungen, Projekt loeschen/Owner wechseln | **Nur** `project_members.role === 'owner'` oder explizite Admin-Policy — **nie** `return canReadProject(...)` |
+
+**`owner` vs `admin`:** Auf **Projekt**-Ebene gibt es `owner` (volle Kontrolle ueber das Projekt). **`admin`** ist vor allem fuer **Organisationen** (`organization_members`) gedacht (Mitglieder einladen, Rollen setzen). Projekt-Ebene kann spaeter `admin` als Delegation definieren; bis dahin: Management = Projekt-**owner** (+ ggf. Org-Owner laut Policy).
+
+**Anti-Pattern:** `canManageProject` darf **nicht** an `canReadProject` delegieren — sobald Lesen fuer Viewer/Org breiter wird, waere das eine **Authorization-Eskalation**.
+
+**Hinweis (bestehender Code):** `functions/scriptony-script/_shared/access.ts` nutzt fuer **MVP** `canEditProject` → `canReadProject`. Sobald `project_members` existiert, muss **canEdit** auf Rollen **editor** / **owner** (nicht **viewer**) eingeschraenkt werden — siehe Tabelle oben.
+
+**Eingabevalidierung:** Alle drei Helper validieren am Eingang `userId` und `projectId` (nicht leer, erwartetes Format); in Implementierungen **Zod**-Schemas parallel zu Route-Handlern (`ProjectIdSchema` aus `functions/_shared/validation.ts` wo vorhanden).
+
 **Initiale Implementierung (Single-User):**
 ```typescript
-// Initial darf der Helper noch created_by pruefen
-async function canEditProject(userId, projectId) {
-  const project = await getProject(projectId);
-  return project.created_by === userId;
-}
+// Nur Ersteller/in — drei Helper duerfen dieselbe primitive Pruefung nutzen,
+// aber nicht canManage → canRead verkettet sein.
 ```
 
-**Ziel-Implementierung (Multi-User):**
+**Ziel-Implementierung (Multi-User) — skizziert:**
 ```typescript
-// Spaetere Erweiterung
-canEditProject =
-  project.owner_type === 'user' && project.owner_id === userId
-  OR project.owner_type === 'organization' && isOrgMemberWithEdit(userId, project.owner_id)
-  OR hasProjectRole(userId, projectId, ['owner', 'editor', 'admin'])
+// canReadProject: Viewer-Kreis + Owner/Org-Zugehoerigkeit
+// canEditProject: hasProjectRole(..., ['owner','editor']) || orgEditor(...)
+// canManageProject: hasProjectRole(..., ['owner']) || orgAdminForProject(...)  // explizit, ohne canReadProject aufzurufen
 ```
+
+**Einladungen / API (Security-Ziele fuer `scriptony-collaboration`):**
+
+- Jede Einladung: **expires_at** (Default z. B. 7 Tage), **einmaliger Token** (Hash gespeichert), Status `expired` nach Ablauf.
+- **Rate-Limiting** (Ziel): z. B. max. **10** Einladungen pro Stunde pro **invited_by** und **project_id** (konfigurierbar).
+- Annahme setzt **accepted_at** und invalidiert den Token.
+
+**Tests (Ziel):** Unit-Tests pro Helper mit Matrix: Owner, Editor, Viewer, kein Mitglied, abgelaufene Einladung; keine Assertions die `canManage` ueber `canRead` simulieren.
 
 **Spaetere Routen:**
 - `GET /collaboration/projects/:projectId/members`
@@ -232,3 +253,7 @@ canEditProject =
 **Grenze zu scriptony-auth:**
 - **scriptony-auth** = Identitaet, Signup, Login, Account Basics
 - **scriptony-collaboration** = Wer darf in welchem Projekt welche Aktionen ausfuehren?
+
+**Current vs. future (Organisationen):**
+- **Heute:** Organisationen werden ueber `scriptony-auth` exponiert (`/organizations`, `/organizations/:id` in `functions/scriptony-auth/appwrite-entry.ts`). Das ist **Kompatibilitaet**, keine langfristige SRP-Loesung.
+- **Ziel:** Mitgliedschafts-Lebenszyklus, Einladungen und projektbezogene Berechtigung liegen bei `scriptony-collaboration`; `scriptony-auth` bleibt ohne Geschaeftslogik zu Projektrollen.
