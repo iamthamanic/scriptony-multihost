@@ -1,7 +1,7 @@
 # Backend Domain Map
 
 Stand: 2026-05-05  
-Verifizierungsmarker: ARCH-REF-T01-DONE · **T20:** `ARCH-REF-T20-DONE` · **T21:** `ARCH-REF-T21-DOC` (Collaboration-Doku in Map/Refactor-Docs; Shim-Gate Gesamtrepo siehe Done Report)
+Verifizierungsmarker: ARCH-REF-T01-DONE · **T20:** `ARCH-REF-T20-DONE` · **T21:** `ARCH-REF-T21-DONE` (Collaboration-Zielmodell, Access-Helper-Vertrag, Shim-Gate bestanden)
 
 ## Zweck
 

@@ -122,9 +122,9 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 
 ---
 
-# TODO - T21 | `scriptony-collaboration` Zielmodell und Access-Helper vorbereiten
+# DONE - T21 | `scriptony-collaboration` Zielmodell und Access-Helper vorbereiten
 
-**Phase:** laufend · **Dokumentation umgesetzt** (`docs/backend-domain-map.md`, `docs/architecture-refactor-domains.md`, Done Report); Tabellen-Status **todo** bis `npm run checks` gesamtgruen (aktuell Frontend-Altlast).
+**Phase:** laufend · **Abgeschlossen (2026-05-06):** Shim-Gate `CHECK_MODE=snippet … npm run checks` gruen (Scope siehe Done Report); Marker `ARCH-REF-T21-DONE`.
 
 ## T21: `scriptony-collaboration` Zielmodell und Access-Helper vorbereiten
 

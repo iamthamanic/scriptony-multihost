@@ -7,7 +7,7 @@ Es wird von `docs/scriptony-architecture-refactor-master.md` referenziert.
 
 **T20 Verifizierungsmarker:** `ARCH-REF-T20-DONE` (Zielmodell `scriptony-storage` und Grenze zu `scriptony-assets` / `scriptony-auth` in `docs/backend-domain-map.md` und hier verankert.)
 
-**T21 Verifizierungsmarker (Dokumentation):** `ARCH-REF-T21-DOC` — Zielmodell `scriptony-collaboration`, Access-Helper-Vertrag und Grenze zu `scriptony-auth` in `docs/backend-domain-map.md` und hier verankert. Gesamt-Ticket **T21** bleibt in der Master-Tabelle **todo**, bis der volle Shim-Gate gruen ist (siehe Done Report).
+**T21 Verifizierungsmarker:** `ARCH-REF-T21-DONE` — Zielmodell `scriptony-collaboration`, RBAC-/Capability-Doku, Access-Helper-Vertrag und Grenze zu `scriptony-auth` in `docs/backend-domain-map.md` und hier verankert; voller Shim-Gate (Snippet) bestanden (siehe Done Report).
 
 ---
 
