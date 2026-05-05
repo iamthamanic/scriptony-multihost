@@ -1916,3 +1916,39 @@ Editor-Readmodel aggregiert nur für die UI.
 - **Known risks:** Helper-Implementierungen sind zwischen Functions noch nicht identisch (bewusst nicht in T21 vereinheitlicht).
 - **Rollback plan:** Git-Revert der genannten Dateien.
 - **Notes:** Siehe `docs/backend-domain-map.md` für den verbindlichen Feature-Einstieg.
+
+## Phase 11 — Frontend-Komponenten-Struktur
+
+### Done Report: T23 — `src/components/` in Feature-Domains aufteilen
+
+- **Date:** 2026-05-05 (Ticket angelegt)
+- **Verification Marker:** `ARCH-REF-T23-DONE` (erst nach gruenem Shim-Gate und VERDICT: ACCEPT)
+- **Scope:** Keine funktionale Aenderung. Reorganisation von 91 flachen `.tsx`-Dateien in Domain-Ordner unter `src/components/`.
+- **Ticket-Tabellenstatus:** T23 **todo**.
+- **Changed files (geplant):**
+  - `src/components/audio/*.tsx` (verschoben aus Root)
+  - `src/components/book/*.tsx`
+  - `src/components/characters/*.tsx`
+  - `src/components/film/*.tsx`
+  - `src/components/inspiration/*.tsx`
+  - `src/components/project/*.tsx`
+  - `src/components/timeline/*.tsx`
+  - `src/components/world/*.tsx`
+  - `src/components/assistant/*.tsx`
+  - `src/components/settings/*.tsx`
+  - `src/components/shared/*.tsx`
+  - `src/components/AppContent.tsx` (Lazy-Import-Pfade aktualisiert)
+  - Alle Import-Pfade in `src/` die auf verschobene Dateien zeigen
+- **Akzeptanzkriterien:**
+  - Mapping-Tabelle bestaetigt
+  - `tsc --noEmit` gruen nach jeder Domain
+  - Keine flachen Domain-Dateien in `src/components/`
+  - Prettier + Lint gruen
+  - Shim-Gate gruen
+- **Lektion aus gescheitertem Versuch:** Regex-basierte Import-Rewrites korrumpieren Dateien bei verschachtelten Pfaden. LSP/IDE-Refactor oder manuelles Review pro Datei erforderlich.
+- **Shimwrappercheck command:**
+  ```bash
+  CHECK_MODE=snippet SHIM_CHANGED_FILES="src/components/AppContent.tsx,src/components/audio/,src/components/book/,src/components/characters/,src/components/film/,src/components/inspiration/,src/components/project/,src/components/timeline/,src/components/world/,src/components/assistant/,src/components/settings/,src/components/shared/" SHIM_CHECKS_ARGS="" npm run checks
+  ```
+- **Rollback plan:** `git checkout HEAD -- src/components/`
+- **Notes:** Eignet sich als eigenes, abgeschlossenes Ticket. Nicht als Nebenprodukt anderer Arbeit.

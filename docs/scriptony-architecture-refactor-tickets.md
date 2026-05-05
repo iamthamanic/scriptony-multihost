@@ -146,6 +146,8 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 | T19    | laufend | UI/UX und Frontend-Aufrufer je Phase pruefen                              | **done** | alle Implementierungstickets |
 | T20    | laufend | `scriptony-storage` Zielmodell und Provider Boundary vorbereiten          | **done** | T01, T05, T06                |
 | T21    | laufend | `scriptony-collaboration` Zielmodell und Access-Helper vorbereiten        | todo     | T01, T03, T04                |
+| T22    | laufend | AGENTS.md Post-Audit - Code Quality Gate                                  | todo     | T02, T03, T04, T08, T12     |
+| T23    | 11      | `src/components/` in Feature-Domains aufteilen                          | todo     | T19                          |
 
 ---
 
@@ -1287,3 +1289,91 @@ npm run test:run
 ### Verifizierungsmarker
 
 `ARCH-REF-T22-DONE`
+
+---
+
+## T23: `src/components/` in Feature-Domains aufteilen
+
+### Kontext
+
+`src/components/` enthält **91 .tsx-Dateien** in einem flachen Ordner.
+
+### Problem
+
+Keine Domain-Trennung. Neue Features landen willkürlich. Dateien wie `AudioDropdown.tsx`, `BookDropdown.tsx`, `BeatTimeline.tsx` und `LoadingSpinner.tsx` teilen denselben Namespace. Das erschwert:
+- Code Review (unübersichtliche Diff-Scopes)
+- Onboarding (keine Orientierung wo was liegt)
+- Refactoring (unbekannte Seiteneffekte bei Änderungen)
+
+### Lösung
+
+Feature-Domain-Ordner unter `src/components/`:
+
+```
+src/components/
+├── audio/          # AudioTimeline, AudioSceneCard, etc.
+├── book/           # BookDropdown, NativeBookView
+├── characters/     # CharacterPicker, CharacterDetailModal
+├── film/           # FilmDropdown, NativeScreenplayView
+├── inspiration/    # InspirationCard, AddInspirationDialog
+├── project/        # ProjectCarousel, ProjectExportDialog
+├── timeline/       # BeatTimeline, VirtualizedTimeline, etc.
+├── world/          # WorldCarousel, WorldReferenceAutocomplete
+├── assistant/      # ScriptonyAssistant, AIIntegrationsSection
+├── settings/       # ServerStatusBanner, PerformanceDashboard
+├── shared/         # LoadingSpinner, EmptyState, ContainerCard
+├── ui/             # shadcn/ui primitives (bleibt)
+├── ai/             # FeatureModelPicker, ProviderBadges (bleibt)
+├── auth/           # ProtectedRoute (bleibt)
+├── pages/          # HomePage, ProjectsPage (bleibt)
+├── figma/          # Figma-Komponenten (bleibt)
+├── project-form/    # (bleibt)
+├── stage/           # (bleibt)
+├── style-guide/     # (bleibt)
+```
+
+### Migration-Regeln
+
+| Regel | Beschreibung |
+|---|---|
+| **Keine Regex-basierten Import-Fixes** | LSP/IDE-Refactor oder manuelles `find + sed` mit Review. Regex hat beim ersten Versuch Dateien korrumpiert. |
+| **Mapping-Tabelle vorab** | Jedem Komponentennamen ein Ziel-Ordner zuordnen (siehe Lösung oben). |
+| **Pro Domain ein Commit** | Nicht alle 91 Dateien auf einmal. Pro Domain (z. B. nur `audio/`) ein separater Commit. |
+| **Import-Pfade mit `tsc --noEmit` verifizieren** | Nach jedem Domain-Commit TypeScript check laufen lassen. |
+| **Lazy-Import-Pfade prüfen** | `import("../components/Foo")` in `AppContent.tsx`-Lazy-Blöcken müssen angepasst werden. |
+| **Barrel-Export optional** | Pro Domain `index.ts` mit Re-Exports — erst wenn nötig, nicht voreilig. |
+
+### Gescheiterte Versuch (Dokumentation)
+
+2026-05-05: Bulk-`git mv` + Python-Regex-Skript zur Import-Korrektur.
+Ergebnis: **Reverted.**
+- 97 externe Import-Fixes generiert, aber Regex ersetzte falsch:
+  - `import { ChatSettingsDialog } from "./settings/ChatSettingsDialog"` → korrumpiert zu `./settings/ChatSettingsDialogcomponents/settings/ChatSettingsDialog`
+- Weitere 100+ TypeScript-Fehler durch falsche `../` vs `../../` Tiefen in verschobenen Dateien.
+- Lektion: **Keine Regex-basierten Import-Rewrites bei komplexen relativen Pfaden.**
+
+### Akzeptanzkriterien
+
+- [ ] Mapping-Tabelle in Ticket erstellt und vom Reviewer bestätigt.
+- [ ] Jede verschobene Datei hat korrekte Import-Pfade (`tsc --noEmit` grün nach jeder Domain).
+- [ ] `src/components/` enthält keine flachen Domain-Dateien mehr (nur Ordner).
+- [ ] `AppContent.tsx` Lazy-Imports aktualisiert.
+- [ ] Keine Barrels ohne Notwendigkeit.
+- [ ] Prettier + Lint grün vor jedem Commit.
+- [ ] Shimwrappercheck: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks` grün.
+
+### Verifikation
+
+```bash
+# Nach jeder Domain-Gruppe:
+npm run typecheck
+npm run lint
+npm run format:check
+
+# Vor Ticket-Abschluss:
+CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks
+```
+
+### Verifizierungsmarker
+
+`ARCH-REF-T23-DONE`
