@@ -135,6 +135,7 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 ### Problem
 
 Keine Domain-Trennung. Neue Features landen willkürlich. Dateien wie `AudioDropdown.tsx`, `BookDropdown.tsx`, `BeatTimeline.tsx` und `LoadingSpinner.tsx` teilen denselben Namespace. Das erschwert:
+
 - Code Review (unübersichtliche Diff-Scopes)
 - Onboarding (keine Orientierung wo was liegt)
 - Refactoring (unbekannte Seiteneffekte bei Änderungen)
@@ -168,35 +169,36 @@ src/components/
 
 ### Mapping-Tabelle (bestätigt)
 
-| Datei | Ziel-Ordner |
-|---|---|
-| AudioDropdown.tsx, AudioEditDialog.tsx, AudioEditDialogPro.tsx, AudioFileList.tsx, AudioLabelDialog.tsx, AudioSceneCard.tsx, AudioSceneView.tsx, AudioTimeline.tsx, AudioTimelineLane.tsx, AudioTimelineRuler.tsx, AudioTimelineSegment.tsx, NativeAudiobookView.tsx, ProgressiveWaveform.tsx | `audio/` |
-| BookDropdown.tsx, BookDropdownMobile.tsx, NativeBookView.tsx | `book/` |
-| CharacterAutocomplete.tsx, CharacterDetailModal.tsx, CharacterPicker.tsx, SceneCharacterBadge.tsx | `characters/` |
-| FilmDropdown.tsx, FilmDropdownControlled.tsx, FilmDropdownMobile.tsx, NativeScreenplayView.tsx | `film/` |
-| AddInspirationDialog.tsx, InspirationCard.tsx, InspirationField.tsx | `inspiration/` |
-| ProjectCardWithPrefetch.tsx, ProjectCarousel.tsx, ProjectDebugger.tsx, ProjectDropdown.tsx, ProjectExportDialog.tsx, ProjectFieldLabel.tsx, ProjectSectionFrame.tsx, ProjectStatsLogsDialog.tsx | `project/` |
-| BeatBand.tsx, BeatCard.tsx, BeatColumn.tsx, BeatRail.tsx, BeatTimeline.tsx, ResizableBeatBlock.tsx, TimelineNodeStatsDialog.tsx, TimelineTextPreview.tsx, VirtualizedTimeline.tsx | `timeline/` |
-| WorldCarousel.tsx, WorldReferenceAutocomplete.tsx, WorldStatsLogsDialog.tsx | `world/` |
-| AIIntegrationsSection.tsx, HookBar.tsx, ScriptonyAssistant.tsx | `assistant/` |
-| BackendNotConfiguredBanner.tsx, ChatSettingsDialog.tsx, ConnectionStatusIndicator.tsx, PerformanceDashboard.tsx, ServerStatusBanner.tsx, StorageSettingsSection.tsx, SystemStatusSection.tsx | `settings/` |
-| ContainerCard.tsx, ContentSkeleton.tsx, DebouncedRichTextEditor.tsx, EditableParagraph.tsx, EmptyState.tsx, GifAnimationUploadDialog.tsx, HighlightedTextarea.tsx, ImageCropDialog.tsx, ImageUploadWaveOverlay.tsx, LoadingSpinner.tsx, ReadonlyTiptapView.tsx, ReferenceTag.tsx, RichTextEditorModal.tsx, RoadIcon.tsx, SaveStatusBadge.tsx | `shared/` |
+| Datei                                                                                                                                                                                                                                                                                                                                        | Ziel-Ordner    |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| AudioDropdown.tsx, AudioEditDialog.tsx, AudioEditDialogPro.tsx, AudioFileList.tsx, AudioLabelDialog.tsx, AudioSceneCard.tsx, AudioSceneView.tsx, AudioTimeline.tsx, AudioTimelineLane.tsx, AudioTimelineRuler.tsx, AudioTimelineSegment.tsx, NativeAudiobookView.tsx, ProgressiveWaveform.tsx                                                | `audio/`       |
+| BookDropdown.tsx, BookDropdownMobile.tsx, NativeBookView.tsx                                                                                                                                                                                                                                                                                 | `book/`        |
+| CharacterAutocomplete.tsx, CharacterDetailModal.tsx, CharacterPicker.tsx, SceneCharacterBadge.tsx                                                                                                                                                                                                                                            | `characters/`  |
+| FilmDropdown.tsx, FilmDropdownControlled.tsx, FilmDropdownMobile.tsx, NativeScreenplayView.tsx                                                                                                                                                                                                                                               | `film/`        |
+| AddInspirationDialog.tsx, InspirationCard.tsx, InspirationField.tsx                                                                                                                                                                                                                                                                          | `inspiration/` |
+| ProjectCardWithPrefetch.tsx, ProjectCarousel.tsx, ProjectDebugger.tsx, ProjectDropdown.tsx, ProjectExportDialog.tsx, ProjectFieldLabel.tsx, ProjectSectionFrame.tsx, ProjectStatsLogsDialog.tsx                                                                                                                                              | `project/`     |
+| BeatBand.tsx, BeatCard.tsx, BeatColumn.tsx, BeatRail.tsx, BeatTimeline.tsx, ResizableBeatBlock.tsx, TimelineNodeStatsDialog.tsx, TimelineTextPreview.tsx, VirtualizedTimeline.tsx                                                                                                                                                            | `timeline/`    |
+| WorldCarousel.tsx, WorldReferenceAutocomplete.tsx, WorldStatsLogsDialog.tsx                                                                                                                                                                                                                                                                  | `world/`       |
+| AIIntegrationsSection.tsx, HookBar.tsx, ScriptonyAssistant.tsx                                                                                                                                                                                                                                                                               | `assistant/`   |
+| BackendNotConfiguredBanner.tsx, ChatSettingsDialog.tsx, ConnectionStatusIndicator.tsx, PerformanceDashboard.tsx, ServerStatusBanner.tsx, StorageSettingsSection.tsx, SystemStatusSection.tsx                                                                                                                                                 | `settings/`    |
+| ContainerCard.tsx, ContentSkeleton.tsx, DebouncedRichTextEditor.tsx, EditableParagraph.tsx, EmptyState.tsx, GifAnimationUploadDialog.tsx, HighlightedTextarea.tsx, ImageCropDialog.tsx, ImageUploadWaveOverlay.tsx, LoadingSpinner.tsx, ReadonlyTiptapView.tsx, ReferenceTag.tsx, RichTextEditorModal.tsx, RoadIcon.tsx, SaveStatusBadge.tsx | `shared/`      |
 
 ### Migration-Regeln (verbindlich)
 
-| Regel | Beschreibung |
-|---|---|
-| **Keine Regex-basierten Import-Fixes** | LSP/IDE-Refactor oder manuelles `find + sed` mit Review. Regex hat beim ersten Versuch Dateien korrumpiert. |
-| **Mapping-Tabelle vorab** | Jedem Komponentennamen ein Ziel-Ordner zuordnen (siehe Tabelle oben). |
-| **Pro Domain ein Commit** | Nicht alle 91 Dateien auf einmal. Pro Domain (z. B. nur `audio/`) ein separater Commit. |
-| **Import-Pfade mit `tsc --noEmit` verifizieren** | Nach jedem Domain-Commit TypeScript check laufen lassen. |
-| **Lazy-Import-Pfade prüfen** | `import("../components/Foo")` in `AppContent.tsx`-Lazy-Blöcken müssen angepasst werden. |
-| **Barrel-Export optional** | Pro Domain `index.ts` mit Re-Exports — erst wenn nötig, nicht voreilig. |
+| Regel                                            | Beschreibung                                                                                                |
+| ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| **Keine Regex-basierten Import-Fixes**           | LSP/IDE-Refactor oder manuelles `find + sed` mit Review. Regex hat beim ersten Versuch Dateien korrumpiert. |
+| **Mapping-Tabelle vorab**                        | Jedem Komponentennamen ein Ziel-Ordner zuordnen (siehe Tabelle oben).                                       |
+| **Pro Domain ein Commit**                        | Nicht alle 91 Dateien auf einmal. Pro Domain (z. B. nur `audio/`) ein separater Commit.                     |
+| **Import-Pfade mit `tsc --noEmit` verifizieren** | Nach jedem Domain-Commit TypeScript check laufen lassen.                                                    |
+| **Lazy-Import-Pfade prüfen**                     | `import("../components/Foo")` in `AppContent.tsx`-Lazy-Blöcken müssen angepasst werden.                     |
+| **Barrel-Export optional**                       | Pro Domain `index.ts` mit Re-Exports — erst wenn nötig, nicht voreilig.                                     |
 
 ### Gescheiterter Versuch (Dokumentation)
 
 2026-05-05: Bulk-`git mv` + Python-Regex-Skript zur Import-Korrektur.
 Ergebnis: **Reverted.**
+
 - 97 externe Import-Fixes generiert, aber Regex ersetzte falsch:
   - `import { ChatSettingsDialog } from "./settings/ChatSettingsDialog"` → korrumpiert zu `./settings/ChatSettingsDialogcomponents/settings/ChatSettingsDialog`
 - Weitere 100+ TypeScript-Fehler durch falsche `../` vs `../../` Tiefen in verschobenen Dateien.

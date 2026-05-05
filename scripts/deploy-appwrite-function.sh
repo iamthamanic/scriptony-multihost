@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Deploy any Scriptony Appwrite Function.
 # Replaces the 28 individual deploy-appwrite-function-<name>.sh scripts.
+# Bash 3.2-compatible (macOS default). No associative arrays.
 #
 # Usage:
 #   scripts/deploy-appwrite-function.sh <function-name>     # deploy single
@@ -14,41 +15,71 @@ ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FUN="$ROOT/functions"
 STAGE_BASE="$FUN/.deploy-staging"
 
-# Known functions and their entry-point pattern.
-# Format: "name:entry" where entry is one of:
-#   "npm"        -> uses npm run build:scriptony-<name>
-#   "appwrite"   -> esbuild appwrite-entry.ts
-#   "index"      -> esbuild index.ts
-#   "custom:<path>" -> esbuild custom entry path
-declare -A ENTRY_MAP=(
-  [scriptony-ai]=npm
-  [scriptony-assets]=appwrite
-  [scriptony-assistant]=index
-  [scriptony-audio-story]=appwrite
-  [scriptony-audio]=index
-  [scriptony-auth]=appwrite
-  [scriptony-beats]=index
-  [scriptony-characters]=appwrite
-  [scriptony-clips]=index
-  [scriptony-editor-readmodel]=index
-  [scriptony-gym]=index
-  [scriptony-image]=index
-  [scriptony-jobs]=index
-  [scriptony-mcp-appwrite]=index
-  [scriptony-media-worker]=index
-  [scriptony-project-nodes]=appwrite
-  [scriptony-projects]=appwrite
-  [scriptony-script]=appwrite
-  [scriptony-shots]=appwrite
-  [scriptony-stage]=index
-  [scriptony-stage2d]=index
-  [scriptony-stage3d]=index
-  [scriptony-style-guide]=index
-  [scriptony-style]=index
-  [scriptony-sync]=index
-  [scriptony-video]=index
-  [scriptony-worldbuilding]=appwrite
-)
+# Bash 3.2-compatible: use a function with case instead of declare -A.
+# Returns one of: npm | appwrite | index | custom:<path>
+get_entry_type() {
+  case "$1" in
+    scriptony-ai)           echo "npm" ;;
+    scriptony-assets)       echo "appwrite" ;;
+    scriptony-assistant)    echo "index" ;;
+    scriptony-audio-story)  echo "appwrite" ;;
+    scriptony-audio)        echo "index" ;;
+    scriptony-auth)         echo "appwrite" ;;
+    scriptony-beats)        echo "index" ;;
+    scriptony-characters)   echo "appwrite" ;;
+    scriptony-clips)        echo "index" ;;
+    scriptony-editor-readmodel) echo "index" ;;
+    scriptony-gym)          echo "index" ;;
+    scriptony-image)        echo "index" ;;
+    scriptony-jobs)          echo "index" ;;
+    scriptony-mcp-appwrite) echo "index" ;;
+    scriptony-media-worker)  echo "index" ;;
+    scriptony-project-nodes) echo "appwrite" ;;
+    scriptony-projects)      echo "appwrite" ;;
+    scriptony-script)        echo "appwrite" ;;
+    scriptony-shots)         echo "appwrite" ;;
+    scriptony-stage)         echo "index" ;;
+    scriptony-stage2d)       echo "index" ;;
+    scriptony-stage3d)       echo "index" ;;
+    scriptony-style-guide)   echo "index" ;;
+    scriptony-style)          echo "index" ;;
+    scriptony-sync)           echo "index" ;;
+    scriptony-video)          echo "index" ;;
+    scriptony-worldbuilding)  echo "appwrite" ;;
+    *)                       echo "" ;;
+  esac
+}
+
+# Ordered list for --all (must match get_entry_type cases).
+KNOWN_FUNCTIONS="
+scriptony-auth
+scriptony-projects
+scriptony-project-nodes
+scriptony-characters
+scriptony-ai
+scriptony-assistant
+scriptony-script
+scriptony-shots
+scriptony-style
+scriptony-stage
+scriptony-audio
+scriptony-image
+scriptony-mcp-appwrite
+scriptony-clips
+scriptony-gym
+scriptony-worldbuilding
+scriptony-stage2d
+scriptony-stage3d
+scriptony-sync
+scriptony-jobs
+scriptony-editor-readmodel
+scriptony-media-worker
+scriptony-beats
+scriptony-assets
+scriptony-audio-story
+scriptony-style-guide
+scriptony-video
+"
 
 usage() {
   cat <<'EOF'
@@ -74,16 +105,16 @@ list_functions() {
   echo "Known functions and entry patterns:"
   echo ""
   printf "  %-30s %s\n" "FUNCTION" "ENTRY"
-  for key in "${!ENTRY_MAP[@]}"; do
-    printf "  %-30s %s\n" "$key" "${ENTRY_MAP[$key]}"
-  done | sort
+  for key in $KNOWN_FUNCTIONS; do
+    printf "  %-30s %s\n" "$key" "$(get_entry_type "$key")"
+  done
   echo ""
-  echo "Total: ${#ENTRY_MAP[@]} functions"
+  echo "Total: $(echo "$KNOWN_FUNCTIONS" | wc -w | tr -d ' ') functions"
 }
 
 deploy_one() {
   local name="$1"
-  local entry_type="${ENTRY_MAP[$name]:-}"
+  local entry_type="$(get_entry_type "$name")"
 
   if [[ -z "$entry_type" ]]; then
     echo "Error: Unknown function '$name'. Run --list to see known functions." >&2
@@ -187,11 +218,11 @@ main() {
       exit 0
       ;;
     --all)
-      for key in "${!ENTRY_MAP[@]}"; do
+      for key in $KNOWN_FUNCTIONS; do
         deploy_one "$key"
-      done | sort -t= -k1
+      done
       echo ""
-      echo "All ${#ENTRY_MAP[@]} functions deployed."
+      echo "All $(echo "$KNOWN_FUNCTIONS" | wc -w | tr -d ' ') functions deployed."
       exit 0
       ;;
   esac
