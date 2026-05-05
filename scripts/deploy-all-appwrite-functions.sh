@@ -18,14 +18,10 @@ FAILED=()
 
 run_one() {
   local name=$1
-  local path="$ROOT/scripts/deploy-appwrite-function-${name}.sh"
-  if [[ ! -f "$path" ]]; then
-    echo "error: fehlt: $path" >&2
-    return 1
-  fi
+  local fn_name="scriptony-${name}"
   echo ""
-  echo "============ deploy: $name ============"
-  bash "$path" || return 1
+  echo "============ deploy: $fn_name ============"
+  bash "$ROOT/scripts/deploy-appwrite-function.sh" "$fn_name" || return 1
   return 0
 }
 
