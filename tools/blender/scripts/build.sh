@@ -13,16 +13,16 @@ EXTENSION_ZIP="$DIST_DIR/scriptony_blender_extension.zip"
 
 MODE="${1:-all}"
 ADDON_FILES=(
-  "__init__.py"
-  "api.py"
-  "constants.py"
-  "operators.py"
-  "server.py"
-  "ui.py"
+	"__init__.py"
+	"api.py"
+	"constants.py"
+	"operators.py"
+	"server.py"
+	"ui.py"
 )
 
 usage() {
-  cat <<'EOF'
+	cat <<'EOF'
 Usage: tools/blender/scripts/build.sh [legacy|extension|all]
 
 Builds:
@@ -33,17 +33,17 @@ EOF
 }
 
 require_file() {
-  local path="$1"
-  if [[ ! -f "$path" ]]; then
-    echo "Missing required file: $path" >&2
-    exit 1
-  fi
+	local path="$1"
+	if [[ ! -f "$path" ]]; then
+		echo "Missing required file: $path" >&2
+		exit 1
+	fi
 }
 
 build_legacy_zip() {
-  mkdir -p "$PUBLIC_DIR" "$DIST_DIR"
+	mkdir -p "$PUBLIC_DIR" "$DIST_DIR"
 
-  python3 - "$LEGACY_SOURCE_DIR" "$LEGACY_ZIP" "${ADDON_FILES[@]}" <<'PY'
+	python3 - "$LEGACY_SOURCE_DIR" "$LEGACY_ZIP" "${ADDON_FILES[@]}" <<'PY'
 import pathlib
 import sys
 import zipfile
@@ -66,30 +66,30 @@ with zipfile.ZipFile(output_path, "w", compression=zipfile.ZIP_DEFLATED, compres
         archive.writestr(info, file_path.read_bytes())
 PY
 
-  cp "$LEGACY_ZIP" "$PUBLIC_DIR/$(basename "$LEGACY_ZIP")"
-  cp "$LEGACY_ZIP" "$LEGACY_COMPAT_ZIP"
-  cp "$LEGACY_ZIP" "$PUBLIC_DIR/scriptony-blender-addon.zip"
-  echo "Built legacy ZIP: $LEGACY_ZIP"
-  echo "Updated legacy alias: $LEGACY_COMPAT_ZIP"
+	cp "$LEGACY_ZIP" "$PUBLIC_DIR/$(basename "$LEGACY_ZIP")"
+	cp "$LEGACY_ZIP" "$LEGACY_COMPAT_ZIP"
+	cp "$LEGACY_ZIP" "$PUBLIC_DIR/scriptony-blender-addon.zip"
+	echo "Built legacy ZIP: $LEGACY_ZIP"
+	echo "Updated legacy alias: $LEGACY_COMPAT_ZIP"
 }
 
 build_extension_zip() {
-  require_file "$EXTENSION_MANIFEST"
-  mkdir -p "$PUBLIC_DIR" "$DIST_DIR"
+	require_file "$EXTENSION_MANIFEST"
+	mkdir -p "$PUBLIC_DIR" "$DIST_DIR"
 
-  local tmp_dir
-  tmp_dir=$(mktemp -d)
-  trap 'rm -rf "$tmp_dir"' RETURN
+	local tmp_dir
+	tmp_dir=$(mktemp -d)
+	trap 'rm -rf "$tmp_dir"' RETURN
 
-  local staging_dir="$tmp_dir/extension-source"
-  mkdir -p "$staging_dir"
+	local staging_dir="$tmp_dir/extension-source"
+	mkdir -p "$staging_dir"
 
-  for relative_path in "${ADDON_FILES[@]}"; do
-    cp "$LEGACY_SOURCE_DIR/$relative_path" "$staging_dir/$relative_path"
-  done
-  cp "$EXTENSION_MANIFEST" "$staging_dir/blender_manifest.toml"
+	for relative_path in "${ADDON_FILES[@]}"; do
+		cp "$LEGACY_SOURCE_DIR/$relative_path" "$staging_dir/$relative_path"
+	done
+	cp "$EXTENSION_MANIFEST" "$staging_dir/blender_manifest.toml"
 
-  python3 - "$staging_dir/__init__.py" <<'PY'
+	python3 - "$staging_dir/__init__.py" <<'PY'
 from pathlib import Path
 import sys
 
@@ -107,7 +107,7 @@ finish += len(end)
 path.write_text(text[:start] + text[finish:], encoding="utf-8")
 PY
 
-  python3 - "$staging_dir" "$EXTENSION_ZIP" <<'PY'
+	python3 - "$staging_dir" "$EXTENSION_ZIP" <<'PY'
 import pathlib
 import sys
 import zipfile
@@ -139,27 +139,27 @@ with zipfile.ZipFile(output_path, "w", compression=zipfile.ZIP_DEFLATED, compres
         archive.writestr(info, file_path.read_bytes())
 PY
 
-  cp "$EXTENSION_ZIP" "$PUBLIC_DIR/$(basename "$EXTENSION_ZIP")"
-  echo "Built extension ZIP: $EXTENSION_ZIP"
+	cp "$EXTENSION_ZIP" "$PUBLIC_DIR/$(basename "$EXTENSION_ZIP")"
+	echo "Built extension ZIP: $EXTENSION_ZIP"
 }
 
 for relative_path in "${ADDON_FILES[@]}"; do
-  require_file "$LEGACY_SOURCE_DIR/$relative_path"
+	require_file "$LEGACY_SOURCE_DIR/$relative_path"
 done
 
 case "$MODE" in
-  legacy)
-    build_legacy_zip
-    ;;
-  extension)
-    build_extension_zip
-    ;;
-  all)
-    build_legacy_zip
-    build_extension_zip
-    ;;
-  *)
-    usage
-    exit 1
-    ;;
+legacy)
+	build_legacy_zip
+	;;
+extension)
+	build_extension_zip
+	;;
+all)
+	build_legacy_zip
+	build_extension_zip
+	;;
+*)
+	usage
+	exit 1
+	;;
 esac
