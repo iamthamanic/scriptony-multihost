@@ -41,4 +41,6 @@ repo-visualization*.html
 scriptony-blender-addon.zip
 scriptony_blender_addon.zip
 scriptony_blender_extension.zip
+# Blender build artifacts
+tools/blender/dist/*
 eslint-fix.mjs
