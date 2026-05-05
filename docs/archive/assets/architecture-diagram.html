@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Scriptony Architecture</title>
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({ startOnLoad: true, theme: 'dark', flowchart: { curve: 'basis', padding: 20, useMaxWidth: true } });
+</script>
+<style>
+  body { background: #0f172a; margin: 0; padding: 40px; font-family: system-ui, sans-serif; }
+  h1 { color: #e2e8f0; text-align: center; margin-bottom: 8px; }
+  h2 { color: #94a3b8; text-align: center; font-weight: 400; font-size: 16px; margin-bottom: 40px; }
+  .diagram { background: #1e293b; border-radius: 12px; padding: 24px; margin-bottom: 40px; }
+  .diagram-title { color: #e2e8f0; font-size: 18px; font-weight: 600; margin-bottom: 16px; border-bottom: 1px solid #334155; padding-bottom: 8px; }
+</style>
+</head>
+<body>
+<h1>Scriptony - Gesamtarchitektur</h1>
+<h2>React + Vite Frontend - Appwrite Backend - 37 Serverless Functions - Multi-Provider AI - Blender Bridge</h2>
+
+<div class="diagram">
+  <div class="diagram-title">1. Gesamtarchitektur</div>
+  <pre class="mermaid">
+flowchart TB
+    subgraph Users["Benutzer und Geraete"]
+        direction TB
+        Browser["Web Browser"]
+        Mobile["Mobile App"]
+        Desktop["Desktop PWA"]
+    end
+
+    subgraph CDNLayer["Delivery"]
+        VercelNode["Vercel Edge"]
+    end
+
+    subgraph FrontLayer["Frontend React + Vite + TS"]
+        direction TB
+        subgraph UIC["UI Komponenten"]
+            LayoutNode["Layout und Navigation"]
+            EditorsNode["Editor"]
+            DialogsNode["Dialoge"]
+            MediaNode["Media und Timeline"]
+        end
+        subgraph StateC["State und Logic"]
+            RQnode["React Query"]
+            AuthNode["useAuth"]
+            HooksNode["Custom Hooks"]
+        end
+        subgraph RouterC["Routing"]
+            AppNode["AppContent"]
+            PagesNode["Pages"]
+        end
+    end
+
+    subgraph BridgeC["Lokale Bridge und DCC"]
+        direction TB
+        BridgeNode["local-bridge"]
+        BlenderAdd["Blender Addon"]
+        BlenderExt["Blender Extension"]
+    end
+
+    subgraph AW["Appwrite Platform"]
+        direction TB
+        AuthS["Auth"]
+        DB["Database"]
+        Stor["Storage"]
+        RT["Realtime"]
+        FnEntry["Functions"]
+    end
+
+    subgraph FuncLayer["Backend Functions"]
+        direction TB
+        subgraph CoreF["Kern"]
+            F1["auth"]
+            F2["projects"]
+            F3["nodes"]
+            F4["characters"]
+            F5["beats"]
+            F6["shots"]
+            F7["clips"]
+        end
+        subgraph MediaF["Media"]
+            F8["image"]
+            F9["audio"]
+            F10["audio-story"]
+            F11["video"]
+            F12["assets"]
+        end
+        subgraph AIF["AI"]
+            F13["ai"]
+            F14["assistant"]
+            F15["jobs"]
+            F16["mcp-appwrite"]
+        end
+        subgraph StageF["Stage"]
+            F17["stage"]
+            F18["stage2d"]
+            F19["stage3d"]
+            F20["worldbuilding"]
+            F21["style"]
+            F22["style-guide"]
+        end
+        subgraph UtilF["Utility"]
+            F23["sync"]
+            F24["gym"]
+            F25["script"]
+            F26["superadmin"]
+            F27["logs"]
+            F28["stats"]
+            F29["editor-readmodel"]
+        end
+    end
+
+    subgraph SharedL["functions _shared"]
+        direction TB
+        S1["env"]
+        S2["zod"]
+        S3["ai-service"]
+        S4["db-helpers"]
+        S5["utils"]
+    end
+
+    subgraph ExtAI["Externe AI"]
+        OAI["OpenAI"]
+        Anth["Anthropic"]
+        Oth["Sonstige"]
+    end
+
+    subgraph DevOpsL["DevOps"]
+        Dock["Docker"]
+        ShimNode["shimwrappercheck"]
+        ScrNode["scripts Ordner"]
+        GitN["Husky"]
+    end
+
+    Browser --> VercelNode
+    Mobile --> VercelNode
+    Desktop --> VercelNode
+    VercelNode --> FrontLayer
+
+    RouterC --> StateC
+    StateC --> UIC
+    AppNode --> PagesNode
+
+    RQnode --> DB
+    AuthNode --> AuthS
+    HooksNode --> Stor
+    UIC --> RT
+
+    MediaNode --> BridgeNode
+    BridgeNode --> BlenderAdd
+    BridgeNode --> BlenderExt
+
+    FnEntry --> CoreF
+    FnEntry --> MediaF
+    FnEntry --> AIF
+    FnEntry --> StageF
+    FnEntry --> UtilF
+
+    CoreF --> SharedL
+    MediaF --> SharedL
+    AIF --> SharedL
+    StageF --> SharedL
+    UtilF --> SharedL
+
+    CoreF --> DB
+    MediaF --> Stor
+    F15 --> DB
+    F29 --> DB
+    F13 --> DB
+    F23 --> DB
+
+    F13 --> OAI
+    F13 --> Anth
+    F13 --> Oth
+    F8 --> OAI
+    F9 --> OAI
+
+    F15 -.-> F13
+    F13 -.-> F15
+    F29 -.-> DB
+    F23 -.-> DB
+    F16 -.-> F13
+    F16 -.-> DB
+
+    ScrNode --> Dock
+    ScrNode --> ShimNode
+    GitN --> ShimNode
+    ShimNode --> FrontLayer
+    ShimNode --> FnEntry
+
+    style Users fill:#ef4444,stroke:#b91c1c,color:#fff
+    style FrontLayer fill:#3b82f6,stroke:#1d4ed8,color:#fff
+    style BridgeC fill:#06b6d4,stroke:#0891b2,color:#fff
+    style AW fill:#fd366e,stroke:#e11d48,color:#fff
+    style FuncLayer fill:#10b981,stroke:#059669,color:#fff
+    style SharedL fill:#f59e0b,stroke:#d97706,color:#fff
+    style ExtAI fill:#a855f7,stroke:#9333ea,color:#fff
+    style DevOpsL fill:#64748b,stroke:#475569,color:#fff
+  </pre>
+</div>
+
+<div class="diagram">
+  <div class="diagram-title">2. Datenfluss Frontend zu Backend</div>
+  <pre class="mermaid">
+sequenceDiagram
+    autonumber
+    actor User as Benutzer
+    participant FE as React Frontend
+    participant RQ as React Query
+    participant AW as Appwrite SDK
+    participant AuthS as Appwrite Auth
+    participant DB as Appwrite Database
+    participant Fn as Functions
+    participant Job as scriptony-jobs
+    participant AI as scriptony-ai
+    participant Ext as Externer AI
+
+    User->>FE: Login
+    FE->>AW: createEmailPasswordSession()
+    AW->>AuthS: Auth Request
+    AuthS-->>AW: Session + JWT
+    AW-->>FE: Session
+    FE->>RQ: invalidateQueries()
+
+    User->>FE: Projekt erstellen
+    FE->>RQ: mutation
+    RQ->>AW: createDocument()
+    AW->>DB: Write
+    DB-->>AW: Document
+    AW-->>RQ: Response
+    RQ-->>FE: UI Update
+
+    User->>FE: Beat generieren
+    FE->>Fn: POST scriptony-ai
+    Fn->>Job: createJob
+    Job->>DB: Job Document
+    Job-->>Fn: Job ID
+    Fn-->>FE: Job ID
+
+    loop Polling
+        FE->>RQ: getJobStatus
+        RQ->>AW: getDocument
+        AW->>DB: Read
+        DB-->>AW: Status
+        AW-->>RQ: Status
+    end
+
+    Job->>AI: processJob
+    AI->>Ext: API Call
+    Ext-->>AI: Response
+    AI->>DB: Update Job
+    AI-->>Job: Done
+    RQ-->>FE: Completed
+    FE->>User: Ergebnis
+
+    User->>FE: Audio upload
+    FE->>AW: createFile
+    AW->>DB: Bucket Write
+    DB-->>AW: File ID
+    AW-->>FE: Response
+    FE->>RQ: Refetch
+  </pre>
+</div>
+
+<div class="diagram">
+  <div class="diagram-title">3. AI-Pipeline</div>
+  <pre class="mermaid">
+flowchart LR
+    subgraph UserReq["Benutzer Anfrage"]
+        Prompt["Prompt"]
+        Context["Kontext"]
+    end
+
+    subgraph MCP["MCP Layer"]
+        FMCP["mcp-appwrite"]
+        Tools["Tools"]
+    end
+
+    subgraph AIEngine["AI Engine"]
+        FAI["scriptony-ai"]
+        Routing["Provider Routing"]
+        Discovery["Model Discovery"]
+        Templates["Prompt Templates"]
+    end
+
+    subgraph Gen["Generation"]
+        FGPT["Text"]
+        FIMG["Image"]
+        FAudioS["Audio"]
+        FStory["Story Audio"]
+    end
+
+    subgraph JO["Job Orchestration"]
+        FJobs["scriptony-jobs"]
+        Queue["Queue"]
+        Poll["Polling"]
+    end
+
+    Prompt --> FMCP
+    Context --> FMCP
+    FMCP --> Tools
+    Tools --> Database[(Appwrite DB)]
+
+    FMCP --> FAI
+    FAI --> Routing
+    Routing --> Discovery
+    Discovery --> Templates
+
+    FAI --> FGPT
+    FAI --> FIMG
+    FAI --> FAudioS
+    FAI --> FStory
+
+    FGPT --> FJobs
+    FIMG --> FJobs
+    FAudioS --> FJobs
+    FStory --> FJobs
+
+    FJobs --> Queue
+    Queue --> Poll
+    Poll --> FrontN["Frontend"]
+
+    Routing --> OAI["OpenAI"]
+    Routing --> Claude["Claude"]
+    Routing --> Gemini["Gemini"]
+    Routing --> LocalLLM["Local LLM"]
+
+    style UserReq fill:#3b82f6,stroke:#1d4ed8,color:#fff
+    style MCP fill:#06b6d4,stroke:#0891b2,color:#fff
+    style AIEngine fill:#10b981,stroke:#059669,color:#fff
+    style Gen fill:#f59e0b,stroke:#d97706,color:#fff
+    style JO fill:#ef4444,stroke:#b91c1c,color:#fff
+    style ExtAI fill:#a855f7,stroke:#9333ea,color:#fff
+  </pre>
+</div>
+
+<div class="diagram">
+  <div class="diagram-title">4. Blender DCC Integration</div>
+  <pre class="mermaid">
+flowchart TB
+    subgraph ScriptonyFE["Scriptony Frontend"]
+        EditorN["Editor"]
+        ExportBtn["Export"]
+        ImportBtn["Import"]
+    end
+
+    subgraph BridgeN["Local Bridge"]
+        BridgePy["Python HTTP Bridge"]
+        WSS["Websocket Port 9877"]
+    end
+
+    subgraph BlenderN["Blender"]
+        Addon["Addon"]
+        Ext["Extension"]
+        Panel["Panel"]
+        ImporterN["Importer"]
+        ExporterN["Exporter"]
+        Stage3DN["3D Stage View"]
+    end
+
+    subgraph FilesN["Files"]
+        GLB["glb"]
+        FBX["fbx"]
+        USD["usd"]
+        JSON["json"]
+    end
+
+    EditorN --> ExportBtn
+    EditorN --> ImportBtn
+    ExportBtn --> BridgePy
+    ImportBtn --> BridgePy
+    BridgePy --> WSS
+    WSS --> Addon
+    WSS --> Ext
+
+    Addon --> Panel
+    Ext --> Panel
+    Panel --> ImporterN
+    Panel --> ExporterN
+    Panel --> Stage3DN
+
+    ImporterN --> GLB
+    ImporterN --> FBX
+    ImporterN --> USD
+    ImporterN --> JSON
+    ExporterN --> GLB
+    ExporterN --> FBX
+    ExporterN --> USD
+    ExporterN --> JSON
+
+    GLB --> ScriptonyFE
+    FBX --> ScriptonyFE
+    USD --> ScriptonyFE
+    JSON --> ScriptonyFE
+    Stage3DN --> WSS
+
+    style ScriptonyFE fill:#3b82f6,stroke:#1d4ed8,color:#fff
+    style BridgeN fill:#06b6d4,stroke:#0891b2,color:#fff
+    style BlenderN fill:#10b981,stroke:#059669,color:#fff
+    style FilesN fill:#f59e0b,stroke:#d97706,color:#fff
+  </pre>
+</div>
+
+</body>
+</html>

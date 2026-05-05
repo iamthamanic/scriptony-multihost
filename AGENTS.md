@@ -66,6 +66,21 @@ Checks are configured in the dashboard or `.shimwrappercheckrc` (toggles and ord
 - **Infrastructure**: `infra/appwrite/` — Docker Compose for local Appwrite
 - **Scripts**: `scripts/` — deploy, verify, smoke-test scripts
 
+## Repository Hygiene (Zwingend)
+
+- **Keine Ticket-, Deploy- oder Snippet-Dokumente in `src/` oder `functions/`**. 
+  Alle `.md`, `.sql`, `.txt` und `*SNIPPET*`-Dateien gehören nach `docs/` oder `tickets/`.
+- **`src/`-Root darf nur Code-Entrypoints und Feature-Ordner enthalten.** 
+  Temp-Dateien (`temp-*`, `FIXED_*`, `*SNIPPET*`, `PASTE_THIS*`, `VideoEditorTimeline_CLEAN.tsx` etc.) müssen sofort in `docs/archive/` verschoben oder gelöscht werden.
+- **Keine Build-Artefakte, Zips oder `node_modules/` commiten.** 
+  `build/`, `dist/`, `*.zip` (außer Release-Assets in `tools/*/dist/`), `functions/**/node_modules/` sind in `.gitignore` gepflegt und dürfen nicht getrackt werden.
+- **Keine temporären `.txt` oder `.sql` Skripte in Komponenten-Ordnern** (`src/components/`). Datenbank-Skripte gehören nach `scripts/sql/` oder `docs/sql/`.
+- **Keine Duplikate derselben Datei** (`VideoEditorTimeline.tsx` neben `VideoEditorTimeline_CLEAN.tsx`). 
+  Eindeutige Quelle: `git mv` verwenden statt Kopien anzulegen.
+- **Legacy-Backends und Docker-Templates** (z. B. `backend/auth/`, `docker-compose.legacy.yml`) gehören in `docs/archive/` oder `infra/legacy/`.
+- **Blender-Artefakte** leben unter `tools/blender/`; `.zip`-Dateien werden dort gebaut und nicht ins Repo committed.
+- **Diagramme und Visualisierungen** (`.png`, `.html`) gehören in `docs/assets/` oder `docs/archive/`.
+
 ## Project rules
 
 ### Frontend (React/Vite/TypeScript)
