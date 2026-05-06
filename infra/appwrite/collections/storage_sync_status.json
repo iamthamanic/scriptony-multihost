@@ -28,5 +28,12 @@
       "type": "datetime",
       "required": true
     }
+  ],
+  "indexes": [
+    {
+      "key": "idx_user_conn",
+      "type": "key",
+      "attributes": ["user_id", "connection_id"]
+    }
   ]
 }

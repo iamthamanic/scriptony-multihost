@@ -41,5 +41,17 @@
       "type": "datetime",
       "required": true
     }
+  ],
+  "indexes": [
+    {
+      "key": "idx_owner",
+      "type": "key",
+      "attributes": ["owner_type", "owner_id"]
+    },
+    {
+      "key": "idx_created_by",
+      "type": "key",
+      "attributes": ["created_by"]
+    }
   ]
 }

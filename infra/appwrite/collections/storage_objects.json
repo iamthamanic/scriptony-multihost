@@ -52,5 +52,17 @@
       "type": "datetime",
       "required": true
     }
+  ],
+  "indexes": [
+    {
+      "key": "idx_target",
+      "type": "key",
+      "attributes": ["target_id"]
+    },
+    {
+      "key": "idx_created_by",
+      "type": "key",
+      "attributes": ["created_by"]
+    }
   ]
 }

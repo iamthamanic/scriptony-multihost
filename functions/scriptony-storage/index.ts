@@ -5,7 +5,6 @@
  */
 
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 import { z } from "zod";
 import { createHonoAppwriteHandler } from "../_shared/hono-appwrite-handler";
 import { authDbMiddleware } from "./middleware/auth";
@@ -20,9 +19,9 @@ import syncApp from "./routes/sync";
 
 const app = new Hono();
 
-app.use("*", cors({ origin: "*" }));
-
 // Auth + DB nur für geschützte Routen (OAuth kommt ohne Bearer-Token vom Provider)
+// CORS wird vom createHonoAppwriteHandler (_shared/hono-appwrite-handler.ts) korrekt
+// via corsHeadersForIncomingRequest() verwaltet — keine globale wildcard-CORS hier.
 app.use("/storage/connections/*", authDbMiddleware);
 app.use("/storage/targets/*", authDbMiddleware);
 app.use("/storage/objects/*", authDbMiddleware);
@@ -37,17 +36,23 @@ app.route("/storage/objects", objectsApp);
 app.route("/storage", syncApp);
 
 app.onError((err, c) => {
-  console.error("[scriptony-storage]", err);
-  if (err instanceof z.ZodError) {
-    return c.json(
-      { success: false, error: { code: "VALIDATION_ERROR", message: err.message } },
-      400,
-    );
-  }
-  return c.json(
-    { success: false, error: { code: "INTERNAL_ERROR", message: "Internal server error" } },
-    500,
-  );
+	console.error("[scriptony-storage]", err);
+	if (err instanceof z.ZodError) {
+		return c.json(
+			{
+				success: false,
+				error: { code: "VALIDATION_ERROR", message: err.message },
+			},
+			400,
+		);
+	}
+	return c.json(
+		{
+			success: false,
+			error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+		},
+		500,
+	);
 });
 
 export default createHonoAppwriteHandler(app);

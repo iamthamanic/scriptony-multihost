@@ -1,8 +1,10 @@
 /**
  * Storage usage endpoint for the Scriptony auth service.
  *
- * @deprecated T17 — Ziel T20 (`scriptony-storage`). Compat-Route bis Migration.
- *          Usage-Metriken koennten spaeter `scriptony-observability` kreuzen; siehe Domain Map.
+ * @deprecated T24 — MIGRIERT nach `scriptony-storage`.
+ *   Neue Endpunkte: GET /storage/connections, GET /storage/objects, etc.
+ *   Diese Route wird in einer zukünftigen Version entfernt.
+ *   Usage-Metriken koennten spaeter `scriptony-observability` kreuzen; siehe Domain Map.
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";
