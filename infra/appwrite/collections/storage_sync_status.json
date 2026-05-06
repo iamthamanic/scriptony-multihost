@@ -1,0 +1,32 @@
+{
+  "$id": "storage_sync_status",
+  "name": "storage_sync_status",
+  "databaseId": "scriptony-dev",
+  "enabled": true,
+  "documentSecurity": true,
+  "attributes": [
+    {
+      "key": "user_id",
+      "type": "string",
+      "required": true,
+      "size": 36
+    },
+    {
+      "key": "connection_id",
+      "type": "string",
+      "required": true,
+      "size": 36
+    },
+    {
+      "key": "status",
+      "type": "string",
+      "required": true,
+      "size": 20
+    },
+    {
+      "key": "updated_at",
+      "type": "datetime",
+      "required": true
+    }
+  ]
+}

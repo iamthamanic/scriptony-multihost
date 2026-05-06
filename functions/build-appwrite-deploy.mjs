@@ -96,6 +96,10 @@ const bundles = [
     name: "scriptony-assets",
     entry: join(here, "scriptony-assets", "appwrite-entry.ts"),
   },
+  {
+    name: "scriptony-storage",
+    entry: join(here, "scriptony-storage", "index.ts"),
+  },
 ];
 
 function parseFilter() {

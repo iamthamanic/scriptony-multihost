@@ -27,6 +27,7 @@ const KNOWN_FUNCTIONS = new Set([
   "scriptony-stage3d",
   "scriptony-assets",
   "scriptony-script",
+  "scriptony-storage",
   "scriptony-style",
   "scriptony-style-guide",
   "scriptony-sync",

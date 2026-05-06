@@ -1,0 +1,45 @@
+{
+  "$id": "storage_targets",
+  "name": "storage_targets",
+  "databaseId": "scriptony-dev",
+  "enabled": true,
+  "documentSecurity": true,
+  "attributes": [
+    {
+      "key": "owner_type",
+      "type": "string",
+      "required": true,
+      "size": 20
+    },
+    {
+      "key": "owner_id",
+      "type": "string",
+      "required": true,
+      "size": 36
+    },
+    {
+      "key": "connection_id",
+      "type": "string",
+      "required": true,
+      "size": 36
+    },
+    {
+      "key": "path_prefix",
+      "type": "string",
+      "required": true,
+      "size": 500,
+      "default": "/"
+    },
+    {
+      "key": "created_by",
+      "type": "string",
+      "required": true,
+      "size": 36
+    },
+    {
+      "key": "created_at",
+      "type": "datetime",
+      "required": true
+    }
+  ]
+}
