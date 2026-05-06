@@ -10,7 +10,7 @@ import { Suspense, lazy, useCallback, useEffect } from "react";
 
 // Eager: only lightweight helpers needed for routing/auth decision
 import { ResetPasswordPage } from "../components/pages/ResetPasswordPage";
-import { BackendNotConfiguredBanner } from "../components/BackendNotConfiguredBanner";
+import { BackendNotConfiguredBanner } from "../components/settings/BackendNotConfiguredBanner";
 
 // Lazy: all heavy UI components deferred after first paint
 const Navigation = lazy(() =>
@@ -27,12 +27,12 @@ const AuthPage = lazy(() =>
   })),
 );
 const ServerStatusBanner = lazy(() =>
-  import("../components/ServerStatusBanner").then((m) => ({
+  import("../components/settings/ServerStatusBanner").then((m) => ({
     default: m.ServerStatusBanner,
   })),
 );
 const ConnectionStatusIndicator = lazy(() =>
-  import("../components/ConnectionStatusIndicator").then((m) => ({
+  import("../components/settings/ConnectionStatusIndicator").then((m) => ({
     default: m.ConnectionStatusIndicator,
   })),
 );
@@ -88,12 +88,12 @@ const ProjectRecoveryPage = lazy(() =>
   })),
 );
 const ScriptonyAssistant = lazy(() =>
-  import("../components/ScriptonyAssistant").then((module) => ({
+  import("../components/assistant/ScriptonyAssistant").then((module) => ({
     default: module.ScriptonyAssistant,
   })),
 );
 const PerformanceDashboard = lazy(() =>
-  import("../components/PerformanceDashboard").then((module) => ({
+  import("../components/settings/PerformanceDashboard").then((module) => ({
     default: module.PerformanceDashboard,
   })),
 );

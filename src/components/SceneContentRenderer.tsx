@@ -5,7 +5,7 @@
  */
 
 import type { Scene, Character } from "../lib/types";
-import { AudioSceneCard } from "./AudioSceneCard";
+import { AudioSceneCard } from "./audio/AudioSceneCard";
 
 export function isAudioProject(projectType: string): boolean {
   return projectType === "audio" || projectType === "book";

@@ -6,8 +6,8 @@
 import * as TimelineAPIV2 from "./api/timeline-api-v2";
 import * as ShotsAPI from "./api/shots-api";
 import { nodeToAct, nodeToSequence, nodeToScene } from "./api/timeline-api";
-import type { TimelineData } from "../components/FilmDropdown";
-import type { BookTimelineData } from "../components/BookDropdown";
+import type { TimelineData } from "../components/film/FilmDropdown";
+import type { BookTimelineData } from "../components/book/BookDropdown";
 import type { Clip, Shot } from "./types";
 import * as ClipsAPI from "./api/clips-api";
 

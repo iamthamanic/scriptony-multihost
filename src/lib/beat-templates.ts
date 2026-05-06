@@ -1,4 +1,4 @@
-import type { BeatCardData } from "../components/BeatCard";
+import type { BeatCardData } from "../components/timeline/BeatCard";
 
 /**
  * 🎬 STORY BEAT TEMPLATES

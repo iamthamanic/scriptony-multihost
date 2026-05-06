@@ -46,8 +46,8 @@ import {
   type ImageUploadGifMode,
 } from "../../lib/api/image-upload-api";
 import { STORAGE_CONFIG } from "../../lib/config";
-import { GifAnimationUploadDialog } from "../GifAnimationUploadDialog";
-import { ImageUploadWaveOverlay } from "../ImageUploadWaveOverlay";
+import { GifAnimationUploadDialog } from "../shared/GifAnimationUploadDialog";
+import { ImageUploadWaveOverlay } from "../shared/ImageUploadWaveOverlay";
 import { MapBuilder } from "../MapBuilder";
 import { Button } from "../ui/button";
 import {
@@ -77,7 +77,7 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { EmptyState } from "../EmptyState";
+import { EmptyState } from "../shared/EmptyState";
 import {
   Select,
   SelectContent,
@@ -103,8 +103,8 @@ import {
   AlertDialogTitle,
 } from "../ui/alert-dialog";
 import { useImagePreview } from "../hooks/useImagePreview";
-import { WorldStatsLogsDialog } from "../WorldStatsLogsDialog";
-import { WorldCarousel } from "../WorldCarousel";
+import { WorldStatsLogsDialog } from "../world/WorldStatsLogsDialog";
+import { WorldCarousel } from "../world/WorldCarousel";
 import { toast } from "sonner";
 
 /** Appwrite/GraphQL can expose `$id` or `id`; without `id`, hash stays `#worldbuilding` (navigate drops segment). */

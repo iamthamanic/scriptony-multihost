@@ -3,7 +3,7 @@
  * (not scene-vs-itself). Uses expandStructurePctToFitGlobalNeed and sequence/act-only helpers.
  */
 
-import type { TimelineData } from "../components/FilmDropdown";
+import type { TimelineData } from "../components/film/FilmDropdown";
 import {
   calculateActBlocks,
   calculateSequenceBlocks,

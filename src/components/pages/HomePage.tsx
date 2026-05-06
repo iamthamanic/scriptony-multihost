@@ -21,7 +21,7 @@ import {
 } from "../ui/card";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
-import { LoadingSpinner } from "../LoadingSpinner";
+import { LoadingSpinner } from "../shared/LoadingSpinner";
 import { HomeCarousel } from "../HomeCarousel";
 import { projectsApi, worldsApi } from "../../utils/api";
 

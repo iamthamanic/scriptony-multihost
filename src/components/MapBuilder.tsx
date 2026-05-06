@@ -56,7 +56,7 @@ import {
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "./ui/hover-card";
 import { cn } from "./ui/utils";
 import { useImagePreview } from "./hooks/useImagePreview";
-import { RoadIcon } from "./RoadIcon";
+import { RoadIcon } from "./shared/RoadIcon";
 
 export type TileType =
   | "grass"

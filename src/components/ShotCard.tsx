@@ -21,14 +21,14 @@ import shotPlaceholder from "figma:asset/5bbfb6c934162456ce6c992c152322cee414939
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import { Button } from "./ui/button";
-import { CharacterAutocomplete } from "./CharacterAutocomplete";
-import { CharacterPicker } from "./CharacterPicker";
-import { CharacterDetailModal } from "./CharacterDetailModal";
-import { HighlightedTextarea } from "./HighlightedTextarea";
-import { RichTextEditorModal } from "./RichTextEditorModal";
-import { ReadonlyTiptapView } from "./ReadonlyTiptapView";
+import { CharacterAutocomplete } from "./characters/CharacterAutocomplete";
+import { CharacterPicker } from "./characters/CharacterPicker";
+import { CharacterDetailModal } from "./characters/CharacterDetailModal";
+import { HighlightedTextarea } from "./shared/HighlightedTextarea";
+import { RichTextEditorModal } from "./shared/RichTextEditorModal";
+import { ReadonlyTiptapView } from "./shared/ReadonlyTiptapView";
 import { ShotImageCropDialog } from "./ShotImageCropDialog";
-import { ImageUploadWaveOverlay } from "./ImageUploadWaveOverlay";
+import { ImageUploadWaveOverlay } from "./shared/ImageUploadWaveOverlay";
 import { useAuth } from "../hooks/useAuth";
 import { useRouter } from "../hooks/useRouter";
 import {
@@ -55,9 +55,9 @@ import { cn } from "./ui/utils";
 import type { Shot, Character, ShotAudio } from "../lib/types";
 import { deriveShotSourceLabel } from "../lib/shot-source-badge";
 import { useFreshnessLocal } from "../hooks/useFreshness";
-import { AudioFileList } from "./AudioFileList";
-import { AudioLabelDialog } from "./AudioLabelDialog";
-import { AudioEditDialog } from "./AudioEditDialog";
+import { AudioFileList } from "./audio/AudioFileList";
+import { AudioLabelDialog } from "./audio/AudioLabelDialog";
+import { AudioEditDialog } from "./audio/AudioEditDialog";
 import { RenderJobPanel } from "./RenderJobPanel";
 
 function FreshnessDot({ shot }: { shot: Shot }) {

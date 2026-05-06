@@ -32,7 +32,7 @@ import {
   type ImageUploadGifMode,
 } from "../lib/api/image-upload-api";
 import { STORAGE_CONFIG } from "../lib/config";
-import { GifAnimationUploadDialog } from "./GifAnimationUploadDialog";
+import { GifAnimationUploadDialog } from "./shared/GifAnimationUploadDialog";
 import { toast } from "sonner";
 import type { Shot } from "../lib/types";
 

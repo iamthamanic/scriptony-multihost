@@ -7,7 +7,7 @@ import { useState } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useRouter } from "../../hooks/useRouter";
 import { CreativeGymAppWithProvider } from "../../modules/creative-gym/presentation/CreativeGymApp";
-import { ChatSettingsDialog } from "../ChatSettingsDialog";
+import { ChatSettingsDialog } from "../settings/ChatSettingsDialog";
 
 export function CreativeGymPage() {
   const { user } = useAuth();

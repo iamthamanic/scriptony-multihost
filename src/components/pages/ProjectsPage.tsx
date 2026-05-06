@@ -88,9 +88,12 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { ProjectFieldTooltipIcon } from "../ProjectFieldLabel";
+import { ProjectFieldTooltipIcon } from "../project/ProjectFieldLabel";
 import { ProjectForm, type ProjectFormData } from "../project-form";
-import { InspirationField, InspirationList } from "../InspirationField";
+import {
+  InspirationField,
+  InspirationList,
+} from "../inspiration/InspirationField";
 import {
   Select,
   SelectContent,
@@ -106,15 +109,15 @@ import {
   CollapsibleTrigger,
 } from "../ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { SceneCharacterBadge } from "../SceneCharacterBadge";
-import { WorldReferenceAutocomplete } from "../WorldReferenceAutocomplete";
+import { SceneCharacterBadge } from "../characters/SceneCharacterBadge";
+import { WorldReferenceAutocomplete } from "../world/WorldReferenceAutocomplete";
 import { useColoredTags } from "../hooks/useColoredTags";
 import { useBeats } from "../../hooks/useBeats";
-import { LoadingSpinner } from "../LoadingSpinner";
+import { LoadingSpinner } from "../shared/LoadingSpinner";
 import type { StyleGuideData } from "../../lib/api/style-guide-api";
 import * as StyleGuideApi from "../../lib/api/style-guide-api";
-import { ProjectCarousel } from "../ProjectCarousel";
-import { ProjectSectionFrame } from "../ProjectSectionFrame";
+import { ProjectCarousel } from "../project/ProjectCarousel";
+import { ProjectSectionFrame } from "../project/ProjectSectionFrame";
 import { projectsApi, worldsApi, itemsApi } from "../../utils/api";
 import { toast } from "sonner";
 import {
@@ -131,7 +134,7 @@ import {
 } from "../../lib/api/image-upload-api";
 import { startBackgroundUpload } from "../../lib/background-upload";
 import { STORAGE_CONFIG } from "../../lib/config";
-import { ImageUploadWaveOverlay } from "../ImageUploadWaveOverlay";
+import { ImageUploadWaveOverlay } from "../shared/ImageUploadWaveOverlay";
 import { apiPost } from "../../lib/api-client";
 import {
   buildProjectCoverPrompt,
@@ -148,8 +151,8 @@ import {
   prefetchProjectTimeline,
   setProjectTimelineCache,
 } from "../../hooks/useProjectTimeline";
-import type { TimelineData } from "../FilmDropdown";
-import type { BookTimelineData } from "../BookDropdown";
+import type { TimelineData } from "../film/FilmDropdown";
+import type { BookTimelineData } from "../book/BookDropdown";
 import { useProjectTimeline } from "../../hooks/useProjectTimeline";
 import { useAuth } from "../../hooks/useAuth";
 import {
@@ -175,7 +178,7 @@ const ProjectStatsLogsDialog = lazy(() =>
   })),
 );
 const ProjectExportDialog = lazy(() =>
-  import("../ProjectExportDialog").then((module) => ({
+  import("../project/ProjectExportDialog").then((module) => ({
     default: module.ProjectExportDialog,
   })),
 );
@@ -185,12 +188,12 @@ const StyleGuideSection = lazy(() =>
   })),
 );
 const ImageCropDialog = lazy(() =>
-  import("../ImageCropDialog").then((module) => ({
+  import("../shared/ImageCropDialog").then((module) => ({
     default: module.ImageCropDialog,
   })),
 );
 const GifAnimationUploadDialog = lazy(() =>
-  import("../GifAnimationUploadDialog").then((module) => ({
+  import("../shared/GifAnimationUploadDialog").then((module) => ({
     default: module.GifAnimationUploadDialog,
   })),
 );

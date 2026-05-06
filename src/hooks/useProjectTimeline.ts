@@ -11,8 +11,8 @@ import {
 import { useAuth } from "./useAuth";
 import { queryKeys } from "../lib/react-query";
 import { loadProjectTimelineBundle } from "../lib/timeline-map";
-import type { TimelineData } from "../components/FilmDropdown";
-import type { BookTimelineData } from "../components/BookDropdown";
+import type { TimelineData } from "../components/film/FilmDropdown";
+import type { BookTimelineData } from "../components/book/BookDropdown";
 
 export function useProjectTimeline(
   projectId: string | undefined,

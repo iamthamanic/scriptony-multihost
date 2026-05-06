@@ -3,7 +3,7 @@
  * edges do not cut inside descendant min/max global times (incl. editorial clips).
  */
 
-import type { TimelineData } from "../components/FilmDropdown";
+import type { TimelineData } from "../components/film/FilmDropdown";
 
 const EPS = 1e-4;
 

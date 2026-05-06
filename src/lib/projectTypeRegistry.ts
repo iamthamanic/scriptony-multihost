@@ -58,15 +58,15 @@ export interface ProjectTypeConfig {
 // We use lazy() to avoid bundling all views for every project type.
 
 const lazyFilmDropdown = () =>
-  import("../components/FilmDropdown").then((m) => ({
+  import("../components/film/FilmDropdown").then((m) => ({
     default: m.FilmDropdown as ComponentType<unknown>,
   }));
 const lazyBookDropdown = () =>
-  import("../components/BookDropdown").then((m) => ({
+  import("../components/book/BookDropdown").then((m) => ({
     default: m.BookDropdown as ComponentType<unknown>,
   }));
 const lazyAudioDropdown = () =>
-  import("../components/AudioDropdown").then((m) => ({
+  import("../components/audio/AudioDropdown").then((m) => ({
     default: m.AudioDropdown as ComponentType<unknown>,
   }));
 
@@ -75,20 +75,20 @@ const lazyFilmTimeline = () =>
     default: m.VideoEditorTimeline as ComponentType<unknown>,
   }));
 const lazyAudioTimeline = () =>
-  import("../components/AudioTimeline").then((m) => ({
+  import("../components/audio/AudioTimeline").then((m) => ({
     default: m.AudioTimeline as ComponentType<unknown>,
   }));
 
 const lazyFilmNative = () =>
-  import("../components/NativeScreenplayView").then((m) => ({
+  import("../components/film/NativeScreenplayView").then((m) => ({
     default: m.NativeScreenplayView as ComponentType<unknown>,
   }));
 const lazyBookNative = () =>
-  import("../components/NativeBookView").then((m) => ({
+  import("../components/book/NativeBookView").then((m) => ({
     default: m.NativeBookView as ComponentType<unknown>,
   }));
 const lazyAudioNative = () =>
-  import("../components/AudioSceneView").then((m) => ({
+  import("../components/audio/AudioSceneView").then((m) => ({
     default: m.AudioSceneView as ComponentType<unknown>,
   }));
 

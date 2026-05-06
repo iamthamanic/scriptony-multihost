@@ -25,8 +25,8 @@ import {
   type ImportedTimelineData,
 } from "../lib/script-import";
 import { toast } from "sonner";
-import type { TimelineData } from "./FilmDropdown";
-import type { BookTimelineData } from "./BookDropdown";
+import type { TimelineData } from "./film/FilmDropdown";
+import type { BookTimelineData } from "./book/BookDropdown";
 
 export interface ScriptStructureImportButtonProps {
   projectId: string;

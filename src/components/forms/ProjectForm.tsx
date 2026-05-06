@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { ProjectFieldTooltipIcon } from "@/components/ProjectFieldLabel";
+import { ProjectFieldTooltipIcon } from "@/components/project/ProjectFieldLabel";
 import type { ProjectTooltipField } from "@/hooks/useProjectTooltips";
 
 export type ProjectType =

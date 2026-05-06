@@ -55,9 +55,9 @@ import {
   apiDelete,
   unwrapApiResult,
 } from "../../lib/api-client";
-import { AIIntegrationsSection } from "../AIIntegrationsSection";
-import { StorageSettingsSection } from "../StorageSettingsSection";
-import { SystemStatusSection } from "../SystemStatusSection";
+import { AIIntegrationsSection } from "../assistant/AIIntegrationsSection";
+import { StorageSettingsSection } from "../settings/StorageSettingsSection";
+import { SystemStatusSection } from "../settings/SystemStatusSection";
 import { backendConfig } from "../../lib/env";
 import {
   isImageWebpConversionEnabled,

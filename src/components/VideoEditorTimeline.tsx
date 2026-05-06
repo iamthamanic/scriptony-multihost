@@ -49,8 +49,8 @@ import * as BeatsAPI from "../lib/api/beats-api";
 import * as TimelineAPI from "../lib/api/timeline-api";
 import * as ShotsAPI from "../lib/api/shots-api";
 import { useAuth } from "../hooks/useAuth";
-import type { TimelineData } from "./FilmDropdown";
-import type { BookTimelineData } from "./BookDropdown";
+import type { TimelineData } from "./film/FilmDropdown";
+import type { BookTimelineData } from "./book/BookDropdown";
 import type { Character, Clip, ShotAudio } from "../lib/types";
 import * as ClipsAPI from "../lib/api/clips-api";
 import {
@@ -70,9 +70,9 @@ import {
   minClipStartForShot,
   clampBoundaryToChildren,
 } from "../lib/timeline-structure-trim-clamp";
-import { RichTextEditorModal } from "./RichTextEditorModal";
-import { ReadonlyTiptapView } from "./ReadonlyTiptapView";
-import { TimelineTextPreview } from "./TimelineTextPreview";
+import { RichTextEditorModal } from "./shared/RichTextEditorModal";
+import { ReadonlyTiptapView } from "./shared/ReadonlyTiptapView";
+import { TimelineTextPreview } from "./timeline/TimelineTextPreview";
 import { trimBeatLeft, trimBeatRight } from "./timeline-helpers";
 import {
   calculateActBlocks,

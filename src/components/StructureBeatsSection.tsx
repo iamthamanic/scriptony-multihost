@@ -15,16 +15,16 @@ import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
-import { BeatColumn } from "./BeatColumn";
+import { BeatColumn } from "./timeline/BeatColumn";
 import { VideoEditorTimeline } from "./VideoEditorTimeline";
-import type { BeatCardData, TimelineNode } from "./BeatCard";
-import { ProjectDropdown } from "./ProjectDropdown";
-import type { TimelineData } from "./FilmDropdown";
-import type { BookTimelineData } from "./BookDropdown";
+import type { BeatCardData, TimelineNode } from "./timeline/BeatCard";
+import { ProjectDropdown } from "./project/ProjectDropdown";
+import type { TimelineData } from "./film/FilmDropdown";
+import type { BookTimelineData } from "./book/BookDropdown";
 import { ScriptStructureImportButton } from "./ScriptStructureImportButton";
-import { NativeBookView } from "./NativeBookView";
-import { NativeScreenplayView } from "./NativeScreenplayView";
-import { NativeAudiobookView } from "./NativeAudiobookView";
+import { NativeBookView } from "./book/NativeBookView";
+import { NativeScreenplayView } from "./film/NativeScreenplayView";
+import { NativeAudiobookView } from "./audio/NativeAudiobookView";
 import {
   generateBeatsFromTemplate,
   LITE_7_TEMPLATE,

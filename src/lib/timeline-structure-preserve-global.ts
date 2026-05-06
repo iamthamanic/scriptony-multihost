@@ -4,7 +4,7 @@
  * so global [startSec, endSec] intervals stay aligned with frozen snapshots (inverse projection).
  */
 
-import type { TimelineData } from "../components/FilmDropdown";
+import type { TimelineData } from "../components/film/FilmDropdown";
 import {
   calculateActBlocks,
   calculateSequenceBlocks,

@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { ProjectFieldTooltipIcon } from "@/components/ProjectFieldLabel";
+import { ProjectFieldTooltipIcon } from "@/components/project/ProjectFieldLabel";
 import type { World } from "@/lib/types";
 
 // =============================================================================
@@ -589,4 +589,4 @@ function ConceptField({
 }
 
 // Re-export for convenience
-export { ProjectFieldTooltipIcon } from "@/components/ProjectFieldLabel";
+export { ProjectFieldTooltipIcon } from "@/components/project/ProjectFieldLabel";
