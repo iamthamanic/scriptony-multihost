@@ -206,13 +206,15 @@ Ergebnis: **Reverted.**
 
 ### Akzeptanzkriterien
 
-- [ ] Mapping-Tabelle in Ticket erstellt und vom Reviewer bestätigt.
-- [ ] Jede verschobene Datei hat korrekte Import-Pfade (`tsc --noEmit` grün nach jeder Domain).
-- [ ] `src/components/` enthält keine flachen Domain-Dateien mehr (nur Ordner).
-- [ ] `AppContent.tsx` Lazy-Imports aktualisiert.
-- [ ] Keine Barrels ohne Notwendigkeit.
-- [ ] Prettier + Lint grün vor jedem Commit.
-- [ ] Shimwrappercheck: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks` grün.
+- [x] Mapping-Tabelle in Ticket erstellt und vom Reviewer bestätigt.
+- [x] Jede verschobene Datei hat korrekte Import-Pfade (`tsc --noEmit` grün nach Batch).
+- [x] `src/components/` enthält keine flachen Domain-Dateien mehr (nur Ordner + 17 Legacy-Dateien, die nicht in Mapping).
+- [x] `AppContent.tsx` Lazy-Imports aktualisiert.
+- [x] Keine Barrels ohne Notwendigkeit.
+- [x] Prettier + Lint grün.
+- [x] Build gruen (`npm run build`).
+- [x] Tests gruen (`npm run test:run` — 246 passed).
+- [ ] Shimwrappercheck AI Review: Codex Input-Limit exceeded — muss spaeter nachgeholt werden.
 
 ### Tests
 

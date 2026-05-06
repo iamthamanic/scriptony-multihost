@@ -1934,3 +1934,45 @@ Editor-Readmodel aggregiert nur für die UI.
   ```
 - **Rollback plan:** `git checkout HEAD -- src/components/`
 - **Notes:** Eignet sich als eigenes, abgeschlossenes Ticket. Nicht als Nebenprodukt anderer Arbeit.
+
+## Phase 11 — Frontend-Komponenten-Struktur
+
+### Done Report: T23 — `src/components/` in Feature-Domains aufteilen
+
+- **Date:** 2026-05-06 09:56 CEST
+- **Verification Marker:** ARCH-REF-T23-DONE
+- **Changed files:**
+  - 72 .tsx-Dateien verschoben aus `src/components/` in 11 Domain-Ordner:
+    - `audio/` (13), `book/` (3), `characters/` (4), `film/` (4), `inspiration/` (3), `project/` (8), `timeline/` (9), `world/` (3), `assistant/` (3), `settings/` (7), `shared/` (15)
+  - 17 flache Dateien bleiben in `src/components/` (nicht in Mapping-Tabelle)
+  - Import-Pfade aktualisiert in:
+    - `AppContent.tsx` (eager + lazy)
+    - `src/components/pages/*` (6 Dateien)
+    - `src/components/forms/ProjectForm.tsx`
+    - `src/components/project-form/ProjectForm.tsx`
+    - `src/components/SceneContentRenderer.tsx`
+    - `src/components/StructureBeatsSection.tsx`
+    - `src/components/VideoEditorTimeline.tsx`
+    - `src/components/ShotCard.tsx`
+    - `src/components/ShotCardModal.tsx`
+    - `src/components/ScriptStructureImportButton.tsx`
+    - `src/components/MapBuilder.tsx`
+    - `src/hooks/useProjectTimeline.ts`
+    - `src/integrations/stage-export.ts`
+    - `src/lib/beat-templates.ts`
+    - `src/lib/projectTypeRegistry.ts`
+    - `src/lib/timeline-*.ts`
+  - `vite.config.ts`: Alias hinzugefügt für `functions/_shared/default-assistant-system-prompt`
+- **UI/UX checks:** Keine funktionalen Änderungen. Layout und Verhalten unverändert.
+- **Tests run:** `npm run test:run` — 26 files, 246 tests passed
+- **Shimwrappercheck command:** `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --frontend`
+- **Shimwrappercheck result:** Frontend-Checks grün. AI Review fehlgeschlagen wegen Codex Input-Limit (>1MB). Kein Code-Fehler.
+- **AI Review result:** N/A (technischer Fehler — muss nachgeholt werden)
+- **Known risks:** 
+  - 17 flache Dateien noch nicht zugeordnet (außerhalb Ticket-Scope)
+  - Keine Barrel-Exports erstellt (bewusst, per Ticket-Anforderung)
+- **Rollback plan:** `git checkout HEAD -- src/components/` + `git mv` zurück
+- **Notes:** 
+  - Keine Regex-basierten Import-Fixes verwendet (Lektion aus gescheitertem Versuch 2026-05-05)
+  - Systematischer Ansatz: alle `git mv` → `./ui/`→`../ui/` → `./lib/`→`../../lib/` → Cross-Domain `./X`→`../domain/X` → externe Importe → `tsc --noEmit`
+  - Build erfolgreich nach vite.config.ts Alias für `functions/_shared/...`
