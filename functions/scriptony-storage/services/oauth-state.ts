@@ -8,7 +8,10 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { getOptionalEnv, getRequiredEnv } from "../../_shared/env";
 
 function getSecret(): string {
-  return getOptionalEnv("scriptony_oauth_state_secret") || getRequiredEnv("APPWRITE_API_KEY");
+  return (
+    getOptionalEnv("scriptony_oauth_state_secret") ||
+    getRequiredEnv("APPWRITE_API_KEY")
+  );
 }
 
 function signState(payload: string): string {

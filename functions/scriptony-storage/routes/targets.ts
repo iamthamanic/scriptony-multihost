@@ -18,10 +18,7 @@ async function verifyConnectionOwnership(
   db: Databases,
   connectionId: string,
   userId: string,
-): Promise<
-  | { ok: true }
-  | { ok: false; code: 404 | 403; message: string }
-> {
+): Promise<{ ok: true } | { ok: false; code: 404 | 403; message: string }> {
   try {
     const conn = await db.getDocument(
       getRequiredEnv("APPWRITE_DATABASE_ID"),
@@ -29,7 +26,11 @@ async function verifyConnectionOwnership(
       connectionId,
     );
     if (conn.user_id !== userId) {
-      return { ok: false, code: 403, message: "Connection does not belong to you" };
+      return {
+        ok: false,
+        code: 403,
+        message: "Connection does not belong to you",
+      };
     }
     return { ok: true };
   } catch {
@@ -47,7 +48,10 @@ app.get("/:ownerType/:ownerId", async (c) => {
   // TODO-T21.1: org/project access checks via scriptony-collaboration API.
   if (ownerType === "user" && ownerId !== userId) {
     return c.json(
-      { success: false, error: { code: "FORBIDDEN", message: "Not your target" } },
+      {
+        success: false,
+        error: { code: "FORBIDDEN", message: "Not your target" },
+      },
       403,
     );
   }
@@ -66,14 +70,23 @@ app.post("/", async (c) => {
   const parsed = targetSchema.safeParse(body);
   if (!parsed.success) {
     return c.json(
-      { success: false, error: { code: "VALIDATION_ERROR", message: parsed.error.message } },
+      {
+        success: false,
+        error: { code: "VALIDATION_ERROR", message: parsed.error.message },
+      },
       400,
     );
   }
 
   if (parsed.data.owner_type === "user" && parsed.data.owner_id !== userId) {
     return c.json(
-      { success: false, error: { code: "FORBIDDEN", message: "Cannot set target for another user" } },
+      {
+        success: false,
+        error: {
+          code: "FORBIDDEN",
+          message: "Cannot set target for another user",
+        },
+      },
       403,
     );
   }
@@ -81,7 +94,11 @@ app.post("/", async (c) => {
   const db = c.get("db");
 
   // Verify connection exists and belongs to user
-  const connCheck = await verifyConnectionOwnership(db, parsed.data.connection_id, userId);
+  const connCheck = await verifyConnectionOwnership(
+    db,
+    parsed.data.connection_id,
+    userId,
+  );
   if (!connCheck.ok) {
     return c.json(
       {

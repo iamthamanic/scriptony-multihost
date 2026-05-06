@@ -6,7 +6,10 @@ import { describe, it, expect, vi } from "vitest";
 import { encrypt, decrypt } from "../services/crypto";
 
 // Setup required env vars for crypto tests
-vi.stubEnv("scriptony_storage_encryption_key", "test-encryption-key-32-chars-long!!");
+vi.stubEnv(
+  "scriptony_storage_encryption_key",
+  "test-encryption-key-32-chars-long!!",
+);
 vi.stubEnv("scriptony_storage_encryption_salt", "test-salt-16-chars");
 
 describe("crypto", () => {

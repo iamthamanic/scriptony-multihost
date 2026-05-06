@@ -9,7 +9,11 @@ vi.stubEnv("APPWRITE_API_KEY", "test-api-key-for-oauth-state-signing-123");
 
 describe("buildState / parseState", () => {
   it("roundtrip: build then parse", () => {
-    const state = buildState("https://app.example.com/callback", "google_drive", "user-123");
+    const state = buildState(
+      "https://app.example.com/callback",
+      "google_drive",
+      "user-123",
+    );
     const parsed = parseState(state);
     expect(parsed).not.toBeNull();
     expect(parsed!.redirect_uri).toBe("https://app.example.com/callback");
@@ -18,7 +22,11 @@ describe("buildState / parseState", () => {
   });
 
   it("rejects tampered state", () => {
-    const state = buildState("https://app.example.com/callback", "google_drive", "user-123");
+    const state = buildState(
+      "https://app.example.com/callback",
+      "google_drive",
+      "user-123",
+    );
     const tampered = state.slice(0, -1) + "X";
     expect(parseState(tampered)).toBeNull();
   });
