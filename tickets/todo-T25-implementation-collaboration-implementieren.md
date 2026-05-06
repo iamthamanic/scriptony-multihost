@@ -141,6 +141,7 @@ Projektzugriff laeuft derzeit nur ueber `created_by`. `project_members`, `projec
 Neue Function `functions/scriptony-collaboration/` mit Hono-Entrypoint und Routen fuer:
 
 **Routen:**
+
 - `GET /collaboration/projects/:projectId/members` — Mitglieder listen
 - `POST /collaboration/projects/:projectId/members` — Mitglied hinzufuegen (direkt oder via Invite)
 - `PATCH /collaboration/projects/:projectId/members/:userId` — Rolle aendern
@@ -158,6 +159,7 @@ Neue Function `functions/scriptony-collaboration/` mit Hono-Entrypoint und Route
 Die Function exportiert `canReadProject`, `canEditProject`, `canManageProject` als HTTP-API (fuer andere Functions) und als interne Helfer.
 
 **Datenmodelle:**
+
 - `project_members` (neue Collection)
 - `project_invites` (neue Collection)
 - `organization_members` (neue Collection)
@@ -166,6 +168,7 @@ Die Function exportiert `canReadProject`, `canEditProject`, `canManageProject` a
 - `projects.owner_id` (Erweiterung bestehende Collection)
 
 **Zu migrierende Logik:**
+
 - `functions/scriptony-auth/organizations/` → `functions/scriptony-collaboration/routes/organizations.ts`
 - Duplizierte Access-Helper in `scriptony-assets/_shared/access.ts`, `scriptony-audio-story/_shared/access.ts`, `scriptony-script/_shared/access.ts` → zentrale API bei `scriptony-collaboration`
 

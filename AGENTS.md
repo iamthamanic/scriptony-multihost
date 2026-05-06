@@ -81,7 +81,7 @@ Checks are configured in the dashboard or `.shimwrappercheckrc` (toggles and ord
 - **Blender-Artefakte** leben unter `tools/blender/`; `.zip`-Dateien werden dort gebaut und nicht ins Repo committed.
 - **Diagramme und Visualisierungen** (`.png`, `.html`) gehören in `docs/assets/` oder `docs/archive/`.
 - **Ticket-Naming-Schema (verbindlich):** Alle Tickets unter `tickets/` folgen dem Format:  
-  `{status}-T{NN}-{ziel}-{name}.md`  
+  `{status}-T{NN}-{ziel}-{name}.md`
   - `status`: `todo` | `at-work` | `done`
   - `T{NN}`: Ticket-Nummer (z. B. `T20`, `T21`, `T24`)
   - `ziel`: `plan` (Architektur-Planung) | `implementation` (konkrete Umsetzung) | `bugfix` (Bugfix)
