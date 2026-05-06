@@ -134,7 +134,10 @@ Offen
 
 ### Abhaengigkeiten
 
-Alle Implementierungstickets in diesem Dokument (T2-T21) sowie alle offenen Puppet-Layer-System-Tickets (T1, T8-T12) mit Done markiert.
+- Basis-Checks: T02 (Shim-Gate), T03 (script-schema), T04 (script-api), T08 (audio-orchestration), T12 (editor-readmodel)
+- Implementierungs-Tickets: **T23** (`src/components/` Reorg), **T24** (`scriptony-storage`), **T25** (`scriptony-collaboration`)
+- Alle oben genannten Tickets muessen auf `done` stehen.
+- Der Worktree muss committed sein (keine uncommitted Aenderungen).
 
 ### Ziel
 
@@ -142,7 +145,9 @@ Jeder Code, der durch die Architektur-Refactor-Tickets und Puppet-Layer-System-T
 
 ### Scope
 
-Dies ist KEIN Feature-Ticket. Es ist ein abschliessendes Qualitaets-Gate, das **nach** der Umsetzung aller offenen Tickets laeuft.
+Dies ist KEIN Feature-Ticket. Es ist ein abschliessendes Qualitaets-Gate, das **nach** der Umsetzung der Implementierungstickets **T23, T24 und T25** laeuft.
+
+Geprueft wird der gesamte Code, der durch diese drei Tickets neu erstellt oder geaendert wurde, plus alle bereits abgeschlossenen Architektur-Tickets (T03-T19).
 
 ### Pruefkriterien
 
@@ -166,25 +171,30 @@ Dies ist KEIN Feature-Ticket. Es ist ein abschliessendes Qualitaets-Gate, das **
 5. **Keine neuen console.log in Produktionscode**
    - Strukturiertes Logging oder Entfernung vor Merge.
 
-6. **Struktur-Regeln**
-   - Keine Business-Logik in Komponenten (Hooks/Services).
-   - Alle Appwrite-Calls ueber `src/lib/api/` (Frontend).
-   - Keine direkten Provider-SDK-Imports in Produkt-Domaenen (Backend).
+6. **Ticket-Spezifische Pruefungen**
+   - **T23 (Components Reorg):** Alle verschobenen Komponenten haben korrekte Import-Pfade (keine doppelten Praefixe wie `./settings/ChatSettingsDialogcomponents/settings/ChatSettingsDialog`). Feature-Domain-Ordner sind konsistent benannt.
+   - **T24 (Storage):** `functions/scriptony-storage/` hat keine duplizierte Logik aus `scriptony-auth/storage/`. `storage_connections`, `storage_targets`, `storage_objects` Collections sind in `docs/backend-domain-map.md` eingetragen.
+   - **T25 (Collaboration):** `functions/scriptony-collaboration/` nutzt Zod-Validierung. RBAC-Matrix ist dokumentiert. `project_members`, `project_invites`, `organization_members`, `organization_invites` sind in `docs/backend-domain-map.md` eingetragen. Access-Helper API (`/collaboration/access/check`) ist fuer andere Functions dokumentiert.
+   - Keine `created_by`-Checks mehr in neuen Route-Handlern (nur via Access-Helper).
 
 ### Akzeptanzkriterien
 
+- [ ] **T23, T24, T25** sind auf `done` markiert.
 - [ ] `npm run checks` laeuft durch mit `CHECK_MODE=full` und `SHIM_RUN_PROJECT_RULES=1`
-- [ ] `scripts/checks/project-rules.sh` zeigt 0 Hard Violations fuer alle neuen Dateien
+- [ ] `scripts/checks/project-rules.sh` zeigt 0 Hard Violations fuer alle Dateien aus T23–T25
 - [ ] AI Review gibt `VERDICT: ACCEPT` oder listet nur akzeptable Low-Findings
-- [ ] Alle neuen Dateien sind in der `docs/backend-domain-map.md` korrekt eingetragen (falls Backend)
-- [ ] Dokumentation (`docs/`, `README.md`) ist aktualisiert, falls neue Patterns eingefuehrt wurden
+- [ ] Alle neuen Dateien aus T24/T25 sind in der `docs/backend-domain-map.md` korrekt eingetragen
+- [ ] Dokumentation (`docs/`, `README.md`, `AGENTS.md`) ist aktualisiert, falls neue Patterns eingefuehrt wurden
+- [ ] Keine uncommitted Aenderungen im Worktree
 
 ### Ausfuehrung
 
 Dieses Ticket darf erst begonnen werden, wenn:
 
-1. Alle Implementierungstickets mit Done markiert sind.
-2. Der Worktree committed ist (keine uncommitted Aenderungen).
+1. **T23** (`src/components/` Feature-Reorg) ist auf `done`.
+2. **T24** (`scriptony-storage` implementieren) ist auf `done`.
+3. **T25** (`scriptony-collaboration` implementieren) ist auf `done`.
+4. Der Worktree committed ist (keine uncommitted Aenderungen).
 
 Wenn der Check FAIL gibt:
 
