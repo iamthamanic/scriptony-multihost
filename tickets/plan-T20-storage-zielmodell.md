@@ -171,7 +171,7 @@ Ein Nutzer verbindet Google Drive als Storage Provider. Spaeter koennen Assets p
 
 ### Verifizierungsmarker
 
-`ARCH-REF-T20-DONE`
+`ARCH-REF-T20-PLAN`
 
 **Erledigt (2026-05-03):** Done Report und Details in `docs/scriptony-architecture-refactor 25.04.26.md` (Abschnitt „Phase 13 — Storage-Zielmodell“).
 

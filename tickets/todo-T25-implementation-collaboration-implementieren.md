@@ -122,61 +122,78 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 
 ---
 
-# DONE - T21 | `scriptony-collaboration` Zielmodell und Access-Helper vorbereiten
+# TODO - T25 | `scriptony-collaboration` implementieren
 
-**Phase:** laufend · **Abgeschlossen (2026-05-06):** Shim-Gate `CHECK_MODE=snippet … npm run checks` gruen (Scope siehe Done Report); Marker `ARCH-REF-T21-DONE`.
+**Phase:** laufend · **Ziel:** implementation · **Abhaengigkeiten:** T21 (Plan), T01 (Domain Map), T04 (scriptony-script Access-Helper)
 
-## T21: `scriptony-collaboration` Zielmodell und Access-Helper vorbereiten
+## T25: `scriptony-collaboration` Function bauen
 
 ### Kontext
 
-Scriptony soll spaeter direkte Projektfreigaben und optional Organisationen/Workspaces unterstuetzen.
+T21 hat das Zielmodell, die RBAC-Matrix und die Access-Helper-Vertraege definiert. Die Implementierung existiert noch nicht.
 
 ### Problem
 
-Projektzugriff nur ueber `created_by` ist single-user-zentriert. Organisationen allein waeren zu schwergewichtig, weil Nutzer Projekte auch direkt mit einzelnen anderen Nutzern teilen koennen muessen.
+Projektzugriff laeuft derzeit nur ueber `created_by`. `project_members`, `project_invites`, `organization_members` und `organization_invites` fehlen. `scriptony-collaboration` als Platform-Domain existiert nicht.
 
 ### Loesung
 
-`scriptony-collaboration` als Platform-Domain definieren. Direkte Projektfreigabe ohne Organisation ist Pflicht. Organisationen sind optionaler Owner-Kontext.
+Neue Function `functions/scriptony-collaboration/` mit Hono-Entrypoint und Routen fuer:
 
-### User Journey
+**Routen:**
+- `GET /collaboration/projects/:projectId/members` — Mitglieder listen
+- `POST /collaboration/projects/:projectId/members` — Mitglied hinzufuegen (direkt oder via Invite)
+- `PATCH /collaboration/projects/:projectId/members/:userId` — Rolle aendern
+- `DELETE /collaboration/projects/:projectId/members/:userId` — Mitglied entfernen
+- `POST /collaboration/projects/:projectId/invites` — Einladung senden
+- `POST /collaboration/invites/:inviteId/accept` — Einladung annehmen
+- `POST /collaboration/invites/:inviteId/reject` — Einladung ablehnen
+- `GET /collaboration/organizations` — eigene Organisationen
+- `POST /collaboration/organizations` — Organisation erstellen
+- `POST /collaboration/organizations/:orgId/members` — Org-Mitglied einladen
+- `POST /collaboration/organizations/:orgId/members/:userId` — Org-Mitglied Rolle aendern
+- `POST /collaboration/access/check` — Access-Check API (fuer andere Functions)
 
-Ein Nutzer kann ein Projekt direkt mit einer anderen Person teilen, ohne vorher eine Organisation zu erstellen. Teams und Firmen koennen spaeter Organisationen/Workspaces verwenden.
+**Zentrale Access-Helper:**
+Die Function exportiert `canReadProject`, `canEditProject`, `canManageProject` als HTTP-API (fuer andere Functions) und als interne Helfer.
 
-### Akzeptanzkriterien
+**Datenmodelle:**
+- `project_members` (neue Collection)
+- `project_invites` (neue Collection)
+- `organization_members` (neue Collection)
+- `organization_invites` (neue Collection)
+- `projects.owner_type` (Erweiterung bestehende Collection)
+- `projects.owner_id` (Erweiterung bestehende Collection)
 
-- `scriptony-collaboration` ist in `docs/backend-domain-map.md` enthalten.
-- `scriptony-collaboration` ist in der Zielarchitektur unter Platform enthalten.
-- Datenmodelle sind geplant:
-  - `project_members`
-  - `project_invites`
-  - `organization_members`
-  - `organization_invites`
-- `projects.owner_type = user | organization` ist als Zielmodell dokumentiert.
-- Direct Project Sharing ohne Organisation ist dokumentiert.
-- Organisationen/Workspaces sind optionaler Owner-Kontext.
-- Access-Helper sind definiert:
-  - `canReadProject(userId, projectId)`
-  - `canEditProject(userId, projectId)`
-  - `canManageProject(userId, projectId)`
-- Neue Functions muessen diese Access-Helper nutzen.
-- Initiale Implementierung darf intern noch `created_by` pruefen.
-- Future Implementation muss `project_members` und `organization_members` beruecksichtigen koennen.
-- Bestehende Organisations-/Mitgliedschaftslogik aus `scriptony-auth` ist als current/future boundary dokumentiert.
-- UI/UX: keine UI-Aenderung.
-- Shimwrappercheck: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks` muss laufen; Ergebnis, AI Review und unrelated Altlasten muessen im Done Report dokumentiert sein.
+**Zu migrierende Logik:**
+- `functions/scriptony-auth/organizations/` → `functions/scriptony-collaboration/routes/organizations.ts`
+- Duplizierte Access-Helper in `scriptony-assets/_shared/access.ts`, `scriptony-audio-story/_shared/access.ts`, `scriptony-script/_shared/access.ts` → zentrale API bei `scriptony-collaboration`
 
-### Tests
+**Akzeptanzkriterien**
 
-- `rg` nach `created_by`, `organization_members`, `organizations`, `project_members`, `invites`.
-- Bestehende Auth-/Org-Routen inventarisieren.
-- Access-Helper-Konzept dokumentieren.
-- Domain Map aktualisiert.
-- Shimwrappercheck Gate: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks`.
+- [ ] `functions/scriptony-collaboration/` existiert mit Hono-Entrypoint
+- [ ] `projects` Collection erweitert: `owner_type` ('user' | 'organization'), `owner_id`
+- [ ] `project_members` Collection provisioniert
+- [ ] `project_invites` Collection provisioniert (mit `expires_at`, `token_hash`, `accepted_at`)
+- [ ] `organization_members` Collection provisioniert
+- [ ] `organization_invites` Collection provisioniert
+- [ ] Zod-Validierung aller Inputs
+- [ ] RBAC-Matrix implementiert (Owner/Admin/Editor/Viewer)
+- [ ] `canManageProject` delegiert NICHT an `canReadProject` (keine Authz-Eskalation)
+- [ ] Einladungen haben TTL (7 Tage Default, konfigurierbar)
+- [ ] Rate-Limiting fuer Einladungen (10/hour per inviter per project)
+- [ ] `scriptony-auth/organizations/` als @deprecated markiert (JSDoc)
+- [ ] Access-Helper API (`/collaboration/access/check`) fuer andere Functions
+- [ ] Tests fuer RBAC-Matrix, Invite-Flow, Org-Management
+- [ ] Shimwrappercheck: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --backend` gruen
 
-### Verifizierungsmarker
+**Tests**
 
-`ARCH-REF-T21-DONE`
+- Unit-Tests: Owner kann Editor einladen, Editor kann nicht Owner einladen, Viewer kann nichts aendern
+- Unit-Tests: Abgelaufene Einladung wird abgelehnt
+- Unit-Tests: Einmaliger Token wird bei Annahme invalidiert
+- Integrationstest: Org-Workflow (Erstellen, Einladen, Rolle setzen, Verlassen)
 
----
+**Verifizierungsmarker**
+
+`ARCH-REF-T25-DONE`

@@ -144,10 +144,12 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 | T17    | 10      | Legacy markieren, pruefen und entfernen                                   | **done** | T16                          |
 | T18    | laufend | `_shared` Business-Logik kontrolliert herausziehen                        | **done** | T01                          |
 | T19    | laufend | UI/UX und Frontend-Aufrufer je Phase pruefen                              | **done** | alle Implementierungstickets |
-| T20    | laufend | `scriptony-storage` Zielmodell und Provider Boundary vorbereiten          | **done** | T01, T05, T06                |
-| T21    | laufend | `scriptony-collaboration` Zielmodell und Access-Helper vorbereiten        | **done** | T01, T03, T04                |
+| T20    | laufend | `scriptony-storage` Zielmodell und Provider Boundary vorbereiten          | **plan** | T01, T05, T06                |
+| T21    | laufend | `scriptony-collaboration` Zielmodell und Access-Helper vorbereiten        | **plan** | T01, T03, T04                |
 | T22    | laufend | AGENTS.md Post-Audit - Code Quality Gate                                  | todo     | T02, T03, T04, T08, T12      |
 | T23    | 11      | `src/components/` in Feature-Domains aufteilen                            | todo     | T19                          |
+| T24    | laufend | `scriptony-storage` implementieren                                        | todo     | T20, T01                     |
+| T25    | laufend | `scriptony-collaboration` implementieren                                  | todo     | T21, T01, T04                |
 
 ---
 

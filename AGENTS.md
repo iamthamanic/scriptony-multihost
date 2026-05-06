@@ -80,6 +80,17 @@ Checks are configured in the dashboard or `.shimwrappercheckrc` (toggles and ord
 - **Legacy-Backends und Docker-Templates** (z. B. `backend/auth/`, `docker-compose.legacy.yml`) gehören in `docs/archive/` oder `infra/legacy/`.
 - **Blender-Artefakte** leben unter `tools/blender/`; `.zip`-Dateien werden dort gebaut und nicht ins Repo committed.
 - **Diagramme und Visualisierungen** (`.png`, `.html`) gehören in `docs/assets/` oder `docs/archive/`.
+- **Ticket-Naming-Schema (verbindlich):** Alle Tickets unter `tickets/` folgen dem Format:  
+  `{status}-T{NN}-{ziel}-{name}.md`  
+  - `status`: `todo` | `at-work` | `done`
+  - `T{NN}`: Ticket-Nummer (z. B. `T20`, `T21`, `T24`)
+  - `ziel`: `plan` (Architektur-Planung) | `implementation` (konkrete Umsetzung) | `bugfix` (Bugfix)
+  - `name`: Kurze, beschreibende Bezeichnung
+  - **Beispiele:**
+    - `done-T20-plan-storage-zielmodell.md` — Planung fertig
+    - `todo-T24-implementation-storage-implementieren.md` — Umsetzung offen
+    - `at-work-T25-bugfix-auth-timeout.md` — Bugfix in Arbeit
+  - Planungs-Tickets (`plan`) enthalten Zielmodell, Datenmodelle und Architektur-Skizzen. Implementation-Tickets (`implementation`) enthalten den eigentlichen Code, Collections und Tests.
 
 ## Project rules
 
