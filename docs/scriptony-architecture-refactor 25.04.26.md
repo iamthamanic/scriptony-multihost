@@ -1962,12 +1962,12 @@ Editor-Readmodel aggregiert nur für die UI.
     - `src/lib/beat-templates.ts`
     - `src/lib/projectTypeRegistry.ts`
     - `src/lib/timeline-*.ts`
-  - `vite.config.ts`: Alias hinzugefügt für `functions/_shared/default-assistant-system-prompt`
+  - `src/components/assistant/ScriptonyAssistant.tsx`: Import auf frontend-sicheren Shared-Helper umgestellt (`src/lib/assistant-system-prompt.ts`)
 - **UI/UX checks:** Keine funktionalen Änderungen. Layout und Verhalten unverändert.
 - **Tests run:** `npm run test:run` — 26 files, 246 tests passed
 - **Shimwrappercheck command:** `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --frontend`
-- **Shimwrappercheck result:** Frontend-Checks grün. AI Review fehlgeschlagen wegen Codex Input-Limit (>1MB). Kein Code-Fehler.
-- **AI Review result:** N/A (technischer Fehler — muss nachgeholt werden)
+- **Shimwrappercheck result:** Frontend-Checks grün; AI Review nachgeholt.
+- **AI Review result:** **VERDICT: ACCEPT** (nachgeholt im scoped Shim-Gate).
 - **Known risks:** 
   - 17 flache Dateien noch nicht zugeordnet (außerhalb Ticket-Scope)
   - Keine Barrel-Exports erstellt (bewusst, per Ticket-Anforderung)
@@ -1975,4 +1975,57 @@ Editor-Readmodel aggregiert nur für die UI.
 - **Notes:** 
   - Keine Regex-basierten Import-Fixes verwendet (Lektion aus gescheitertem Versuch 2026-05-05)
   - Systematischer Ansatz: alle `git mv` → `./ui/`→`../ui/` → `./lib/`→`../../lib/` → Cross-Domain `./X`→`../domain/X` → externe Importe → `tsc --noEmit`
-  - Build erfolgreich nach vite.config.ts Alias für `functions/_shared/...`
+  - Build erfolgreich mit frontend-sicherem Prompt-Helper in `src/lib/assistant-system-prompt.ts` (kein `src` -> `functions` Import und kein Alias in `vite.config.ts` erforderlich)
+
+## Phase laufend — Storage Platform
+
+### Done Report: T24 — `scriptony-storage` implementieren
+
+- **Date:** 2026-05-06 16:16 CEST
+- **Verification Marker:** ARCH-REF-T24-DONE
+- **Changed files:**
+  - `functions/scriptony-storage/` (neue Function mit Hono)
+  - `functions/scriptony-storage/index.ts` (Entrypoint)
+  - `functions/scriptony-storage/middleware/auth.ts` (JWT + DB Middleware)
+  - `functions/scriptony-storage/types.ts` (Hono ContextVariableMap)
+  - `functions/scriptony-storage/routes/providers.ts` (GET /storage/providers)
+  - `functions/scriptony-storage/routes/oauth.ts` (OAuth authorize + callback)
+  - `functions/scriptony-storage/routes/connections.ts` (GET + DELETE)
+  - `functions/scriptony-storage/routes/targets.ts` (GET + POST, owner checks)
+  - `functions/scriptony-storage/routes/objects.ts` (GET + POST, created_by check)
+  - `functions/scriptony-storage/routes/sync.ts` (Sync + Import/Export stubs)
+  - `functions/scriptony-storage/services/providers.ts` (Provider-Konfig + Zod-Schemas)
+  - `functions/scriptony-storage/services/crypto.ts` (AES-256-GCM encryption)
+  - `functions/scriptony-storage/services/oauth-state.ts` (HMAC-SHA256 state signing)
+  - `functions/scriptony-storage/__tests__/*.test.ts` (15 Tests)
+  - `infra/appwrite/collections/storage_*.json` (4 Collection-Schemas mit Indexes)
+  - `functions/build-appwrite-deploy.mjs` (+ scriptony-storage)
+  - `scripts/check-appwrite-functions-build.mjs` (+ scriptony-storage)
+  - `functions/scriptony-auth/storage/*.ts` (@deprecated → T24)
+  - `functions/scriptony-auth/storage-providers/oauth/*.ts` (@deprecated → T24)
+- **Appwrite collections:** storage_connections, storage_targets, storage_objects, storage_sync_status
+- **Appwrite buckets:** keine (Storage-Provider sind extern: Google Drive, Dropbox, etc.)
+- **Env vars:**
+  - `scriptony_storage_encryption_key` (required, ≥32 chars)
+  - `scriptony_storage_encryption_salt` (required, ≥16 chars)
+  - `scriptony_oauth_state_secret` (optional, für state-Signierung)
+  - `scriptony_oauth_{provider}_client_id` (je Provider)
+  - `scriptony_oauth_{provider}_client_secret` (je Provider)
+  - `scriptony_oauth_callback_url` (für OAuth callback)
+- **Routes:** 12 Hono-Subroutes unter /storage/*
+- **UI/UX checks:** Keine UI-Änderungen (nur Backend)
+- **Tests run:** 27 files, 262 tests passed (inkl. 15 neue Storage-Tests)
+- **Shimwrappercheck command:** `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --backend`
+- **Shimwrappercheck result:** Build grün, Tests grün, Gitleaks grün, Architecture grün
+- **AI Review result:** REJECT → Fixes adressiert (CORS, Token-Injection, Crypto-Fallback, Auth-Checks, Tests)
+- **Known risks:**
+  - org/project owner_type checks: TODO-T21.1 (wartet auf collaboration API)
+  - OAuth PKCE nicht implementiert (state-HMAC ist aktueller Schutz)
+  - Sync/Import/Export: Stubs, keine echte Logik
+  - AI Review: Codex Input-Limit bei erstem Versuch
+- **Rollback plan:** `git revert` der T24-Commits + `appwrite functions delete scriptony-storage`
+- **Notes:**
+  - OAuth-Tokens niemals im Browser (nur connection_id in Fragment)
+  - AES-256-GCM mit random IV + AuthTag
+  - POST /storage/connections entfernt (Token-Injection verhindert)
+  - HMAC-SHA256 für OAuth state (getrennter Service, testbar)
