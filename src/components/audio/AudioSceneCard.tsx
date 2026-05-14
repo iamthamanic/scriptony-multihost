@@ -47,6 +47,7 @@ import { toast } from "sonner";
 import { isFeatureEnabled } from "../../lib/feature-flags";
 import { useAudioClips } from "../../hooks/useAudioClips";
 import { AudioTimelineSegment } from "./AudioTimelineSegment";
+import { queryKeys } from "../../lib/react-query";
 
 type AudioTrackType = "dialog" | "narrator" | "music" | "sfx" | "atmo";
 
@@ -291,7 +292,7 @@ export function AudioSceneCard({
 
 	// Fetch audio tracks
 	const { data: tracks = [], isLoading } = useQuery({
-		queryKey: ["audio-tracks", scene.id],
+		queryKey: queryKeys.audio.tracksByScene(scene.id),
 		queryFn: async () => {
 			const token = await getAuthToken();
 			if (!token) return [];
@@ -316,9 +317,13 @@ export function AudioSceneCard({
 		},
 		onSuccess: () => {
 			// T29: Dual-Write → beide Queries invalidieren
-			queryClient.invalidateQueries({ queryKey: ["audio-tracks", scene.id] });
+			queryClient.invalidateQueries({
+				queryKey: queryKeys.audio.tracksByScene(scene.id),
+			});
 			if (clipSystemEnabled) {
-				queryClient.invalidateQueries({ queryKey: ["audio-clips", scene.id] });
+				queryClient.invalidateQueries({
+					queryKey: queryKeys.audio.clipsByScene(scene.id),
+				});
 			}
 			toast.success("Audio-Track erstellt");
 		},

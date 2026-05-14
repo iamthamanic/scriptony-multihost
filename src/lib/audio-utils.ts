@@ -45,14 +45,14 @@ export function estimateDurationSec(
 	if (words === 0) return WPM_DEFAULTS.minDurationSec;
 
 	const baseWpm =
-		wpmOverride ||
-		(WPM_DEFAULTS.typeDefaults as Record<string, number>)[type] ||
+		wpmOverride ??
+		(WPM_DEFAULTS.typeDefaults as Record<string, number>)[type] ??
 		WPM_DEFAULTS.base;
 
 	const langModifier =
-		(WPM_DEFAULTS.languageModifiers as Record<string, number>)[language] || 1.0;
+		(WPM_DEFAULTS.languageModifiers as Record<string, number>)[language] ?? 1.0;
 	const emotionModifier =
-		(WPM_DEFAULTS.emotionModifiers as Record<string, number>)[emotion] || 1.0;
+		(WPM_DEFAULTS.emotionModifiers as Record<string, number>)[emotion] ?? 1.0;
 
 	const effectiveWpm = baseWpm * langModifier * emotionModifier;
 	const duration = (words / effectiveWpm) * 60;

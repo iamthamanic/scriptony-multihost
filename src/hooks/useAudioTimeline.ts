@@ -8,6 +8,7 @@ import { useAuth } from "./useAuth";
 import { queryKeys } from "../lib/react-query";
 import { useProjectTimeline } from "./useProjectTimeline";
 import * as AudioAPI from "../lib/api/audio-story-api";
+import { isFeatureEnabled } from "../lib/feature-flags";
 import type { AudioTimelineData } from "../lib/types/audio-timeline";
 import type { AudioTrack, CharacterVoiceAssignment } from "../lib/types";
 
@@ -95,6 +96,7 @@ export function useCreateAudioTrack(
 ) {
 	const qc = useQueryClient();
 	const { getAccessToken } = useAuth();
+	const clipSystemEnabled = isFeatureEnabled("audioClipSystem");
 
 	return useMutation({
 		mutationFn: async (trackData: Partial<AudioTrack>) => {
@@ -111,6 +113,11 @@ export function useCreateAudioTrack(
 			qc.invalidateQueries({
 				queryKey: queryKeys.audio.tracksByScene(sceneId || ""),
 			});
+			if (clipSystemEnabled) {
+				qc.invalidateQueries({
+					queryKey: queryKeys.audio.clipsByScene(sceneId || ""),
+				});
+			}
 		},
 	});
 }

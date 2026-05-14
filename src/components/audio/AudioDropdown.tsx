@@ -120,11 +120,16 @@ export function AudioDropdown({ projectId, projectType }: AudioDropdownProps) {
 			});
 			return result.track; // T29: unwrap track from dual-write response
 		},
-		onSuccess: () => {
+		onSuccess: (_data, variables) => {
 			toast.success("Track hinzugefügt");
 			queryClient.invalidateQueries({
 				queryKey: queryKeys.timeline.audioByProject(projectId),
 			});
+			if (FEATURE_FLAGS.audioClipSystem.enabled) {
+				queryClient.invalidateQueries({
+					queryKey: queryKeys.audio.clipsByScene(variables.sceneId),
+				});
+			}
 		},
 		onError: (err: Error) => {
 			toast.error(`Fehler: ${err.message}`);
