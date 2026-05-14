@@ -65,6 +65,30 @@ export function AudioTimelineSegment({
 	// T29: Geschätzt = kein audioFileId auf Clip
 	const isEstimated = isClip && !(item as AudioClip).audioFileId;
 
+	// T29: Berechne Wortanzahl und grobe WPM für Tooltip
+	const wordCount = content
+		? content.trim().split(/\s+/).filter((w) => w.length > 0).length
+		: 0;
+	const durationMin = durationSec / 60;
+	const roughWpm =
+		wordCount > 0 && durationMin > 0
+			? Math.round(wordCount / durationMin)
+			: 0;
+	const contentPreview =
+		content && content.length > 40
+			? `"${content.slice(0, 40)}…”`
+			: content
+				? `"${content}"`
+				: "";
+
+	const tooltipText = isEstimated
+		? `⏳ Geschätzt: ${formatDurationSec(durationSec)} (${wordCount} Wörter${roughWpm > 0 ? `, ~${roughWpm} WPM` : ""}${contentPreview ? `, ${contentPreview}` : ""})`
+		: `${trackType}: ${content || "(kein Text)"} (${formatDurationSec(durationSec)})`;
+
+	const ariaText = isEstimated
+		? `Geschätzt: ${trackType}: ${content || "(kein Text)"}, Dauer ${formatDurationSec(durationSec)}, ${wordCount} Wörter${roughWpm > 0 ? `, ~${roughWpm} WPM` : ""}`
+		: `${trackType}: ${content}, Dauer ${formatDurationSec(durationSec)}`;
+
 	return (
 		<div
 			className={cn(
@@ -77,16 +101,8 @@ export function AudioTimelineSegment({
 				left: `${startPx}px`,
 				width: `${widthPx}px`,
 			}}
-			title={
-				isEstimated
-					? `⏳ Geschätzt: ${formatDurationSec(durationSec)} (${content || "kein Text"})`
-					: `${trackType}: ${content || "(kein Text)"} (${formatDurationSec(durationSec)})`
-			}
-			aria-label={
-				isEstimated
-					? `Geschätzt: ${trackType}: ${content}, Dauer ${formatDurationSec(durationSec)}`
-					: `${trackType}: ${content}, Dauer ${formatDurationSec(durationSec)}`
-			}
+			title={tooltipText}
+			aria-label={ariaText}
 		>
 			<div className="px-1.5 py-0.5 flex items-center justify-between h-full">
 				<span className="truncate font-medium">{content || "…"}</span>

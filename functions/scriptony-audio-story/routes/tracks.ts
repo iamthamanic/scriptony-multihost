@@ -22,6 +22,9 @@ import {
 import { requestGraphql } from "../../_shared/graphql-compat";
 import { canReadProject, canEditProject } from "../_shared/access";
 import { estimateDurationSec } from "../../_shared/audio-utils";
+import { z } from "zod";
+
+const TrackTypeSchema = z.enum(["dialog", "narrator", "sfx", "music", "atmo"]);
 
 async function listTracks(req: RequestLike, res: ResponseLike): Promise<void> {
 	const bootstrap = await requireUserBootstrap(req);
@@ -108,6 +111,16 @@ async function createTrack(req: RequestLike, res: ResponseLike): Promise<void> {
 		return;
 	}
 
+	// T29: Zod-Validierung für type
+	const parse = TrackTypeSchema.safeParse(type);
+	if (!parse.success) {
+		sendBadRequest(
+			res,
+			`Invalid track type: "${type}". Must be one of: dialog, narrator, sfx, music, atmo`,
+		);
+		return;
+	}
+
 	let trackId: string | null = null;
 	let clipId: string | null = null;
 
@@ -158,9 +171,15 @@ async function createTrack(req: RequestLike, res: ResponseLike): Promise<void> {
 				? (ttsSettings as Record<string, unknown>).emotion
 				: undefined;
 
+		const language =
+			typeof body.language === "string"
+				? (body.language as "de" | "en" | "es")
+				: "de";
+
 		const wpmEstimate = estimateDurationSec(String(content || ""), {
 			type: type as "dialog" | "narrator" | "sfx" | "music" | "atmo",
 			emotion: typeof emotion === "string" ? emotion : undefined,
+			language,
 		});
 
 		// ── 3. Existierende Clips in Szene zählen (für Startzeit + Order) ─
@@ -286,13 +305,17 @@ async function createTrack(req: RequestLike, res: ResponseLike): Promise<void> {
 	}
 }
 
-/** KISS: Lane-Zuweisung basierend auf Track-Typ. */
-function resolveLaneIndex(type: string, _characterId?: string | null): number {
+/** KISS: Lane-Zuweisung basierend auf Track-Typ.
+ * MUSS mit Frontend LANE_SCHEMA in src/lib/types/index.ts übereinstimmen:
+ *   dialog: 0, narrator: 40, sfx: 10, music: 20, atmo: 30
+ */
+function resolveLaneIndex(type: string, characterId?: string | null): number {
 	switch (type) {
 		case "dialog":
-			return 0;
+			// T29: Dialog-Lanes 0–9, optional pro Charakter (future)
+			return characterId ? 0 : 0;
 		case "narrator":
-			return 1;
+			return 40;
 		case "sfx":
 			return 10;
 		case "music":
