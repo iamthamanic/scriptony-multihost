@@ -67,13 +67,14 @@ export function AudioTimelineSegment({
 
 	// T29: Berechne Wortanzahl und grobe WPM für Tooltip
 	const wordCount = content
-		? content.trim().split(/\s+/).filter((w) => w.length > 0).length
+		? content
+				.trim()
+				.split(/\s+/)
+				.filter((w) => w.length > 0).length
 		: 0;
 	const durationMin = durationSec / 60;
 	const roughWpm =
-		wordCount > 0 && durationMin > 0
-			? Math.round(wordCount / durationMin)
-			: 0;
+		wordCount > 0 && durationMin > 0 ? Math.round(wordCount / durationMin) : 0;
 	const contentPreview =
 		content && content.length > 40
 			? `"${content.slice(0, 40)}…”`
