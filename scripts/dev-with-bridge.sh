@@ -130,7 +130,10 @@ if [ "$BRIDGE_OK" = true ]; then
   echo ""
 fi
 
-# 8. Start Vite dev server
+# 8. Start Vite dev server (Port 3000 darf nicht von Docker/z.B. Browo blockiert sein)
 echo -e "${CYAN}▸ Vite Dev Server starten...${NC}"
 echo ""
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+node scripts/assert-port-3000-for-scriptony.mjs
 npx vite

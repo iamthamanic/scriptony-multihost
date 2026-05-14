@@ -12,7 +12,7 @@
  * Neue Stats-Features duerfen hier nicht ergaenzt werden.
  */
 
-import { requireUserBootstrap } from "../../../../../../_shared/auth";
+import { requireUserBootstrap } from "../../../../_shared/auth";
 import {
   getParam,
   type RequestLike,
@@ -22,7 +22,7 @@ import {
   sendMethodNotAllowed,
   sendServerError,
   sendUnauthorized,
-} from "../../../../../../_shared/http";
+} from "../../../../_shared/http";
 
 export default async function handler(
   req: RequestLike,

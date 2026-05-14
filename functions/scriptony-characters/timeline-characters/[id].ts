@@ -5,83 +5,83 @@
 import { requireUserBootstrap } from "../../_shared/auth";
 import { requestGraphql } from "../../_shared/graphql-compat";
 import {
-  getParam,
-  readJsonBody,
-  type RequestLike,
-  type ResponseLike,
-  sendBadRequest,
-  sendJson,
-  sendMethodNotAllowed,
-  sendNotFound,
-  sendServerError,
-  sendUnauthorized,
+	getParam,
+	readJsonBody,
+	type RequestLike,
+	type ResponseLike,
+	sendBadRequest,
+	sendJson,
+	sendMethodNotAllowed,
+	sendNotFound,
+	sendServerError,
+	sendUnauthorized,
 } from "../../_shared/http";
 import {
-  getCharacterById,
-  mapCharacter,
-  normalizeCharacterInput,
+	getCharacterById,
+	mapCharacter,
+	normalizeCharacterInput,
 } from "../../_shared/timeline";
 import { requireProjectAccess } from "../../_shared/scriptony";
 
 export default async function handler(
-  req: RequestLike,
-  res: ResponseLike,
+	req: RequestLike,
+	res: ResponseLike,
 ): Promise<void> {
-  try {
-    const bootstrap = await requireUserBootstrap(req);
-    if (!bootstrap) {
-      sendUnauthorized(res);
-      return;
-    }
+	try {
+		const bootstrap = await requireUserBootstrap(req);
+		if (!bootstrap) {
+			sendUnauthorized(res);
+			return;
+		}
 
-    const characterId = getParam(req, "id");
-    if (!characterId) {
-      sendBadRequest(res, "id is required");
-      return;
-    }
+		const characterId = getParam(req, "id");
+		if (!characterId) {
+			sendBadRequest(res, "id is required");
+			return;
+		}
 
-    if (req.method === "GET") {
-      const character = await getCharacterById(characterId);
-      if (!character) {
-        sendNotFound(res, "Character not found");
-        return;
-      }
+		if (req.method === "GET") {
+			const character = await getCharacterById(characterId);
+			if (!character) {
+				sendNotFound(res, "Character not found");
+				return;
+			}
 
-      const _project = await requireProjectAccess(
-        String(character.project_id),
-        bootstrap.user.id,
-        res,
-      );
-      if (!_project) return;
+			const _project = await requireProjectAccess(
+				String(character.project_id),
+				bootstrap.user.id,
+				res,
+			);
+			if (!_project) return;
 
-      sendJson(res, 200, { character: mapCharacter(character) });
-      return;
-    }
+			sendJson(res, 200, { character: mapCharacter(character) });
+			return;
+		}
 
-    if (req.method === "PUT") {
-      const existing = await getCharacterById(characterId);
-      if (!existing) {
-        sendNotFound(res, "Character not found");
-        return;
-      }
+		if (req.method === "PUT") {
+			const existing = await getCharacterById(characterId);
+			if (!existing) {
+				sendNotFound(res, "Character not found");
+				return;
+			}
 
-      const _project = await requireProjectAccess(
-        String(existing.project_id),
-        bootstrap.user.id,
-        res,
-      );
-      if (!_project) return;
+			const _project = await requireProjectAccess(
+				String(existing.project_id),
+				bootstrap.user.id,
+				res,
+			);
+			if (!_project) return;
 
-      const body = await readJsonBody<Record<string, any>>(req);
-      const updates = normalizeCharacterInput(body);
-      delete updates.project_id;
-      delete updates.organization_id;
-      delete updates.world_id;
+			const body = await readJsonBody<Record<string, any>>(req);
+			const updates = normalizeCharacterInput(body);
+			delete updates.project_id;
+			delete updates.organization_id;
+			delete updates.world_id;
 
-      const updated = await requestGraphql<{
-        update_characters_by_pk: Record<string, any> | null;
-      }>(
-        `
+			const updated = await requestGraphql<{
+				update_characters_by_pk: Record<string, any> | null;
+			}>(
+				`
           mutation UpdateCharacter($id: uuid!, $changes: characters_set_input!) {
             update_characters_by_pk(pk_columns: { id: $id }, _set: $changes) {
               id
@@ -91,7 +91,6 @@ export default async function handler(
               name
               role
               description
-              image_url
               avatar_url
               backstory
               personality
@@ -102,49 +101,49 @@ export default async function handler(
             }
           }
         `,
-        {
-          id: characterId,
-          changes: updates,
-        },
-      );
+				{
+					id: characterId,
+					changes: updates,
+				},
+			);
 
-      sendJson(res, 200, {
-        character: mapCharacter(updated.update_characters_by_pk || existing),
-      });
-      return;
-    }
+			sendJson(res, 200, {
+				character: mapCharacter(updated.update_characters_by_pk || existing),
+			});
+			return;
+		}
 
-    if (req.method === "DELETE") {
-      const character = await getCharacterById(characterId);
-      if (!character) {
-        sendNotFound(res, "Character not found");
-        return;
-      }
+		if (req.method === "DELETE") {
+			const character = await getCharacterById(characterId);
+			if (!character) {
+				sendNotFound(res, "Character not found");
+				return;
+			}
 
-      const _project = await requireProjectAccess(
-        String(character.project_id),
-        bootstrap.user.id,
-        res,
-      );
-      if (!_project) return;
+			const _project = await requireProjectAccess(
+				String(character.project_id),
+				bootstrap.user.id,
+				res,
+			);
+			if (!_project) return;
 
-      await requestGraphql(
-        `
+			await requestGraphql(
+				`
           mutation DeleteCharacter($id: uuid!) {
             delete_characters_by_pk(id: $id) {
               id
             }
           }
         `,
-        { id: characterId },
-      );
+				{ id: characterId },
+			);
 
-      sendJson(res, 200, { success: true });
-      return;
-    }
+			sendJson(res, 200, { success: true });
+			return;
+		}
 
-    sendMethodNotAllowed(res, ["GET", "PUT", "DELETE"]);
-  } catch (error) {
-    sendServerError(res, error);
-  }
+		sendMethodNotAllowed(res, ["GET", "PUT", "DELETE"]);
+	} catch (error) {
+		sendServerError(res, error);
+	}
 }

@@ -17,6 +17,16 @@ import {
   unwrapApiResult,
 } from "../api-client";
 
+function getErrorStatus(error: unknown): number | undefined {
+  if (!error || typeof error !== "object") {
+    return undefined;
+  }
+  const candidate = (error as { status?: unknown }).status;
+  return typeof candidate === "number" ? candidate : undefined;
+}
+
+let editorReadModelRouteUnavailable = false;
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -82,6 +92,26 @@ export interface InitializeProjectRequest {
     level_2?: Array<{ number: number; title: string; description?: string }>;
     level_3?: Array<{ number: number; title: string; description?: string }>;
     level_4?: Array<{ number: number; title: string; description?: string }>;
+  };
+}
+
+interface UltraBatchPayload {
+  timeline?: {
+    acts?: TimelineNode[];
+    sequences?: TimelineNode[];
+    scenes?: TimelineNode[];
+  };
+  characters?: unknown[];
+  shots?: unknown[];
+  clips?: unknown[];
+  stats?: {
+    totalNodes?: number;
+    acts?: number;
+    sequences?: number;
+    scenes?: number;
+    characters?: number;
+    shots?: number;
+    clips?: number;
   };
 }
 
@@ -316,6 +346,39 @@ export async function ultraBatchLoadProject(
     clips: number;
   };
 }> {
+  if (editorReadModelRouteUnavailable) {
+    const fallbackParams = new URLSearchParams({ project_id: projectId });
+    if (options?.includeShots === false) {
+      fallbackParams.set("include_shots", "false");
+    }
+    if (options?.excludeContent) {
+      fallbackParams.set("exclude_content", "true");
+    }
+    const fallbackResult = await apiGet(
+      `/nodes/ultra-batch-load?${fallbackParams.toString()}`,
+    );
+    const fallbackData = unwrapApiResult(fallbackResult) as UltraBatchPayload;
+    return {
+      timeline: {
+        acts: fallbackData?.timeline?.acts || [],
+        sequences: fallbackData?.timeline?.sequences || [],
+        scenes: fallbackData?.timeline?.scenes || [],
+      },
+      characters: fallbackData?.characters || [],
+      shots: fallbackData?.shots || [],
+      clips: fallbackData?.clips || [],
+      stats: {
+        totalNodes: fallbackData?.stats?.totalNodes ?? 0,
+        acts: fallbackData?.stats?.acts ?? 0,
+        sequences: fallbackData?.stats?.sequences ?? 0,
+        scenes: fallbackData?.stats?.scenes ?? 0,
+        characters: fallbackData?.stats?.characters ?? 0,
+        shots: fallbackData?.stats?.shots ?? 0,
+        clips: fallbackData?.stats?.clips ?? 0,
+      },
+    };
+  }
+
   // Compatibility: legacy includeShots=false still hits the old endpoint
   // because the new read-model always includes shots in full mode.
   if (options?.includeShots === false) {
@@ -366,8 +429,7 @@ export async function ultraBatchLoadProject(
     "[Timeline API V2] 🚀🚀🚀 ULTRA BATCH loading project via editor-readmodel:",
     projectId,
   );
-  const timerLabel = `[Timeline API V2] ULTRA Batch Load ${projectId}`;
-  console.time(timerLabel);
+  const ultraBatchStarted = performance.now();
 
   const params = new URLSearchParams();
   if (options?.excludeContent) {
@@ -377,10 +439,35 @@ export async function ultraBatchLoadProject(
   const route = `/editor/projects/${projectId}/state${
     params.toString() ? `?${params.toString()}` : ""
   }`;
-  const result = await apiGet(route);
-  const data = unwrapApiResult(result);
+  let data: UltraBatchPayload;
+  try {
+    const result = await apiGet(route);
+    data = unwrapApiResult(result);
+  } catch (error) {
+    if (getErrorStatus(error) === 404) {
+      editorReadModelRouteUnavailable = true;
+      console.warn(
+        "[Timeline API V2] editor-readmodel route missing, fallback to project-nodes ultra-batch",
+        { projectId, route },
+      );
+      const fallbackParams = new URLSearchParams({ project_id: projectId });
+      if (options?.excludeContent) {
+        fallbackParams.set("exclude_content", "true");
+      }
+      const fallbackResult = await apiGet(
+        `/nodes/ultra-batch-load?${fallbackParams.toString()}`,
+      );
+      data = unwrapApiResult(fallbackResult);
+    } else {
+      throw error;
+    }
+  }
 
-  console.timeEnd(timerLabel);
+  console.log(
+    `[Timeline API V2] ULTRA Batch Load ${projectId}: ${Math.round(
+      performance.now() - ultraBatchStarted,
+    )}ms`,
+  );
   console.log("[Timeline API V2] ULTRA Batch load stats:", data?.stats);
 
   return {
@@ -392,14 +479,14 @@ export async function ultraBatchLoadProject(
     characters: data?.characters || [],
     shots: data?.shots || [],
     clips: data?.clips || [],
-    stats: data?.stats || {
-      totalNodes: 0,
-      acts: 0,
-      sequences: 0,
-      scenes: 0,
-      characters: 0,
-      shots: 0,
-      clips: 0,
+    stats: {
+      totalNodes: data?.stats?.totalNodes ?? 0,
+      acts: data?.stats?.acts ?? 0,
+      sequences: data?.stats?.sequences ?? 0,
+      scenes: data?.stats?.scenes ?? 0,
+      characters: data?.stats?.characters ?? 0,
+      shots: data?.stats?.shots ?? 0,
+      clips: data?.stats?.clips ?? 0,
     },
   };
 }

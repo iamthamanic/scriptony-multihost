@@ -74,6 +74,7 @@
   "devDependencies": {
     "@capacitor/cli": "^8.2.0",
     "@eslint/js": "^10.0.1",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^20.19.37",
@@ -97,7 +98,7 @@
   },
   "scripts": {
     "dev": "bash scripts/dev-with-bridge.sh",
-    "dev:vite": "vite",
+    "dev:vite": "node scripts/assert-port-3000-for-scriptony.mjs && vite",
     "build": "vite build",
     "test": "vitest run",
     "test:run": "vitest run",
@@ -172,6 +173,7 @@
     "appwrite:provision:buckets": "node functions/tools/provision-appwrite-buckets.mjs",
     "appwrite:delete:collection": "node functions/tools/delete-appwrite-collection.mjs",
     "appwrite:sync:function-domains": "node scripts/sync-vite-function-domain-map.mjs",
+    "appwrite:sync:function-appwrite-endpoint": "node functions/scripts/sync-scriptony-appwrite-api-endpoint.mjs",
     "format:check": "npm run format:check:frontend && npm run format:check:functions && npm run format:check:scripts",
     "format:check:frontend": "npx prettier --check \"src/**/*.{ts,tsx,css,json}\"",
     "format:check:functions": "npx prettier --check \"functions/**/*.{ts,json,mjs,cjs}\"",

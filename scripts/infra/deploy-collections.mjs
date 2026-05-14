@@ -1,11 +1,59 @@
 #!/usr/bin/env node
+/* global process, console, setTimeout, URL */
 
 import { createRequire } from "module";
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadAppwriteCliEnv } from "../../functions/scripts/load-appwrite-cli-env.mjs";
 
+// ── Robust env loading: always read .env.local explicitly ──
+function loadLocalEnv() {
+  const repoRoot = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
+  const allowedKeys = new Set([
+    "APPWRITE_ENDPOINT",
+    "APPWRITE_PROJECT_ID",
+    "APPWRITE_API_KEY",
+    "APPWRITE_DATABASE_ID",
+  ]);
+  const envPath = resolve(repoRoot, ".env");
+  const envLocalPath = resolve(repoRoot, ".env.local");
+  const isCI = Boolean(
+    process.env.CI || process.env.GITHUB_ACTIONS || process.env.GITLAB_CI,
+  );
+  // In CI: only fill missing keys from env files so credentials stay
+  // under CI control. In local dev: .env.local wins over .env.
+  for (const p of [envPath, envLocalPath]) {
+    if (!existsSync(p)) continue;
+    const text = readFileSync(p, "utf8");
+    for (const line of text.split("\n")) {
+      const t = line.trim();
+      if (!t || t.startsWith("#")) continue;
+      const i = t.indexOf("=");
+      if (i === -1) continue;
+      const k = t.slice(0, i).trim();
+      if (!allowedKeys.has(k)) continue;
+      let v = t.slice(i + 1).trim();
+      if (
+        (v.startsWith('"') && v.endsWith('"')) ||
+        (v.startsWith("'") && v.endsWith("'"))
+      ) {
+        v = v.slice(1, -1);
+      }
+      if (isCI) {
+        if (process.env[k] === undefined) process.env[k] = v;
+      } else {
+        process.env[k] = v;
+      }
+    }
+  }
+}
+
+// Load explicit .env.local BEFORE loadAppwriteCliEnv. In CI only fills
+// missing keys so credentials stay under CI control; locally .env.local wins.
+loadLocalEnv();
+
+// Also run the shared loader (maps VITE_* → APPWRITE_* if still missing).
 loadAppwriteCliEnv();
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -33,6 +81,11 @@ const client = new Client()
 const db = new Databases(client);
 
 const collectionFiles = [
+  "audio_clips.json",
+  "audio_sessions.json",
+  "audio_session_participants.json",
+  "character_voice_assignments.json",
+  "scene_audio_tracks.json",
   "styleProfiles.json",
   "renderJobs.json",
   "imageTasks.json",
@@ -67,7 +120,12 @@ function isAlreadyExists(err) {
 }
 
 function getSpec(file) {
-  return JSON.parse(readFileSync(resolve(__dirname, file), "utf8"));
+  return JSON.parse(
+    readFileSync(
+      resolve(__dirname, "../../infra/appwrite/collections", file),
+      "utf8",
+    ),
+  );
 }
 
 async function waitAttribute(collectionId, key) {
@@ -85,7 +143,9 @@ async function waitAttribute(collectionId, key) {
   throw new Error(`Timeout waiting for attribute ${collectionId}.${key}`);
 }
 
-async function ensureCollection(collectionId) {
+async function ensureCollection(spec) {
+  const collectionId = spec.name;
+  const docSecurity = Boolean(spec.documentSecurity);
   try {
     await db.getCollection(databaseId, collectionId);
     console.log(`collection exists: ${collectionId}`);
@@ -96,7 +156,7 @@ async function ensureCollection(collectionId) {
       collectionId,
       collectionId,
       [],
-      false,
+      docSecurity,
       true,
     );
     console.log(`collection created: ${collectionId}`);
@@ -147,6 +207,22 @@ async function ensureAttribute(collectionId, attr) {
         undefined,
         undefined,
         isArray,
+      );
+    } else if (attr.type === "boolean" || attr.type === "bool") {
+      await db.createBooleanAttribute(
+        databaseId,
+        collectionId,
+        attr.key,
+        required,
+        undefined,
+      );
+    } else if (attr.type === "datetime") {
+      await db.createDatetimeAttribute(
+        databaseId,
+        collectionId,
+        attr.key,
+        required,
+        undefined,
       );
     } else {
       throw new Error(
@@ -199,7 +275,7 @@ async function main() {
   for (const file of collectionFiles) {
     const spec = getSpec(file);
     const collectionId = spec.name;
-    await ensureCollection(collectionId);
+    await ensureCollection(spec);
     for (const attr of spec.attributes) {
       await ensureAttribute(collectionId, attr);
     }

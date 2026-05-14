@@ -12,8 +12,8 @@
  * Neue Stats-Features duerfen hier nicht ergaenzt werden.
  */
 
-import { requireUserBootstrap } from "../../../../../_shared/auth";
-import { requestGraphql } from "../../../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../../../_shared/auth";
+import { requestGraphql } from "../../../../_shared/graphql-compat";
 import {
   getParam,
   type RequestLike,
@@ -24,14 +24,14 @@ import {
   sendNotFound,
   sendServerError,
   sendUnauthorized,
-} from "../../../../../_shared/http";
-import { toDurationSeconds } from "../../../../../_shared/observability";
+} from "../../../../_shared/http";
+import { toDurationSeconds } from "../../../../_shared/observability";
 import {
   getAllProjectNodes,
   getNodeById,
   getShotById,
   getShots,
-} from "../../../../../_shared/timeline";
+} from "../../../../_shared/timeline";
 
 function collectDescendants(
   nodes: Array<Record<string, any>>,

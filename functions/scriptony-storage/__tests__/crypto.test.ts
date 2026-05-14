@@ -2,6 +2,7 @@
  * Tests für AES-256-GCM encrypt/decrypt.
  */
 
+import { Buffer } from "node:buffer";
 import { describe, it, expect, vi } from "vitest";
 import { encrypt, decrypt } from "../services/crypto";
 
@@ -32,7 +33,13 @@ describe("crypto", () => {
 
   it("fails on tampered ciphertext", () => {
     const ciphertext = encrypt("secret");
-    const tampered = ciphertext.slice(0, -1) + "X";
+    const buf = Buffer.from(ciphertext, "base64url");
+    const ivLen = 12;
+    const tagLen = 16;
+    const encryptedOffset = ivLen + tagLen;
+    expect(buf.length).toBeGreaterThan(encryptedOffset);
+    buf[encryptedOffset] ^= 0xff;
+    const tampered = buf.toString("base64url");
     expect(() => decrypt(tampered)).toThrow();
   });
 

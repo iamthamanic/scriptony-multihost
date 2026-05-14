@@ -1,0 +1,1208 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scriptony — Architektur-Analyse: Plan vs. Ist</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --fg: #1a1a1a;
+        --muted: #6b7280;
+        --border: #e5e7eb;
+        --accent: #2563eb;
+        --accent2: #059669;
+        --warn: #d97706;
+        --danger: #dc2626;
+        --plan: #dbeafe;
+        --plan-border: #3b82f6;
+        --ist: #ffedd5;
+        --ist-border: #f97316;
+        --compare: #f3e8ff;
+        --compare-border: #9333ea;
+        --code-bg: #f3f4f6;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          Arial, sans-serif;
+        color: var(--fg);
+        background: var(--bg);
+        line-height: 1.55;
+        margin: 0;
+        padding: 2rem 1.5rem;
+        max-width: 920px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      h1 {
+        font-size: 1.75rem;
+        margin-bottom: 0.25rem;
+      }
+      h2 {
+        font-size: 1.35rem;
+        margin-top: 2rem;
+        margin-bottom: 0.75rem;
+        border-bottom: 2px solid var(--border);
+        padding-bottom: 0.35rem;
+      }
+      h3 {
+        font-size: 1.1rem;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+        color: var(--accent);
+      }
+      h4 {
+        font-size: 1rem;
+        margin-top: 1.25rem;
+        margin-bottom: 0.4rem;
+        color: var(--fg);
+      }
+      p {
+        margin: 0.6rem 0;
+      }
+      .subtitle {
+        color: var(--muted);
+        font-size: 0.95rem;
+        margin-bottom: 1.5rem;
+      }
+      .badge {
+        display: inline-block;
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        padding: 0.15rem 0.5rem;
+        border-radius: 999px;
+        margin-right: 0.35rem;
+      }
+      .badge.ok {
+        background: #d1fae5;
+        color: #065f46;
+      }
+      .badge.warn {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .badge.idea {
+        background: #ede9fe;
+        color: #5b21b6;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 1rem 0;
+        font-size: 0.92rem;
+      }
+      th,
+      td {
+        border: 1px solid var(--border);
+        padding: 0.55rem 0.7rem;
+        text-align: left;
+        vertical-align: top;
+      }
+      th {
+        background: #f9fafb;
+        font-weight: 600;
+      }
+      tr:nth-child(even) td {
+        background: #fafafa;
+      }
+
+      .box {
+        border: 1px solid var(--border);
+        border-radius: 0.5rem;
+        padding: 1rem 1.25rem;
+        margin: 1rem 0;
+        background: #fafafa;
+        page-break-inside: avoid;
+      }
+      .box.plan {
+        background: var(--plan);
+        border-color: var(--plan-border);
+      }
+      .box.ist {
+        background: var(--ist);
+        border-color: var(--ist-border);
+      }
+      .box.compare {
+        background: var(--compare);
+        border-color: var(--compare-border);
+      }
+
+      pre {
+        background: var(--code-bg);
+        padding: 0.75rem 1rem;
+        border-radius: 0.4rem;
+        overflow-x: auto;
+        font-size: 0.85rem;
+        line-height: 1.45;
+        border: 1px solid var(--border);
+        page-break-inside: avoid;
+      }
+      code {
+        font-family:
+          "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        font-size: 0.88em;
+        background: var(--code-bg);
+        padding: 0.1rem 0.3rem;
+        border-radius: 0.25rem;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin: 1rem 0;
+      }
+      @media (max-width: 640px) {
+        .two-col {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Architecture diagram container */
+      .diagram-wrap {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 0.6rem;
+        padding: 1.25rem;
+        margin: 1.25rem 0;
+        page-break-inside: avoid;
+      }
+      .diagram-wrap h4 {
+        margin-top: 0;
+        text-align: center;
+      }
+
+      footer {
+        margin-top: 3rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border);
+        font-size: 0.8rem;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      @media print {
+        body {
+          padding: 0;
+          max-width: 100%;
+        }
+        h2 {
+          page-break-after: avoid;
+        }
+        .box,
+        table,
+        pre,
+        .diagram-wrap {
+          page-break-inside: avoid;
+        }
+        tr {
+          page-break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🎬 Scriptony — Architektur-Analyse</h1>
+    <p class="subtitle">
+      Plan vs. Ist: Trennung von narrative Struktur und temporaler
+      Realisierung<br />
+      <strong>Datum:</strong> 2026-05-13 &nbsp;|&nbsp;
+      <strong>Repo:</strong> scriptony-appwrite
+    </p>
+
+    <h2>1. Zusammenfassung der aktuellen Architektur</h2>
+    <p>
+      Scriptony verfügt über drei getrennte View-Layer, die aktuell über den
+      <code>TimelineStateContext</code> als Single Source of Truth verbunden
+      sind:
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Ansicht</th>
+          <th>Komponenten</th>
+          <th>Zweck</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Dropdown</strong></td>
+          <td>
+            <code>FilmDropdown</code>, <code>AudioDropdown</code>,
+            <code>BookDropdown</code>
+          </td>
+          <td>Hierarchische Planung: Akt → Sequenz → Szene → Shot / Track</td>
+        </tr>
+        <tr>
+          <td><strong>Native</strong></td>
+          <td>
+            <code>NativeScreenplayView</code>, <code>NativeAudiobookView</code>,
+            <code>NativeBookView</code>
+          </td>
+          <td>Format-Ansicht wie echtes Drehbuch / Hörspiel-Script</td>
+        </tr>
+        <tr>
+          <td><strong>Timeline</strong></td>
+          <td><code>VideoEditorTimeline</code>, <code>AudioTimeline</code></td>
+          <td>
+            Visuelle Zeitleiste mit Zeitachse, Längen &amp; Lane-Positionierung
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p>
+      Der <code>TimelineStateContext</code> hält aktuell alle Daten (Acts,
+      Sequences, Scenes, Shots, Clips, Characters) und bietet Undo/Redo über
+      einen History-Stack.
+    </p>
+
+    <h2>2. Bewertung der Synchronisationsfragen</h2>
+
+    <h3>
+      2.1 Dropdown ↔ Native synchron <span class="badge ok">Korrekt</span>
+    </h3>
+    <p>
+      Beide Ansichten rendern <strong>denseelben Strukturbaum</strong> — nur in
+      unterschiedlichem Layout. Der Native-View ist ein
+      <em>Read-Mostly-Renderer</em> für denselben State, auf den das Dropdown
+      schreibt. Das passt vollständig.
+    </p>
+
+    <h3>
+      2.2 Dropdown ↔ Timeline synchron
+      <span class="badge warn">Konzeptionell problematisch</span>
+    </h3>
+    <p>Die beiden Views bedienen <strong>unterschiedliche Domänen</strong>:</p>
+    <ul>
+      <li>
+        <strong>Dropdown / Native</strong> =
+        <em>Narrative Struktur</em> (logisch, hierarchisch)<br />
+        <em>„Szene 3 kommt nach Szene 2 und enthält 4 Dialoge.“</em>
+      </li>
+      <li>
+        <strong>Timeline</strong> = <em>Temporale Realisierung</em> (zeitlich,
+        linear)<br />
+        <em
+          >„Szene 3 startet bei 02:34, dauert 1:45, Dialog 1 beginnt bei
+          02:40.“</em
+        >
+      </li>
+    </ul>
+
+    <p>
+      <strong>Das Problem:</strong> Hard-Synchronisation zwingt die
+      Struktur-Darstellung, Zeit-Informationen zu führen, die sie nicht braucht.
+      Umgekehrt zwingt sie die Timeline, nur Struktur-Operationen zuzulassen (z.
+      B. kann ein Shot in der Timeline nicht frei vor eine Szene geschoben
+      werden, weil der Dropdown das nicht abbilden kann).
+    </p>
+
+    <div class="box">
+      <strong>Empfehlung:</strong> Die Timeline sollte die Struktur
+      <strong>referenzieren</strong>, aber nicht identisch spiegeln. Sie braucht
+      eine eigene Zeit-Layer.
+    </div>
+
+    <h3>
+      2.3 Der „Plan vs. Ist“-Gedanke
+      <span class="badge idea">Beste Intuition</span>
+    </h3>
+    <p>Die richtige architektonische Trennung:</p>
+
+    <div class="two-col">
+      <div class="box plan">
+        <strong>📋 DROPDOWN / NATIVE = „PLAN“</strong><br />
+        Narrative Struktur<br />
+        • Was existiert? (Akte, Szenen, Dialoge, SFX-Vorhaben)<br />
+        • In welcher Reihenfolge?<br />
+        • <strong>Keine Zeiten, keine Pixel-Längen</strong>
+      </div>
+      <div class="box ist">
+        <strong>⏱️ TIMELINE = „IST“</strong><br />
+        Temporale Realisierung<br />
+        • Wann startet was? (<code>startSec</code>)<br />
+        • Wie lang dauert was? (<code>durationSec</code>)<br />
+        • Frei verschiebbar auf Zeitachse<br />
+        • <strong>Kann von der Plan-Reihenfolge abweichen!</strong>
+      </div>
+    </div>
+
+    <p>
+      Die Timeline sollte <strong>nicht</strong> den Dropdown-State direkt
+      mutieren, wenn eine Szene zeitlich verschoben wird. Stattdessen:
+    </p>
+    <ul>
+      <li><strong>Plan</strong> bleibt unverändert in Dropdown/Native</li>
+      <li>
+        <strong>Ist</strong> wird in der Timeline verschoben (oder geschnitten,
+        gestreckt)
+      </li>
+    </ul>
+
+    <p>
+      Ein <strong>„Compare-Modus“</strong> würde dann die Plan-Reihenfolge neben
+      der Ist-Reihenfolge anzeigen und Abweichungen markieren.
+    </p>
+
+    <h3>
+      2.4 Soundeffekte dialogübergreifend <span class="badge ok">Lösbar</span>
+    </h3>
+    <p>
+      Im Dropdown sind Tracks unter einer Szene gruppiert. Ein Regen-Sound oder
+      Musik läuft aber oft über mehrere Szenen.
+    </p>
+
+    <div class="box">
+      <strong
+        >Lösung: Zeitbasierte Referenz statt hierarchischer Einbettung</strong
+      ><br /><br />
+      Ein Audio-Track hat zwei Darstellungsebenen:<br /><br />
+      1. <strong>Im Dropdown:</strong> Er wird unter der Szene angezeigt, in der
+      er <em>erstmalig vorkommt</em> (sein „Ursprung“). Er hat ein Feld
+      <code>plannedStartSceneId</code> und <code>plannedEndSceneId</code> (oder
+      <code>plannedDuration</code>).<br /><br />
+      2. <strong>In der Timeline:</strong> Er wird an seiner tatsächlichen
+      <code>startTime</code> auf der SFX-/Music-Lane platziert. Ob er über
+      Szene-Grenzen hinausläuft, ist dort irrelevant.
+    </div>
+
+    <p>
+      Das ist ein <strong>Cross-Cutting-Element</strong> — die hierarchische
+      Ansicht kann es nur approximativ darstellen, die Timeline exakt.
+    </p>
+
+    <h3>
+      2.5 Dialogboxen innerhalb von Szenen verschieben
+      <span class="badge ok">Korrekt — aber nur in der Timeline</span>
+    </h3>
+    <p>
+      Ja, Dialogboxen sollen innerhalb einer Szene verschiebbar sein — aber
+      <strong>nur in der Timeline</strong>, über
+      <strong>relative Positionierung</strong>:
+    </p>
+
+    <pre><code>• Szene hat in der Timeline: startSec, durationSec
+• Ein Shot/Dialog darin hat: relativeStartSec (von Szene-Anfang), durationSec
+• Wenn Szene verschoben wird:
+  shot.startSec = scene.startSec + shot.relativeStartSec
+</code></pre>
+
+    <p>
+      In der <strong>Dropdown-Ansicht</strong> gibt es nur eine
+      <strong>Listen-Reihenfolge</strong> (Shot 1, Shot 2, Shot 3), die die
+      narrative Reihenfolge definiert. „Verschieben innerhalb einer Szene" gibt
+      es dort nicht.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Operation</th>
+          <th>Dropdown (Plan)</th>
+          <th>Timeline (Ist)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Shot-Reihenfolge ändern</td>
+          <td>Ja (narrative Reihenfolge)</td>
+          <td>Nein — beeinflusst Zeit</td>
+        </tr>
+        <tr>
+          <td>Shot zeitlich verschieben</td>
+          <td>Nicht möglich (keine Zeit)</td>
+          <td>Ja (startSec)</td>
+        </tr>
+        <tr>
+          <td>Szene verschieben</td>
+          <td>Nicht möglich (keine Zeit)</td>
+          <td>Ja (startSec + Inhalt verschiebt sich relativ)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3. Visuelle Architektur-Skizze</h2>
+    <div class="diagram-wrap">
+      <h4>🏗️ Ziel-Architektur: Plan-State ↔ Ist-State</h4>
+      <svg
+        viewBox="0 0 800 540"
+        xmlns="http://www.w3.org/2000/svg"
+        style="width: 100%; height: auto"
+      >
+        <defs>
+          <marker
+            id="arrow"
+            markerWidth="10"
+            markerHeight="7"
+            refX="9"
+            refY="3.5"
+            orient="auto"
+          >
+            <polygon points="0 0, 10 3.5, 0 7" fill="#4b5563" />
+          </marker>
+          <marker
+            id="arrow-dashed"
+            markerWidth="10"
+            markerHeight="7"
+            refX="9"
+            refY="3.5"
+            orient="auto"
+          >
+            <polygon points="0 0, 10 3.5, 0 7" fill="#9333ea" />
+          </marker>
+        </defs>
+
+        <!-- Background regions -->
+        <rect
+          x="20"
+          y="20"
+          width="360"
+          height="240"
+          rx="12"
+          fill="#eff6ff"
+          stroke="#3b82f6"
+          stroke-width="2"
+        />
+        <rect
+          x="420"
+          y="20"
+          width="360"
+          height="240"
+          rx="12"
+          fill="#fff7ed"
+          stroke="#f97316"
+          stroke-width="2"
+        />
+
+        <!-- PLAN Header -->
+        <text
+          x="200"
+          y="48"
+          text-anchor="middle"
+          font-size="15"
+          font-weight="700"
+          fill="#1e40af"
+        >
+          📋 STRUCTURE STATE („PLAN“)
+        </text>
+        <!-- IST Header -->
+        <text
+          x="600"
+          y="48"
+          text-anchor="middle"
+          font-size="15"
+          font-weight="700"
+          fill="#9a3412"
+        >
+          ⏱️ TIMELINE STATE („IST“)
+        </text>
+
+        <!-- Plan boxes -->
+        <rect
+          x="50"
+          y="65"
+          width="140"
+          height="70"
+          rx="8"
+          fill="#ffffff"
+          stroke="#93c5fd"
+          stroke-width="1.5"
+        />
+        <text
+          x="120"
+          y="90"
+          text-anchor="middle"
+          font-size="12"
+          font-weight="600"
+          fill="#1e3a8a"
+        >
+          Dropdown View
+        </text>
+        <text
+          x="120"
+          y="108"
+          text-anchor="middle"
+          font-size="10"
+          fill="#4b5563"
+        >
+          Editierbare Hierarchie
+        </text>
+        <text
+          x="120"
+          y="122"
+          text-anchor="middle"
+          font-size="10"
+          fill="#4b5563"
+        >
+          Akt → Seq → Szene → Shot
+        </text>
+
+        <rect
+          x="210"
+          y="65"
+          width="140"
+          height="70"
+          rx="8"
+          fill="#ffffff"
+          stroke="#93c5fd"
+          stroke-width="1.5"
+        />
+        <text
+          x="280"
+          y="90"
+          text-anchor="middle"
+          font-size="12"
+          font-weight="600"
+          fill="#1e3a8a"
+        >
+          Native View
+        </text>
+        <text
+          x="280"
+          y="108"
+          text-anchor="middle"
+          font-size="10"
+          fill="#4b5563"
+        >
+          Formatiertes Drehbuch
+        </text>
+        <text
+          x="280"
+          y="122"
+          text-anchor="middle"
+          font-size="10"
+          fill="#4b5563"
+        >
+          Read-Mostly Renderer
+        </text>
+
+        <!-- Plan meta list -->
+        <text
+          x="120"
+          y="170"
+          text-anchor="middle"
+          font-size="10"
+          fill="#374151"
+        >
+          • Acts / Sequences
+        </text>
+        <text
+          x="120"
+          y="186"
+          text-anchor="middle"
+          font-size="10"
+          fill="#374151"
+        >
+          • Scenes / Shots
+        </text>
+        <text
+          x="120"
+          y="202"
+          text-anchor="middle"
+          font-size="10"
+          fill="#374151"
+        >
+          • Dialogue / SFX-Plan
+        </text>
+        <text
+          x="120"
+          y="218"
+          text-anchor="middle"
+          font-size="10"
+          fill="#374151"
+        >
+          • Character-Assignments
+        </text>
+        <text
+          x="120"
+          y="238"
+          text-anchor="middle"
+          font-size="11"
+          font-weight="600"
+          fill="#1e40af"
+        >
+          Keine Zeiten. Keine Pixel.
+        </text>
+
+        <!-- Ist box -->
+        <rect
+          x="470"
+          y="65"
+          width="260"
+          height="70"
+          rx="8"
+          fill="#ffffff"
+          stroke="#fdba74"
+          stroke-width="1.5"
+        />
+        <text
+          x="600"
+          y="90"
+          text-anchor="middle"
+          font-size="12"
+          font-weight="600"
+          fill="#7c2d12"
+        >
+          Timeline View
+        </text>
+        <text
+          x="600"
+          y="108"
+          text-anchor="middle"
+          font-size="10"
+          fill="#4b5563"
+        >
+          VideoEditorTimeline / AudioTimeline
+        </text>
+        <text
+          x="600"
+          y="122"
+          text-anchor="middle"
+          font-size="10"
+          fill="#4b5563"
+        >
+          Frei verschiebbar auf Zeitachse
+        </text>
+
+        <!-- Ist meta list -->
+        <text
+          x="600"
+          y="170"
+          text-anchor="middle"
+          font-size="10"
+          fill="#374151"
+        >
+          • Clips mit startSec / endSec
+        </text>
+        <text
+          x="600"
+          y="186"
+          text-anchor="middle"
+          font-size="10"
+          fill="#374151"
+        >
+          • Lane-Index (Dialog, SFX, Music)
+        </text>
+        <text
+          x="600"
+          y="202"
+          text-anchor="middle"
+          font-size="10"
+          fill="#374151"
+        >
+          • Trim-Handles &amp; Scrubber
+        </text>
+        <text
+          x="600"
+          y="218"
+          text-anchor="middle"
+          font-size="10"
+          fill="#374151"
+        >
+          • Cross-scene SFX/Music möglich
+        </text>
+        <text
+          x="600"
+          y="238"
+          text-anchor="middle"
+          font-size="11"
+          font-weight="600"
+          fill="#9a3412"
+        >
+          Kann Plan-Reihenfolge brechen.
+        </text>
+
+        <!-- Arrows -->
+        <!-- Plan -> Ist: references -->
+        <line
+          x1="380"
+          y1="120"
+          x2="420"
+          y2="120"
+          stroke="#4b5563"
+          stroke-width="1.5"
+          marker-end="url(#arrow)"
+        />
+        <text
+          x="400"
+          y="115"
+          text-anchor="middle"
+          font-size="9"
+          fill="#4b5563"
+          font-weight="600"
+        >
+          referenziert
+        </text>
+
+        <!-- Plan -> Ist: initialize -->
+        <line
+          x1="300"
+          y1="220"
+          x2="470"
+          y2="220"
+          stroke="#059669"
+          stroke-width="1.5"
+          stroke-dasharray="5,3"
+          marker-end="url(#arrow)"
+        />
+        <text
+          x="385"
+          y="215"
+          text-anchor="middle"
+          font-size="9"
+          fill="#059669"
+          font-weight="600"
+        >
+          Initialisieren (geschätzt)
+        </text>
+
+        <!-- Ist -> Plan: explicit only -->
+        <line
+          x1="470"
+          y1="240"
+          x2="300"
+          y2="240"
+          stroke="#dc2626"
+          stroke-width="1.5"
+          stroke-dasharray="5,3"
+          marker-end="url(#arrow)"
+        />
+        <text
+          x="385"
+          y="255"
+          text-anchor="middle"
+          font-size="9"
+          fill="#dc2626"
+          font-weight="600"
+        >
+          Nur explizit: „Übernehmen“
+        </text>
+
+        <!-- Divider -->
+        <line
+          x1="20"
+          y1="280"
+          x2="780"
+          y2="280"
+          stroke="#e5e7eb"
+          stroke-width="1"
+        />
+
+        <!-- Rules box -->
+        <rect
+          x="20"
+          y="295"
+          width="760"
+          height="90"
+          rx="10"
+          fill="#f9fafb"
+          stroke="#d1d5db"
+          stroke-width="1"
+          stroke-dasharray="4,2"
+        />
+        <text
+          x="400"
+          y="315"
+          text-anchor="middle"
+          font-size="12"
+          font-weight="700"
+          fill="#374151"
+        >
+          📐 Transformationsregeln
+        </text>
+        <text x="50" y="340" font-size="10" fill="#4b5563">
+          Plan → Ist: Bei erstmaligem Öffnen der Timeline werden Shots/Tracks
+          mit geschätzter Dauer initialisiert (z. B. Wortanzahl × 0.5 s, SFX = 3
+          s).
+        </text>
+        <text x="50" y="358" font-size="10" fill="#4b5563">
+          Ist → Plan: Nur bei expliziter Aktion („Aus Timeline übernehmen“). Nie
+          automatisch.
+        </text>
+        <text x="50" y="376" font-size="10" fill="#4b5563">
+          Plan-Änderung: Neue Szene im Dropdown → automatisch an Timeline
+          anhängen (am Ende, geschätzt).
+        </text>
+
+        <!-- Compare mode -->
+        <rect
+          x="20"
+          y="400"
+          width="760"
+          height="120"
+          rx="12"
+          fill="#faf5ff"
+          stroke="#9333ea"
+          stroke-width="2"
+        />
+        <text
+          x="400"
+          y="425"
+          text-anchor="middle"
+          font-size="13"
+          font-weight="700"
+          fill="#581c87"
+        >
+          🔍 Compare / Sync-Mode (optional)
+        </text>
+
+        <rect
+          x="50"
+          y="440"
+          width="210"
+          height="60"
+          rx="8"
+          fill="#ffffff"
+          stroke="#c4b5fd"
+          stroke-width="1.5"
+        />
+        <text
+          x="155"
+          y="462"
+          text-anchor="middle"
+          font-size="11"
+          font-weight="600"
+          fill="#4c1d95"
+        >
+          Plan-Reihenfolge
+        </text>
+        <text
+          x="155"
+          y="482"
+          text-anchor="middle"
+          font-size="10"
+          fill="#6b7280"
+        >
+          Szene 1 → Szene 2 → Szene 3
+        </text>
+
+        <text x="285" y="475" font-size="18" fill="#9333ea">⚡</text>
+
+        <rect
+          x="310"
+          y="440"
+          width="210"
+          height="60"
+          rx="8"
+          fill="#ffffff"
+          stroke="#c4b5fd"
+          stroke-width="1.5"
+        />
+        <text
+          x="415"
+          y="462"
+          text-anchor="middle"
+          font-size="11"
+          font-weight="600"
+          fill="#4c1d95"
+        >
+          Ist-Reihenfolge
+        </text>
+        <text
+          x="415"
+          y="482"
+          text-anchor="middle"
+          font-size="10"
+          fill="#6b7280"
+        >
+          Szene 1 → Szene 3 → Szene 2 ⚠️
+        </text>
+
+        <line
+          x1="545"
+          y1="470"
+          x2="740"
+          y2="470"
+          stroke="#9333ea"
+          stroke-width="1.5"
+          stroke-dasharray="4,2"
+          marker-end="url(#arrow-dashed)"
+        />
+        <text
+          x="640"
+          y="465"
+          text-anchor="middle"
+          font-size="10"
+          fill="#7e22ce"
+          font-weight="600"
+        >
+          Markiere Abweichungen
+        </text>
+        <text
+          x="640"
+          y="484"
+          text-anchor="middle"
+          font-size="10"
+          fill="#7e22ce"
+          font-weight="600"
+        >
+          (Reihenfolge, Dauer, Lücken)
+        </text>
+
+        <!-- Bottom project types -->
+        <text x="400" y="535" text-anchor="middle" font-size="9" fill="#9ca3af">
+          Film &nbsp;•&nbsp; Serie &nbsp;•&nbsp; Hörspiel &nbsp;•&nbsp; Hörbuch
+          &nbsp;•&nbsp; Buch
+        </text>
+      </svg>
+    </div>
+
+    <h2>4. Konkrete Architektur-Empfehlungen</h2>
+
+    <h3>A. Trenne Plan-State von Ist-State</h3>
+    <p>
+      Aktuell existiert ein monolithischer <code>TimelineStateContext</code>.
+      Langfristig empfiehlt sich ein <strong>zweispuriges Modell</strong>:
+    </p>
+
+    <div class="two-col">
+      <div class="box plan">
+        <strong>STRUCTURE STATE</strong><br />
+        Acts, Sequences, Scenes, Shots, Tracks<br />
+        • Dropdown mutiert<br />
+        • Native liest<br />
+        • Timeline liest als Referenz
+      </div>
+      <div class="box ist">
+        <strong>TIMELINE STATE</strong><br />
+        Clips mit startSec, endSec, laneIndex<br />
+        • Timeline mutiert nur Zeitwerte<br />
+        • Plan bleibt stabil<br />
+        • Eigener Undo/Redo-Stack (optional)
+      </div>
+    </div>
+
+    <p>
+      Die vorhandenen <code>Clip</code>-Typen mit
+      <code>startSec/endSec</code> sind bereits Schritt 1 in diese Richtung. Sie
+      sollten jedoch <strong>entkoppelt</strong> von der harten Shot-Reihenfolge
+      werden.
+    </p>
+
+    <h3>B. Definiere klare Transformationsregeln</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Richtung</th>
+          <th>Regel</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Plan → Ist</strong> (Initialisierung)</td>
+          <td>
+            Shots/Tracks werden mit <strong>geschätzter Dauer</strong> belegt
+            (z. B. Wortanzahl × 0.5 s, SFX-Vorschlag = 3 s).
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Ist → Plan</strong> (Rückfluss)</td>
+          <td>
+            <strong>Nur bei expliziter Aktion</strong> (z. B. „Aus Timeline
+            übernehmen“). Nie automatisch.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Plan-Änderung</strong> (neue Szene im Dropdown)</td>
+          <td>
+            Automatisch in der Timeline <strong>anhängen</strong> (am Ende, mit
+            geschätzter Dauer).
+          </td>
+        </tr>
+        <tr>
+          <td><strong>Ist-Änderung</strong> (Clip in Timeline ziehen)</td>
+          <td><strong>Nie</strong> den Plan verändern.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>C. Der „Compare-Modus“ als vierte Ansicht</h3>
+    <p>Statt drei synchronisierten Views:</p>
+    <ol>
+      <li><strong>Dropdown</strong> = Editierbarer Plan</li>
+      <li><strong>Native</strong> = Lesbarer Plan</li>
+      <li><strong>Timeline</strong> = Editierbare Ist-Zeit</li>
+      <li>
+        <strong>Compare/Sync-View</strong> = Zeigt Plan neben Ist, markiert
+        Abweichungen
+      </li>
+    </ol>
+
+    <div class="box compare">
+      <strong>Beispiel:</strong> Plan sagt Szene 3 ist die 5. Szene im Akt. Ist
+      zeigt Szene 3 wurde in der Timeline vor Szene 2 geschoben → Markierung
+      <span style="color: #dc2626; font-weight: 600"
+        >„Reihenfolgeabweichung“</span
+      >.
+    </div>
+
+    <h3>D. Audio / Hörspiel konkret</h3>
+    <p>
+      Der <code>AudioDropdown</code> zeigt Tracks bereits unter Szenen — gut für
+      die Planung.
+    </p>
+
+    <p>Für <strong>dialogübergreifende SFX</strong>:</p>
+    <ul>
+      <li>
+        <strong>Im Dropdown:</strong> Zeige SFX unter der Szene, wo er
+        <em>startet</em>. Füge <code>crossesIntoNextScenes: boolean</code> oder
+        <code>plannedDuration: number</code> hinzu. Über-Szenen-Grenzen:
+        Hinweis-Indikator (z. B. Pfeil nach rechts).
+      </li>
+      <li>
+        <strong>In der Timeline:</strong> Der Track liegt auf der
+        SFX-/Music-Lane an <code>startTime</code> mit echter
+        <code>duration</code>. Keine Begrenzung auf Szene-Grenzen.
+      </li>
+    </ul>
+
+    <h2>5. Riskante Annahmen in der aktuellen Implementierung</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Was ich sehe</th>
+          <th>Risiko</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <code>VideoEditorTimeline</code> berechnet Blöcke aus der
+            Struktur-Hierarchie (<code>calculateActBlocks</code>,
+            <code>calculateSequenceBlocks</code>)
+          </td>
+          <td>
+            Zwingt die Timeline,
+            <strong>exakt die Plan-Struktur</strong> abzubilden. Eine Szene kann
+            nicht zeitlich vor eine andere geschoben werden, wenn sie im Plan
+            später kommt.
+          </td>
+        </tr>
+        <tr>
+          <td><code>Clip</code> ist an <code>shotId</code> gekoppelt</td>
+          <td>
+            Gute Trennung beginnt, aber wenn man einen Clip
+            <strong>frei</strong> verschiebt (über Shot-Grenzen hinweg), bricht
+            die Konsistenz zur Shot-Reihenfolge.
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <code>TimelineStateContext</code> hat Undo/Redo über
+            <strong>alle</strong> Daten
+          </td>
+          <td>
+            Ein Undo in der Timeline (Zeitverschiebung) wirkt auch auf den
+            Dropdown zurück. Das ist für den User verwirrend, da Zeit und
+            Struktur semantisch unterschiedliche Aktionen sind.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>6. Fazit</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Deine Idee</th>
+          <th>Bewertung</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Dropdown = Planungsinstanz</td>
+          <td><span class="badge ok">Korrekt</span></td>
+        </tr>
+        <tr>
+          <td>Native = visuelles, greifbares Drehbuch</td>
+          <td><span class="badge ok">Korrekt</span></td>
+        </tr>
+        <tr>
+          <td>Timeline = Produktionsinstanz (Zeit, Längen)</td>
+          <td><span class="badge ok">Korrekt</span></td>
+        </tr>
+        <tr>
+          <td>Dropdown ↔ Native synchron</td>
+          <td><span class="badge ok">Ja, beide sind Plan-Renderer</span></td>
+        </tr>
+        <tr>
+          <td>Dropdown ↔ Timeline <strong>nicht</strong> direkt synchron</td>
+          <td><span class="badge ok">Dein bester Instinkt</span></td>
+        </tr>
+        <tr>
+          <td>„Plan vs. Ist“-Vergleichsmodus</td>
+          <td><span class="badge idea">Sehr mächtige nächste Stufe</span></td>
+        </tr>
+        <tr>
+          <td>SFX dialogübergreifend</td>
+          <td>
+            <span class="badge ok"
+              >Lösbar mit Zeit-Attributen + Dropdown-Anzeige unter
+              Start-Szene</span
+            >
+          </td>
+        </tr>
+        <tr>
+          <td>Dialogboxen in Szene verschieben (Timeline)</td>
+          <td>
+            <span class="badge ok"
+              >Ja, mit relativer Zeitpositionierung zur Szene</span
+            >
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="box" style="background: #fdf2f8; border-color: #db2777">
+      <strong>💡 Kern-Erkenntnis:</strong> Deine Intuition ist richtig. Die drei
+      Ansichten sollten <strong>nicht</strong> alle identisch synchron sein.
+      Plan (Dropdown/Native) und Ist (Timeline) sollten getrennt werden, mit
+      einer klaren „Plan → Ist“-Initialisierung und einem optionalen
+      Vergleichsmodus. Das verhindert, dass die Timeline zur Sklavin der
+      Hierarchie wird, und gibt ihr die Freiheit, die tatsächliche
+      Produktionsrealität abzubilden.
+    </div>
+
+    <h2>7. Nächste Schritte (Empfohlene Tickets)</h2>
+    <ol>
+      <li>
+        <strong>T-Arch-1:</strong> Datenmodell-Trennung —
+        <code>StructureState</code> vs. <code>TimelineState</code> Typen
+        definieren und Context auftrennen.
+      </li>
+      <li>
+        <strong>T-Arch-2:</strong> Transformations-Engine — Regeln für
+        Plan→Ist-Initialisierung implementieren (<code>estimateDuration</code>,
+        <code>initializeTimelineFromStructure</code>).
+      </li>
+      <li>
+        <strong>T-Arch-3:</strong> Cross-Scene Audio-Tracks —
+        <code>plannedDuration</code> und <code>crossesIntoNextScenes</code> im
+        Audio-Dropdown hinzufügen.
+      </li>
+      <li>
+        <strong>T-Arch-4:</strong> Compare/Sync-View Prototyp —
+        Side-by-Side-Darstellung von Plan-Reihenfolge und Ist-Reihenfolge.
+      </li>
+    </ol>
+
+    <footer>
+      Erstellt aus der Pi-Analyse des Scriptony-Appwrite Repositories • Keine
+      Code-Änderungen vorgenommen
+    </footer>
+  </body>
+</html>

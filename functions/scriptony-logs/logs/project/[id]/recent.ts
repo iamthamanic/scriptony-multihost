@@ -9,8 +9,8 @@
  * Neue Log-Features duerfen hier nicht ergaenzt werden.
  */
 
-import { requireUserBootstrap } from "../../../../../_shared/auth";
-import { requestGraphql } from "../../../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../../../_shared/auth";
+import { requestGraphql } from "../../../../_shared/graphql-compat";
 import {
   getParam,
   getQuery,
@@ -21,8 +21,8 @@ import {
   sendMethodNotAllowed,
   sendServerError,
   sendUnauthorized,
-} from "../../../../../_shared/http";
-import { requireProjectAccess } from "../../../../../_shared/scriptony";
+} from "../../../../_shared/http";
+import { requireProjectAccess } from "../../../../_shared/scriptony";
 
 export default async function handler(
   req: RequestLike,

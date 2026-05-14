@@ -23,6 +23,39 @@ import {
   setProjectInspirations,
 } from "../../_shared/scriptony";
 
+const PROJECTS_HYDRATION_TIMEOUT_MS = 3500;
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  label: string,
+): Promise<T> {
+  let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race<T>([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  }
+}
+
+function isNonCriticalInspirationHydrationError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("timed out") ||
+    normalized.includes("timeout") ||
+    normalized.includes("etimedout") ||
+    normalized.includes("econnreset")
+  );
+}
+
 export default async function handler(
   req: RequestLike,
   res: ResponseLike,
@@ -89,11 +122,40 @@ export default async function handler(
           organizationId: bootstrap.organizationId,
         },
       );
-
-      const projectsWithInspirations = await hydrateProjectsWithInspirations(
-        hydrateProjectRows(data.projects),
-      );
-      sendJson(res, 200, { projects: projectsWithInspirations });
+      const hydratedProjects = hydrateProjectRows(data.projects);
+      try {
+        const projectsWithInspirations = await withTimeout(
+          hydrateProjectsWithInspirations(hydratedProjects),
+          PROJECTS_HYDRATION_TIMEOUT_MS,
+          "hydrateProjectsWithInspirations",
+        );
+        sendJson(res, 200, { projects: projectsWithInspirations });
+      } catch (hydrationError) {
+        if (!isNonCriticalInspirationHydrationError(hydrationError)) {
+          throw hydrationError;
+        }
+        const projectsWithEmptyInspirations = hydratedProjects.map(
+          (project) => ({
+            ...project,
+            inspirations: Array.isArray(project.inspirations)
+              ? project.inspirations
+              : [],
+          }),
+        );
+        console.warn(
+          "[projects/index] inspirations hydration failed; returning base project list",
+          {
+            userId: bootstrap.user.id,
+            organizationId: bootstrap.organizationId,
+            projectCount: hydratedProjects.length,
+            error:
+              hydrationError instanceof Error
+                ? hydrationError.message
+                : String(hydrationError),
+          },
+        );
+        sendJson(res, 200, { projects: projectsWithEmptyInspirations });
+      }
       return;
     }
 

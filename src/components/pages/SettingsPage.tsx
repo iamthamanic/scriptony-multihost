@@ -102,6 +102,18 @@ export function SettingsPage() {
       setIntegrationTokens(data?.tokens ?? []);
     } catch (error) {
       console.error("Error loading integration tokens:", error);
+      const status =
+        error && typeof error === "object" && "status" in error
+          ? (error as { status?: unknown }).status
+          : undefined;
+      // Backend can temporarily return HTML/500 while function domains roll out.
+      if (status === 500 || status === 404) {
+        setIntegrationTokens([]);
+        toast.warning(
+          "Integrations-Tokens sind aktuell nicht verfügbar (Backend-Route).",
+        );
+        return;
+      }
       toast.error("Token-Liste konnte nicht geladen werden.");
     } finally {
       setIntegrationTokensLoading(false);

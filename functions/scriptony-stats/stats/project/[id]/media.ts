@@ -11,8 +11,8 @@
  * Neue Stats-Features duerfen hier nicht ergaenzt werden.
  */
 
-import { requireUserBootstrap } from "../../../../../_shared/auth";
-import { requestGraphql } from "../../../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../../../_shared/auth";
+import { requestGraphql } from "../../../../_shared/graphql-compat";
 import {
   getParam,
   type RequestLike,
@@ -22,9 +22,9 @@ import {
   sendMethodNotAllowed,
   sendServerError,
   sendUnauthorized,
-} from "../../../../../_shared/http";
-import { getProjectStatsPayload } from "../../../../../_shared/observability";
-import { requireProjectAccess } from "../../../../../_shared/scriptony";
+} from "../../../../_shared/http";
+import { getProjectStatsPayload } from "../../../../_shared/observability";
+import { requireProjectAccess } from "../../../../_shared/scriptony";
 
 export default async function handler(
   req: RequestLike,

@@ -72,6 +72,85 @@ function getManualChunkName(id: string): string | undefined {
   return match?.name;
 }
 
+const SCRIPTONY_AUDIO_STORY_FN = "scriptony-audio-story";
+
+/**
+ * Canonical `scriptony-*` HTTP function IDs (mirror of `BACKEND_FUNCTIONS` in api-gateway.ts).
+ * Used only to fill missing domains in dev from an existing sibling URL like
+ * …/scriptony-projects… → …/scriptony-editor-readmodel… (same deployment pattern).
+ */
+const SCRIPTONY_GATEWAY_FUNCTION_SLUGS = [
+  "scriptony-projects",
+  "scriptony-project-nodes",
+  "scriptony-shots",
+  "scriptony-clips",
+  "scriptony-characters",
+  "scriptony-style-guide",
+  "scriptony-audio",
+  SCRIPTONY_AUDIO_STORY_FN,
+  "scriptony-beats",
+  "scriptony-worldbuilding",
+  "scriptony-ai",
+  "scriptony-assistant",
+  "scriptony-image",
+  "scriptony-stage",
+  "scriptony-stage2d",
+  "scriptony-stage3d",
+  "scriptony-style",
+  "scriptony-sync",
+  "scriptony-gym",
+  "scriptony-assets",
+  "scriptony-auth",
+  "scriptony-editor-readmodel",
+  "scriptony-jobs",
+  "scriptony-superadmin",
+  "scriptony-stats",
+  "scriptony-logs",
+  "scriptony-mcp-appwrite",
+] as const;
+
+/** Only these function IDs may register a dev HTTP proxy (mitigate SSRF via crafted env JSON). */
+const DEV_PROXY_ALLOWED_KEYS = new Set<string>([
+  ...SCRIPTONY_GATEWAY_FUNCTION_SLUGS,
+  "make-server-3b52693b",
+]);
+
+/** Prefer longest template key first so `scriptony-project-nodes` beats `scriptony-projects` in URLs. */
+function expandScriptonyFunctionDomainMap(
+  domainMap: Record<string, string>,
+): Record<string, string> {
+  const out = { ...domainMap };
+  const scriptonyEntries = Object.entries(domainMap).filter(
+    ([key, url]) =>
+      key.startsWith("scriptony-") &&
+      typeof url === "string" &&
+      /^https?:\/\//i.test(url.trim()),
+  );
+  if (scriptonyEntries.length === 0) {
+    return out;
+  }
+  const preferredOrder = ["scriptony-projects", "scriptony-auth"];
+  const sorted = [...scriptonyEntries].sort((a, b) => {
+    const pa = preferredOrder.indexOf(a[0]);
+    const pb = preferredOrder.indexOf(b[0]);
+    if (pa !== -1 || pb !== -1)
+      return (pa === -1 ? 999 : pa) - (pb === -1 ? 999 : pb);
+    return b[0].length - a[0].length;
+  });
+  const template = sorted.find(([key, url]) => url.includes(key));
+  if (!template) {
+    return out;
+  }
+  const [templateKey, templateUrlRaw] = template;
+  const templateUrl = templateUrlRaw.replace(/\/+$/, "");
+  for (const slug of SCRIPTONY_GATEWAY_FUNCTION_SLUGS) {
+    if (out[slug]?.trim()) continue;
+    if (!templateUrl.includes(templateKey)) continue;
+    out[slug] = templateUrl.split(templateKey).join(slug);
+  }
+  return out;
+}
+
 /** Dev: append NDJSON from VideoEditorTimeline debug fetch → .cursor/debug-47af82.log */
 const scriptonyDebugIngestPlugin: import("vite").Plugin = {
   name: "scriptony-debug-ingest",
@@ -107,49 +186,169 @@ const scriptonyDebugIngestPlugin: import("vite").Plugin = {
   },
 };
 
+function isSafeHttpUrl(target: string): boolean {
+  try {
+    const u = new URL(target);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** Dev proxy targets may only point at loopback, the Appwrite API host, or optional extras (SSRF mitigation). */
+function collectAllowedProxyTargetHosts(
+  env: Record<string, string>,
+): Set<string> {
+  const hosts = new Set<string>(["localhost", "127.0.0.1"]);
+  const ep = env.VITE_APPWRITE_ENDPOINT?.trim();
+  if (ep) {
+    try {
+      hosts.add(new URL(ep).hostname.toLowerCase());
+    } catch {
+      /* ignore */
+    }
+  }
+  const extra = env.VITE_DEV_PROXY_EXTRA_HOSTS?.trim();
+  if (extra) {
+    for (const part of extra.split(",")) {
+      const t = part.trim().toLowerCase();
+      if (t) {
+        hosts.add(t);
+      }
+    }
+  }
+  return hosts;
+}
+
+function isProxyTargetHostAllowed(
+  targetUrl: string,
+  allowedHosts: Set<string>,
+): boolean {
+  try {
+    return allowedHosts.has(new URL(targetUrl).hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
+  const isDev = mode === "development";
 
   // ── Dev proxy: route ALL function domains through localhost to avoid CORS ──
   // Appwrite's executor can return errors without CORS headers (cold starts, crashes).
   // By proxying through Vite's dev server, requests stay same-origin → no CORS issues.
   const proxy: Record<string, import("vite").ProxyOptions> = {};
+  /** `loadEnv` already merges `.env`, `.env.local`, mode-specific files — no manual parse. */
+  let resolvedFunctionDomainMapRaw =
+    env.VITE_BACKEND_FUNCTION_DOMAIN_MAP?.trim() || "";
 
   /**
    * Image generation often needs several minutes. http-proxy defaults (e.g. 120s proxyTimeout) or
    * intermediate values can yield 408/HTML before Appwrite returns — use 0 to disable these timeouts in dev.
    */
   const longRunningProxyOpts = {
-    timeout: 300000,  // 5 Minuten
-    proxyTimeout: 300000,  // 5 Minuten
+    timeout: 300000, // 5 Minuten
+    proxyTimeout: 300000, // 5 Minuten
   } as const;
 
-  // Parse VITE_BACKEND_FUNCTION_DOMAIN_MAP and create a proxy entry for every function.
-  const domainMapRaw = env.VITE_BACKEND_FUNCTION_DOMAIN_MAP?.trim();
-  if (domainMapRaw) {
+  const allowedProxyTargetHosts = collectAllowedProxyTargetHosts(env);
+
+  function parseDomainMap(raw: string): Record<string, string> {
+    const firstBrace = raw.indexOf("{");
+    const lastBrace = raw.lastIndexOf("}");
+    const normalizedDomainMapRaw =
+      firstBrace >= 0 && lastBrace > firstBrace
+        ? raw.slice(firstBrace, lastBrace + 1)
+        : raw;
+
     try {
-      const domainMap: Record<string, string> = JSON.parse(domainMapRaw);
-      // Sortiere nach Funktionsnamen-Länge absteigend, damit längere Namen
-      // (z.B. scriptony-audio-story) vor kürzeren (scriptony-audio) matchen.
-      const sortedEntries = Object.entries(domainMap)
-        .filter(([funcName, target]) => funcName && target)
-        .sort((a, b) => b[0].length - a[0].length);
-      for (const [funcName, target] of sortedEntries) {
-        const cleanTarget = target.replace(/\/+$/, "");
-        proxy[`/__dev-proxy/${funcName}`] = {
-          target: cleanTarget,
-          changeOrigin: true,
-          secure: false,
-          ...longRunningProxyOpts,
-          rewrite: (p) => {
-            const stripped = p.replace(
-              new RegExp(`^/__dev-proxy/${funcName}`),
-              "",
-            );
-            return stripped.length > 0 ? stripped : "/";
-          },
-        };
+      return JSON.parse(normalizedDomainMapRaw) as Record<string, string>;
+    } catch {
+      const trimmed = normalizedDomainMapRaw.trim();
+      if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+        throw new Error("Invalid domain map format");
       }
+      const inner = trimmed.slice(1, -1).trim();
+      if (!inner) return {};
+      const out: Record<string, string> = {};
+      for (const part of inner.split(",")) {
+        const entry = part.trim();
+        if (!entry) continue;
+        const sep = entry.indexOf(":");
+        if (sep <= 0) continue;
+        const key = entry.slice(0, sep).trim().replace(/^"|"$/g, "");
+        const value = entry
+          .slice(sep + 1)
+          .trim()
+          .replace(/^"|"$/g, "");
+        if (key && value) {
+          out[key] = value;
+        }
+      }
+      return out;
+    }
+  }
+
+  function registerExpandedDomainMapProxies(expanded: Record<string, string>) {
+    const sortedEntries = Object.entries(expanded)
+      .filter(([funcName, target]) => funcName && target)
+      .sort((a, b) => b[0].length - a[0].length);
+    for (const [funcName, target] of sortedEntries) {
+      if (!DEV_PROXY_ALLOWED_KEYS.has(funcName)) {
+        console.warn(
+          `[vite.config] Überspringe unbekannten Function-Key im Proxy: "${funcName}"`,
+        );
+        continue;
+      }
+      const cleanTarget = target.replace(/\/+$/, "");
+      if (!isSafeHttpUrl(cleanTarget)) {
+        console.warn(
+          `[vite.config] Überspringe Proxy für "${funcName}": ungültige URL "${cleanTarget}"`,
+        );
+        continue;
+      }
+      if (!isProxyTargetHostAllowed(cleanTarget, allowedProxyTargetHosts)) {
+        console.warn(
+          `[vite.config] Überspringe Proxy für "${funcName}": Host nicht erlaubt (SSRF-Schutz) — Ziel "${cleanTarget}". Setze VITE_DEV_PROXY_EXTRA_HOSTS oder VITE_APPWRITE_ENDPOINT passend.`,
+        );
+        continue;
+      }
+      const prefix = `/__dev-proxy/${funcName}`;
+      proxy[prefix] = {
+        target: cleanTarget,
+        changeOrigin: true,
+        secure: false,
+        ...longRunningProxyOpts,
+        rewrite: (reqPath) => {
+          if (!reqPath.startsWith(prefix)) {
+            return reqPath;
+          }
+          const stripped = reqPath.slice(prefix.length);
+          return stripped.length > 0 ? stripped : "/";
+        },
+      };
+    }
+  }
+
+  function hydrateDevProxyFromDomainMapJson(domainMapJsonRaw: string): void {
+    const domainMap = parseDomainMap(domainMapJsonRaw);
+    const keyCountBefore = Object.keys(domainMap).length;
+    const expanded = expandScriptonyFunctionDomainMap(domainMap);
+    if (Object.keys(expanded).length > keyCountBefore) {
+      console.warn(
+        "[vite.config] Ergänzt VITE_BACKEND_FUNCTION_DOMAIN_MAP um fehlende scriptony-* URLs (Sibling-Muster wie scriptony-projects).",
+      );
+    }
+    resolvedFunctionDomainMapRaw = JSON.stringify(expanded);
+    registerExpandedDomainMapProxies(expanded);
+  }
+
+  // Parse / expand map and register dev-only HTTP proxies (never read .env.local in production builds).
+  const domainMapRaw = resolvedFunctionDomainMapRaw;
+  if (isDev && domainMapRaw) {
+    try {
+      hydrateDevProxyFromDomainMapJson(domainMapRaw);
     } catch {
       console.warn(
         "[vite.config] Could not parse VITE_BACKEND_FUNCTION_DOMAIN_MAP for dev proxy",
@@ -161,7 +360,11 @@ export default defineConfig(({ mode }) => {
   const assistantProxyTarget =
     env.VITE_DEV_PROXY_SCRIPTONY_ASSISTANT_TARGET?.trim() ||
     env.DEV_PROXY_SCRIPTONY_ASSISTANT_TARGET?.trim();
-  if (assistantProxyTarget) {
+  if (
+    assistantProxyTarget &&
+    isSafeHttpUrl(assistantProxyTarget) &&
+    isProxyTargetHostAllowed(assistantProxyTarget, allowedProxyTargetHosts)
+  ) {
     proxy["/__dev-proxy/scriptony-assistant"] = {
       target: assistantProxyTarget.replace(/\/+$/, ""),
       changeOrigin: true,
@@ -188,6 +391,14 @@ export default defineConfig(({ mode }) => {
   };
 
   return {
+    define:
+      isDev && resolvedFunctionDomainMapRaw
+        ? {
+            "import.meta.env.VITE_BACKEND_FUNCTION_DOMAIN_MAP": JSON.stringify(
+              resolvedFunctionDomainMapRaw,
+            ),
+          }
+        : undefined,
     plugins: [react(), wasm(), topLevelAwait(), scriptonyDebugIngestPlugin],
     resolve: {
       extensions: [".js", ".jsx", ".ts", ".tsx", ".json"],
@@ -258,11 +469,11 @@ export default defineConfig(({ mode }) => {
         "@radix-ui/react-aspect-ratio@1.1.2": "@radix-ui/react-aspect-ratio",
         "@radix-ui/react-alert-dialog@1.1.6": "@radix-ui/react-alert-dialog",
         "@radix-ui/react-accordion@1.2.3": "@radix-ui/react-accordion",
-        "@": path.resolve(__dirname, "./src"),
         "functions/_shared/default-assistant-system-prompt": path.resolve(
           __dirname,
           "functions/_shared/default-assistant-system-prompt.ts",
         ),
+        "@": path.resolve(__dirname, "./src"),
       },
     },
     publicDir: "public",
@@ -284,6 +495,16 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 3000,
+      /**
+       * Default `localhost` matches the Appwrite CORS origin (http://localhost:3000).
+       * Using 127.0.0.1 would break CORS because browsers treat them as different origins.
+       * `VITE_DEV_BIND_ALL=1` → `0.0.0.0` (e.g. phone on Wi‑Fi).
+       */
+      host:
+        env.VITE_DEV_BIND_ALL === "1" || env.VITE_DEV_BIND_ALL === "true"
+          ? true
+          : "localhost",
+      strictPort: true,
       open: true,
       proxy,
     },

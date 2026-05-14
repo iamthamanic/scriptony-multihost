@@ -116,10 +116,14 @@ export class AppwriteAuthAdapter implements AuthClient {
     } catch (e) {
       if (e instanceof AppwriteException && e.code === 429) {
         this.jwtRateLimitedUntil = Date.now() + JWT_RATE_LIMIT_BACKOFF;
-        if (this.cachedJwt) return this.cachedJwt;
+        // Never return an expired JWT from cache; that would cause backend 401 loops.
+        if (this.cachedJwt && Date.now() < this.jwtExpiresAt)
+          return this.cachedJwt;
       }
       console.warn("[AppwriteAuthAdapter] getJwt error:", e);
-      return this.cachedJwt; // return stale if available
+      return this.cachedJwt && Date.now() < this.jwtExpiresAt
+        ? this.cachedJwt
+        : null;
     }
   }
 

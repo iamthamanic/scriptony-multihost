@@ -12,6 +12,7 @@ import {
   ApiGatewayError,
   apiGateway as internalApiGateway,
 } from "./api-gateway";
+import { resetAuthClient } from "./auth/getAuthClient";
 import { backendConfig } from "./env";
 
 // =============================================================================
@@ -234,10 +235,42 @@ export async function apiRequest<T = any>(
         body,
         headers: headers as Record<string, string>,
         accessToken: authToken || undefined,
+        timeoutMs: timeout,
       });
 
       return { data };
     } catch (error: any) {
+      if (
+        error instanceof ApiGatewayError &&
+        requireAuth &&
+        error.layer === "function-auth"
+      ) {
+        try {
+          // Recover from stale/expired cached JWT once before failing.
+          resetAuthClient();
+          const refreshedToken = await getAuthToken();
+          if (refreshedToken) {
+            const body = fetchOptions.body
+              ? JSON.parse(fetchOptions.body as string)
+              : undefined;
+            const retryData = await internalApiGateway<T>({
+              method: method as any,
+              route: endpoint,
+              body,
+              headers: headers as Record<string, string>,
+              accessToken: refreshedToken,
+              timeoutMs: timeout,
+            });
+            return { data: retryData };
+          }
+        } catch (retryError) {
+          console.error(
+            `[API Client] Auth refresh retry failed for ${method} ${endpoint}`,
+            retryError,
+          );
+        }
+      }
+
       if (error instanceof ApiGatewayError) {
         logGatewayFailure(method, endpoint, error);
       } else {

@@ -52,7 +52,7 @@ import systemPromptSvg from "../../imports/svg-moj859ikvp";
 import BxEdit from "../../imports/BxEdit";
 import { ChatSettingsDialog } from "../settings/ChatSettingsDialog";
 import { AssistantOrbitLoader } from "../ai/AssistantOrbitLoader";
-import { normalizeAssistantSystemPrompt } from "functions/_shared/default-assistant-system-prompt";
+import { normalizeAssistantSystemPrompt } from "../../lib/assistant-system-prompt";
 import { SCRIPTONY_AI_SETTINGS_UPDATED_EVENT } from "../../lib/ai-settings-updated";
 
 interface Message {

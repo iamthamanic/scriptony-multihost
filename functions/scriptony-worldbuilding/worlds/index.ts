@@ -50,7 +50,6 @@ export default async function handler(
         `,
         { organizationId: bootstrap.organizationId },
       );
-
       sendJson(res, 200, { worlds: data.worlds });
       return;
     }

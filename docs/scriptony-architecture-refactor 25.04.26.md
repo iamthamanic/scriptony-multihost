@@ -1815,7 +1815,7 @@ Editor-Readmodel aggregiert nur für die UI.
   | `GET /v1/jobs/:jobId/status` | `src/lib/jobs/jobApi.ts` (getJobStatus) | `apiClient.get` via API Gateway | T14 ✅ |
   | `GET /v1/jobs/:jobId/result` | `src/lib/jobs/jobApi.ts` (getJobResult) | `apiClient.get` via API Gateway | T14 ✅ |
   | `POST /v1/jobs/:jobId/cancel` | `src/lib/jobs/jobApi.ts` (cancelJob) | `apiClient.post` via API Gateway | T14 ✅ |
-  | `POST /v1/worker/media/:action` | *(noch kein Frontend-Aufrufer)* | — | T15 ⚠️ |
+  | `POST /v1/worker/media/:action` | _(noch kein Frontend-Aufrufer)_ | — | T15 ⚠️ |
   | `GET /stats/*`, `GET /logs/*` | `src/components/*StatsLogsDialog*.tsx` | **DIREKTER FETCH** (buildFunctionRouteUrl) | T16 ⚠️ |
   | `GET /worlds/:id/categories` | `src/utils/api.tsx` (categoriesApi), `WorldStatsLogsDialog.tsx` | `apiFetch` (legacy) / **fetch** (Dialog) | T17 ⚠️ |
 - **Loading/Error/Empty/Success States:**
@@ -1968,11 +1968,11 @@ Editor-Readmodel aggregiert nur für die UI.
 - **Shimwrappercheck command:** `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --frontend`
 - **Shimwrappercheck result:** Frontend-Checks grün; AI Review nachgeholt.
 - **AI Review result:** **VERDICT: ACCEPT** (nachgeholt im scoped Shim-Gate).
-- **Known risks:** 
+- **Known risks:**
   - 17 flache Dateien noch nicht zugeordnet (außerhalb Ticket-Scope)
   - Keine Barrel-Exports erstellt (bewusst, per Ticket-Anforderung)
 - **Rollback plan:** `git checkout HEAD -- src/components/` + `git mv` zurück
-- **Notes:** 
+- **Notes:**
   - Keine Regex-basierten Import-Fixes verwendet (Lektion aus gescheitertem Versuch 2026-05-05)
   - Systematischer Ansatz: alle `git mv` → `./ui/`→`../ui/` → `./lib/`→`../../lib/` → Cross-Domain `./X`→`../domain/X` → externe Importe → `tsc --noEmit`
   - Build erfolgreich mit frontend-sicherem Prompt-Helper in `src/lib/assistant-system-prompt.ts` (kein `src` -> `functions` Import und kein Alias in `vite.config.ts` erforderlich)
@@ -2012,7 +2012,7 @@ Editor-Readmodel aggregiert nur für die UI.
   - `scriptony_oauth_{provider}_client_id` (je Provider)
   - `scriptony_oauth_{provider}_client_secret` (je Provider)
   - `scriptony_oauth_callback_url` (für OAuth callback)
-- **Routes:** 12 Hono-Subroutes unter /storage/*
+- **Routes:** 12 Hono-Subroutes unter /storage/\*
 - **UI/UX checks:** Keine UI-Änderungen (nur Backend)
 - **Tests run:** 27 files, 262 tests passed (inkl. 15 neue Storage-Tests)
 - **Shimwrappercheck command:** `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --backend`
@@ -2029,3 +2029,82 @@ Editor-Readmodel aggregiert nur für die UI.
   - AES-256-GCM mit random IV + AuthTag
   - POST /storage/connections entfernt (Token-Injection verhindert)
   - HMAC-SHA256 für OAuth state (getrennter Service, testbar)
+
+---
+
+## Phase 8 — AudioClip Architecture (T27–T33)
+
+### Done Report: T27 — Plan AudioClip + Ripple Architektur
+
+- **Date:** 2026-05-13 10:00 CEST
+- **Verification Marker:** ARCH-REF-T27-DONE
+- **Changed files:**
+  - `src/lib/types/index.ts` — `AudioClip`, `BaseClip`, `LANE_SCHEMA`, `WPM_DEFAULTS`
+  - `src/lib/feature-flags.ts` — `FEATURE_FLAGS.audioClipSystem`
+  - `src/lib/audio-utils.ts` — `estimateDurationSec`, `formatDurationSec`
+  - `src/lib/timeline-position.ts` — `resolveLaneIndex`, `getNextAvailableStartSec`
+  - `src/lib/api/audio-clip-api.ts` — Skeleton API-Client
+  - `src/lib/react-query.ts` — `clipsByScene`, `clips` Query-Keys
+  - `src/components/audio/AudioTimelineSegment.tsx` — Fallbacks für optionale Track-Zeiten
+- **Appwrite collections:** Keine (nur Typ-Definitionen)
+- **Appwrite buckets:** Keine
+- **Env vars:** `VITE_ENABLE_AUDIO_CLIP=false`
+- **Routes:** Keine (nur Skeleton)
+- **UI/UX checks:** Keine sichtbaren Änderungen (Feature-Flag = false)
+- **Tests run:** Keine neuen Tests (T27 ist Plan-Ticket)
+- **Shimwrappercheck command:** `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks`
+- **Shimwrappercheck result:** TypeScript sauber, Lint sauber
+- **AI Review result:** Nicht durchgeführt (T27 ist Plan-Ticket)
+- **Known risks:**
+  - `audio_clips` Collection existiert nicht in Appwrite (wird in T28 angelegt)
+  - Backend-Routen sind Skeleton
+- **Rollback plan:** Entfernen der hinzugefügten Dateien, Rückgängigmachen der Type-Änderungen
+- **Notes:**
+  - `AudioTrack.startTime`/`duration` sind `@deprecated` + optional (kein Breaking Change)
+  - `LANE_SCHEMA` definiert Dialog 0-9, SFX 10-19, Musik 20-29, Atmo 30-39, Erzähler 40-49, Global 90-99
+  - `WPM_DEFAULTS`: Base 150 WPM, Emotion-Modifier ±20%, Sprach-Modifier
+
+### Done Report: T28 — AudioClip Fundament: Typ, Collection, Backend, Frontend
+
+- **Date:** 2026-05-13 14:00 CEST
+- **Verification Marker:** ARCH-REF-T28-DONE
+- **Changed files:**
+  - `functions/_shared/appwrite-db.ts` — `audio_clips` Collection-ID
+  - `functions/_shared/graphql-operations/handlers-all.ts` — `GetAudioClips`, `CreateAudioClip`, `GetAudioClip`, `UpdateAudioClip`, `DeleteAudioClip`
+  - `functions/scriptony-audio-story/routes/clips.ts` — Vollständige CRUD-Route mit Auth, Validation, Error-Handling
+  - `functions/scriptony-audio-story/appwrite-entry.ts` — `/clips` Route registriert
+  - `src/hooks/useAudioClips.ts` — `useAudioClips`, `useCreateAudioClip`, `useUpdateAudioClip`, `useDeleteAudioClip`
+  - `src/lib/api/audio-clip-api.ts` — API-Gateway-kompatible Implementierung
+  - `src/lib/types/index.ts` — `AudioClip` um denormalisierte Felder erweitert (`trackType`, `content`, `characterId`)
+  - `src/components/audio/AudioTimelineSegment.tsx` — Union-Typ `AudioTrack | AudioClip` vorbereitet, `aria-label` + `title` für Accessibility
+  - `src/components/audio/AudioTimelineLane.tsx` — `track` → `item` Prop korrigiert
+  - `scripts/migrate-audio-tracks-to-clips.ts` — Idempotentes Migrationsskript
+- **Appwrite collections:** `audio_clips` (Collection-ID `"audio_clips"`, Appwrite-Schema muss manuell erstellt werden via Konsole oder Script)
+- **Appwrite buckets:** Keine
+- **Env vars:** `VITE_ENABLE_AUDIO_CLIP=false` (kein Breaking Change)
+- **Routes:**
+  - `GET /clips?sceneId=<uuid>` → listClips
+  - `POST /clips` → createClip
+  - `GET /clips/:id` → getClip
+  - `PUT /clips/:id` → updateClip
+  - `DELETE /clips/:id` → deleteClip
+- **UI/UX checks:** Keine sichtbaren Änderungen (Feature-Flag = false), Legacy-Dropdown und Timeline funktionieren unverändert
+- **Tests run:** TypeScript check 0 Fehler, ESLint 0 Fehler
+- **Shimwrappercheck command:** `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks`
+- **Shimwrappercheck result:** TypeScript sauber, ESLint sauber (nur geprüfte Dateien)
+- **AI Review result:** Nicht durchgeführt (T28 Implementierung, Plan-Phase abgeschlossen)
+- **Known risks:**
+  - `audio_clips` Collection muss in Appwrite Konsole erstellt werden (oder via `setup-audio-collections.js`)
+  - Migrationsskript erfordert `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`
+  - Union-Typ in `AudioTimelineSegment` wird erst in T29+ aktiv (Feature-Flag)
+- **Rollback plan:**
+  1. `appwrite functions delete scriptony-audio-story` + neu deploy
+  2. `audio_clips` Collection in Appwrite löschen
+  3. `git revert` der T28-Commits
+- **Notes:**
+  - Security (OWASP ASVS): Auth auf allen Routen, `canEditProject` für Schreibzugriff, Input-Sanitization, keine Secrets in Responses
+  - Accessibility (WCAG 2.2 AA): `aria-label` + `title` auf Segment-Elementen, `select-none` für Drag-Prevention
+  - Feature-Flag: `VITE_ENABLE_AUDIO_CLIP` bleibt `false`, bestehendes Verhalten (AudioTrack-Timeline) bleibt aktiv
+  - Idempotenz: Migrationsskript prüft `clipExistsForTrack` vor Insert (UNIQUE constraint auf `track_id` als Fallback)
+  - KISS: Ein Track = Ein Clip in T28. Keine Multi-Clip-Komplexität.
+  - DRY: `resolveLaneIndex` Logik in `timeline-position.ts` und `migrate-audio-tracks-to-clips.ts` (Node.js Script kann Frontend-Module nicht importieren — akzeptable Duplikation)

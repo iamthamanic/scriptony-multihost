@@ -11,8 +11,8 @@
  * Neue Log-Features duerfen hier nicht ergaenzt werden.
  */
 
-import { requireUserBootstrap } from "../../../../../_shared/auth";
-import { requestGraphql } from "../../../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../../../_shared/auth";
+import { requestGraphql } from "../../../../_shared/graphql-compat";
 import {
   getParam,
   getQuery,
@@ -23,7 +23,7 @@ import {
   sendMethodNotAllowed,
   sendServerError,
   sendUnauthorized,
-} from "../../../../../_shared/http";
+} from "../../../../_shared/http";
 
 const ENTITY_TYPE_MAP: Record<string, string> = {
   act: "Act",

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Play,
   Pause,
@@ -53,184 +53,20 @@ export function AudioFileList({
       hasTrimming: file.startTime !== undefined || file.endTime !== undefined,
     });
 
-    const audio = audioRefs.current[file.id];
+    let audio = audioRefs.current[file.id];
+
+    // Lazy-create audio element on first play — prevents mass audio decoding at mount
     if (!audio) {
-      console.error("[AudioFileList] Audio element not found for:", file.id);
-      console.error(
-        "[AudioFileList] Available audio refs:",
-        Object.keys(audioRefs.current),
-      );
-      console.error(
-        "[AudioFileList] This usually means useEffect did not run or files changed",
-      );
-      return;
-    }
-
-    console.log("[AudioFileList] Audio element found:", {
-      fileId: file.id,
-      audioElement: audio,
-      constructor: audio.constructor.name,
-      src: audio.src,
-    });
-
-    if (playingId === file.id) {
-      audio.pause();
-      setPlayingId(null);
-      console.log("[AudioFileList] Audio paused");
-    } else {
-      // First, stop all other audios BEFORE starting this one
-      Object.entries(audioRefs.current).forEach(([id, audioEl]) => {
-        if (id !== file.id && !audioEl.paused) {
-          console.log("[AudioFileList] Stopping other audio:", id);
-          audioEl.pause();
-          audioEl.currentTime = 0;
-        }
-      });
-
-      // Apply trimming if startTime/endTime are set
-      if (file.startTime !== undefined) {
-        console.log("[AudioFileList] Setting currentTime to startTime:", {
-          fileId: file.id,
-          oldCurrentTime: audio.currentTime,
-          newStartTime: file.startTime,
-        });
-        audio.currentTime = file.startTime;
-      }
-
-      console.log("[AudioFileList] Attempting to play audio...", {
-        volume: audio.volume,
-        muted: audio.muted,
-        duration: audio.duration,
-        readyState: audio.readyState,
-        paused: audio.paused,
-        src: audio.src,
-        currentTime: audio.currentTime,
-        startTime: file.startTime,
-        endTime: file.endTime,
-      });
-
-      // Force unmute and volume
-      audio.muted = false;
-      audio.volume = 1.0;
-
-      // CRITICAL: Call play() SYNCHRONOUSLY without await to maintain user interaction context
-      const playPromise = audio.play();
-
-      // Set state AFTER play() is called (not awaited!)
-      setPlayingId(file.id);
-
-      // Handle the promise asynchronously (doesn't block user interaction)
-      playPromise
-        .then(() => {
-          console.log("[AudioFileList] Audio playing successfully ✅", {
-            currentTime: audio.currentTime,
-            paused: audio.paused,
-            volume: audio.volume,
-            muted: audio.muted,
-          });
-
-          // Verify it's still playing after a short delay
-          setTimeout(() => {
-            if (!audio.paused) {
-              console.log("[AudioFileList] Audio still playing after 100ms ✅");
-            } else {
-              console.error(
-                "[AudioFileList] Audio was paused unexpectedly! ❌",
-              );
-            }
-          }, 100);
-        })
-        .catch((error) => {
-          // Reset state on error
-          setPlayingId(null);
-          console.error("[AudioFileList] Error playing audio:", error);
-          console.error("[AudioFileList] Error details:", {
-            name: (error as Error).name,
-            message: (error as Error).message,
-            url: file.url,
-            audioState: {
-              volume: audio.volume,
-              muted: audio.muted,
-              src: audio.src,
-              readyState: audio.readyState,
-              paused: audio.paused,
-            },
-          });
-        });
-    }
-  };
-
-  const handleAudioEnded = useCallback((fileId: string) => {
-    console.log("[AudioFileList] Audio ended:", fileId);
-    setPlayingId(null);
-  }, []);
-
-  // Create audio elements programmatically to prevent re-creation on re-render
-  useEffect(() => {
-    console.log("[AudioFileList] useEffect running:", {
-      instanceId: instanceIdRef.current,
-      type,
-      filesCount: files.length,
-      files: files.map((f) => ({
-        id: f.id,
-        fileName: f.fileName,
-        startTime: f.startTime,
-        endTime: f.endTime,
-        hasTrimming: f.startTime !== undefined || f.endTime !== undefined,
-      })),
-    });
-
-    // CRITICAL: Clean up ALL existing audio elements first
-    // This ensures trimming changes are applied correctly
-    Object.entries(audioRefs.current).forEach(([id, audio]) => {
-      if (!audio.paused) {
-        audio.pause();
-      }
-    });
-    audioRefs.current = {};
-    console.log("[AudioFileList] Cleaned up all previous audio elements");
-
-    // Create audio elements for all files
-    files.forEach((file) => {
-      const audio = new Audio(file.url);
-      audio.preload = "metadata";
+      audio = new Audio(file.url);
+      audio.preload = "none";
       audio.volume = 1.0;
       audio.muted = false;
 
-      // CRITICAL: Set initial currentTime to startTime if trimming is enabled
-      if (file.startTime !== undefined) {
-        audio.currentTime = file.startTime;
-        console.log("[AudioFileList] Initial currentTime set to startTime:", {
-          fileId: file.id,
-          startTime: file.startTime,
-          currentTime: audio.currentTime,
-        });
-      }
-
-      // Time update handler with file context
-      const timeUpdateHandler = () => {
-        // Only check endTime if it's actually set AND greater than startTime
-        if (
-          file.endTime !== undefined &&
-          file.endTime > (file.startTime || 0) &&
-          audio.currentTime >= file.endTime
-        ) {
-          console.log("[AudioFileList] Audio reached endTime, pausing:", {
-            fileId: file.id,
-            currentTime: audio.currentTime,
-            endTime: file.endTime,
-            startTime: file.startTime,
-          });
-          audio.pause();
-          audio.currentTime = file.startTime || 0;
-          setPlayingId(null);
-        }
+      audio.onended = () => {
+        console.log("[AudioFileList] Audio ended:", file.id);
+        setPlayingId(null);
       };
-
-      // Event listeners
-      audio.addEventListener("ended", () => handleAudioEnded(file.id));
-      audio.addEventListener("timeupdate", timeUpdateHandler);
-      audio.addEventListener("error", (e) => {
+      audio.onerror = (e) => {
         console.error("[AudioFileList] Audio load error:", {
           fileId: file.id,
           fileName: file.fileName,
@@ -238,11 +74,10 @@ export function AudioFileList({
           error: e,
           audioError: audio.error,
         });
-      });
-      audio.addEventListener("loadstart", () =>
-        console.log("[AudioFileList] Audio load started:", file.fileName),
-      );
-      audio.addEventListener("loadeddata", () => {
+      };
+      audio.onloadstart = () =>
+        console.log("[AudioFileList] Audio load started:", file.fileName);
+      audio.onloadeddata = () => {
         console.log("[AudioFileList] Audio loaded successfully:", {
           fileName: file.fileName,
           duration: audio.duration,
@@ -250,40 +85,145 @@ export function AudioFileList({
           muted: audio.muted,
           readyState: audio.readyState,
         });
-      });
-      audio.addEventListener("play", () =>
-        console.log("[AudioFileList] Audio PLAY event fired:", file.fileName),
-      );
-      audio.addEventListener("pause", () =>
-        console.log("[AudioFileList] Audio PAUSE event fired:", file.fileName),
-      );
+      };
+      audio.onplay = () =>
+        console.log("[AudioFileList] Audio PLAY event fired:", file.fileName);
+      audio.onpause = () =>
+        console.log("[AudioFileList] Audio PAUSE event fired:", file.fileName);
 
       audioRefs.current[file.id] = audio;
-      console.log("[AudioFileList] Audio element created programmatically:", {
+      console.log("[AudioFileList] Audio element created lazily:", {
         instanceId: instanceIdRef.current,
         type,
         fileId: file.id,
-        volume: audio.volume,
-        muted: audio.muted,
         src: audio.src,
         startTime: file.startTime,
         endTime: file.endTime,
       });
+    }
+
+    // Update src if the URL changed for the same file id
+    if (audio.src !== file.url) {
+      audio.src = file.url;
+    }
+
+    // Refresh timeupdate handler with current file data (handles trimming updates)
+    audio.ontimeupdate = () => {
+      if (
+        file.endTime !== undefined &&
+        file.endTime > (file.startTime || 0) &&
+        audio.currentTime >= file.endTime
+      ) {
+        console.log("[AudioFileList] Audio reached endTime, pausing:", {
+          fileId: file.id,
+          currentTime: audio.currentTime,
+          endTime: file.endTime,
+          startTime: file.startTime,
+        });
+        audio.pause();
+        audio.currentTime = file.startTime || 0;
+        setPlayingId(null);
+      }
+    };
+
+    if (playingId === file.id) {
+      audio.pause();
+      setPlayingId(null);
+      console.log("[AudioFileList] Audio paused");
+      return;
+    }
+
+    // Stop all other playing audios
+    Object.entries(audioRefs.current).forEach(([id, otherAudio]) => {
+      if (id !== file.id && !otherAudio.paused) {
+        console.log("[AudioFileList] Stopping other audio:", id);
+        otherAudio.pause();
+        otherAudio.currentTime = 0;
+      }
     });
 
-    // Cleanup function
+    // Apply trimming if startTime is set
+    if (file.startTime !== undefined) {
+      console.log("[AudioFileList] Setting currentTime to startTime:", {
+        fileId: file.id,
+        oldCurrentTime: audio.currentTime,
+        newStartTime: file.startTime,
+      });
+      audio.currentTime = file.startTime;
+    }
+
+    console.log("[AudioFileList] Attempting to play audio...", {
+      volume: audio.volume,
+      muted: audio.muted,
+      duration: audio.duration,
+      readyState: audio.readyState,
+      paused: audio.paused,
+      src: audio.src,
+      currentTime: audio.currentTime,
+      startTime: file.startTime,
+      endTime: file.endTime,
+    });
+
+    // Force unmute and volume
+    audio.muted = false;
+    audio.volume = 1.0;
+
+    // CRITICAL: Call play() SYNCHRONOUSLY without await to maintain user interaction context
+    const playPromise = audio.play();
+
+    // Set state AFTER play() is called (not awaited!)
+    setPlayingId(file.id);
+
+    // Handle the promise asynchronously (doesn't block user interaction)
+    playPromise
+      .then(() => {
+        console.log("[AudioFileList] Audio playing successfully ✅", {
+          currentTime: audio.currentTime,
+          paused: audio.paused,
+          volume: audio.volume,
+          muted: audio.muted,
+        });
+
+        // Verify it's still playing after a short delay
+        setTimeout(() => {
+          if (!audio.paused) {
+            console.log("[AudioFileList] Audio still playing after 100ms ✅");
+          } else {
+            console.error("[AudioFileList] Audio was paused unexpectedly! ❌");
+          }
+        }, 100);
+      })
+      .catch((error) => {
+        // Reset state on error
+        setPlayingId(null);
+        console.error("[AudioFileList] Error playing audio:", error);
+        console.error("[AudioFileList] Error details:", {
+          name: (error as Error).name,
+          message: (error as Error).message,
+          url: file.url,
+          audioState: {
+            volume: audio.volume,
+            muted: audio.muted,
+            src: audio.src,
+            readyState: audio.readyState,
+            paused: audio.paused,
+          },
+        });
+      });
+  };
+
+  // Cleanup: stop all audios when files change or component unmounts
+  useEffect(() => {
     return () => {
-      // Stop all audios when component unmounts
       Object.values(audioRefs.current).forEach((audio) => {
         if (!audio.paused) {
           audio.pause();
         }
-        // Remove will not work on Audio objects, we just need to clean up refs
       });
       audioRefs.current = {};
-      console.log("[AudioFileList] Component unmounted, cleaned up all audios");
+      console.log("[AudioFileList] Cleaned up all audios");
     };
-  }, [files, handleAudioEnded]);
+  }, [files]);
 
   // handleTimeUpdate is now handled inline in useEffect
 
@@ -291,7 +231,6 @@ export function AudioFileList({
     return null;
   }
 
-  const label = type === "music" ? "Music" : "SFX";
   const fileCountText = files.length === 1 ? "1 file" : `${files.length} files`;
 
   return (

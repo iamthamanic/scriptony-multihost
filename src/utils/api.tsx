@@ -15,30 +15,44 @@ import {
   apiDelete,
   unwrapApiResult,
 } from "../lib/api-client";
+import { API_CONFIG } from "../lib/config";
+
+const WORLDS_API_TIMEOUT_MS = Number(
+  import.meta.env.VITE_WORLDS_API_TIMEOUT_MS || API_CONFIG.REQUEST_TIMEOUT,
+);
 
 /**
  * @deprecated Use apiGet, apiPost, etc. from /lib/api-client.ts
  */
 async function apiFetch(
   endpoint: string,
-  options: { method?: string; body?: any } = {},
+  options: { method?: string; body?: any; timeout?: number } = {},
 ) {
-  const { method = "GET", body } = options;
+  const { method = "GET", body, timeout } = options;
+  const requestOptions = typeof timeout === "number" ? { timeout } : undefined;
 
   let result;
 
   switch (method.toUpperCase()) {
     case "GET":
-      result = await apiGet(endpoint);
+      result = requestOptions
+        ? await apiGet(endpoint, requestOptions)
+        : await apiGet(endpoint);
       break;
     case "POST":
-      result = await apiPost(endpoint, body);
+      result = requestOptions
+        ? await apiPost(endpoint, body, requestOptions)
+        : await apiPost(endpoint, body);
       break;
     case "PUT":
-      result = await apiPut(endpoint, body);
+      result = requestOptions
+        ? await apiPut(endpoint, body, requestOptions)
+        : await apiPut(endpoint, body);
       break;
     case "DELETE":
-      result = await apiDelete(endpoint, body);
+      result = requestOptions
+        ? await apiDelete(endpoint, body, requestOptions)
+        : await apiDelete(endpoint, body);
       break;
     default:
       throw new Error(`Unsupported HTTP method: ${method}`);
@@ -153,7 +167,7 @@ export const charactersApi = {
 
 export const worldsApi = {
   getAll: async () => {
-    const data = await apiFetch("/worlds");
+    const data = await apiFetch("/worlds", { timeout: WORLDS_API_TIMEOUT_MS });
     // Server returns array directly, not { worlds: [...] }
     return Array.isArray(data) ? data : data?.worlds || [];
   },

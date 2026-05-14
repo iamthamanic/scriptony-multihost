@@ -17,6 +17,19 @@ See [`_shared/env.ts`](_shared/env.ts):
 
 Optional:
 
+- `SCRIPTONY_APPWRITE_API_ENDPOINT` — **Override für serverseitige Calls** aus der
+  Function zur Appwrite-API (`…/v1`). Wird von `getAppwriteEndpoint()` zuerst
+  gelesen (siehe [`_shared/env.ts`](_shared/env.ts)).
+  - **Self-hosted**, Function-Executor im gleichen Docker-/Compose-Netz wie Appwrite:
+    oft `http://appwrite/v1` (interner Service-Name).
+  - **Öffentliche oder nur von außen erreichbare API**: z. B. `https://…/v1` oder
+    `http://HOST:8080/v1`, wenn `APPWRITE_ENDPOINT` in der Console ohne Port oder
+    falsch aufgelöst wird.
+  - **Bulk-Sync vorsichtig:** `npm run appwrite:sync:function-appwrite-endpoint`
+    und `scripts/sync-all-function-envs.sh` setzen diese Variable für **alle**
+    Functions aus `.env.local` / `APPWRITE_ENDPOINT` — kann einen manuell gesetzten
+    internen Wert **überschreiben**. Vor Self-hosted-Deploys Wert prüfen.
+  - **Nach Deploy:** `npm run verify:parity` (sinnvoll bei Env-/Endpoint-Änderungen).
 - `APPWRITE_DATABASE_ID` (default `scriptony`)
 - `SCRIPTONY_STORAGE_BUCKET_*` — override default bucket IDs
 - `scriptony_oauth_*` — storage-provider OAuth (see

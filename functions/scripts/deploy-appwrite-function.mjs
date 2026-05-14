@@ -150,10 +150,18 @@ async function ensureFunctionExists(
 }
 
 async function syncDefaultServerEnv(functions, functionId) {
+  const scriptonyApiEndpoint =
+    process.env.SCRIPTONY_APPWRITE_API_ENDPOINT?.trim() ||
+    process.env.APPWRITE_ENDPOINT?.trim() ||
+    "";
+
   const desired = [
     { key: "APPWRITE_ENDPOINT", secret: false },
     { key: "APPWRITE_PROJECT_ID", secret: false },
     { key: "APPWRITE_API_KEY", secret: true },
+    ...(scriptonyApiEndpoint
+      ? [{ key: "SCRIPTONY_APPWRITE_API_ENDPOINT", secret: false }]
+      : []),
   ];
 
   const current = await functions.listVariables({ functionId });
@@ -162,19 +170,28 @@ async function syncDefaultServerEnv(functions, functionId) {
   );
 
   for (const item of desired) {
-    const value = process.env[item.key]?.trim();
+    const value =
+      item.key === "SCRIPTONY_APPWRITE_API_ENDPOINT"
+        ? scriptonyApiEndpoint
+        : process.env[item.key]?.trim();
     if (!value) {
       fail(`missing required env for variable sync: ${item.key}`);
     }
 
     const existing = currentByKey.get(item.key);
+    const secretFlag =
+      item.key === "SCRIPTONY_APPWRITE_API_ENDPOINT"
+        ? existing
+          ? Boolean(existing.secret)
+          : false
+        : item.secret;
     if (existing) {
       await functions.updateVariable({
         functionId,
         variableId: existing.$id,
         key: item.key,
         value,
-        secret: item.secret,
+        secret: secretFlag,
       });
       console.log(`Synced variable ${item.key} (updated).`);
       continue;
@@ -184,7 +201,7 @@ async function syncDefaultServerEnv(functions, functionId) {
       functionId,
       key: item.key,
       value,
-      secret: item.secret,
+      secret: secretFlag,
     });
     console.log(`Synced variable ${item.key} (created).`);
   }

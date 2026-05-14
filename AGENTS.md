@@ -3,6 +3,13 @@
 This file is used by AI agents (Cursor, Codex, Claude, Gemini, etc.) when working with this repo.
 It can be edited via the shimwrappercheck dashboard (Config → AGENTS.md) so agents and humans share one source of truth.
 
+## Agent orientation
+
+Before touching infrastructure, deployment, environment setup, or any task that
+involves starting the dev stack, deploying collections, or deploying functions,
+read **`docs/GETTING_STARTED.md`**. It contains the canonical commands,
+gotchas, and decision tree for this project. Update it when workflows change.
+
 ## Mandatory workflow (do not bypass)
 
 - **Run checks before push or deploy.** Do not call the real Appwrite deploy or push without going through the checked workflow.

@@ -11,7 +11,7 @@
  * Neue Stats-Features duerfen hier nicht ergaenzt werden.
  */
 
-import { requireUserBootstrap } from "../../../../../_shared/auth";
+import { requireUserBootstrap } from "../../../../_shared/auth";
 import {
   getParam,
   type RequestLike,
@@ -21,13 +21,13 @@ import {
   sendMethodNotAllowed,
   sendServerError,
   sendUnauthorized,
-} from "../../../../../_shared/http";
+} from "../../../../_shared/http";
 import {
   countBy,
   getProjectStatsPayload,
   toDurationSeconds,
-} from "../../../../../_shared/observability";
-import { requireProjectAccess } from "../../../../../_shared/scriptony";
+} from "../../../../_shared/observability";
+import { requireProjectAccess } from "../../../../_shared/scriptony";
 
 export default async function handler(
   req: RequestLike,

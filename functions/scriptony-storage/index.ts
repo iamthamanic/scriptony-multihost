@@ -36,23 +36,23 @@ app.route("/storage/objects", objectsApp);
 app.route("/storage", syncApp);
 
 app.onError((err, c) => {
-  console.error("[scriptony-storage]", err);
-  if (err instanceof z.ZodError) {
-    return c.json(
-      {
-        success: false,
-        error: { code: "VALIDATION_ERROR", message: err.message },
-      },
-      400,
-    );
-  }
-  return c.json(
-    {
-      success: false,
-      error: { code: "INTERNAL_ERROR", message: "Internal server error" },
-    },
-    500,
-  );
+	console.error("[scriptony-storage]", err);
+	if (err instanceof z.ZodError) {
+		return c.json(
+			{
+				success: false,
+				error: { code: "VALIDATION_ERROR", message: err.message },
+			},
+			400,
+		);
+	}
+	return c.json(
+		{
+			success: false,
+			error: { code: "INTERNAL_ERROR", message: "Internal server error" },
+		},
+		500,
+	);
 });
 
 export default createHonoAppwriteHandler(app);

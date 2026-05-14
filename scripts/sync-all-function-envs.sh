@@ -44,3 +44,8 @@ for fn in "${FUNCTIONS[@]}"; do
 done
 
 echo "Done syncing all function env vars."
+
+echo ""
+echo "Setting SCRIPTONY_APPWRITE_API_ENDPOINT on all functions (reachable Appwrite /v1 URL)…"
+node "$ROOT/functions/scripts/sync-scriptony-appwrite-api-endpoint.mjs"
+echo ""

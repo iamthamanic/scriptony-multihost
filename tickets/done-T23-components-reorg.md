@@ -122,9 +122,9 @@ Codex Usage Limits, CLI-Ausfaelle oder ein fehlendes `VERDICT: ACCEPT` zaehlen n
 
 ---
 
-# TODO - T23 | `src/components/` in Feature-Domains aufteilen
+# DONE - T23 | `src/components/` in Feature-Domains aufteilen
 
-**Phase:** 11 · **Ticket-Status:** `todo` (nicht begonnen)
+**Phase:** 11 · **Ticket-Status:** `done`
 
 ## T23: `src/components/` in Feature-Domains aufteilen
 
@@ -214,7 +214,7 @@ Ergebnis: **Reverted.**
 - [x] Prettier + Lint grün.
 - [x] Build gruen (`npm run build`).
 - [x] Tests gruen (`npm run test:run` — 246 passed).
-- [ ] Shimwrappercheck AI Review: Codex Input-Limit exceeded — muss spaeter nachgeholt werden.
+- [x] Shimwrappercheck AI Review: Nachgeholt — VERDICT: ACCEPT.
 
 ### Tests
 

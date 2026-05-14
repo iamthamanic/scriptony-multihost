@@ -1,57 +1,86 @@
 /**
- * AudioTimelineSegment — Einzelner Track-Block auf einer Lane.
- * Zeigt Track-Namen, Dauer und optional Wellenform-Platzhalter.
+ * AudioTimelineSegment — Einzelner Track/Clip-Block auf einer Lane.
+ *
+ * T28: Union-Typ vorbereitet (AudioTrack | AudioClip).
+ * Wenn Feature-Flag aktiv (T29+), rendert die Timeline AudioClip[]
+ * statt AudioTrack[].
+ *
+ * Accessibility (WCAG):
+ * - aria-label für Screenreader (Typ + Content + Dauer).
+ * - title-Attribut für Hover-Info.
+ * - Kontrast: Weißer Text auf farbigem Hintergrund (ggf. anpassen).
  */
 
-import type { AudioTrack } from "../../lib/types";
+import type { AudioTrack, AudioClip } from "../../lib/types";
+import { formatDurationSec } from "../../lib/audio-utils";
 import { cn } from "../../lib/utils";
 
 const TYPE_COLORS: Record<string, string> = {
-  dialog: "bg-amber-500 border-amber-600",
-  narrator: "bg-amber-400 border-amber-500",
-  music: "bg-violet-500 border-violet-600",
-  sfx: "bg-slate-500 border-slate-600",
-  atmo: "bg-sky-500 border-sky-600",
+	dialog: "bg-amber-500 border-amber-600",
+	narrator: "bg-amber-400 border-amber-500",
+	music: "bg-violet-500 border-violet-600",
+	sfx: "bg-slate-500 border-slate-600",
+	atmo: "bg-sky-500 border-sky-600",
 };
 
 interface AudioTimelineSegmentProps {
-  track: AudioTrack;
-  pxPerSec: number;
+	/** T28: Union-Typ für Transition Phase.
+	 *  T28-T29: AudioTrack (Legacy, Feature-Flag = false)
+	 *  T30+: AudioClip (neu, Feature-Flag = true)
+	 */
+	item: AudioTrack | AudioClip;
+	pxPerSec: number;
 }
 
 export function AudioTimelineSegment({
-  track,
-  pxPerSec,
+	item,
+	pxPerSec,
 }: AudioTimelineSegmentProps) {
-  const startPx = track.startTime * pxPerSec;
-  const widthPx = Math.max(track.duration * pxPerSec, 4); // Min 4px
+	// T28: Union-Typ — unterscheide Track (Legacy) vs Clip (neu)
+	const isClip = "startSec" in item;
 
-  const colorClass = TYPE_COLORS[track.type] || "bg-gray-500 border-gray-600";
+	const startSec = isClip
+		? (item as AudioClip).startSec
+		: ((item as AudioTrack).startTime ?? 0);
 
-  return (
-    <div
-      className={cn(
-        "absolute top-1.5 bottom-1.5 rounded-md border text-white text-[10px] overflow-hidden cursor-pointer",
-        "hover:brightness-110 transition-all shadow-sm select-none",
-        colorClass,
-      )}
-      style={{
-        left: `${startPx}px`,
-        width: `${widthPx}px`,
-      }}
-      title={`${track.type}: ${track.content || "(kein Text)"} (${formatDuration(track.duration)})`}
-    >
-      <div className="px-1.5 py-0.5 flex items-center justify-between h-full">
-        <span className="truncate font-medium">{track.content || "…"}</span>
-      </div>
-    </div>
-  );
-}
+	const endSec = isClip
+		? (item as AudioClip).endSec
+		: ((item as AudioTrack).startTime ?? 0) +
+			((item as AudioTrack).duration ?? 3);
 
-function formatDuration(sec: number): string {
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${s.toString().padStart(2, "0")}`;
+	const durationSec = Math.max(endSec - startSec, 0.1);
+
+	const startPx = startSec * pxPerSec;
+	const widthPx = Math.max(durationSec * pxPerSec, 4); // Min 4px
+
+	const trackType = isClip
+		? ((item as AudioClip).trackType ?? "dialog")
+		: (item as AudioTrack).type;
+	const content = isClip
+		? ((item as AudioClip).content ?? "…")
+		: ((item as AudioTrack).content ?? "…");
+
+	const colorClass = TYPE_COLORS[trackType] || "bg-gray-500 border-gray-600";
+
+	return (
+		<div
+			className={cn(
+				"absolute top-1.5 bottom-1.5 rounded-md border text-white text-[10px] overflow-hidden cursor-pointer",
+				"hover:brightness-110 transition-all shadow-sm select-none",
+				colorClass,
+			)}
+			style={{
+				left: `${startPx}px`,
+				width: `${widthPx}px`,
+			}}
+			title={`${trackType}: ${content || "(kein Text)"} (${formatDurationSec(durationSec)})`}
+			aria-label={`${trackType}: ${content}, Dauer ${formatDurationSec(durationSec)}`}
+		>
+			<div className="px-1.5 py-0.5 flex items-center justify-between h-full">
+				<span className="truncate font-medium">{content || "…"}</span>
+			</div>
+		</div>
+	);
 }
 
 export default AudioTimelineSegment;
