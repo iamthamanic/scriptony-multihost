@@ -112,17 +112,13 @@ export function AudioDropdown({ projectId, projectType }: AudioDropdownProps) {
 		}) => {
 			const token = await getAuthToken();
 			if (!token) throw new Error("Nicht authentifiziert");
-			return createAudioTrack(
-				sceneId,
-				projectId,
-				{
-					type: type as AudioTrack["type"],
-					content: "",
-					startTime: 0,
-					duration: 0,
-				},
-				token,
-			);
+			const result = await createAudioTrack(sceneId, projectId, {
+				type: type as AudioTrack["type"],
+				content: "",
+				startTime: 0,
+				duration: 0,
+			});
+			return result.track; // T29: unwrap track from dual-write response
 		},
 		onSuccess: () => {
 			toast.success("Track hinzugefügt");

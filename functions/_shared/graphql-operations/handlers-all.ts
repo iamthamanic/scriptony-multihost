@@ -1226,6 +1226,31 @@ export const allHandlers: Record<string, Op> = {
 		),
 	}),
 
+	GetSceneClipsInfo: async (v) => {
+		const sceneId = v.sceneId as string;
+		const allClips = await listDocumentsFull(
+			C.audio_clips,
+			[Query.equal("scene_id", sceneId), Query.orderDesc("end_sec")],
+			500,
+		);
+		const count = allClips.length;
+		const lastClip = allClips.length > 0 ? allClips[0] : null;
+		// T29: return aggregate + last clip (matches GraphQL shape)
+		return {
+			audio_clips_aggregate: { aggregate: { count } },
+			audio_clips: lastClip ? [{ end_sec: lastClip.end_sec ?? 0 }] : [],
+		};
+	},
+
+	// Alias for T29 track time update (same as UpdateAudioTrack)
+	UpdateTrackTime: async (v) => ({
+		update_scene_audio_tracks_by_pk: await updateDocument(
+			C.scene_audio_tracks,
+			v.id as string,
+			v.set as Record<string, unknown>,
+		),
+	}),
+
 	DeleteAudioTrack: async (v) => {
 		await deleteDocument(C.scene_audio_tracks, v.id as string);
 		return { delete_scene_audio_tracks_by_pk: { id: v.id } };

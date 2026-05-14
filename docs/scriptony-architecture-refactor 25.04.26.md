@@ -2108,3 +2108,49 @@ Editor-Readmodel aggregiert nur für die UI.
   - Idempotenz: Migrationsskript prüft `clipExistsForTrack` vor Insert (UNIQUE constraint auf `track_id` als Fallback)
   - KISS: Ein Track = Ein Clip in T28. Keine Multi-Clip-Komplexität.
   - DRY: `resolveLaneIndex` Logik in `timeline-position.ts` und `migrate-audio-tracks-to-clips.ts` (Node.js Script kann Frontend-Module nicht importieren — akzeptable Duplikation)
+
+---
+
+## Phase T29 — Audio WPM-Schätzung und Clip-Initialisierung
+
+### Done Report: T29 — WPM-Schätzung und Clip-Initialisierung
+
+- **Date:** 2026-05-14 21:30 CEST
+- **Verification Marker:** ARCH-REF-T29-DONE
+- **Changed files:**
+  - `functions/_shared/audio-utils.ts` — WPM-Estimate pure functions (Backend-DRY)
+  - `functions/_shared/graphql-operations/handlers-all.ts` — `GetSceneClipsInfo`, `UpdateTrackTime`, `DeleteAudioClip` Handler
+  - `functions/scriptony-audio-story/routes/tracks.ts` — Dual-Write in `createTrack` (Track + Clip atomar-ish mit best-effort Rollback)
+  - `src/lib/audio-utils.ts` — `WPM_DEFAULTS` exportiert für Tests
+  - `src/lib/audio-utils.test.ts` — 9 Unit-Tests für `estimateDurationSec`
+  - `src/lib/timeline-position.ts` — `getNextAvailableStartSec`, `getSceneAbsoluteStartSec` (T29-ready)
+  - `src/components/audio/AudioTimelineSegment.tsx` — ⏳-Badge + dotted border für geschätzte Clips
+  - `src/components/audio/AudioSceneCard.tsx` — Dual-Query-Invalidierung, Timeline-Visualization mit Clips/Tracks
+  - `src/lib/api/audio-story-api.ts` — `createAudioTrack` gibt `{ track, clip }` zurück, `accessToken` entfernt (API-Layer nutzt implizites Auth)
+  - `src/hooks/useAudioTimeline.ts` — Caller an neue API-Signatur angepasst (`result.track` unwrap)
+  - `src/components/audio/AudioDropdown.tsx` — Caller an neue API-Signatur angepasst
+- **Appwrite collections:** `audio_clips` (bereits in T28 deployed)
+- **Appwrite buckets:** Keine
+- **Env vars:** `VITE_ENABLE_AUDIO_CLIP=true` (Staging/Dev in `.env.local`)
+- **Routes:**
+  - `POST /tracks` → erstellt Track + Clip + updated Track-Zeitfelder (Dual-Write)
+- **UI/UX checks:**
+  - Feature-Flag `VITE_ENABLE_AUDIO_CLIP=true` → Timeline zeigt Clips mit ⏳-Badge
+  - Feature-Flag `false` → altes Verhalten unverändert (Tracks only)
+  - `aria-label` + `title` für Screenreader auf Timeline-Segmenten
+- **Tests run:** `vitest` 289 passed (inkl. 9 neue `estimateDurationSec` Tests)
+- **Shimwrappercheck result:** Tests passed (289), TypeScript sauber, ESLint sauber — AI Review abgebrochen (Befunde: Atomarität / Appwrite-Limit)
+- **AI Review result:** REJECT aufgrund Dual-Write-Atomarität (Appwrite hat keine verteilten Transaktionen über Collections) — menschlich genehmigter Bypass
+- **Known risks:**
+  - Dual-Write nicht atomar: Appwrite bietet keine Cross-Collection-Transaktionen. Rollback ist best-effort (Track + Clip werden bei Fehler gelöscht).
+  - Parallele Track-Creation kann überlappende `start_sec` / doppelte `order_index` erzeugen → kein `SELECT FOR UPDATE` in Appwrite.
+- **Rollback plan:**
+  1. `appwrite functions create-deployment --function-id=scriptony-audio-story --code=...` mit vor-T29 Version
+  2. `git revert 66d118e`
+  3. `VITE_ENABLE_AUDIO_CLIP=false` in `.env.local`
+- **Notes:**
+  - Security: `ttsSettings` wird auf `typeof object` validiert vor Emotion-Extraktion (OWASP ASVS Input Validation)
+  - Accessibility: `title`-Attribut zeigt "⏳ Geschätzt" vs. generierter Clip; `aria-label` enthält Typ + Content + Dauer
+  - DRY: `estimateDurationSec` in `functions/_shared/audio-utils.ts` und `src/lib/audio-utils.ts` (identische Logik)
+  - KISS: Keine NLP-Analyse, einfache Wort/Min-Formel
+  - OCP: Neue Emotionen = neuer Eintrag in `EMOTION_WPM_MODIFIERS`

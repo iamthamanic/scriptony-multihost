@@ -62,22 +62,39 @@ export function AudioTimelineSegment({
 
 	const colorClass = TYPE_COLORS[trackType] || "bg-gray-500 border-gray-600";
 
+	// T29: Geschätzt = kein audioFileId auf Clip
+	const isEstimated = isClip && !(item as AudioClip).audioFileId;
+
 	return (
 		<div
 			className={cn(
 				"absolute top-1.5 bottom-1.5 rounded-md border text-white text-[10px] overflow-hidden cursor-pointer",
 				"hover:brightness-110 transition-all shadow-sm select-none",
 				colorClass,
+				isEstimated && "border-dotted opacity-70",
 			)}
 			style={{
 				left: `${startPx}px`,
 				width: `${widthPx}px`,
 			}}
-			title={`${trackType}: ${content || "(kein Text)"} (${formatDurationSec(durationSec)})`}
-			aria-label={`${trackType}: ${content}, Dauer ${formatDurationSec(durationSec)}`}
+			title={
+				isEstimated
+					? `⏳ Geschätzt: ${formatDurationSec(durationSec)} (${content || "kein Text"})`
+					: `${trackType}: ${content || "(kein Text)"} (${formatDurationSec(durationSec)})`
+			}
+			aria-label={
+				isEstimated
+					? `Geschätzt: ${trackType}: ${content}, Dauer ${formatDurationSec(durationSec)}`
+					: `${trackType}: ${content}, Dauer ${formatDurationSec(durationSec)}`
+			}
 		>
 			<div className="px-1.5 py-0.5 flex items-center justify-between h-full">
 				<span className="truncate font-medium">{content || "…"}</span>
+				{isEstimated && (
+					<span className="shrink-0 ml-1" aria-hidden="true">
+						⏳
+					</span>
+				)}
 			</div>
 		</div>
 	);
