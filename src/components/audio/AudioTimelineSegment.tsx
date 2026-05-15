@@ -75,6 +75,7 @@ export function AudioTimelineSegment({
 	const dragStartWidth = useRef(0);
 	const clipIdRef = useRef(isClip ? (item as AudioClip).id : "");
 
+	// T30: Conflict-Check vor Trim
 	const handleResizeMouseDown = useCallback(
 		(e: React.MouseEvent) => {
 			if (!isEditable || !isClip) return;
@@ -85,6 +86,29 @@ export function AudioTimelineSegment({
 			dragStartWidth.current = widthPx;
 		},
 		[isEditable, isClip, widthPx],
+	);
+
+	// T30: Keyboard-Trim (WCAG 2.2 AA — Tastatur-Bedienbarkeit)
+	const handleKeyDown = useCallback(
+		(e: React.KeyboardEvent) => {
+			if (!isEditable || !isClip) return;
+			if (e.key === "ArrowRight" && e.shiftKey) {
+				e.preventDefault();
+				const stepSec = e.altKey ? 0.1 : 1.0; // Alt = fein
+				const newEndSec = endSec + stepSec;
+				if (onTrimEnd) {
+					onTrimEnd(clipIdRef.current, newEndSec);
+				}
+			} else if (e.key === "ArrowLeft" && e.shiftKey) {
+				e.preventDefault();
+				const stepSec = e.altKey ? 0.1 : 1.0;
+				const newEndSec = Math.max(endSec - stepSec, startSec + 0.5);
+				if (onTrimEnd) {
+					onTrimEnd(clipIdRef.current, newEndSec);
+				}
+			}
+		},
+		[isEditable, isClip, endSec, startSec, onTrimEnd],
 	);
 
 	const handleMouseMove = useCallback(
@@ -173,10 +197,16 @@ export function AudioTimelineSegment({
 				{/* T30: Resize-Handle (rechts) */}
 				{isEditable && isClip && (
 					<div
-						className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-white/30 transition-colors"
+						className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-white/30 transition-colors focus:outline-none focus:ring-1 focus:ring-white/50"
 						onMouseDown={handleResizeMouseDown}
-						aria-label="Clip verlängern/verkürzen"
-						title="Ziehen zum Trimmen"
+						onKeyDown={handleKeyDown}
+						tabIndex={0}
+						role="slider"
+						aria-label="Clip verlängern/verkürzen. Shift+Pfeiltaste = fein, Shift+Alt+Pfeiltaste = grob"
+						aria-valuenow={endSec}
+						aria-valuemin={startSec + 0.5}
+						aria-valuemax={startSec + 600}
+						title="Ziehen oder Shift+Pfeiltaste zum Trimmen"
 					/>
 				)}
 			</div>

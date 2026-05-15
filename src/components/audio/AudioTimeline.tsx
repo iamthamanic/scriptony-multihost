@@ -122,9 +122,7 @@ function ClipAudioTimeline({ projectId, projectType }: AudioTimelineProps) {
 					? Math.min(...seqScenes.map((s) => s.startSec))
 					: 0;
 			const endSec =
-				seqScenes.length > 0
-					? Math.max(...seqScenes.map((s) => s.endSec))
-					: 0;
+				seqScenes.length > 0 ? Math.max(...seqScenes.map((s) => s.endSec)) : 0;
 			return {
 				id: seq.id,
 				startSec,
@@ -141,13 +139,9 @@ function ClipAudioTimeline({ projectId, projectType }: AudioTimelineProps) {
 		return data.acts.map((act) => {
 			const actSeqs = rippleSequences.filter((sq) => sq.actId === act.id);
 			const startSec =
-				actSeqs.length > 0
-					? Math.min(...actSeqs.map((sq) => sq.startSec))
-					: 0;
+				actSeqs.length > 0 ? Math.min(...actSeqs.map((sq) => sq.startSec)) : 0;
 			const endSec =
-				actSeqs.length > 0
-					? Math.max(...actSeqs.map((sq) => sq.endSec))
-					: 0;
+				actSeqs.length > 0 ? Math.max(...actSeqs.map((sq) => sq.endSec)) : 0;
 			return {
 				id: act.id,
 				startSec,
@@ -159,29 +153,35 @@ function ClipAudioTimeline({ projectId, projectType }: AudioTimelineProps) {
 	}, [data, rippleSequences]);
 
 	// T30: Ripple-Hook für Persistenz
-	const { debouncedUpdate } = useRippleUpdate(
-		sceneIds[0],
-		projectId,
-	);
+	const { debouncedUpdate } = useRippleUpdate(sceneIds[0], projectId);
 
 	// T30: Trim-Handler — optimistisches UI + debounced Persistenz
 	const handleTrimEnd = useCallback(
 		(clipId: string, newEndSec: number) => {
-			// 1. Lokale Ripple-Berechnung für optimistisches Update (Ergebnis wird vom Hook verarbeitet)
-			calculateRipple({
+			// 1. Lokale Ripple-Berechnung für optimistisches Update
+			const localResult = calculateRipple({
 				changedClipId: clipId,
 				newEndSec,
-				allClips: allClips.map((c) => ({
-					id: c.id,
-					sceneId: c.sceneId,
-					startSec: c.startSec,
-					endSec: c.endSec,
-					crossScene: c.crossScene,
-				})) as unknown as AudioClip[],
-				allScenes: rippleScenes,
-				allSequences: rippleSequences,
-				allActs: rippleActs,
+				allClips: allClips.map((c) => ({ ...c })),
+				allScenes: rippleScenes.map((s) => ({ ...s })),
+				allSequences: rippleSequences.map((sq) => ({ ...sq })),
+				allActs: rippleActs.map((a) => ({ ...a })),
 			});
+
+			// Betroffene Scene-IDs für Query-Invalidierung sammeln
+			const affectedSceneIds = new Set<string>();
+			for (const clip of localResult.updatedClips) {
+				const orig = allClips.find((c) => c.id === clip.id);
+				if (
+					orig &&
+					(orig.startSec !== clip.startSec || orig.endSec !== clip.endSec)
+				) {
+					affectedSceneIds.add(clip.sceneId);
+				}
+			}
+			// Auch die Scene des geänderten Clips hinzufügen
+			const changedClip = allClips.find((c) => c.id === clipId);
+			if (changedClip) affectedSceneIds.add(changedClip.sceneId);
 
 			// 2. Debounced Persistenz an Backend
 			debouncedUpdate({
@@ -213,6 +213,8 @@ function ClipAudioTimeline({ projectId, projectType }: AudioTimelineProps) {
 				})),
 				sceneId: sceneIds[0] || "",
 				projectId: projectId || "",
+				localResult,
+				affectedSceneIds: Array.from(affectedSceneIds),
 			});
 		},
 		[

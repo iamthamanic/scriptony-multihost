@@ -388,7 +388,14 @@ describe("calculateRipple", () => {
 	it("Scene ohne sequenceId → Intra-Scene Ripple only", () => {
 		const c1 = makeClip("c1", "s1", 0, 10);
 		const c2 = makeClip("c2", "s1", 10, 20);
-		const s1 = { id: "s1", sequenceId: null, startSec: 0, endSec: 20, durationSec: 20, orderIndex: 0 };
+		const s1 = {
+			id: "s1",
+			sequenceId: null,
+			startSec: 0,
+			endSec: 20,
+			durationSec: 20,
+			orderIndex: 0,
+		};
 		const result = calculateRipple({
 			changedClipId: "c1",
 			newEndSec: 15,

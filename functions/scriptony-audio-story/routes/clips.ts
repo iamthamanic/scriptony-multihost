@@ -593,13 +593,105 @@ async function ripple(req: RequestLike, res: ResponseLike): Promise<void> {
 				);
 			} catch (err) {
 				console.error(
-					`[Audio Story] Ripple update failed for clip ${clip.id}:`
-					, err,
+					`[Audio Story] Ripple update failed for clip ${clip.id}:`,
+					err,
 				);
 				updateErrors.push(String(clip.id));
 			}
 		}
 
+
+		// T30: Container-Dauer in timeline_nodes persistieren
+		for (const scene of result.updatedScenes) {
+			const orig = mappedScenes.find((s) => s.id === scene.id);
+			if (!orig) continue;
+			if (orig.endSec !== scene.endSec || orig.startSec !== scene.startSec) {
+				try {
+					await requestGraphql(
+						`
+						mutation UpdateTimelineNode($id: uuid!, $set: timeline_nodes_set_input!) {
+							update_timeline_nodes_by_pk(pk_columns: { id: $id }, _set: $set) { id }
+						}
+					`,
+						{
+							id: scene.id,
+							set: {
+								start_sec: scene.startSec,
+								end_sec: scene.endSec,
+								duration_sec: scene.durationSec,
+								order_index: scene.orderIndex,
+							},
+						},
+					);
+				} catch (err) {
+					console.error(
+						`[Audio Story] Ripple update failed for scene ${scene.id}:`,
+						err,
+					);
+					updateErrors.push(`scene:${String(scene.id)}`);
+				}
+			}
+		}
+		for (const seq of result.updatedSequences) {
+			const orig = mappedSequences.find((sq) => sq.id === seq.id);
+			if (!orig) continue;
+			if (orig.endSec !== seq.endSec || orig.startSec !== seq.startSec) {
+				try {
+					await requestGraphql(
+						`
+						mutation UpdateTimelineNode($id: uuid!, $set: timeline_nodes_set_input!) {
+							update_timeline_nodes_by_pk(pk_columns: { id: $id }, _set: $set) { id }
+						}
+					`,
+						{
+							id: seq.id,
+							set: {
+								start_sec: seq.startSec,
+								end_sec: seq.endSec,
+								duration_sec: seq.durationSec,
+								order_index: seq.orderIndex,
+							},
+						},
+					);
+				} catch (err) {
+					console.error(
+						`[Audio Story] Ripple update failed for sequence ${seq.id}:`,
+						err,
+					);
+					updateErrors.push(`sequence:${String(seq.id)}`);
+				}
+			}
+		}
+		for (const act of result.updatedActs) {
+			const orig = mappedActs.find((a) => a.id === act.id);
+			if (!orig) continue;
+			if (orig.endSec !== act.endSec || orig.startSec !== act.startSec) {
+				try {
+					await requestGraphql(
+						`
+						mutation UpdateTimelineNode($id: uuid!, $set: timeline_nodes_set_input!) {
+							update_timeline_nodes_by_pk(pk_columns: { id: $id }, _set: $set) { id }
+						}
+					`,
+						{
+							id: act.id,
+							set: {
+								start_sec: act.startSec,
+								end_sec: act.endSec,
+								duration_sec: act.durationSec,
+								order_index: act.orderIndex,
+							},
+						},
+					);
+				} catch (err) {
+					console.error(
+						`[Audio Story] Ripple update failed for act ${act.id}:`,
+						err,
+					);
+					updateErrors.push(`act:${String(act.id)}`);
+				}
+			}
+		}
 		// T30: Scene/Sequence/Act-Daten zurückgeben (Frontend nutzt sie für optimistisches Update)
 		const snakeCaseScenes = result.updatedScenes.map((s) => ({
 			id: s.id,
@@ -634,7 +726,7 @@ async function ripple(req: RequestLike, res: ResponseLike): Promise<void> {
 			errors: updateErrors.length > 0 ? updateErrors : undefined,
 			warning:
 				updateErrors.length > 0
-					? `${updateErrors.length} Clip-Updates fehlgeschlagen. Daten könnten inkonsistent sein.`
+					? `${updateErrors.length} Updates fehlgeschlagen (Clip/Scene/Sequence/Act). Daten könnten inkonsistent sein.`
 					: undefined,
 		});
 	} catch (error) {

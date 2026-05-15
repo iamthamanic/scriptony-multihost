@@ -132,7 +132,9 @@ export async function rippleClips(
 	const snakePayload = {
 		changedClipId: payload.changedClipId,
 		newEndSec: payload.newEndSec,
-		allClips: payload.allClips.map((c) => mapKeysToSnake(c as unknown as Record<string, unknown>)),
+		allClips: payload.allClips.map((c) =>
+			mapKeysToSnake(c as unknown as Record<string, unknown>),
+		),
 		allScenes: payload.allScenes,
 		allSequences: payload.allSequences,
 		allActs: payload.allActs,
