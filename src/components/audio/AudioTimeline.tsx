@@ -170,6 +170,7 @@ function ClipAudioTimeline({ projectId, projectType }: AudioTimelineProps) {
 
 			// Betroffene Scene-IDs für Query-Invalidierung sammeln
 			const affectedSceneIds = new Set<string>();
+			// Aus Clips, die sich geändert haben
 			for (const clip of localResult.updatedClips) {
 				const orig = allClips.find((c) => c.id === clip.id);
 				if (
@@ -177,6 +178,16 @@ function ClipAudioTimeline({ projectId, projectType }: AudioTimelineProps) {
 					(orig.startSec !== clip.startSec || orig.endSec !== clip.endSec)
 				) {
 					affectedSceneIds.add(clip.sceneId);
+				}
+			}
+			// Auch Szenen, die sich verschoben haben (auch ohne Clip-Änderung)
+			for (const scene of localResult.updatedScenes) {
+				const orig = rippleScenes.find((s) => s.id === scene.id);
+				if (
+					orig &&
+					(orig.startSec !== scene.startSec || orig.endSec !== scene.endSec)
+				) {
+					affectedSceneIds.add(scene.id);
 				}
 			}
 			// Auch die Scene des geänderten Clips hinzufügen

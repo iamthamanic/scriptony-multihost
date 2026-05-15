@@ -411,6 +411,25 @@ describe("calculateRipple", () => {
 		expect(result.stats.affectedActs).toBe(0);
 	});
 
+	it("mehrere Szenen mit null-sequenceId → keine Cross-Scene-Propagation", () => {
+		const c1 = makeClip("c1", "s1", 0, 10);
+		const c2 = makeClip("c2", "s2", 0, 10);
+		const s1 = { id: "s1", sequenceId: null, startSec: 0, endSec: 10, durationSec: 10, orderIndex: 0 };
+		const s2 = { id: "s2", sequenceId: null, startSec: 0, endSec: 10, durationSec: 10, orderIndex: 1 };
+		const result = calculateRipple({
+			changedClipId: "c1",
+			newEndSec: 20,
+			allClips: [c1, c2],
+			allScenes: [s1, s2],
+			allSequences: [],
+			allActs: [],
+		});
+		// s1 wird länger, aber s2 darf NICHT verschoben werden (keine Sequence = keine Propagation)
+		expect(result.updatedClips.find((c) => c.id === "c1")!.endSec).toBe(20);
+		expect(result.updatedClips.find((c) => c.id === "c2")!.startSec).toBe(0);
+		expect(result.updatedScenes.find((s) => s.id === "s2")!.startSec).toBe(0);
+	});
+
 	it("multiple Clips in derselben Scene → Ripple verschiebt alle", () => {
 		const c1 = makeClip("c1", "s1", 0, 10);
 		const c2 = makeClip("c2", "s1", 10, 20);

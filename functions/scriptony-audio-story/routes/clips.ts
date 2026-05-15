@@ -600,7 +600,6 @@ async function ripple(req: RequestLike, res: ResponseLike): Promise<void> {
 			}
 		}
 
-
 		// T30: Container-Dauer in timeline_nodes persistieren
 		for (const scene of result.updatedScenes) {
 			const orig = mappedScenes.find((s) => s.id === scene.id);
