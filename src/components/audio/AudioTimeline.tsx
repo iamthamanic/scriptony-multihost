@@ -8,6 +8,8 @@ import { useState, useMemo, useRef, useCallback } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { ZoomIn, ZoomOut, Play, Pause } from "lucide-react";
 import { useAudioTimeline } from "../../hooks/useAudioTimeline";
+import { useRippleUpdate } from "../../hooks/useRippleUpdate";
+import { calculateRipple } from "../../lib/ripple-engine";
 import { FEATURE_FLAGS } from "../../lib/feature-flags";
 import { queryKeys } from "../../lib/react-query";
 import * as ClipAPI from "../../lib/api/audio-clip-api";
@@ -87,6 +89,143 @@ function ClipAudioTimeline({ projectId, projectType }: AudioTimelineProps) {
 		return groups;
 	}, [allClips]);
 
+	// T30: Container-Daten für Ripple aus Clips berechnen
+	const rippleScenes = useMemo(() => {
+		if (!data) return [];
+		return data.scenes.map((scene) => {
+			const sceneClips = allClips.filter((c) => c.sceneId === scene.id);
+			const startSec =
+				sceneClips.length > 0
+					? Math.min(...sceneClips.map((c) => c.startSec))
+					: 0;
+			const endSec =
+				sceneClips.length > 0
+					? Math.max(...sceneClips.map((c) => c.endSec))
+					: 0;
+			return {
+				id: scene.id,
+				startSec,
+				endSec,
+				durationSec: Math.max(endSec - startSec, 0),
+				orderIndex: scene.orderIndex ?? 0,
+				sequenceId: scene.sequenceId ?? null,
+			};
+		});
+	}, [data, allClips]);
+
+	const rippleSequences = useMemo(() => {
+		if (!data) return [];
+		return data.sequences.map((seq) => {
+			const seqScenes = rippleScenes.filter((s) => s.sequenceId === seq.id);
+			const startSec =
+				seqScenes.length > 0
+					? Math.min(...seqScenes.map((s) => s.startSec))
+					: 0;
+			const endSec =
+				seqScenes.length > 0
+					? Math.max(...seqScenes.map((s) => s.endSec))
+					: 0;
+			return {
+				id: seq.id,
+				startSec,
+				endSec,
+				durationSec: Math.max(endSec - startSec, 0),
+				orderIndex: seq.orderIndex ?? 0,
+				actId: seq.actId ?? null,
+			};
+		});
+	}, [data, rippleScenes]);
+
+	const rippleActs = useMemo(() => {
+		if (!data) return [];
+		return data.acts.map((act) => {
+			const actSeqs = rippleSequences.filter((sq) => sq.actId === act.id);
+			const startSec =
+				actSeqs.length > 0
+					? Math.min(...actSeqs.map((sq) => sq.startSec))
+					: 0;
+			const endSec =
+				actSeqs.length > 0
+					? Math.max(...actSeqs.map((sq) => sq.endSec))
+					: 0;
+			return {
+				id: act.id,
+				startSec,
+				endSec,
+				durationSec: Math.max(endSec - startSec, 0),
+				orderIndex: act.orderIndex ?? 0,
+			};
+		});
+	}, [data, rippleSequences]);
+
+	// T30: Ripple-Hook für Persistenz
+	const { debouncedUpdate } = useRippleUpdate(
+		sceneIds[0],
+		projectId,
+	);
+
+	// T30: Trim-Handler — optimistisches UI + debounced Persistenz
+	const handleTrimEnd = useCallback(
+		(clipId: string, newEndSec: number) => {
+			// 1. Lokale Ripple-Berechnung für optimistisches Update (Ergebnis wird vom Hook verarbeitet)
+			calculateRipple({
+				changedClipId: clipId,
+				newEndSec,
+				allClips: allClips.map((c) => ({
+					id: c.id,
+					sceneId: c.sceneId,
+					startSec: c.startSec,
+					endSec: c.endSec,
+					crossScene: c.crossScene,
+				})) as unknown as AudioClip[],
+				allScenes: rippleScenes,
+				allSequences: rippleSequences,
+				allActs: rippleActs,
+			});
+
+			// 2. Debounced Persistenz an Backend
+			debouncedUpdate({
+				changedClipId: clipId,
+				newEndSec,
+				allClips,
+				allScenes: rippleScenes.map((s) => ({
+					id: s.id,
+					start_sec: s.startSec,
+					end_sec: s.endSec,
+					duration_sec: s.durationSec,
+					order_index: s.orderIndex,
+					sequence_id: s.sequenceId,
+				})),
+				allSequences: rippleSequences.map((sq) => ({
+					id: sq.id,
+					start_sec: sq.startSec,
+					end_sec: sq.endSec,
+					duration_sec: sq.durationSec,
+					order_index: sq.orderIndex,
+					act_id: sq.actId,
+				})),
+				allActs: rippleActs.map((a) => ({
+					id: a.id,
+					start_sec: a.startSec,
+					end_sec: a.endSec,
+					duration_sec: a.durationSec,
+					order_index: a.orderIndex,
+				})),
+				sceneId: sceneIds[0] || "",
+				projectId: projectId || "",
+			});
+		},
+		[
+			allClips,
+			rippleScenes,
+			rippleSequences,
+			rippleActs,
+			debouncedUpdate,
+			sceneIds,
+			projectId,
+		],
+	);
+
 	const handleZoomIn = () =>
 		setPxPerSec((prev) => Math.min(prev * 1.25, MAX_PX_PER_SEC));
 	const handleZoomOut = () =>
@@ -159,6 +298,8 @@ function ClipAudioTimeline({ projectId, projectType }: AudioTimelineProps) {
 									key={clip.id}
 									item={clip}
 									pxPerSec={pxPerSec}
+									onTrimEnd={handleTrimEnd}
+									isEditable={true}
 								/>
 							))}
 						</div>

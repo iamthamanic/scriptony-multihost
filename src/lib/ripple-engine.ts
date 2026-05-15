@@ -24,14 +24,14 @@ interface TemporalContainer {
 }
 
 interface Scene extends TemporalContainer {
-	sequenceId: string;
+	sequenceId: string | null | undefined;
 }
 
 interface Sequence extends TemporalContainer {
-	actId: string;
+	actId: string | null | undefined;
 }
 
-interface Act extends TemporalContainer {}
+type Act = TemporalContainer;
 
 export interface RippleInput {
 	/** Der Clip, dessen endSec sich geändert hat. */
@@ -187,6 +187,22 @@ export function calculateRipple(input: RippleInput): RippleOutput {
 	}
 
 	// ── 4. Sequence-Dauer neu berechnen ────────────────────────────
+	if (!sequenceId) {
+		return {
+			updatedClips: clips,
+			updatedScenes: scenes,
+			updatedSequences: sequences,
+			updatedActs: acts,
+			stats: {
+				affectedClips,
+				affectedScenes,
+				affectedSequences: 0,
+				affectedActs: 0,
+				deltaSec: delta,
+			},
+		};
+	}
+
 	const seqIdx = sequences.findIndex((sq) => sq.id === sequenceId);
 	if (seqIdx === -1) {
 		throw new Error(`Sequence not found: ${sequenceId}`);

@@ -11,6 +11,7 @@
  * - Kontrast: Weißer Text auf farbigem Hintergrund (ggf. anpassen).
  */
 
+import { useState, useCallback, useRef } from "react";
 import type { AudioTrack, AudioClip } from "../../lib/types";
 import { formatDurationSec } from "../../lib/audio-utils";
 import { cn } from "../../lib/utils";
@@ -24,17 +25,20 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 interface AudioTimelineSegmentProps {
-	/** T28: Union-Typ für Transition Phase.
-	 *  T28-T29: AudioTrack (Legacy, Feature-Flag = false)
-	 *  T30+: AudioClip (neu, Feature-Flag = true)
-	 */
+	/** T28: Union-Typ für Transition Phase. */
 	item: AudioTrack | AudioClip;
 	pxPerSec: number;
+	/** T30: Trim-Handler — wird bei Ende eines Resize-Drag aufgerufen. */
+	onTrimEnd?: (clipId: string, newEndSec: number) => void;
+	/** T30: Ob Trim erlaubt ist (nur im neuen Clip-System). */
+	isEditable?: boolean;
 }
 
 export function AudioTimelineSegment({
 	item,
 	pxPerSec,
+	onTrimEnd,
+	isEditable = false,
 }: AudioTimelineSegmentProps) {
 	// T28: Union-Typ — unterscheide Track (Legacy) vs Clip (neu)
 	const isClip = "startSec" in item;
@@ -65,7 +69,57 @@ export function AudioTimelineSegment({
 	// T29: Geschätzt = kein audioFileId auf Clip
 	const isEstimated = isClip && !(item as AudioClip).audioFileId;
 
-	// T29: Berechne Wortanzahl und grobe WPM für Tooltip
+	// ── T30: Trim-State ─────────────────────────────────────────────
+	const [isDragging, setIsDragging] = useState(false);
+	const dragStartX = useRef(0);
+	const dragStartWidth = useRef(0);
+	const clipIdRef = useRef(isClip ? (item as AudioClip).id : "");
+
+	const handleResizeMouseDown = useCallback(
+		(e: React.MouseEvent) => {
+			if (!isEditable || !isClip) return;
+			e.preventDefault();
+			e.stopPropagation();
+			setIsDragging(true);
+			dragStartX.current = e.clientX;
+			dragStartWidth.current = widthPx;
+		},
+		[isEditable, isClip, widthPx],
+	);
+
+	const handleMouseMove = useCallback(
+		(_e: React.MouseEvent) => {
+			if (!isDragging) return;
+			// Visuelles Feedback während Drag (optional: könnte auch über CSS-Variable gehen)
+			// Für KISS: wir zeigen kein Live-Resize, nur Cursor-Change
+		},
+		[isDragging],
+	);
+
+	const handleMouseUp = useCallback(
+		(e: React.MouseEvent) => {
+			if (!isDragging) return;
+			setIsDragging(false);
+			const deltaPx = e.clientX - dragStartX.current;
+			const newDurationSec = Math.max(
+				(dragStartWidth.current + deltaPx) / pxPerSec,
+				0.5,
+			);
+			const newEndSec = startSec + newDurationSec;
+			if (onTrimEnd && clipIdRef.current) {
+				onTrimEnd(clipIdRef.current, newEndSec);
+			}
+		},
+		[isDragging, pxPerSec, startSec, onTrimEnd],
+	);
+
+	const handleMouseLeave = useCallback(() => {
+		if (isDragging) {
+			setIsDragging(false);
+		}
+	}, [isDragging]);
+
+	// ── Content ────────────────────────────────────────────────────
 	const wordCount = content
 		? content
 				.trim()
@@ -97,6 +151,7 @@ export function AudioTimelineSegment({
 				"hover:brightness-110 transition-all shadow-sm select-none",
 				colorClass,
 				isEstimated && "border-dotted opacity-70",
+				isDragging && "ring-2 ring-white/50",
 			)}
 			style={{
 				left: `${startPx}px`,
@@ -104,13 +159,25 @@ export function AudioTimelineSegment({
 			}}
 			title={tooltipText}
 			aria-label={ariaText}
+			onMouseMove={handleMouseMove}
+			onMouseUp={handleMouseUp}
+			onMouseLeave={handleMouseLeave}
 		>
-			<div className="px-1.5 py-0.5 flex items-center justify-between h-full">
+			<div className="px-1.5 py-0.5 flex items-center justify-between h-full relative">
 				<span className="truncate font-medium">{content || "…"}</span>
 				{isEstimated && (
 					<span className="shrink-0 ml-1" aria-hidden="true">
 						⏳
 					</span>
+				)}
+				{/* T30: Resize-Handle (rechts) */}
+				{isEditable && isClip && (
+					<div
+						className="absolute right-0 top-0 bottom-0 w-2 cursor-col-resize hover:bg-white/30 transition-colors"
+						onMouseDown={handleResizeMouseDown}
+						aria-label="Clip verlängern/verkürzen"
+						title="Ziehen zum Trimmen"
+					/>
 				)}
 			</div>
 		</div>

@@ -11,6 +11,8 @@
  * - Fehler geben keine internen Details preis (Fail-Secure).
  */
 
+import { z } from "zod";
+import { calculateRipple } from "../../_shared/ripple-engine";
 import type { RequestLike, ResponseLike } from "../../_shared/http";
 import { requireUserBootstrap } from "../../_shared/auth";
 import {
@@ -28,228 +30,131 @@ import {
 import { requestGraphql } from "../../_shared/graphql-compat";
 import { canEditProject, canReadProject } from "../_shared/access";
 
-// --- Ripple Schemas ---
+// --- Ripple Schemas (Deep Validation) ---
+
+const TemporalItemSchema = z
+	.object({
+		id: z.string().min(1),
+		startSec: z.number().optional(),
+		start_sec: z.number().optional(),
+		endSec: z.number().optional(),
+		end_sec: z.number().optional(),
+		start: z.number().optional(),
+		end: z.number().optional(),
+		orderIndex: z.number().optional(),
+		order_index: z.number().optional(),
+	})
+	.passthrough();
+
+const RippleSceneSchema = TemporalItemSchema.extend({
+	sequenceId: z.string().nullable().optional(),
+	sequence_id: z.string().nullable().optional(),
+});
+
+const RippleSequenceSchema = TemporalItemSchema.extend({
+	actId: z.string().nullable().optional(),
+	act_id: z.string().nullable().optional(),
+});
+
+const RippleActSchema = TemporalItemSchema;
+
+const RippleClipSchema = z
+	.object({
+		id: z.string().min(1),
+		sceneId: z.string().optional(),
+		scene_id: z.string().optional(),
+		startSec: z.number().optional(),
+		start_sec: z.number().optional(),
+		endSec: z.number().optional(),
+		end_sec: z.number().optional(),
+		crossScene: z.boolean().optional(),
+		cross_scene: z.boolean().optional(),
+	})
+	.passthrough();
 
 const RippleInputSchema = z.object({
 	changedClipId: z.string().min(1),
 	newEndSec: z.number().min(0),
-	allClips: z.array(z.unknown()),
-	allScenes: z.array(z.unknown()),
-	allSequences: z.array(z.unknown()),
-	allActs: z.array(z.unknown()),
+	allClips: z.array(RippleClipSchema).min(1),
+	allScenes: z.array(RippleSceneSchema).min(1),
+	allSequences: z.array(RippleSequenceSchema),
+	allActs: z.array(RippleActSchema),
 });
 
-interface TemporalContainer {
-	id: string;
-	startSec: number;
-	endSec: number;
-	durationSec: number;
-	orderIndex: number;
+// --- Mapper: snake_case → camelCase ---
+
+/** Extrahiert startSec aus verschiedenen Feldnamen. */
+function extractStartSec(item: Record<string, unknown>): number {
+	return Number(item.startSec ?? item.start_sec ?? item.start ?? 0);
 }
 
-interface RippleScene extends TemporalContainer {
-	sequenceId: string;
+/** Extrahiert endSec aus verschiedenen Feldnamen. */
+function extractEndSec(item: Record<string, unknown>): number {
+	return Number(item.endSec ?? item.end_sec ?? item.end ?? 0);
 }
 
-interface RippleSequence extends TemporalContainer {
-	actId: string;
+/** Extrahiert orderIndex aus verschiedenen Feldnamen. */
+function extractOrderIndex(item: Record<string, unknown>): number {
+	return Number(item.orderIndex ?? item.order_index ?? 0);
 }
 
-interface RippleAct extends TemporalContainer {}
-
-interface RippleInput {
-	changedClipId: string;
-	newEndSec: number;
-	allClips: Array<Record<string, unknown>>;
-	allScenes: RippleScene[];
-	allSequences: RippleSequence[];
-	allActs: RippleAct[];
-}
-
-interface RippleOutput {
-	updatedClips: Array<Record<string, unknown>>;
-	updatedScenes: RippleScene[];
-	updatedSequences: RippleSequence[];
-	updatedActs: RippleAct[];
-	stats: {
-		affectedClips: number;
-		affectedScenes: number;
-		affectedSequences: number;
-		affectedActs: number;
-		deltaSec: number;
-	};
-}
-
-/** T30: Pure Function — Ripple-Berechnung (KISS, keine Side-Effects). */
-function calculateRipple(input: RippleInput): RippleOutput {
-	const {
-		changedClipId,
-		newEndSec,
-		allClips,
-		allScenes,
-		allSequences,
-		allActs,
-	} = input;
-
-	const clips = allClips.map((c) => ({ ...c }));
-	const scenes = allScenes.map((s) => ({ ...s }));
-	const sequences = allSequences.map((sq) => ({ ...sq }));
-	const acts = allActs.map((a) => ({ ...a }));
-
-	const changedIdx = clips.findIndex((c) => c.id === changedClipId);
-	if (changedIdx === -1) throw new Error(`Clip not found: ${changedClipId}`);
-
-	const changedClip = clips[changedIdx];
-	const oldEndSec = Number(changedClip.end_sec ?? changedClip.endSec ?? 0);
-	const delta = newEndSec - oldEndSec;
-
-	if (delta === 0) {
-		return {
-			updatedClips: clips,
-			updatedScenes: scenes,
-			updatedSequences: sequences,
-			updatedActs: acts,
-			stats: { affectedClips: 0, affectedScenes: 0, affectedSequences: 0, affectedActs: 0, deltaSec: 0 },
-		};
-	}
-
-	clips[changedIdx] = { ...changedClip, end_sec: newEndSec, endSec: newEndSec };
-	let affectedClips = 1;
-	let affectedScenes = 0;
-	let affectedSequences = 0;
-	let affectedActs = 0;
-
-	// Scene
-	const sceneId = String(changedClip.scene_id ?? changedClip.sceneId ?? "");
-	const sceneIdx = scenes.findIndex((s) => s.id === sceneId);
-	if (sceneIdx === -1) throw new Error(`Scene not found: ${sceneId}`);
-
-	const scene = scenes[sceneIdx];
-	const sceneClips = clips.filter((c) => (c.scene_id ?? c.sceneId) === sceneId);
-	const newSceneEndSec = Math.max(...sceneClips.map((c) => Number(c.end_sec ?? c.endSec ?? 0)), 0);
-	const oldSceneEndSec = scene.endSec;
-	const sceneDelta = newSceneEndSec - oldSceneEndSec;
-
-	if (sceneDelta !== 0) {
-		scenes[sceneIdx] = { ...scene, endSec: newSceneEndSec, durationSec: Math.max(newSceneEndSec - scene.startSec, 0) };
-		affectedScenes++;
-	}
-
-	// Nachfolgende Scenes in Sequence
-	const sequenceId = scene.sequenceId;
-	const scenesInSeq = scenes
-		.filter((s) => s.sequenceId === sequenceId)
-		.sort((a, b) => a.orderIndex - b.orderIndex);
-	const sceneOrderIdx = scenesInSeq.findIndex((s) => s.id === sceneId);
-	for (let i = sceneOrderIdx + 1; i < scenesInSeq.length; i++) {
-		const nextScene = scenesInSeq[i];
-		const idx = scenes.findIndex((s) => s.id === nextScene.id);
-		const newStart = Math.max(nextScene.startSec + sceneDelta, 0);
-		scenes[idx] = { ...nextScene, startSec: newStart, endSec: Math.max(nextScene.endSec + sceneDelta, newStart) };
-
-		const clipsToShift = clips.filter((c) => (c.scene_id ?? c.sceneId) === nextScene.id && !(c.cross_scene ?? c.crossScene));
-		for (const c of clipsToShift) {
-			const cIdx = clips.findIndex((clip) => clip.id === c.id);
-			const newClipStart = Math.max(Number(c.start_sec ?? c.startSec ?? 0) + sceneDelta, 0);
-			clips[cIdx] = { ...c, start_sec: newClipStart, end_sec: Math.max(Number(c.end_sec ?? c.endSec ?? 0) + sceneDelta, newClipStart) };
-			affectedClips++;
-		}
-	}
-
-	// Sequence
-	const seqIdx = sequences.findIndex((sq) => sq.id === sequenceId);
-	if (seqIdx >= 0) {
-		const sequence = sequences[seqIdx];
-		const updatedScenesInSeq = scenes.filter((s) => s.sequenceId === sequenceId).sort((a, b) => a.orderIndex - b.orderIndex);
-		const newSeqEndSec = updatedScenesInSeq.length > 0 ? updatedScenesInSeq[updatedScenesInSeq.length - 1].endSec : sequence.endSec;
-		const seqDelta = newSeqEndSec - sequence.endSec;
-		if (seqDelta !== 0) {
-			sequences[seqIdx] = { ...sequence, endSec: newSeqEndSec, durationSec: Math.max(newSeqEndSec - sequence.startSec, 0) };
-			affectedSequences++;
-		}
-
-		// Nachfolgende Sequences in Act
-		const actId = sequence.actId;
-		const seqsInAct = sequences.filter((sq) => sq.actId === actId).sort((a, b) => a.orderIndex - b.orderIndex);
-		const seqOrderIdx = seqsInAct.findIndex((sq) => sq.id === sequenceId);
-		for (let i = seqOrderIdx + 1; i < seqsInAct.length; i++) {
-			const nextSeq = seqsInAct[i];
-			const idx = sequences.findIndex((sq) => sq.id === nextSeq.id);
-			const newStart = Math.max(nextSeq.startSec + seqDelta, 0);
-			sequences[idx] = { ...nextSeq, startSec: newStart, endSec: Math.max(nextSeq.endSec + seqDelta, newStart) };
-
-			const scenesToShift = scenes.filter((s) => s.sequenceId === nextSeq.id);
-			for (const s of scenesToShift) {
-				const sIdx = scenes.findIndex((scene) => scene.id === s.id);
-				const newSceneStart = Math.max(s.startSec + seqDelta, 0);
-				scenes[sIdx] = { ...s, startSec: newSceneStart, endSec: Math.max(s.endSec + seqDelta, newSceneStart) };
-
-				const clipsToShift = clips.filter((c) => (c.scene_id ?? c.sceneId) === s.id && !(c.cross_scene ?? c.crossScene));
-				for (const c of clipsToShift) {
-					const cIdx = clips.findIndex((clip) => clip.id === c.id);
-					const newClipStart = Math.max(Number(c.start_sec ?? c.startSec ?? 0) + seqDelta, 0);
-					clips[cIdx] = { ...c, start_sec: newClipStart, end_sec: Math.max(Number(c.end_sec ?? c.endSec ?? 0) + seqDelta, newClipStart) };
-					affectedClips++;
-				}
-			}
-		}
-	}
-
-	// Act
-	const actIdx = acts.findIndex((a) => a.id === (sequenceId ? sequences[seqIdx]?.actId : ""));
-	if (actIdx >= 0 && sequenceId) {
-		const act = acts[actIdx];
-		const actId = act.id;
-		const updatedSeqsInAct = sequences.filter((sq) => sq.actId === actId).sort((a, b) => a.orderIndex - b.orderIndex);
-		const newActEndSec = updatedSeqsInAct.length > 0 ? updatedSeqsInAct[updatedSeqsInAct.length - 1].endSec : act.endSec;
-		const actDelta = newActEndSec - act.endSec;
-		if (actDelta !== 0) {
-			acts[actIdx] = { ...act, endSec: newActEndSec, durationSec: Math.max(newActEndSec - act.startSec, 0) };
-			affectedActs++;
-		}
-
-		// Nachfolgende Acts
-		const sortedActs = acts.sort((a, b) => a.orderIndex - b.orderIndex);
-		const actOrderIdx = sortedActs.findIndex((a) => a.id === actId);
-		for (let i = actOrderIdx + 1; i < sortedActs.length; i++) {
-			const nextAct = sortedActs[i];
-			const idx = acts.findIndex((a) => a.id === nextAct.id);
-			const newStart = Math.max(nextAct.startSec + actDelta, 0);
-			acts[idx] = { ...nextAct, startSec: newStart, endSec: Math.max(nextAct.endSec + actDelta, newStart) };
-
-			const seqsToShift = sequences.filter((sq) => sq.actId === nextAct.id);
-			for (const sq of seqsToShift) {
-				const sqIdx = sequences.findIndex((s) => s.id === sq.id);
-				const newSeqStart = Math.max(sq.startSec + actDelta, 0);
-				sequences[sqIdx] = { ...sq, startSec: newSeqStart, endSec: Math.max(sq.endSec + actDelta, newSeqStart) };
-
-				const scenesToShift = scenes.filter((s) => s.sequenceId === sq.id);
-				for (const s of scenesToShift) {
-					const sIdx = scenes.findIndex((scene) => scene.id === s.id);
-					const newSceneStart = Math.max(s.startSec + actDelta, 0);
-					scenes[sIdx] = { ...s, startSec: newSceneStart, endSec: Math.max(s.endSec + actDelta, newSceneStart) };
-
-					const clipsToShift = clips.filter((c) => (c.scene_id ?? c.sceneId) === s.id && !(c.cross_scene ?? c.crossScene));
-					for (const c of clipsToShift) {
-						const cIdx = clips.findIndex((clip) => clip.id === c.id);
-						const newClipStart = Math.max(Number(c.start_sec ?? c.startSec ?? 0) + actDelta, 0);
-						clips[cIdx] = { ...c, start_sec: newClipStart, end_sec: Math.max(Number(c.end_sec ?? c.endSec ?? 0) + actDelta, newClipStart) };
-						affectedClips++;
-					}
-				}
-			}
-		}
-	}
-
+/** Mapped Clip- Rohdaten in RippleClip für die Shared Engine. */
+function mapToRippleClip(
+	raw: unknown,
+): import("../../_shared/ripple-engine").RippleClip {
+	const item = raw as Record<string, unknown>;
 	return {
-		updatedClips: clips,
-		updatedScenes: scenes,
-		updatedSequences: sequences,
-		updatedActs: acts,
-		stats: { affectedClips, affectedScenes, affectedSequences, affectedActs, deltaSec: delta },
+		id: String(item.id),
+		sceneId: String(item.sceneId ?? item.scene_id ?? ""),
+		startSec: extractStartSec(item),
+		endSec: extractEndSec(item),
+		crossScene: Boolean(item.crossScene ?? item.cross_scene ?? false),
 	};
 }
-import { z } from "zod";
+
+/** Mapped Scene-Rohdaten in RippleScene. */
+function mapToRippleScene(
+	raw: unknown,
+): import("../../_shared/ripple-engine").RippleScene {
+	const item = raw as Record<string, unknown>;
+	return {
+		id: String(item.id),
+		sequenceId: (item.sequenceId ?? item.sequence_id ?? null) as string | null,
+		startSec: extractStartSec(item),
+		endSec: extractEndSec(item),
+		durationSec: Math.max(extractEndSec(item) - extractStartSec(item), 0),
+		orderIndex: extractOrderIndex(item),
+	};
+}
+
+/** Mapped Sequence-Rohdaten in RippleSequence. */
+function mapToRippleSequence(
+	raw: unknown,
+): import("../../_shared/ripple-engine").RippleSequence {
+	const item = raw as Record<string, unknown>;
+	return {
+		id: String(item.id),
+		actId: (item.actId ?? item.act_id ?? null) as string | null,
+		startSec: extractStartSec(item),
+		endSec: extractEndSec(item),
+		durationSec: Math.max(extractEndSec(item) - extractStartSec(item), 0),
+		orderIndex: extractOrderIndex(item),
+	};
+}
+
+/** Mapped Act-Rohdaten in RippleAct. */
+function mapToRippleAct(
+	raw: unknown,
+): import("../../_shared/ripple-engine").RippleAct {
+	const item = raw as Record<string, unknown>;
+	return {
+		id: String(item.id),
+		startSec: extractStartSec(item),
+		endSec: extractEndSec(item),
+		durationSec: Math.max(extractEndSec(item) - extractStartSec(item), 0),
+		orderIndex: extractOrderIndex(item),
+	};
+}
 
 // --- Zod Validierungsschema fuer AudioClip Input ---
 
@@ -606,7 +511,6 @@ async function deleteClip(req: RequestLike, res: ResponseLike): Promise<void> {
 	}
 }
 
-
 // --- RIPPLE ---
 
 async function ripple(req: RequestLike, res: ResponseLike): Promise<void> {
@@ -627,8 +531,14 @@ async function ripple(req: RequestLike, res: ResponseLike): Promise<void> {
 		return;
 	}
 
-	const { changedClipId, newEndSec, allClips, allScenes, allSequences, allActs } =
-		parseResult.data;
+	const {
+		changedClipId,
+		newEndSec,
+		allClips,
+		allScenes,
+		allSequences,
+		allActs,
+	} = parseResult.data;
 
 	// Auth: Projekt des geänderten Clips prüfen
 	const projectId = await getClipProjectId(changedClipId);
@@ -642,25 +552,26 @@ async function ripple(req: RequestLike, res: ResponseLike): Promise<void> {
 	}
 
 	try {
+		// T30: snake_case → camelCase mappen für Shared Engine
+		const mappedClips = allClips.map(mapToRippleClip);
+		const mappedScenes = allScenes.map(mapToRippleScene);
+		const mappedSequences = allSequences.map(mapToRippleSequence);
+		const mappedActs = allActs.map(mapToRippleAct);
+
 		const result = calculateRipple({
 			changedClipId,
 			newEndSec,
-			allClips: allClips as Array<Record<string, unknown>>,
-			allScenes: allScenes as unknown as RippleScene[],
-			allSequences: allSequences as unknown as RippleSequence[],
-			allActs: allActs as unknown as RippleAct[],
+			allClips: mappedClips,
+			allScenes: mappedScenes,
+			allSequences: mappedSequences,
+			allActs: mappedActs,
 		});
 
 		// T30: Batch-Update aller betroffenen Clips (best-effort, kein echter Transaction)
-		const typedAllClips = allClips as Array<Record<string, unknown>>;
 		const updatedClips = result.updatedClips.filter((c) => {
-			const orig = typedAllClips.find((orig) => orig.id === c.id);
+			const orig = mappedClips.find((orig) => orig.id === c.id);
 			if (!orig) return false;
-			const origStart = Number((orig as Record<string, unknown>).start_sec ?? (orig as Record<string, unknown>).startSec ?? 0);
-			const origEnd = Number((orig as Record<string, unknown>).end_sec ?? (orig as Record<string, unknown>).endSec ?? 0);
-			const newStart = Number(c.start_sec ?? c.startSec ?? 0);
-			const newEnd = Number(c.end_sec ?? c.endSec ?? 0);
-			return origStart !== newStart || origEnd !== newEnd;
+			return orig.startSec !== c.startSec || orig.endSec !== c.endSec;
 		});
 
 		const updateErrors: string[] = [];
@@ -675,20 +586,51 @@ async function ripple(req: RequestLike, res: ResponseLike): Promise<void> {
 					{
 						id: clip.id,
 						set: {
-							start_sec: clip.start_sec ?? clip.startSec,
-							end_sec: clip.end_sec ?? clip.endSec,
+							start_sec: clip.startSec,
+							end_sec: clip.endSec,
 						},
 					},
 				);
 			} catch (err) {
-				console.error(`[Audio Story] Ripple update failed for clip ${clip.id}:`, err);
+				console.error(
+					`[Audio Story] Ripple update failed for clip ${clip.id}:`
+					, err,
+				);
 				updateErrors.push(String(clip.id));
 			}
 		}
 
+		// T30: Scene/Sequence/Act-Daten zurückgeben (Frontend nutzt sie für optimistisches Update)
+		const snakeCaseScenes = result.updatedScenes.map((s) => ({
+			id: s.id,
+			start_sec: s.startSec,
+			end_sec: s.endSec,
+			duration_sec: s.durationSec,
+			order_index: s.orderIndex,
+			sequence_id: s.sequenceId,
+		}));
+		const snakeCaseSequences = result.updatedSequences.map((sq) => ({
+			id: sq.id,
+			start_sec: sq.startSec,
+			end_sec: sq.endSec,
+			duration_sec: sq.durationSec,
+			order_index: sq.orderIndex,
+			act_id: sq.actId,
+		}));
+		const snakeCaseActs = result.updatedActs.map((a) => ({
+			id: a.id,
+			start_sec: a.startSec,
+			end_sec: a.endSec,
+			duration_sec: a.durationSec,
+			order_index: a.orderIndex,
+		}));
+
 		sendJson(res, 200, {
 			stats: result.stats,
 			updatedClips: updatedClips.length,
+			scenes: snakeCaseScenes,
+			sequences: snakeCaseSequences,
+			acts: snakeCaseActs,
 			errors: updateErrors.length > 0 ? updateErrors : undefined,
 			warning:
 				updateErrors.length > 0

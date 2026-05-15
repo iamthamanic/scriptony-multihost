@@ -98,6 +98,57 @@ export async function updateClip(
 	return data.clip;
 }
 
+// ── Ripple ──────────────────────────────────────────────────────
+
+export interface RipplePayload {
+	changedClipId: string;
+	newEndSec: number;
+	allClips: AudioClip[];
+	allScenes: Array<Record<string, unknown>>;
+	allSequences: Array<Record<string, unknown>>;
+	allActs: Array<Record<string, unknown>>;
+}
+
+export interface RippleResult {
+	stats: {
+		affectedClips: number;
+		affectedScenes: number;
+		affectedSequences: number;
+		affectedActs: number;
+		deltaSec: number;
+	};
+	updatedClips: number;
+	scenes?: Array<Record<string, unknown>>;
+	sequences?: Array<Record<string, unknown>>;
+	acts?: Array<Record<string, unknown>>;
+	errors?: string[];
+	warning?: string;
+}
+
+export async function rippleClips(
+	payload: RipplePayload,
+	_accessToken: string,
+): Promise<RippleResult> {
+	const snakePayload = {
+		changedClipId: payload.changedClipId,
+		newEndSec: payload.newEndSec,
+		allClips: payload.allClips.map((c) => mapKeysToSnake(c as unknown as Record<string, unknown>)),
+		allScenes: payload.allScenes,
+		allSequences: payload.allSequences,
+		allActs: payload.allActs,
+	};
+
+	const result = await apiRequest<RippleResult>("/clips/ripple", {
+		method: "POST",
+		body: JSON.stringify(snakePayload),
+		headers: { "Content-Type": "application/json" },
+		requireAuth: true,
+	});
+	const data = unwrapApiResult(result);
+	if (!data) throw new Error("Failed to ripple clips");
+	return data;
+}
+
 // ── Delete ───────────────────────────────────────────────────────
 
 export async function deleteClip(
