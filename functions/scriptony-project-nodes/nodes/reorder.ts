@@ -67,7 +67,7 @@ export default async function handler(
             }
           `,
           { id, orderIndex: index },
-        )
+        ),
       ),
     );
 

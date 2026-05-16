@@ -2154,3 +2154,30 @@ Editor-Readmodel aggregiert nur für die UI.
   - DRY: `estimateDurationSec` in `functions/_shared/audio-utils.ts` und `src/lib/audio-utils.ts` (identische Logik)
   - KISS: Keine NLP-Analyse, einfache Wort/Min-Formel
   - OCP: Neue Emotionen = neuer Eintrag in `EMOTION_WPM_MODIFIERS`
+
+---
+
+## Phase T30 — Ripple-Persistenz, Scene-Reorder, Hook & Architektur-Härtung
+
+### Done Report: T30 — Ripple, Reorder, byte-identische Engine
+
+- **Date:** 2026-05-15
+- **Verification Marker:** ARCH-REF-T30-DONE
+- **Changed files (Auszug):**
+  - `functions/_shared/ripple-engine.ts` / `src/lib/ripple-engine.ts` — byte-identisch; `RippleAct` als Type-Alias; `checkForConflict` mit `Date.parse`
+  - `functions/_shared/ripple-persist.ts` — `buildRipplePersistDelta`, `persistRippleTransactional` (Appwrite `updateDocument` + Rollback rückwärts)
+  - `functions/_shared/graphql-operations/handlers-all.ts` — Handler `PersistRipple`
+  - `functions/scriptony-audio-story/routes/clips*.ts` — Aufteilung (Schemas, Mapper, CRUD, Ripple, dünner Router); Ripple nutzt eine `PersistRipple`-Mutation
+  - `functions/scriptony-audio-story/routes/scenes.ts` — `PUT`/`POST` `/scenes/reorder` mit `{ sceneIds }`, `canEditProject` + `getNodeById`
+  - `functions/scriptony-audio-story/appwrite-entry.ts` — Routing `/scenes`
+  - `src/hooks/useRippleUpdate.ts` — Signatur `useRippleUpdate(projectId)`; optimistisches Update pro betroffener Scene; Debounce-Cleanup bei Unmount
+  - `src/components/audio/AudioTimeline.tsx`, `ClipAudioTimeline.tsx`, `LegacyAudioTimeline.tsx` — Zeilenlimit; Zoom-Buttons mit `aria-label`
+  - `functions/_shared/ripple-persist.test.ts` — Pipeline-Test `calculateRipple` + `buildRipplePersistDelta`
+- **Routes:**
+  - `PUT` oder `POST` `/scenes/reorder` → `order_index` auf `timeline_nodes`; mit Ripple-Payload (`allClips`, `allScenes`, …) → `calculateSceneReorderRipple` + `PersistRipple`
+  - `POST …/audio-clips/.../ripple` (unverändert Pfad) → atomare Persistenz über `PersistRipple`
+- **Tests run:** `npm run test` (Vitest, inkl. `ripple-persist.test.ts` und erweiterte `ripple-engine.test.ts`)
+- **Known risks / gaps:**
+  - Rollback bei persistRipple ist best-effort zweiter Schritt (Appwrite ohne echte Multi-Doc-Transaktion); bei Rollback-Fehler bleibt Log in `console.error`.
+- **Notes:**
+  - GraphQL-Compat: `UpdateTimelineNode` erwartet `changes`; Ripple-Persist umgeht fehlerhafte `_set`-Mutation durch direkte `updateDocument`-Pfad im Persist-Layer.
