@@ -1,7 +1,7 @@
 # shimwrappercheck config for scriptony-appwrite
 CHECK_MODE="snippet"
 SHIM_AI_REVIEW_PROVIDER="auto"
-SHIM_AI_TIMEOUT_SEC=600
+SHIM_AI_TIMEOUT_SEC=900
 SHIM_AUTO_PUSH=0
 SHIM_BACKEND_PATH_PATTERNS="functions"
 SHIM_CHECKS_ARGS=""

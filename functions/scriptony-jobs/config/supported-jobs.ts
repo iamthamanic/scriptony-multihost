@@ -11,38 +11,39 @@
  */
 
 export const SUPPORTED_JOBS: Record<
-  string,
-  { functionId: string; timeoutMs: number; requiresAuth: boolean }
+	string,
+	{ functionId: string; timeoutMs: number; requiresAuth: boolean }
 > = {
-  "style-guide": {
-    functionId: "scriptony-style-guide",
-    timeoutMs: 120_000,
-    requiresAuth: true,
-  },
-  "image-generate": {
-    functionId: "scriptony-image",
-    timeoutMs: 180_000,
-    requiresAuth: true,
-  },
-  "audio-process": {
-    functionId: "scriptony-audio",
-    timeoutMs: 300_000,
-    requiresAuth: true,
-  },
-  // TODO-T07: Rename to scriptony-audio-production when deployed
-  "audio-production-generate": {
-    functionId: "scriptony-audio-story",
-    timeoutMs: 300_000,
-    requiresAuth: true,
-  },
-  "audio-production-preview": {
-    functionId: "scriptony-audio-story",
-    timeoutMs: 300_000,
-    requiresAuth: true,
-  },
-  "audio-production-export": {
-    functionId: "scriptony-audio-story",
-    timeoutMs: 600_000,
-    requiresAuth: true,
-  },
+	"style-guide": {
+		functionId: "scriptony-style-guide",
+		timeoutMs: 120_000,
+		requiresAuth: true,
+	},
+	"image-generate": {
+		functionId: "scriptony-image",
+		timeoutMs: 180_000,
+		requiresAuth: true,
+	},
+	"audio-process": {
+		functionId: "scriptony-audio",
+		timeoutMs: 300_000,
+		requiresAuth: true,
+	},
+	// T31: tts-generate wird ueber direkte Execution (scriptony-audio-story → scriptony-audio)
+	//   abgewickelt, nicht ueber den Jobs-Control-Plane. Siehe tts-job.ts.
+	"audio-production-generate": {
+		functionId: "scriptony-audio-story",
+		timeoutMs: 300_000,
+		requiresAuth: true,
+	},
+	"audio-production-preview": {
+		functionId: "scriptony-audio-story",
+		timeoutMs: 300_000,
+		requiresAuth: true,
+	},
+	"audio-production-export": {
+		functionId: "scriptony-audio-story",
+		timeoutMs: 600_000,
+		requiresAuth: true,
+	},
 };

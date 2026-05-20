@@ -14,6 +14,8 @@ import { AudioTimelineSegment } from "./AudioTimelineSegment";
 import { getAuthToken } from "../../lib/auth/getAuthToken";
 import type { AudioClip } from "../../lib/types";
 import { AudioTimelineRuler } from "./AudioTimelineRuler";
+import { useTtsGeneration } from "../../hooks/useTtsGeneration";
+import { toast } from "sonner";
 
 export interface ClipAudioTimelineProps {
   projectId: string;
@@ -188,6 +190,40 @@ export function ClipAudioTimeline({
     ],
   );
 
+  // T31: Track-Map für TTS-Button auf Timeline-Clips
+  const trackMap = useMemo(() => {
+    const map = new Map<string, { ttsVoiceId?: string; content?: string }>();
+    for (const sceneTracks of Object.values(data?.tracksByScene ?? {})) {
+      for (const t of sceneTracks) {
+        map.set(t.id, { ttsVoiceId: t.ttsVoiceId, content: t.content });
+      }
+    }
+    return map;
+  }, [data]);
+
+  const { startTts } = useTtsGeneration({ sceneId: "" });
+
+  const handleGenerateTts = useCallback(
+    (clip: AudioClip) => {
+      const track = trackMap.get(clip.trackId);
+      const voiceId = track?.ttsVoiceId;
+      const text = track?.content || clip.content || "";
+      if (!voiceId) {
+        toast.info("Keine Voice zugewiesen. Bitte Voice zuweisen.");
+        return;
+      }
+      if (!text.trim()) {
+        toast.info("Kein Text vorhanden zum Generieren.");
+        return;
+      }
+      startTts(
+        { trackId: clip.trackId, clipId: clip.id, text, voiceId },
+        clip.sceneId,
+      );
+    },
+    [trackMap, startTts],
+  );
+
   const handleZoomIn = () =>
     setPxPerSec((prev) => Math.min(prev * 1.25, MAX_PX_PER_SEC));
   const handleZoomOut = () =>
@@ -260,6 +296,7 @@ export function ClipAudioTimeline({
                   pxPerSec={pxPerSec}
                   onTrimEnd={handleTrimEnd}
                   isEditable={true}
+                  onGenerateTts={() => handleGenerateTts(clip)}
                 />
               ))}
             </div>

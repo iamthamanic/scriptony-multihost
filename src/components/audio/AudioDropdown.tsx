@@ -17,10 +17,6 @@ import {
   ChevronRight,
   ChevronDown,
   GripVertical,
-  Mic,
-  Music,
-  Volume2,
-  Wind,
   Plus,
   Play,
   Pause,
@@ -35,14 +31,16 @@ import {
   Pencil,
 } from "lucide-react";
 import { useAudioTimeline } from "../../hooks/useAudioTimeline";
+import { useAudioClips } from "../../hooks/useAudioClips";
 import { useHierarchyCRUD } from "../../hooks/useHierarchyCRUD";
 import { type HierarchyLabels } from "../../hooks/useHierarchyCRUD";
 import { createAudioTrack } from "../../lib/api/audio-story-api";
 import { getAuthToken } from "../../lib/auth/getAuthToken";
 import { queryKeys } from "../../lib/react-query";
-import type { Act, Sequence, Scene, AudioTrack } from "../../lib/types";
+import type { Sequence, Scene, AudioTrack } from "../../lib/types";
 import { FEATURE_FLAGS } from "../../lib/feature-flags";
 import { cn } from "../../lib/utils";
+import { TtsGenerateButton } from "./TtsGenerateButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,14 +52,6 @@ interface AudioDropdownProps {
   projectId: string;
   projectType?: string;
 }
-
-const TRACK_ICON: Record<string, React.ReactNode> = {
-  dialog: <Mic className="size-3.5" />,
-  narrator: <Mic className="size-3.5" />,
-  music: <Music className="size-3.5" />,
-  sfx: <Volume2 className="size-3.5" />,
-  atmo: <Wind className="size-3.5" />,
-};
 
 const TRACK_COLOR: Record<string, string> = {
   dialog: "bg-amber-500",
@@ -758,6 +748,8 @@ function SceneCard({
     for (const t of tracks) g[t.type]?.push(t);
     return g;
   }, [tracks]);
+  const clipsQuery = useAudioClips(scene.id);
+  const clips = clipsQuery.data;
 
   return (
     <div
@@ -914,6 +906,7 @@ function SceneCard({
               <TrackGroup
                 type="dialog"
                 tracks={grouped.dialog}
+                clips={clips}
                 voiceAssignments={voiceAssignments}
                 playingTrackId={playingTrackId}
                 onPlayTrack={onPlayTrack}
@@ -921,6 +914,7 @@ function SceneCard({
               <TrackGroup
                 type="narrator"
                 tracks={grouped.narrator}
+                clips={clips}
                 voiceAssignments={voiceAssignments}
                 playingTrackId={playingTrackId}
                 onPlayTrack={onPlayTrack}
@@ -928,6 +922,7 @@ function SceneCard({
               <TrackGroup
                 type="sfx"
                 tracks={grouped.sfx}
+                clips={clips}
                 voiceAssignments={voiceAssignments}
                 playingTrackId={playingTrackId}
                 onPlayTrack={onPlayTrack}
@@ -935,6 +930,7 @@ function SceneCard({
               <TrackGroup
                 type="music"
                 tracks={grouped.music}
+                clips={clips}
                 voiceAssignments={voiceAssignments}
                 playingTrackId={playingTrackId}
                 onPlayTrack={onPlayTrack}
@@ -942,6 +938,7 @@ function SceneCard({
               <TrackGroup
                 type="atmo"
                 tracks={grouped.atmo}
+                clips={clips}
                 voiceAssignments={voiceAssignments}
                 playingTrackId={playingTrackId}
                 onPlayTrack={onPlayTrack}
@@ -988,12 +985,14 @@ function TrackGroup({
   voiceAssignments,
   playingTrackId,
   onPlayTrack,
+  clips,
 }: {
   type: string;
   tracks: AudioTrack[];
   voiceAssignments: Record<string, { voiceActorType?: string }>;
   playingTrackId: string | null;
   onPlayTrack: (id: string | null) => void;
+  clips?: { id: string; trackId: string }[];
 }) {
   if (tracks.length === 0) return null;
 
@@ -1028,6 +1027,7 @@ function TrackGroup({
           onPlay={() =>
             onPlayTrack(playingTrackId === track.id ? null : track.id)
           }
+          clips={clips}
         />
       ))}
     </div>
@@ -1041,14 +1041,20 @@ function TrackItem({
   voiceAssignments,
   isPlaying,
   onPlay,
+  clips,
 }: {
   track: AudioTrack;
   voiceAssignments: Record<string, { voiceActorType?: string }>;
   isPlaying: boolean;
   onPlay: () => void;
+  clips?: { id: string; trackId: string }[];
 }) {
   const va = track.characterId ? voiceAssignments[track.characterId] : null;
   const isTTS = va?.voiceActorType === "tts";
+  const trackClips = clips?.filter((c) => c.trackId === track.id) ?? [];
+  const clipId = trackClips.length === 1 ? trackClips[0].id : undefined;
+  // TTS mutiert exakt einen Clip; bei 0 oder >1 Clips ist das Ziel unklar
+  const isAmbiguous = trackClips.length !== 1;
 
   return (
     <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-white/80 dark:bg-black/20 border border-pink-100 dark:border-pink-800/50 hover:border-pink-300 dark:hover:border-pink-600 transition-colors group">
@@ -1109,9 +1115,30 @@ function TrackItem({
         )}
       </div>
 
-      <button className="shrink-0 p-1 rounded hover:bg-muted/50 transition-colors opacity-0 group-hover:opacity-100">
-        <MoreVertical className="size-3 text-muted-foreground" />
-      </button>
+      {/* Overflow + TTS — sichtbar bei Hover und Focus-within (WCAG 2.2 AA Tastatur-/Touch-Zugaenglichkeit) */}
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+        {isTTS && FEATURE_FLAGS.audioClipSystem.enabled && (
+          <TtsGenerateButton
+            trackId={track.id}
+            sceneId={track.sceneId}
+            clipId={clipId}
+            text={track.content || ""}
+            voiceId={track.ttsVoiceId}
+            hasTTS={isTTS}
+            isAmbiguous={isAmbiguous}
+          />
+        )}
+        <button
+          className="shrink-0 p-1 rounded hover:bg-muted/50 transition-colors"
+          aria-label="Weitere Aktionen"
+          title="Weitere Aktionen"
+        >
+          <MoreVertical
+            className="size-3 text-muted-foreground"
+            aria-hidden="true"
+          />
+        </button>
+      </div>
     </div>
   );
 }

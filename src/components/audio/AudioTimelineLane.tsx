@@ -16,7 +16,8 @@ interface AudioTimelineLaneProps {
 
 export function AudioTimelineLane({
 	label,
-	color = "#6366f1",
+	// T31: Default-Farbe via CSS-Variable (Tailwind violet-500), kein hardcoded hex
+	color = "var(--color-violet-500)",
 	tracks,
 	pxPerSec,
 	durationSec,
