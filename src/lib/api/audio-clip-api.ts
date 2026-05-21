@@ -14,6 +14,14 @@ import { apiRequest, unwrapApiResult } from "../api-client";
 import type { RippleAct, RippleScene, RippleSequence } from "../ripple-engine";
 import type { AudioClip } from "../types";
 
+/** Fields clients may send on PUT /clips/:id (matches backend sanitizeClipInput). */
+export type AudioClipUpdatePayload = Partial<
+  Pick<
+    AudioClip,
+    "laneIndex" | "fxPresetId" | "startSec" | "endSec" | "orderIndex"
+  >
+>;
+
 // ── camelCase → snake_case Mapper ─────────────────────────────────
 
 const CAMEL_TO_SNAKE: Record<string, string> = {
@@ -85,7 +93,7 @@ export async function createClip(
 
 export async function updateClip(
   clipId: string,
-  updates: Partial<AudioClip>,
+  updates: AudioClipUpdatePayload,
   _accessToken: string,
 ): Promise<AudioClip> {
   const result = await apiRequest<{ clip: AudioClip }>(`/clips/${clipId}`, {

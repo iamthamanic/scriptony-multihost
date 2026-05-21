@@ -35,9 +35,12 @@ import { useAudioClips } from "../../hooks/useAudioClips";
 import { useHierarchyCRUD } from "../../hooks/useHierarchyCRUD";
 import { type HierarchyLabels } from "../../hooks/useHierarchyCRUD";
 import { createAudioTrack } from "../../lib/api/audio-story-api";
+import * as ClipAPI from "../../lib/api/audio-clip-api";
 import { getAuthToken } from "../../lib/auth/getAuthToken";
 import { queryKeys } from "../../lib/react-query";
-import type { Sequence, Scene, AudioTrack } from "../../lib/types";
+import type { AudioClip, Sequence, Scene, AudioTrack } from "../../lib/types";
+import { assignLaneIndex } from "../../lib/audio-lane";
+import { estimateDurationSec } from "../../lib/audio-utils";
 import { FEATURE_FLAGS } from "../../lib/feature-flags";
 import { cn } from "../../lib/utils";
 import { TtsGenerateButton } from "./TtsGenerateButton";
@@ -116,11 +119,39 @@ export function AudioDropdown({ projectId, projectType }: AudioDropdownProps) {
     }) => {
       const token = await getAuthToken();
       if (!token) throw new Error("Nicht authentifiziert");
+
+      let laneIndex: number | undefined;
+      if (FEATURE_FLAGS.audioClipSystem.enabled) {
+        const existingClips = await ClipAPI.getClipsByScene(sceneId, token);
+        const clipStartSec =
+          existingClips.length > 0
+            ? Math.max(...existingClips.map((c) => c.endSec ?? 0))
+            : 0;
+        const wpmEstimate = estimateDurationSec("", {
+          type: type as AudioTrack["type"],
+        });
+        const draft = {
+          id: "pending",
+          trackId: "pending",
+          sceneId,
+          projectId,
+          startSec: clipStartSec,
+          endSec: clipStartSec + wpmEstimate,
+          laneIndex: 0,
+          orderIndex: existingClips.length,
+          trackType: type as AudioClip["trackType"],
+          createdAt: "",
+          updatedAt: "",
+        } satisfies AudioClip;
+        laneIndex = assignLaneIndex(existingClips, draft);
+      }
+
       const result = await createAudioTrack(sceneId, projectId, {
         type: type as AudioTrack["type"],
         content: "",
         startTime: 0,
         duration: 0,
+        ...(laneIndex !== undefined ? { laneIndex } : {}),
       });
       return result.track; // T29: unwrap track from dual-write response
     },

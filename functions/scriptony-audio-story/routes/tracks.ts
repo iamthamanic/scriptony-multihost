@@ -22,6 +22,7 @@ import {
 import { requestGraphql } from "../../_shared/graphql-compat";
 import { canReadProject, canEditProject } from "../_shared/access";
 import { estimateDurationSec } from "../../_shared/audio-utils";
+import { resolveLaneIndexForTrack } from "../../_shared/audio-lane";
 import { z } from "zod";
 
 const TrackTypeSchema = z.enum(["dialog", "narrator", "sfx", "music", "atmo"]);
@@ -185,15 +186,31 @@ async function createTrack(req: RequestLike, res: ResponseLike): Promise<void> {
     // ── 3. Existierende Clips in Szene zählen (für Startzeit + Order) ─
     const clipsAggData = await requestGraphql<{
       audio_clips_aggregate: { aggregate: { count: number } };
-      audio_clips: Array<{ end_sec: number }>;
+      last_clip: Array<{ end_sec: number }>;
+      scene_clips: Array<{
+        start_sec: number;
+        end_sec: number;
+        lane_index: number;
+        track_type: string | null;
+      }>;
     }>(
       `
       query GetSceneClipsInfo($sceneId: uuid!) {
         audio_clips_aggregate(where: { scene_id: { _eq: $sceneId } }) {
           aggregate { count }
         }
-        audio_clips(where: { scene_id: { _eq: $sceneId } }, order_by: { end_sec: desc }, limit: 1) {
+        last_clip: audio_clips(
+          where: { scene_id: { _eq: $sceneId } }
+          order_by: { end_sec: desc }
+          limit: 1
+        ) {
           end_sec
+        }
+        scene_clips: audio_clips(where: { scene_id: { _eq: $sceneId } }) {
+          start_sec
+          end_sec
+          lane_index
+          track_type
         }
       }
     `,
@@ -201,9 +218,34 @@ async function createTrack(req: RequestLike, res: ResponseLike): Promise<void> {
     );
 
     const clipCount = clipsAggData.audio_clips_aggregate.aggregate?.count ?? 0;
-    const lastEndSec = clipsAggData.audio_clips[0]?.end_sec ?? 0;
+    const lastEndSec = clipsAggData.last_clip[0]?.end_sec ?? 0;
     const clipStartSec = lastEndSec;
     const clipEndSec = clipStartSec + wpmEstimate;
+
+    const bodyLaneIndex =
+      typeof body.lane_index === "number"
+        ? body.lane_index
+        : typeof body.laneIndex === "number"
+          ? body.laneIndex
+          : undefined;
+
+    const existingForLanes = clipsAggData.scene_clips.map((c) => ({
+      startSec: c.start_sec,
+      endSec: c.end_sec,
+      laneIndex: c.lane_index,
+      trackType: c.track_type ?? String(type),
+    }));
+
+    const laneIndex = resolveLaneIndexForTrack(
+      bodyLaneIndex,
+      String(type),
+      existingForLanes,
+      {
+        startSec: clipStartSec,
+        endSec: clipEndSec,
+        trackType: String(type),
+      },
+    );
 
     // ── 4. Shadow-Clip erstellen (Dual-Write T29) ──────────────────
     const clipData = await requestGraphql<{
@@ -234,10 +276,7 @@ async function createTrack(req: RequestLike, res: ResponseLike): Promise<void> {
           project_id: projectId,
           start_sec: clipStartSec,
           end_sec: clipEndSec,
-          lane_index: resolveLaneIndex(
-            String(type),
-            characterId as string | undefined,
-          ),
+          lane_index: laneIndex,
           order_index: clipCount,
           track_type: type,
           content: content || null,
@@ -302,28 +341,6 @@ async function createTrack(req: RequestLike, res: ResponseLike): Promise<void> {
     }
     console.error("[Audio Story] Error creating track:", error);
     sendServerError(res, error);
-  }
-}
-
-/** KISS: Lane-Zuweisung basierend auf Track-Typ.
- * MUSS mit Frontend LANE_SCHEMA in src/lib/types/index.ts übereinstimmen:
- *   dialog: 0, narrator: 40, sfx: 10, music: 20, atmo: 30
- */
-function resolveLaneIndex(type: string, characterId?: string | null): number {
-  switch (type) {
-    case "dialog":
-      // T29: Dialog-Lanes 0–9, optional pro Charakter (future)
-      return characterId ? 0 : 0;
-    case "narrator":
-      return 40;
-    case "sfx":
-      return 10;
-    case "music":
-      return 20;
-    case "atmo":
-      return 30;
-    default:
-      return 0;
   }
 }
 

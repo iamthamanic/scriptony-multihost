@@ -17,7 +17,9 @@ import { useState, useCallback, useRef } from "react";
 import { Mic } from "lucide-react";
 import type { AudioTrack, AudioClip } from "../../lib/types";
 import { formatDurationSec } from "../../lib/audio-utils";
+import { hasOverlap } from "../../lib/audio-lane";
 import { cn } from "../../lib/utils";
+import { ClipLanePopover } from "./ClipLanePopover";
 
 const TYPE_COLORS: Record<string, string> = {
   dialog: "bg-amber-500 border-amber-600",
@@ -40,6 +42,10 @@ interface AudioTimelineSegmentProps {
   isEditable?: boolean;
   /** T31: TTS-Generate-Callback für geschätzte Clips. */
   onGenerateTts?: () => void;
+  /** T32: All clips in scene (for overlap detection + lane popover). */
+  allClips?: AudioClip[];
+  /** T32: Callback when user changes a clip's lane assignment. */
+  onLaneChange?: (clipId: string, newLaneIndex: number) => void;
 }
 
 export function AudioTimelineSegment({
@@ -48,6 +54,8 @@ export function AudioTimelineSegment({
   onTrimEnd,
   isEditable = false,
   onGenerateTts,
+  allClips,
+  onLaneChange,
 }: AudioTimelineSegmentProps) {
   // T28: Union-Typ — unterscheide Track (Legacy) vs Clip (neu)
   const isClip = "startSec" in item;
@@ -74,6 +82,20 @@ export function AudioTimelineSegment({
     : ((item as AudioTrack).content ?? "…");
 
   const colorClass = TYPE_COLORS[trackType] || "bg-gray-500 border-gray-600";
+
+  // T32: Overlap detection — red dashed border when clips overlap on the same lane
+  const overlapping =
+    isClip && allClips
+      ? hasOverlap(
+          allClips,
+          {
+            startSec: (item as AudioClip).startSec,
+            endSec: (item as AudioClip).endSec,
+            id: (item as AudioClip).id,
+          },
+          (item as AudioClip).laneIndex,
+        )
+      : false;
 
   // T29: Geschätzt = kein audioFileId auf Clip
   const isEstimated = isClip && !(item as AudioClip).audioFileId;
@@ -204,6 +226,7 @@ export function AudioTimelineSegment({
         colorClass,
         isEstimated && "border-dotted opacity-70",
         !isEstimated && "border-solid",
+        overlapping && "border-red-500 border-dashed",
         isDragging && "ring-2 ring-white/50",
       )}
       style={{
@@ -247,7 +270,15 @@ export function AudioTimelineSegment({
         </svg>
       )}
 
-      <div className="px-1.5 py-0.5 flex items-center justify-between h-full relative z-10">
+      <div className="px-1.5 py-0.5 flex items-center gap-1 h-full relative z-10">
+        {/* T32: Lane-Wechsel Popover (nur bei Clips mit Handler) */}
+        {isClip && onLaneChange && allClips && (
+          <ClipLanePopover
+            clip={item as AudioClip}
+            allClips={allClips}
+            onLaneChange={onLaneChange}
+          />
+        )}
         <span className="truncate font-medium">{content || "…"}</span>
         <div className="flex items-center gap-1 shrink-0">
           {/* T31: TTS-Button nur auf geschätzten Clips mit handler.

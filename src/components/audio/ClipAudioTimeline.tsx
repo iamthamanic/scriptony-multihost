@@ -3,14 +3,19 @@
  */
 
 import { useState, useMemo, useCallback } from "react";
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { ZoomIn, ZoomOut } from "lucide-react";
 import { useAudioTimeline } from "../../hooks/useAudioTimeline";
 import { useRippleUpdate } from "../../hooks/useRippleUpdate";
+import { useAudioLaneState } from "../../hooks/useAudioLaneState";
+import { useClipUpdate } from "../../hooks/useClipUpdate";
 import { calculateRipple } from "../../lib/ripple-engine";
 import { queryKeys } from "../../lib/react-query";
 import * as ClipAPI from "../../lib/api/audio-clip-api";
+import { isLaneAudible, getLaneType } from "../../lib/audio-lane";
+import { cn } from "../../lib/utils";
 import { AudioTimelineSegment } from "./AudioTimelineSegment";
+import { TrackHeader } from "./TrackHeader";
 import { getAuthToken } from "../../lib/auth/getAuthToken";
 import type { AudioClip } from "../../lib/types";
 import { AudioTimelineRuler } from "./AudioTimelineRuler";
@@ -32,6 +37,7 @@ export function ClipAudioTimeline({
 }: ClipAudioTimelineProps) {
   const { data, isLoading } = useAudioTimeline(projectId, projectType);
   const [pxPerSec, setPxPerSec] = useState(DEFAULT_PX_PER_SEC);
+  const laneState = useAudioLaneState();
 
   const sceneIds = data?.scenes.map((s) => s.id) ?? [];
 
@@ -134,6 +140,7 @@ export function ClipAudioTimeline({
   }, [data, rippleSequences]);
 
   const { debouncedUpdate } = useRippleUpdate(projectId);
+  const queryClient = useQueryClient();
 
   const handleTrimEnd = useCallback(
     (clipId: string, newEndSec: number) => {
@@ -224,6 +231,60 @@ export function ClipAudioTimeline({
     [trackMap, startTts],
   );
 
+  // T32: Clip-Update Mutation (Lane-Wechsel etc.)
+  const clipUpdate = useClipUpdate(projectId);
+
+  const handleLaneChange = useCallback(
+    (clipId: string, newLaneIndex: number) => {
+      clipUpdate.mutate(
+        { clipId, updates: { laneIndex: newLaneIndex } },
+        {
+          onError: (err) => {
+            toast.error(
+              err instanceof Error
+                ? err.message
+                : "Spurwechsel konnte nicht gespeichert werden.",
+            );
+          },
+        },
+      );
+    },
+    [clipUpdate],
+  );
+
+  const handleFxPresetChange = useCallback(
+    async (laneIndex: number, presetId: string | undefined) => {
+      const clipsOnLane = allClips.filter((c) => c.laneIndex === laneIndex);
+      const prevPreset = laneState.getLaneState(laneIndex).fxPresetId;
+      laneState.setFxPreset(laneIndex, presetId);
+
+      try {
+        for (const clip of clipsOnLane) {
+          await clipUpdate.mutateAsync({
+            clipId: clip.id,
+            updates: { fxPresetId: presetId ?? undefined },
+          });
+        }
+      } catch (err) {
+        laneState.setFxPreset(laneIndex, prevPreset);
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "FX-Preset konnte nicht für alle Clips gespeichert werden.",
+        );
+        const sceneIds = [
+          ...new Set(clipsOnLane.map((c) => c.sceneId).filter(Boolean)),
+        ];
+        for (const sceneId of sceneIds) {
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.audio.clipsByScene(sceneId),
+          });
+        }
+      }
+    },
+    [laneState, allClips, clipUpdate, queryClient],
+  );
+
   const handleZoomIn = () =>
     setPxPerSec((prev) => Math.min(prev * 1.25, MAX_PX_PER_SEC));
   const handleZoomOut = () =>
@@ -276,32 +337,51 @@ export function ClipAudioTimeline({
           currentSec={0}
         />
 
-        {sortedLaneIndices.map((laneIndex) => (
-          <div
-            key={laneIndex}
-            className="relative h-12 border-b border-border"
-            style={{
-              width: `${durationSec * pxPerSec}px`,
-            }}
-          >
-            <div className="absolute left-0 top-0 bottom-0 w-24 bg-muted/50 flex items-center px-2 text-xs font-medium text-muted-foreground border-r border-border z-10">
-              Lane {laneIndex}
-            </div>
-
-            <div className="absolute left-24 right-0 top-0 bottom-0">
-              {laneGroups[laneIndex].map((clip) => (
-                <AudioTimelineSegment
-                  key={clip.id}
-                  item={clip}
-                  pxPerSec={pxPerSec}
-                  onTrimEnd={handleTrimEnd}
-                  isEditable={true}
-                  onGenerateTts={() => handleGenerateTts(clip)}
+        {sortedLaneIndices.map((laneIndex) => {
+          const laneType = getLaneType(laneIndex);
+          const audible = isLaneAudible(laneIndex, laneState.laneStates);
+          return (
+            <div
+              key={laneIndex}
+              className={cn(
+                "relative h-16 border-b border-border",
+                !audible && "opacity-30",
+              )}
+              style={{
+                width: `${durationSec * pxPerSec}px`,
+              }}
+            >
+              {/* T32: Track-Header (sticky left) */}
+              <div className="absolute left-0 top-0 bottom-0 w-44 bg-muted/50 border-r border-border z-10">
+                <TrackHeader
+                  laneIndex={laneIndex}
+                  trackType={laneType}
+                  state={laneState.getLaneState(laneIndex)}
+                  onMuteChange={laneState.setMute}
+                  onSoloChange={laneState.setSolo}
+                  onVolumeChange={laneState.setVolume}
+                  onPanChange={laneState.setPan}
+                  onFxPresetChange={handleFxPresetChange}
                 />
-              ))}
+              </div>
+
+              <div className="absolute left-44 right-0 top-0 bottom-0">
+                {laneGroups[laneIndex].map((clip) => (
+                  <AudioTimelineSegment
+                    key={clip.id}
+                    item={clip}
+                    pxPerSec={pxPerSec}
+                    onTrimEnd={handleTrimEnd}
+                    isEditable={true}
+                    onGenerateTts={() => handleGenerateTts(clip)}
+                    allClips={allClips}
+                    onLaneChange={handleLaneChange}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         {sortedLaneIndices.length === 0 && (
           <div className="flex items-center justify-center h-48 text-muted-foreground text-sm">
