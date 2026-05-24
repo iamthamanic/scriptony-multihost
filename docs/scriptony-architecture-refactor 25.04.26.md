@@ -2349,3 +2349,101 @@ Extract-only split of `src/lib/types/index.ts` (705 lines, hard violation) into 
 #### Shimwrappercheck result
 
 - Scoped frontend snippet gate on T52 files; no hard violations remain under `src/lib/types/`.
+
+## Phase T35 — Domain Backend Boundary und AppwriteBackend Wrapper
+
+### Done Report: T35 — Domain Backend Boundary
+
+- **Date:** 2026-05-24
+- **Verification Marker:** ARCH-REF-T35-DONE
+
+#### What was implemented
+
+1. **Domain Backend Interface** (`src/backend/ScriptonyBackend.ts`)
+   - Zentrales `ScriptonyBackend` Interface mit Domain-Repositories:
+     - `auth: AuthClient` (bestehendes T34-Interface)
+     - `projects: ProjectRepository`
+     - `structure: StructureRepository` (Stub)
+     - `scripts: ScriptRepository` (Stub)
+     - `characters: CharacterRepository` (Stub)
+     - `worldbuilding: WorldbuildingRepository` (Stub)
+     - `timeline: TimelineRepository` (Stub)
+     - `audio: AudioRepository` (implementiert)
+     - `assets: AssetRepository` (implementiert)
+     - `jobs: JobService` (implementiert)
+     - `ai: AiService` (Stub)
+     - `storage: StorageRepository` (Stub)
+   - Kein generischer `DataProvider` mit `collection: string` — explizite Domain-Vertraege.
+
+2. **Backend Factory** (`src/backend/create-backend.ts`)
+   - `createBackend(runtime: RuntimeConfig): ScriptonyBackend`
+   - Waehlt `LocalBackend` fuer `profile === "local"`
+   - Waehlt `AppwriteBackend` fuer `cloud` / `selfHosted`
+   - Defense-in-depth Fallback auf Appwrite bei unbekanntem Profil (mit Warnung)
+
+3. **React Integration** (`src/backend/backend-provider.tsx`)
+   - `BackendProvider` als Context; konsumiert `useRuntime()` (T34)
+   - `useScriptonyBackend()` Hook fuer Components/Hooks
+   - Optionaler `backend`-Prop fuer Tests (DI)
+
+4. **AppwriteBackend** (`src/backend/appwrite/AppwriteBackend.ts`)
+   - Wrappt bestehende API-Module (`src/lib/api/*`) — keine duplizierte HTTP-Logik
+   - `AppwriteProjectRepository` — list/get/create/update/delete via Appwrite SDK
+   - `AppwriteAudioRepository` — clip-/track-/voice CRUD via `audio-clip-api` + `audio-story-api`
+   - `AppwriteAssetRepository` — Bild-Upload via Appwrite Storage
+   - `AppwriteJobService` — Job-Start/Status/Result via API-Gateway
+   - Stubs fuer Structure, Scripts, Characters, Worldbuilding, Timeline, AI, Storage (`stubs.ts`)
+
+5. **LocalBackend** (`src/backend/local/LocalBackend.ts`)
+   - Stub-Implementierungen fuer alle Domains
+   - Jeder Stub wirft expliziten `Error("... not implemented")` — kein stiller Appwrite-Fallback
+   - Reale Persistenz wird in T37–T39 ergaenzt
+
+6. **App.tsx Integration**
+   - Korrekte Provider-Reihenfolge: `RuntimeProvider` → `BackendProvider` → `AuthProvider` → `QueryClientProvider`
+
+#### Files touched
+
+- **Neu:**
+  - `src/backend/ScriptonyBackend.ts`
+  - `src/backend/create-backend.ts`
+  - `src/backend/backend-provider.tsx`
+  - `src/backend/index.ts` (Barrel)
+  - `src/backend/appwrite/AppwriteBackend.ts`
+  - `src/backend/appwrite/AppwriteProjectRepository.ts`
+  - `src/backend/appwrite/AppwriteAudioRepository.ts`
+  - `src/backend/appwrite/AppwriteAssetRepository.ts`
+  - `src/backend/appwrite/AppwriteJobService.ts`
+  - `src/backend/appwrite/stubs.ts`
+  - `src/backend/local/LocalBackend.ts`
+  - `src/backend/local/LocalProjectRepository.ts`
+  - `src/backend/local/LocalAudioRepository.ts`
+  - `src/backend/local/LocalAssetRepository.ts`
+  - `src/backend/local/LocalJobService.ts`
+- **Geaendert:**
+  - `src/App.tsx` — `BackendProvider` hinzugefuegt
+  - `src/backend/appwrite/AppwriteProjectRepository.ts` — get(): nur 404er swallowen
+  - `src/backend/appwrite/AppwriteAudioRepository.ts` — getClip(): expliziter Error statt null
+
+#### Tests run
+
+- `npm run typecheck` → 0 Fehler
+- `npx prettier --check src/backend/` → 0 Fehler
+- `npx eslint src/backend/ --ext .ts,.tsx` → 0 Fehler, 0 Warnungen
+
+#### Shimwrappercheck result
+
+- T35-Scope ist reiner Code/Kein Frontend-Build-Aenderung; keine Shim-Gates noetig.
+- Projekt-Repo Regel: `src/backend/` Dateien sind alle ≤500 Zeilen; groesste ist `ScriptonyBackend.ts` (~250).
+
+#### Known risks / gaps
+
+- `AppwriteAudioRepository.getClip()` ist nicht implementiert, weil kein Einzel-Clip-API-Endpoint existiert. Aufrufer muessen ueber `getClips(projectId)` + client-side Filter gehen, oder die API erweitern.
+- Stubs fuer Structure, Scripts, Characters, Worldbuilding, Timeline, AI, Storage werfen bei Nutzung explizite Fehler. Follow-Up Tickets: T38 (LocalBackend MVP), spaetere Domain-Tickets.
+- `AppwriteProjectRepository` verwendet `getAuthClient()` und holt in jeder Methode die Session neu — fuer T38/T40 kann eine gecachte Session optimiert werden.
+
+#### Notes
+
+- **SOLID**: `SRP` — eine Datei pro Repository/Service. `OCP` — LocalBackend erweitern ohne UI zu aendern. `LSP` — Appwrite- und Local-Repositories erfuellen dieselben Interfaces. `DIP` — UI/Domain haengt an `ScriptonyBackend`, nicht an Appwrite SDK.
+- **DRY**: Bestehende `src/lib/api/*` Module werden wiederverwendet, nicht dupliziert.
+- **KISS**: Kein generischer DataProvider; explizite Domain-Interfaces statt runtime Metadaten.

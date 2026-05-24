@@ -74,6 +74,12 @@ _(Keine aktuell — T27 hat keine Blocker)_
 
 ## Done
 
+- [x] **T35** — `implementation` — [Domain Backend Boundary und AppwriteBackend Wrapper](done-T35-domain-backend-boundary-und-appwritebackend-wrapper.md) _(ScriptonyBackend Interface, AppwriteBackend, LocalBackend, BackendProvider)_
+  - Abhängigkeiten: T34 ✅
+  - Schätzung: 3–4 Tage
+  - Assignee: TBD
+  - **Done:** 2026-05-24
+
 - [x] **T34** — `implementation` — [Runtime Profile und Auth Boundary](done-T34-runtime-profile-und-auth-boundary.md) _(AuthClient, Local/Cloud/Self-hosted Detection, Legacy-Auth-Cleanup)_
   - Abhängigkeiten: Keine
   - Schätzung: 2–3 Tage
