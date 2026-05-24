@@ -29,25 +29,29 @@
   - Assignee: TBD
   - **Done:** 2026-05-13
 
-- [ ] **T29** — `implementation` — [WPM-Schätzung und Clip-Initialisierung](todo-T29-implementation-wpm-schaetzung-clip-init.md) _(Phase B: Dual-Write)_
+- [x] **T29** — `implementation` — [WPM-Schätzung und Clip-Initialisierung](done-T29-implementation-wpm-schaetzung-clip-init.md) _(Phase B: Dual-Write)_
   - Abhängigkeiten: T28 ✅
   - Schätzung: 2–3 Tage
   - Assignee: TBD
+  - **Done:** 2026-05-13
 
-- [ ] **T30** — `implementation` — [Ripple und Synchronisation](todo-T30-implementation-ripple-synchronisation.md) _(Phase C: Ripple aktiv)_
+- [x] **T30** — `implementation` — [Ripple und Synchronisation](done-T30-implementation-ripple-synchronisation.md) _(Phase C: Ripple aktiv)_
   - Abhängigkeiten: T28 ✅, T29 ✅
   - Schätzung: 4–5 Tage
   - Assignee: TBD
+  - **Done:** 2026-05-13
 
-- [ ] **T31** — `implementation` — [TTS-Pipeline und Audio-Generierung](todo-T31-implementation-tts-pipeline.md)
+- [x] **T31** — `implementation` — [TTS-Pipeline und Audio-Generierung](done-T31-implementation-tts-pipeline.md)
   - Abhängigkeiten: T30 ✅
   - Schätzung: 4–5 Tage
   - Assignee: TBD
+  - **Done:** 2026-05-21
 
-- [ ] **T32** — `implementation` — [DAW-Features: Multi-Lanes, Track-Header, FX-Chain](todo-T32-implementation-daw-features.md)
+- [x] **T32** — `implementation` — [DAW-Features: Multi-Lanes, Track-Header, FX-Chain](done-T32-implementation-daw-features.md)
   - Abhängigkeiten: T31 ✅
   - Schätzung: 5–7 Tage
   - Assignee: TBD
+  - **Done:** 2026-05-21
 
 - [ ] **T33** — `implementation` — [Film-Refactoring: Vereinheitlichtes Clip-Ripple](todo-T33-implementation-film-refactoring.md)
   - Abhängigkeiten: T30 ✅
@@ -58,7 +62,7 @@
 
 ## In Progress
 
-_(Keine aktuell — T26 ist done)_
+_(Keine aktuell — T34 abgeschlossen)_
 
 ---
 
@@ -70,6 +74,12 @@ _(Keine aktuell — T27 hat keine Blocker)_
 
 ## Done
 
+- [x] **T34** — `implementation` — [Runtime Profile und Auth Boundary](done-T34-runtime-profile-und-auth-boundary.md) _(AuthClient, Local/Cloud/Self-hosted Detection, Legacy-Auth-Cleanup)_
+  - Abhängigkeiten: Keine
+  - Schätzung: 2–3 Tage
+  - Assignee: TBD
+  - **Done:** 2026-05-24
+
 - [x] **T26** — Audio Dropdown CRUD (Hierarchie: Akt/Sequenz/Szene hinzufügen, bearbeiten, löschen) ✅ **Done**
   - Status: Abgeschlossen
   - Smoke-Test: `tickets/T26-audio-dropdown-crud/SMOKE_TEST.md`
@@ -80,6 +90,10 @@ _(Keine aktuell — T27 hat keine Blocker)_
 - [x] **T23** — Components Reorganisation
 - [x] **T24** — Implementation Storage Implementieren
 - [x] **T25** — Implementation Collaboration Implementieren
+- [x] **T29** — WPM-Schätzung und Clip-Initialisierung ✅ **Done**
+- [x] **T30** — Ripple und Synchronisation ✅ **Done**
+- [x] **T31** — TTS-Pipeline und Audio-Generierung ✅ **Done**
+- [x] **T32** — DAW-Features: Multi-Lanes, Track-Header, FX-Chain ✅ **Done**
 
 ---
 
@@ -101,12 +115,12 @@ Woche 5–7:                                             [T33] Film
 | ------ | ------------------------------------------------------------- |
 | T27    | `tickets/todo-T27-plan-audioclip-ripple-architektur.md`       |
 | T28    | `tickets/todo-T28-implementation-audioclip-fundament.md`      |
-| T29    | `tickets/todo-T29-implementation-wpm-schaetzung-clip-init.md` |
-| T30    | `tickets/todo-T30-implementation-ripple-synchronisation.md`   |
-| T31    | `tickets/todo-T31-implementation-tts-pipeline.md`             |
-| T32    | `tickets/todo-T32-implementation-daw-features.md`             |
+| T29    | `tickets/done-T29-implementation-wpm-schaetzung-clip-init.md` |
+| T30    | `tickets/done-T30-implementation-ripple-synchronisation.md`   |
+| T31    | `tickets/done-T31-implementation-tts-pipeline.md`             |
+| T32    | `tickets/done-T32-implementation-daw-features.md`             |
 | T33    | `tickets/todo-T33-implementation-film-refactoring.md`         |
 
 ---
 
-_Letzte Aktualisierung: 2026-05-13_
+_Letzte Aktualisierung: 2026-05-24_

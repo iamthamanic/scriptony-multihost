@@ -2188,7 +2188,7 @@ Editor-Readmodel aggregiert nur für die UI.
 
 ### Done Report: T34 — Runtime Profile und Auth Boundary
 
-- **Date:** 2026-05-23
+- **Date:** 2026-05-24 (Abschluss der offenen Cleanups)
 - **Verification Marker:** ARCH-REF-T34-DONE
 
 #### What was implemented
@@ -2211,6 +2211,15 @@ Editor-Readmodel aggregiert nur für die UI.
 3. **App Integration**
    - `App.tsx` — `<RuntimeProvider>` als äußerster Provider eingefügt
    - `.env.local.example` — `VITE_SCRIPTONY_RUNTIME` dokumentiert
+4. **Login-Gate / UI Cleanup (Abschluss 2026-05-24)**
+   - `src/components/AppContent.tsx` — `BackendNotConfiguredBanner` wird nur noch im `cloud`/`selfHosted`-Profil angezeigt; im `local`-Profil bleibt das Banner aus (keine verwirrende Appwrite-Fehlermeldung im Offline-Modus)
+   - `src/hooks/useAuth.tsx` — nutzt `getAuthClient()` + `RuntimeProvider`; Login-Screen wird im Local Mode übersprungen
+   - **Legacy-Auth entfernt:** Toter Code, der gegen `localhost:3001` fetchte und ein paralleles Auth-System darstellte:
+     - `src/contexts/AuthContext.tsx` (altes REST-Auth, nicht mehr verwendet) → gelöscht
+     - `src/pages/LoginPage.tsx`, `src/pages/RegisterPage.tsx` (React-Router-Legacy, nicht mehr geroutet) → gelöscht
+     - `src/components/auth/AuthExample.tsx`, `src/components/auth/ProtectedRoute.tsx` (Demo/Dead Code) → gelöscht
+     - Leere Ordner `src/pages/` und `src/components/auth/` → entfernt
+   - Keine UI-Komponente führt direkte Appwrite-/Tauri-/Self-hosted-Erkennung ein (Audit bestanden — verstreute Checks auf `isTauri`/`isAppwrite` existieren nicht)
 
 #### Files touched (T34 scope only)
 
@@ -2225,7 +2234,14 @@ Editor-Readmodel aggregiert nur für die UI.
 - **Geändert:**
   - `src/lib/auth/getAuthClient.ts` — Runtime-aware Factory statt hartem Appwrite-Adapter
   - `src/App.tsx` — `<RuntimeProvider>` hinzugefügt
+  - `src/components/AppContent.tsx` — `BackendNotConfiguredBanner` nur bei `runtime.profile !== "local"`
   - `.env.local.example` — Runtime-Profil-Doku
+- **Entfernt (Legacy-Auth-Cleanup):**
+  - `src/contexts/AuthContext.tsx`
+  - `src/pages/LoginPage.tsx`
+  - `src/pages/RegisterPage.tsx`
+  - `src/components/auth/AuthExample.tsx`
+  - `src/components/auth/ProtectedRoute.tsx`
 
 #### Env vars
 
@@ -2244,13 +2260,15 @@ Editor-Readmodel aggregiert nur für die UI.
 #### Tests run
 
 - `npm run typecheck` → 0 Fehler
-- `npx prettier --check` (T34 Dateien) → 0 Fehler
-- `npx eslint` (T34 Dateien) → 0 Fehler
+- `npx prettier --check src/components/AppContent.tsx` → 0 Fehler
+- `npm run lint` → 0 Fehler, 0 Warnungen
+- `npm run test` → 382 passed
+- `npm run build` → 0 Fehler (nur pre-existing Vite chunk-size Warnungen)
 
 #### Shimwrappercheck result
 
-- Command: `CHECK_MODE=snippet SHIM_CHANGED_FILES="src/runtime/...,src/lib/auth/..." npm run checks -- --frontend`
-- Ergebnis: TypeScript, Prettier, ESLint sauber für T34-Dateien.
+- Command: `CHECK_MODE=snippet SHIM_CHANGED_FILES="src/components/AppContent.tsx" npm run checks -- --frontend`
+- Ergebnis: TypeScript, Prettier, ESLint, Vitest, Vite Build sauber für T34-Dateien.
 - **Hinweis:** AI Review hat REJECT, aber ausschließlich wegen pre-existing Issues im Working Tree (`.shimwrappercheckrc`, `functions/`, `src/hooks/useAudioTimeline.ts`, `src/lib/formatters/text.ts`), **nicht** wegen T34-Code. Kein einziges Finding auf `src/runtime/*` oder `src/lib/auth/LocalAuthAdapter.ts` / `createAuthFactory.ts` / `getAuthClient.ts`.
 - **Hinweis 2:** `projectRules` File-Size-Guard und weitere Checks failen auf pre-existing Dateien (z. B. 2895-Zeilen-Components), die nicht im T34-Scope liegen.
 
@@ -2278,14 +2296,14 @@ Editor-Readmodel aggregiert nur für die UI.
 
 Extract-only split of `src/lib/api-gateway.ts` (667 lines, hard violation) into `src/lib/api-gateway/` without routing or HTTP behavior changes. `src/lib/api-gateway.ts` remains a thin barrel (~25 lines) so existing `from "./api-gateway"` imports stay valid.
 
-| File | Lines | Role |
-|------|------:|------|
-| `src/lib/api-gateway.ts` | 25 | Backward-compatible re-exports |
-| `src/lib/api-gateway/route-map.ts` | 285 | `BACKEND_FUNCTIONS`, `ROUTE_MAP`, `getBackendFunctionForRoute`, URL builders |
-| `src/lib/api-gateway/gateway-fetch.ts` | 324 | `apiGateway`, convenience HTTP helpers, `getApiBase` |
-| `src/lib/api-gateway/gateway-errors.ts` | 47 | `ApiGatewayError`, `ApiGatewayErrorLayer` |
-| `src/lib/api-gateway/types.ts` | 13 | `ApiGatewayOptions` |
-| `src/lib/api-gateway/index.ts` | 28 | Module barrel |
+| File                                    | Lines | Role                                                                         |
+| --------------------------------------- | ----: | ---------------------------------------------------------------------------- |
+| `src/lib/api-gateway.ts`                |    25 | Backward-compatible re-exports                                               |
+| `src/lib/api-gateway/route-map.ts`      |   285 | `BACKEND_FUNCTIONS`, `ROUTE_MAP`, `getBackendFunctionForRoute`, URL builders |
+| `src/lib/api-gateway/gateway-fetch.ts`  |   324 | `apiGateway`, convenience HTTP helpers, `getApiBase`                         |
+| `src/lib/api-gateway/gateway-errors.ts` |    47 | `ApiGatewayError`, `ApiGatewayErrorLayer`                                    |
+| `src/lib/api-gateway/types.ts`          |    13 | `ApiGatewayOptions`                                                          |
+| `src/lib/api-gateway/index.ts`          |    28 | Module barrel                                                                |
 
 #### Tests run
 
@@ -2308,20 +2326,20 @@ Extract-only split of `src/lib/api-gateway.ts` (667 lines, hard violation) into 
 
 Extract-only split of `src/lib/types/index.ts` (705 lines, hard violation) into domain modules under `src/lib/types/` without type or behavior changes. `index.ts` remains a thin barrel so existing `from "@/lib/types"` and `from "./types"` imports stay valid.
 
-| File | Lines | Role |
-|------|------:|------|
-| `src/lib/types/index.ts` | ~55 | Backward-compatible re-exports |
-| `src/lib/types/project.ts` | ~145 | Project, Episode, Character, Scene, Act, Sequence |
-| `src/lib/types/audio.ts` | ~195 | AudioTrack, AudioClip, LANE_SCHEMA, WPM_DEFAULTS, recording |
-| `src/lib/types/film.ts` | ~95 | Clip, Shot |
-| `src/lib/types/render.ts` | ~35 | RenderJob + freshness re-export |
-| `src/lib/types/world.ts` | ~55 | Worldbuilding |
-| `src/lib/types/creative-gym.ts` | ~50 | Creative Gym |
-| `src/lib/types/script.ts` | ~40 | Script upload/analysis |
-| `src/lib/types/api-responses.ts` | ~35 | List/Single/Create/Update/Delete/Error responses |
-| `src/lib/types/stats.ts` | ~20 | Stats, Analytics |
-| `src/lib/types/auth.ts` | ~25 | User, AuthSession |
-| `src/lib/types/organization.ts` | ~15 | Organization |
+| File                             | Lines | Role                                                        |
+| -------------------------------- | ----: | ----------------------------------------------------------- |
+| `src/lib/types/index.ts`         |   ~55 | Backward-compatible re-exports                              |
+| `src/lib/types/project.ts`       |  ~145 | Project, Episode, Character, Scene, Act, Sequence           |
+| `src/lib/types/audio.ts`         |  ~195 | AudioTrack, AudioClip, LANE_SCHEMA, WPM_DEFAULTS, recording |
+| `src/lib/types/film.ts`          |   ~95 | Clip, Shot                                                  |
+| `src/lib/types/render.ts`        |   ~35 | RenderJob + freshness re-export                             |
+| `src/lib/types/world.ts`         |   ~55 | Worldbuilding                                               |
+| `src/lib/types/creative-gym.ts`  |   ~50 | Creative Gym                                                |
+| `src/lib/types/script.ts`        |   ~40 | Script upload/analysis                                      |
+| `src/lib/types/api-responses.ts` |   ~35 | List/Single/Create/Update/Delete/Error responses            |
+| `src/lib/types/stats.ts`         |   ~20 | Stats, Analytics                                            |
+| `src/lib/types/auth.ts`          |   ~25 | User, AuthSession                                           |
+| `src/lib/types/organization.ts`  |   ~15 | Organization                                                |
 
 #### Tests run
 
