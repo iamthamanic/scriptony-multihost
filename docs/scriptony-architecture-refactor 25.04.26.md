@@ -2184,6 +2184,89 @@ Editor-Readmodel aggregiert nur für die UI.
 
 ---
 
+## Phase T34 — Runtime Profile und Auth Boundary
+
+### Done Report: T34 — Runtime Profile und Auth Boundary
+
+- **Date:** 2026-05-23
+- **Verification Marker:** ARCH-REF-T34-DONE
+
+#### What was implemented
+
+1. **Zentrale Runtime-Erkennung** (`src/runtime/`)
+   - `runtime-profile.ts` — `RuntimeProfile = "local" | "cloud" | "selfHosted"`
+   - `runtime-config.ts` — `RuntimeConfig` Interface (isDesktop, isBrowser, isMobile, Appwrite-Config optional)
+   - `detect-runtime.ts` — `detectRuntime()` mit sicheren Defaults:
+     - `VITE_SCRIPTONY_RUNTIME=local` → nur aktiv bei Tauri/Electron Shell; sonst Cloud-Fallback mit Warnung
+     - `VITE_SCRIPTONY_RUNTIME=selfHosted` → Self-hosted Endpoint
+     - Default → cloud (unverändert für alle bestehenden User)
+   - `runtime-provider.tsx` — React Context + `useRuntime()` Hook
+2. **Auth Adapter Pattern Erweiterung** (`src/lib/auth/`)
+   - `LocalAuthAdapter.ts` — Implementiert `AuthClient` für Local Mode:
+     - Dummy-User `local-user`, kein Login nötig
+     - `accessToken: null` (kein Dummy-Token, der Appwrite-Calls triggern könnte)
+     - OAuth / Password-Reset sind No-Op mit Warnung
+   - `createAuthFactory.ts` — Factory: wählt `LocalAuthAdapter` oder `AppwriteAuthAdapter` basierend auf `RuntimeConfig`
+   - `getAuthClient.ts` — Update: nutzt Factory, wirft im Cloud/Self-hosted Mode weiterhin bei fehlender Appwrite Config
+3. **App Integration**
+   - `App.tsx` — `<RuntimeProvider>` als äußerster Provider eingefügt
+   - `.env.local.example` — `VITE_SCRIPTONY_RUNTIME` dokumentiert
+
+#### Files touched (T34 scope only)
+
+- **Neu:**
+  - `src/runtime/runtime-profile.ts`
+  - `src/runtime/runtime-config.ts`
+  - `src/runtime/detect-runtime.ts`
+  - `src/runtime/runtime-provider.tsx`
+  - `src/runtime/index.ts`
+  - `src/lib/auth/LocalAuthAdapter.ts`
+  - `src/lib/auth/createAuthFactory.ts`
+- **Geändert:**
+  - `src/lib/auth/getAuthClient.ts` — Runtime-aware Factory statt hartem Appwrite-Adapter
+  - `src/App.tsx` — `<RuntimeProvider>` hinzugefügt
+  - `.env.local.example` — Runtime-Profil-Doku
+
+#### Env vars
+
+- `VITE_SCRIPTONY_RUNTIME` (optional) — `"local"`, `"cloud"`, `"selfHosted"`
+
+#### Breaking Changes
+
+- **Keine.** Cloud-Mode ist Default; bestehende Apps ohne `VITE_SCRIPTONY_RUNTIME` verhalten sich identisch.
+- `getAuthClient()` warf bisher bei fehlender Appwrite-Config Exception; dies geschieht weiterhin für Cloud/Self-hosted Profile. Local Profile benötigt keine Config.
+
+#### Compatibility
+
+- `AuthClient` Interface unverändert — alle bestehenden Call Sites (`useAuth.tsx`, API-Client, Components) funktionieren ohne Änderung.
+- `useAuth()` Context nutzt weiterhin `getAuthClient()` und `getAuthToken()` — keine UI-Komponente musste angepasst werden.
+
+#### Tests run
+
+- `npm run typecheck` → 0 Fehler
+- `npx prettier --check` (T34 Dateien) → 0 Fehler
+- `npx eslint` (T34 Dateien) → 0 Fehler
+
+#### Shimwrappercheck result
+
+- Command: `CHECK_MODE=snippet SHIM_CHANGED_FILES="src/runtime/...,src/lib/auth/..." npm run checks -- --frontend`
+- Ergebnis: TypeScript, Prettier, ESLint sauber für T34-Dateien.
+- **Hinweis:** AI Review hat REJECT, aber ausschließlich wegen pre-existing Issues im Working Tree (`.shimwrappercheckrc`, `functions/`, `src/hooks/useAudioTimeline.ts`, `src/lib/formatters/text.ts`), **nicht** wegen T34-Code. Kein einziges Finding auf `src/runtime/*` oder `src/lib/auth/LocalAuthAdapter.ts` / `createAuthFactory.ts` / `getAuthClient.ts`.
+- **Hinweis 2:** `projectRules` File-Size-Guard und weitere Checks failen auf pre-existing Dateien (z. B. 2895-Zeilen-Components), die nicht im T34-Scope liegen.
+
+#### Known risks / gaps
+
+- `isDesktopShell()` prüft `window.__TAURI__`, `window.__TAURI_IPC__`, `window.__TAURI_INTERNALS__` und Electron `process.versions.electron`. Tauri v2-APIs können sich ändern — bei Tauri-Integration muss geprüft werden, ob neue Globals hinzukommen.
+- Local Mode liefert `accessToken: null` → API-Calls (z. B. Appwrite Functions) laufen ohne Token und erhalten 401. Das ist korrekt für Phase 1 (nur Auth Boundary); ein lokaler Backend-Server (späteres Ticket) wird dann einen eigenen Auth-Check besitzen.
+- `onAuthStateChange` in `LocalAuthAdapter` emit-tet synchron einmalig — Consumer (z. B. `useAuth`) erhalten den Local User sofort, ohne Poll-Loop.
+
+#### Notes
+
+- **Security:** `VITE_SCRIPTONY_RUNTIME=local` im Browser ohne Desktop Shell fällt auf Cloud zurück (mit `console.warn`). Kein Accidential Auth-Bypass.
+- **SOLID:** `SRP` — Runtime nur in `src/runtime/`, Auth nur in `src/lib/auth/`. `OCP` — neues Profile = neuer Adapter ohne UI-Änderung. `LSP` — `LocalAuthAdapter` erfüllt `AuthClient` vollständig. `DIP` — `useAuth` hängt an `AuthClient`, nicht an Appwrite.
+- **DRY:** Keine duplizierte Runtime-Erkennung in Komponenten.
+- **KISS:** Local Mode hat keinen echten Login — `local-user` reicht für MVP.
+
 ## Phase T51 — API Gateway File Split (Welle A)
 
 ### Done Report: T51 — `api-gateway.ts` Split
@@ -2213,3 +2296,38 @@ Extract-only split of `src/lib/api-gateway.ts` (667 lines, hard violation) into 
 #### Shimwrappercheck result
 
 - `SHIM_CHANGED_FILES="src/lib/api-gateway.ts,src/lib/api-gateway/..." CHECK_MODE=snippet npm run checks -- --frontend`: typecheck/eslint pass; full gate fails on pre-existing working-tree issues (prettier on unrelated files, full-repo project-rules, AI review on unrelated diffs) — not on api-gateway split code.
+
+## Phase T52 — lib/types Index File Split (Welle A)
+
+### Done Report: T52 — `lib/types/index.ts` Split
+
+- **Date:** 2026-05-24
+- **Verification Marker:** ARCH-REF-T52-DONE
+
+#### What was implemented
+
+Extract-only split of `src/lib/types/index.ts` (705 lines, hard violation) into domain modules under `src/lib/types/` without type or behavior changes. `index.ts` remains a thin barrel so existing `from "@/lib/types"` and `from "./types"` imports stay valid.
+
+| File | Lines | Role |
+|------|------:|------|
+| `src/lib/types/index.ts` | ~55 | Backward-compatible re-exports |
+| `src/lib/types/project.ts` | ~145 | Project, Episode, Character, Scene, Act, Sequence |
+| `src/lib/types/audio.ts` | ~195 | AudioTrack, AudioClip, LANE_SCHEMA, WPM_DEFAULTS, recording |
+| `src/lib/types/film.ts` | ~95 | Clip, Shot |
+| `src/lib/types/render.ts` | ~35 | RenderJob + freshness re-export |
+| `src/lib/types/world.ts` | ~55 | Worldbuilding |
+| `src/lib/types/creative-gym.ts` | ~50 | Creative Gym |
+| `src/lib/types/script.ts` | ~40 | Script upload/analysis |
+| `src/lib/types/api-responses.ts` | ~35 | List/Single/Create/Update/Delete/Error responses |
+| `src/lib/types/stats.ts` | ~20 | Stats, Analytics |
+| `src/lib/types/auth.ts` | ~25 | User, AuthSession |
+| `src/lib/types/organization.ts` | ~15 | Organization |
+
+#### Tests run
+
+- `npm run typecheck` → 0 Fehler
+- `SHIM_CHANGED_FILES` scoped snippet checks (frontend) on touched types files
+
+#### Shimwrappercheck result
+
+- Scoped frontend snippet gate on T52 files; no hard violations remain under `src/lib/types/`.
