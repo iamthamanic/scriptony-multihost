@@ -3,12 +3,13 @@
  */
 
 import type { RequestLike, ResponseLike } from "../../_shared/http";
-import { getParam, sendMethodNotAllowed } from "../../_shared/http";
+import { getParam, getQuery, sendBadRequest, sendMethodNotAllowed } from "../../_shared/http";
 import {
   createClip,
   deleteClip,
   getClip,
   listClips,
+  listClipsByProject,
   updateClip,
 } from "./clips-crud";
 import { rippleClipUpdates } from "./clips-ripple";
@@ -26,7 +27,18 @@ export default async function clipsRoutes(
     return;
   }
 
-  if (method === "GET" && !id) return listClips(req, res);
+  if (method === "GET" && !id) {
+    const sceneId = getQuery(req, "sceneId") || getParam(req, "sceneId");
+    const projectId = getQuery(req, "projectId") || getQuery(req, "project_id") || getParam(req, "projectId") || getParam(req, "project_id");
+    if (sceneId) {
+      return listClips(req, res);
+    }
+    if (projectId) {
+      return listClipsByProject(req, res);
+    }
+    sendBadRequest(res, "sceneId or projectId is required");
+    return;
+  }
   if (method === "GET" && id) return getClip(req, res);
   if (method === "POST") return createClip(req, res);
   if (method === "PUT" && id) return updateClip(req, res);

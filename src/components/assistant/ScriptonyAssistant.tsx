@@ -519,7 +519,7 @@ export function ScriptonyAssistant() {
             });
           });
         } catch (error) {
-          console.error(`Error loading items for world ${world.id}:`, error);
+          console.error("Error loading items for world:", { worldId: world.id, error });
         }
       }
       setRagWorldAssets(allAssets);

@@ -1,6 +1,6 @@
 /**
- * React Query: Audio timeline bundle — acts/sequences/scenes + audio tracks + voice assignments.
- * Reuses useProjectTimeline for the structural nodes, then fetches audio data in parallel.
+ * React Query: Audio timeline bundle — acts/sequences/scenes + audio tracks + voice assignments + clips.
+ * Reuses useProjectTimeline for the structural nodes, then fetches audio data in parallel via project-wide batch calls.
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -8,6 +8,7 @@ import { useAuth } from "./useAuth";
 import { queryKeys } from "../lib/react-query";
 import { useProjectTimeline } from "./useProjectTimeline";
 import * as AudioAPI from "../lib/api/audio-story-api";
+import * as ClipAPI from "../lib/api/audio-clip-api";
 import { isFeatureEnabled } from "../lib/feature-flags";
 import type { AudioTimelineData } from "../lib/types/audio-timeline";
 import type { AudioTrack, CharacterVoiceAssignment } from "../lib/types";
@@ -31,23 +32,45 @@ export function useAudioTimeline(
 			}
 
 			const sceneIds = structuralData.scenes.map((s) => s.id);
+			const idSet = new Set(sceneIds);
 
-			// Fetch audio tracks for all scenes in parallel.
-			const tracksArrays = await Promise.all(
-				sceneIds.map((sceneId) =>
-					AudioAPI.getSceneAudioTracks(sceneId).catch(() => [] as AudioTrack[]),
-				),
-			);
+			// Fetch all tracks + clips for the project in parallel (batch, not N+1).
+			const [allTracks, allClips, voiceAssignments] = await Promise.all([
+				AudioAPI.getProjectAudioTracks(projectId!).catch(() => [] as AudioTrack[]),
+				ClipAPI.getProjectAudioClips(projectId!, token ?? "").catch(() => [] as import("../lib/types").AudioClip[]),
+				AudioAPI.getVoiceAssignments(projectId!).catch(() => [] as CharacterVoiceAssignment[]),
+			]);
 
 			const tracksByScene: Record<string, AudioTrack[]> = {};
-			sceneIds.forEach((id, i) => {
-				tracksByScene[id] = tracksArrays[i];
-			});
+			for (const t of allTracks) {
+				const raw = t as unknown as Record<string, unknown>;
+				const sid = raw.scene_id as string | undefined;
+				if (sid && idSet.has(sid)) {
+					if (!tracksByScene[sid]) tracksByScene[sid] = [];
+					tracksByScene[sid].push(t);
+				}
+			}
+			// Preserve order per scene (backend already orders by start_time).
+			for (const sid of Object.keys(tracksByScene)) {
+				tracksByScene[sid].sort(
+					(a, b) =>
+						((a as unknown as Record<string, number>).start_time ?? 0) -
+						((b as unknown as Record<string, number>).start_time ?? 0),
+				);
+			}
 
-			// Fetch voice assignments for the project.
-			const voiceAssignments = await AudioAPI.getVoiceAssignments(
-				projectId!,
-			).catch(() => [] as CharacterVoiceAssignment[]);
+			const clipsByScene: Record<string, import("../lib/types").AudioClip[]> = {};
+			for (const c of allClips) {
+				const sid = c.sceneId;
+				if (sid && idSet.has(sid)) {
+					if (!clipsByScene[sid]) clipsByScene[sid] = [];
+					clipsByScene[sid].push(c);
+				}
+			}
+			// Preserve order per scene.
+			for (const sid of Object.keys(clipsByScene)) {
+				clipsByScene[sid].sort((a, b) => (a.laneIndex ?? 0) - (b.laneIndex ?? 0) || (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+			}
 
 			const voiceMap: Record<string, CharacterVoiceAssignment> = {};
 			voiceAssignments.forEach((va) => {
@@ -59,6 +82,7 @@ export function useAudioTimeline(
 				sequences: structuralData.sequences ?? [],
 				scenes: structuralData.scenes ?? [],
 				tracksByScene,
+				clipsByScene,
 				voiceAssignments: voiceMap,
 			};
 		},

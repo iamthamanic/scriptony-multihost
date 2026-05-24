@@ -51,12 +51,7 @@ export function CharacterPicker({
   if (filtered.length > 0) {
     console.log("[CharacterPicker] 🔍 Character Details:");
     filtered.forEach((c) => {
-      console.log(`  - ${c.name}:`, {
-        id: c.id,
-        imageUrl: c.imageUrl,
-        hasImage: !!c.imageUrl,
-        role: c.role,
-      });
+      console.log("Character found:", { name: c.name, id: c.id, imageUrl: c.imageUrl, hasImage: !!c.imageUrl, role: c.role });
     });
   }
 

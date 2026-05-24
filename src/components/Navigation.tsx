@@ -144,11 +144,11 @@ export function Navigation({
 
         if (recalcResponse.ok) {
           const result = await recalcResponse.json();
-          console.log(`✅ Result for ${project.title}:`, result);
+          console.log("Result for project:", { title: project.title, result });
           totalUpdated += result.updated || 0;
         } else {
           const errorText = await recalcResponse.text();
-          console.log(`❌ Recalc error for ${project.title}:`, errorText);
+          console.log("Recalc error for project:", { title: project.title, errorText });
         }
       }
 

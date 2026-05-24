@@ -31,7 +31,6 @@ import {
   Pencil,
 } from "lucide-react";
 import { useAudioTimeline } from "../../hooks/useAudioTimeline";
-import { useAudioClips } from "../../hooks/useAudioClips";
 import { useHierarchyCRUD } from "../../hooks/useHierarchyCRUD";
 import { type HierarchyLabels } from "../../hooks/useHierarchyCRUD";
 import { createAudioTrack } from "../../lib/api/audio-story-api";
@@ -295,9 +294,9 @@ export function AudioDropdown({ projectId, projectType }: AudioDropdownProps) {
 
   // ── Main Render ─────────────────────────────────────────────────
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden gap-4 p-4">
       {/* Add Act Button */}
-      <div className="flex justify-end px-2 pt-2">
+      <div className="flex justify-end shrink-0">
         <button
           type="button"
           onClick={() => void crud.handleAddAct()}
@@ -320,7 +319,7 @@ export function AudioDropdown({ projectId, projectType }: AudioDropdownProps) {
         const isPendingAct = crud.pendingIds.has(act.id);
 
         return (
-          <div key={act.id} className="mb-3">
+          <div key={act.id}>
             <div
               className={cn(
                 "border-2 rounded-lg bg-blue-50 border-blue-200 dark:bg-blue-950/40 dark:border-blue-700 overflow-hidden",
@@ -328,7 +327,7 @@ export function AudioDropdown({ projectId, projectType }: AudioDropdownProps) {
               )}
             >
               {/* Act Header */}
-              <div className="flex items-center gap-2 py-3 px-3">
+              <div className="flex items-center gap-2 py-4 px-3">
                 <GripVertical className="size-4 text-muted-foreground cursor-move flex-shrink-0" />
                 <button
                   className="flex-shrink-0"
@@ -422,6 +421,7 @@ export function AudioDropdown({ projectId, projectType }: AudioDropdownProps) {
                       expandedScenes={expandedScenes}
                       onToggleScene={(id) => toggleSet(setExpandedScenes, id)}
                       tracksByScene={data.tracksByScene}
+                      clipsByScene={data.clipsByScene}
                       voiceAssignments={data.voiceAssignments}
                       playingTrackId={playingTrackId}
                       onPlayTrack={setPlayingTrackId}
@@ -503,6 +503,7 @@ interface SequenceCardProps {
   uploadingSceneId: string | null;
   onUploadSceneImage: (sceneId: string, file: File) => void;
   onAddTrack: (sceneId: string, type: string) => void;
+  clipsByScene?: Record<string, AudioClip[]>;
   // CRUD
   labelSequence: string;
   labelScene: string;
@@ -542,6 +543,7 @@ function SequenceCard({
   uploadingSceneId,
   onUploadSceneImage,
   onAddTrack,
+  clipsByScene,
   labelSequence,
   labelScene,
   labelScenePlural,
@@ -671,6 +673,7 @@ function SequenceCard({
               onUploadImage={(file) => onUploadSceneImage(scene.id, file)}
               onAddTrack={(type) => onAddTrack(scene.id, type)}
               labelScene={labelScene}
+              clips={clipsByScene?.[scene.id] ?? []}
               editingId={editingId}
               editValue={editValue}
               editInputRef={editInputRef}
@@ -733,6 +736,8 @@ interface SceneCardProps {
   onDeleteScene: (id: string) => void;
   onDuplicateScene: (id: string) => void;
   pendingIds: Set<string>;
+  // T32: Clips from project-wide batch (no per-scene N+1)
+  clips: AudioClip[];
 }
 
 function SceneCard({
@@ -759,6 +764,7 @@ function SceneCard({
   onDeleteScene,
   onDuplicateScene,
   pendingIds,
+  clips,
 }: SceneCardProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [newTrackType, setNewTrackType] = useState<
@@ -779,8 +785,6 @@ function SceneCard({
     for (const t of tracks) g[t.type]?.push(t);
     return g;
   }, [tracks]);
-  const clipsQuery = useAudioClips(scene.id);
-  const clips = clipsQuery.data;
 
   return (
     <div

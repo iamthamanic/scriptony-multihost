@@ -48,7 +48,10 @@ export class AppwriteProjectRepository implements ProjectRepository {
 			// Appwrite throws { code: 404, type: "document_not_found" } for missing docs.
 			// Only swallow genuine not-found errors; propagate everything else (network, auth, permission).
 			const appwriteErr = error as { code?: number; type?: string };
-			if (appwriteErr.code === 404 || appwriteErr.type === "document_not_found") {
+			if (
+				appwriteErr.code === 404 ||
+				appwriteErr.type === "document_not_found"
+			) {
 				return null;
 			}
 			throw error;
@@ -87,8 +90,10 @@ export class AppwriteProjectRepository implements ProjectRepository {
 
 		const patch: Record<string, unknown> = {};
 		if (payload.name !== undefined) patch.name = payload.name;
-		if (payload.description !== undefined) patch.description = payload.description;
-		if (payload.projectType !== undefined) patch.projectType = payload.projectType;
+		if (payload.description !== undefined)
+			patch.description = payload.description;
+		if (payload.projectType !== undefined)
+			patch.projectType = payload.projectType;
 
 		const doc = await databases.updateDocument(DB_ID, COLLECTION_ID, id, patch);
 		return normalizeProject(doc);

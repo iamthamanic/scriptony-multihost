@@ -85,6 +85,63 @@ async function listTracks(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 }
 
+async function listTracksByProject(req: RequestLike, res: ResponseLike): Promise<void> {
+  const bootstrap = await requireUserBootstrap(req);
+  if (!bootstrap) {
+    sendUnauthorized(res);
+    return;
+  }
+
+  const projectId = getQuery(req, "projectId") || getQuery(req, "project_id") || getParam(req, "projectId") || getParam(req, "project_id");
+  if (!projectId) {
+    sendBadRequest(res, "projectId is required");
+    return;
+  }
+  if (!(await canReadProject(bootstrap.user.id, projectId))) {
+    sendUnauthorized(res);
+    return;
+  }
+
+  try {
+    const data = await requestGraphql<{
+      scene_audio_tracks: Array<Record<string, unknown>>;
+    }>(
+      `
+      query GetAudioTracksByProject($projectId: uuid!) {
+        scene_audio_tracks(
+          where: { project_id: { _eq: $projectId } }
+          order_by: { start_time: asc }
+        ) {
+          id
+          scene_id
+          project_id
+          type
+          content
+          character_id
+          audio_file_id
+          waveform_data
+          start_time
+          duration
+          fade_in
+          fade_out
+          tts_voice_id
+          tts_settings
+          tts_audio_generated
+          created_at
+          updated_at
+        }
+      }
+    `,
+      { projectId },
+    );
+
+    sendJson(res, 200, { tracks: data.scene_audio_tracks });
+  } catch (error) {
+    console.error("[Audio Story] Error fetching tracks by project:", error);
+    sendServerError(res, error);
+  }
+}
+
 async function createTrack(req: RequestLike, res: ResponseLike): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
@@ -507,9 +564,17 @@ export default async function handler(
 ): Promise<void> {
   const pathname = (req.path || req.url || "/") as string;
 
-  // GET /tracks?sceneId=xxx
+  // GET /tracks?sceneId=xxx OR /tracks?projectId=xxx (also accepts project_id)
   if (req.method === "GET" && !pathname.match(/tracks\/[\w-]+/)) {
-    await listTracks(req, res);
+    const sceneId = getQuery(req, "sceneId") || getParam(req, "sceneId");
+    const projectId = getQuery(req, "projectId") || getQuery(req, "project_id") || getParam(req, "projectId") || getParam(req, "project_id");
+    if (sceneId) {
+      await listTracks(req, res);
+    } else if (projectId) {
+      await listTracksByProject(req, res);
+    } else {
+      sendBadRequest(res, "sceneId or projectId is required");
+    }
     return;
   }
 

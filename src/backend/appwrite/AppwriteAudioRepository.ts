@@ -5,7 +5,10 @@
  * T35: Kein duplizierter HTTP-Code.
  */
 
-import type { AudioRepository, AudioClipUpdatePayload } from "../ScriptonyBackend";
+import type {
+	AudioRepository,
+	AudioClipUpdatePayload,
+} from "../ScriptonyBackend";
 import type {
 	AudioClip,
 	AudioTrack,
@@ -61,7 +64,9 @@ export class AppwriteAudioRepository implements AudioRepository {
 		return StoryAPI.getProjectAudioTracks(projectId);
 	}
 
-	async getVoiceAssignments(projectId: string): Promise<CharacterVoiceAssignment[]> {
+	async getVoiceAssignments(
+		projectId: string,
+	): Promise<CharacterVoiceAssignment[]> {
 		return StoryAPI.getProjectVoiceAssignments(projectId);
 	}
 

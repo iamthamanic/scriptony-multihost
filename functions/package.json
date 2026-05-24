@@ -1,5 +1,5 @@
 {
-  "name": "scriptony-appwrite-functions",
+  "name": "scriptony-multihost-functions",
   "private": true,
   "type": "module",
   "scripts": {

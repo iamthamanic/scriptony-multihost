@@ -1,5 +1,5 @@
 {
-  "name": "scriptony-appwrite",
+  "name": "scriptony-multihost",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -35,6 +35,8 @@
     "@radix-ui/react-tooltip": "^1.1.8",
     "@tanstack/react-query": "*",
     "@tanstack/react-virtual": "*",
+    "@tauri-apps/api": "^2.11.0",
+    "@tauri-apps/plugin-deep-link": "^2.4.9",
     "@tiptap/core": "*",
     "@tiptap/extension-mention": "*",
     "@tiptap/extension-underline": "*",
@@ -76,6 +78,7 @@
   "devDependencies": {
     "@capacitor/cli": "^8.2.0",
     "@eslint/js": "^10.0.1",
+    "@tauri-apps/cli": "^2.11.2",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -100,8 +103,12 @@
   },
   "scripts": {
     "dev": "bash scripts/dev-with-bridge.sh",
+    "dev:web": "npm run dev:vite",
+    "dev:desktop": "tauri dev",
     "dev:vite": "node scripts/assert-port-3000-for-scriptony.mjs && vite",
     "build": "vite build",
+    "build:web": "npm run build",
+    "build:desktop": "tauri build",
     "test": "vitest run",
     "test:run": "vitest run",
     "test:watch": "vitest",
@@ -175,7 +182,7 @@
     "appwrite:provision:buckets": "node functions/tools/provision-appwrite-buckets.mjs",
     "appwrite:delete:collection": "node functions/tools/delete-appwrite-collection.mjs",
     "appwrite:sync:function-domains": "node scripts/sync-vite-function-domain-map.mjs",
-    "appwrite:sync:function-appwrite-endpoint": "node functions/scripts/sync-scriptony-appwrite-api-endpoint.mjs",
+    "appwrite:sync:function-appwrite-endpoint": "node functions/scripts/sync-scriptony-multihost-api-endpoint.mjs",
     "format:check": "npm run format:check:frontend && npm run format:check:functions && npm run format:check:scripts",
     "format:check:frontend": "npx prettier --check \"src/**/*.{ts,tsx,css,json}\"",
     "format:check:functions": "npx prettier --check \"functions/**/*.{ts,json,mjs,cjs}\"",

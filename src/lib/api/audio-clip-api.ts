@@ -50,7 +50,21 @@ function mapKeysToSnake(obj: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
-// ── List ──────────────────────────────────────────────────────────
+// ── List by Project (batch) ─────────────────────────────────────
+
+export async function getProjectAudioClips(
+  projectId: string,
+  _accessToken: string,
+): Promise<AudioClip[]> {
+  const result = await apiRequest<{ clips: AudioClip[] }>(
+    `/audio-clips?project_id=${encodeURIComponent(projectId)}`,
+    { method: "GET", requireAuth: true },
+  );
+  const data = unwrapApiResult(result);
+  return data?.clips || [];
+}
+
+// ── List by Scene ─────────────────────────────────────────────────
 
 export async function getClipsByScene(
   sceneId: string,

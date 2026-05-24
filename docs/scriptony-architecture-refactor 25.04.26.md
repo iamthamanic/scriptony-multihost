@@ -2447,3 +2447,61 @@ Extract-only split of `src/lib/types/index.ts` (705 lines, hard violation) into 
 - **SOLID**: `SRP` — eine Datei pro Repository/Service. `OCP` — LocalBackend erweitern ohne UI zu aendern. `LSP` — Appwrite- und Local-Repositories erfuellen dieselben Interfaces. `DIP` — UI/Domain haengt an `ScriptonyBackend`, nicht an Appwrite SDK.
 - **DRY**: Bestehende `src/lib/api/*` Module werden wiederverwendet, nicht dupliziert.
 - **KISS**: Kein generischer DataProvider; explizite Domain-Interfaces statt runtime Metadaten.
+
+---
+
+## Phase T36 — Tauri Shell (Cloud Desktop Client)
+
+### Done Report: T36 — Tauri Shell fuer Desktop
+
+- **Verification Marker:** ARCH-REF-T36-DONE
+- **Date:** 2026-05-24
+
+#### Delivered
+
+- `src-tauri/` — Tauri 2 shell (`tauri.conf.json`, `Cargo.toml`, `capabilities/default.json`, minimal `lib.rs` + deep-link plugin registration)
+- npm scripts: `dev:web`, `dev:desktop`, `build:web`, `build:desktop`
+- Dependencies: `@tauri-apps/cli`, `@tauri-apps/api`, `@tauri-apps/plugin-deep-link`
+- `detect-runtime.ts` — `isDesktopShell()` exported; `isDesktop: true` in Tauri while profile stays **cloud** by default
+- `docs/GETTING_STARTED.md` — Option C (desktop dev/build, port 3000 gotcha)
+
+#### Tests run
+
+- `cargo check` in `src-tauri/` — OK
+- `npm run typecheck` — OK
+- Vitest: `auth-redirect.test.ts`, `map-callback-url.test.ts` — OK
+
+#### Known risks / gaps
+
+- `npm run dev` + `scriptony-frontend` container still conflicts on port 3000 — documented; use `dev:desktop` or `docker stop scriptony-frontend`
+- Windows/Linux deep-link may spawn second instance (Tauri plugin note); macOS primary dev path tested via `cargo check` only
+- Local mode on desktop requires explicit `VITE_SCRIPTONY_RUNTIME=local` (T38)
+
+---
+
+## Phase T36b — Tauri OAuth und Deep-Link Callbacks
+
+### Done Report: T36b — OAuth Deep-Link
+
+- **Verification Marker:** ARCH-REF-T36B-DONE
+- **Date:** 2026-05-24
+
+#### Delivered
+
+- `src/lib/auth/auth-redirect.ts` — single redirect resolver for browser / Capacitor / Tauri
+- `src/lib/shell/map-callback-url.ts` — DRY URL mapping from `scriptony://auth-callback`
+- `src/lib/desktop/tauri-deep-link.ts` — `onOpenUrl` + `getCurrent` handler
+- `src/lib/shell/install-shell-auth-listeners.ts` — unified Capacitor + Tauri setup in `main.tsx`
+- `useAuth.tsx` — uses `getOAuthRedirectTarget(runtime)` / `getPasswordResetRedirectTarget(runtime)`
+- `tauri.conf.json` — `plugins.deep-link.desktop.schemes: ["scriptony"]`
+- Appwrite redirect URL list in `docs/GETTING_STARTED.md` and `.env.local.example`
+
+#### Tests run
+
+- Vitest auth-redirect + map-callback-url — OK
+- `npm run typecheck` — OK
+
+#### Known risks / gaps
+
+- OAuth in embedded WebView may be blocked by some providers; deep-link + custom scheme is the supported path; system-browser fallback optional later
+- Appwrite Console must register `scriptony://auth-callback` URLs manually per environment

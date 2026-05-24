@@ -1,4 +1,4 @@
-# Scriptony Architecture Refactor Tickets
+# Scriptony Architecture Refactor Tickets (ticket 32)
 
 Stand: 2026-05-13
 

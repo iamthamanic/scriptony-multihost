@@ -246,7 +246,7 @@ export function TimelineNodeStatsDialog({
         }
       }
     } catch (error: any) {
-      console.error(`Error loading ${nodeType} stats:`, error);
+      console.error("Error loading stats:", { nodeType, error });
       setError(`Fehler beim Laden der Statistiken: ${error.message}`);
     } finally {
       setLoading(false);

@@ -57,6 +57,65 @@ running:
 npm run dev:vite
 ```
 
+### Option C — Tauri desktop (Cloud client, Phase 1)
+
+Native desktop shell around the same React/Vite UI. Uses **cloud** runtime by
+default (not local mode until T38).
+
+**Prerequisites:** Rust toolchain (`cargo`, `rustc`). Install via
+[rustup](https://rustup.rs/) if missing.
+
+```bash
+npm run dev:desktop
+```
+
+This runs `tauri dev`, which starts Vite on port **3000** and opens the
+desktop window.
+
+`tauri.conf.json` uses `beforeDevCommand: npm run dev:vite` (not `dev:web`) so
+`dev:desktop` does not loop through `dev:web` → `tauri dev` again.
+
+**Build installer:**
+
+```bash
+npm run build:desktop
+```
+
+**Port 3000 conflict:** If `npm run dev` (Docker) already started
+`scriptony-frontend` on port 3000, stop it before desktop dev:
+
+```bash
+docker stop scriptony-frontend
+```
+
+Or use `npm run dev:desktop` without running full `npm run dev` first.
+
+**OAuth / deep links (T36b):** Desktop OAuth uses custom scheme
+`scriptony://auth-callback`. Register these URLs in the **Appwrite Console**
+(Auth → redirect URLs):
+
+- `http://localhost:3000`
+- `http://localhost:3000/reset-password`
+- `scriptony://auth-callback`
+- `scriptony://auth-callback/reset-password`
+- Your production web URL (`VITE_AUTH_REDIRECT_URL`)
+
+Optional env (defaults match Capacitor):
+
+```bash
+VITE_CAPACITOR_URL_SCHEME=scriptony
+VITE_CAPACITOR_CALLBACK_HOST=auth-callback
+```
+
+**Runtime override for desktop cloud testing:**
+
+```bash
+VITE_SCRIPTONY_RUNTIME=cloud
+```
+
+Local mode on desktop requires `VITE_SCRIPTONY_RUNTIME=local` explicitly
+(after T38).
+
 ---
 
 ## 3. Deploy Database Collections

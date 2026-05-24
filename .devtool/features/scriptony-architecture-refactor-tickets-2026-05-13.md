@@ -1,12 +1,12 @@
 ---
 id: "scriptony-architecture-refactor-tickets-2026-05-13"
-status: "backlog"
+status: "todo"
 priority: "high"
 assignee: null
 epic: null
 dueDate: null
 created: "2026-05-13T11:24:03.039Z"
-modified: "2026-05-13T11:24:03.039Z"
+modified: "2026-05-22T07:36:48.102Z"
 completedAt: null
 labels: []
 order: "a0"

@@ -1,4 +1,4 @@
-# Agent instructions (scriptony-appwrite)
+# Agent instructions (scriptony-multihost)
 
 This file is used by AI agents (Cursor, Codex, Claude, Gemini, etc.) when working with this repo.
 It can be edited via the shimwrappercheck dashboard (Config → AGENTS.md) so agents and humans share one source of truth.

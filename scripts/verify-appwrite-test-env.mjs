@@ -273,10 +273,10 @@ for (const { url, label } of checks) {
     const tag = isAppwriteReachable
       ? "OK (erreichbar, Auth erforderlich)"
       : `OK (${r.status})`;
-    console.log(`  ${tag}`, brief);
+    console.log("  Response OK:", { tag, brief });
   } else {
     failed = true;
-    console.log(`  FEHLER (${r.status})`, r.text.slice(0, 200));
+    console.log("  Response error:", { status: r.status, text: r.text.slice(0, 200) });
     if (
       label.includes("scriptony-assistant") ||
       label.includes("scriptony-mcp-appwrite") ||

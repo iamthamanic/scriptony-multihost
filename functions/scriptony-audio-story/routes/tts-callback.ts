@@ -196,7 +196,7 @@ export async function ttsCallback(
 			sendBadRequest(res, "Track/Clip/User mismatch with job payload");
 			return;
 		}
-		console.warn(`[tts/callback] TTS failed for job ${jobId}:`, errorMsg);
+		console.warn("[tts/callback] TTS failed:", { jobId, error: errorMsg });
 		await markJobFailed(jobId, errorMsg);
 		sendJson(res, 200, {
 			success: false,

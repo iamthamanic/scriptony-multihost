@@ -14,8 +14,10 @@
 import { Account, AppwriteException, ID, OAuthProvider } from "appwrite";
 import type { Models } from "appwrite";
 import { getAppwriteClient } from "../appwrite/client";
-import { getAuthRedirectUrl, getPasswordResetRedirectUrl } from "../env";
+import { getPasswordResetRedirectUrl } from "../env";
+import { detectRuntime } from "../../runtime/detect-runtime";
 import type { AuthClient, AuthSession, AuthUserProfile } from "./AuthClient";
+import { getOAuthRedirectTarget } from "./auth-redirect";
 
 function normalizeRoleFromLabels(labels: string[]): AuthUserProfile["role"] {
   if (labels.includes("superadmin")) return "superadmin";
@@ -257,9 +259,9 @@ export class AppwriteAuthAdapter implements AuthClient {
   ): Promise<void> {
     const oauthProvider = resolveOAuthProvider(provider);
     const success =
-      (typeof options?.redirectTo === "string"
+      typeof options?.redirectTo === "string"
         ? options.redirectTo
-        : undefined) || getAuthRedirectUrl();
+        : getOAuthRedirectTarget(detectRuntime());
     const failure = success;
 
     this.account.createOAuth2Session({

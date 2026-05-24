@@ -17,6 +17,10 @@ interface ImportMetaEnv {
   readonly VITE_CAPACITOR_APP_ID?: string;
   readonly VITE_CAPACITOR_URL_SCHEME?: string;
   readonly VITE_CAPACITOR_CALLBACK_HOST?: string;
+  /** Runtime profile override: local | cloud | selfHosted */
+  readonly VITE_SCRIPTONY_RUNTIME?: "local" | "cloud" | "selfHosted";
+  /** Dev-only: allow local mode in browser when "1" (auth bypass — never production) */
+  readonly VITE_SCRIPTONY_ALLOW_BROWSER_LOCAL?: string;
 }
 
 interface ImportMeta {

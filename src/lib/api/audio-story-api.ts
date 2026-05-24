@@ -28,6 +28,26 @@ export async function getSceneAudioTracks(
   return data?.tracks || [];
 }
 
+export async function getProjectAudioTracks(
+  projectId: string,
+): Promise<AudioTrack[]> {
+  const result = await apiGet(
+    `/tracks?project_id=${encodeURIComponent(projectId)}`,
+  );
+  const data = unwrapApiResult(result);
+  return data?.tracks || [];
+}
+
+export async function getProjectVoiceAssignments(
+  projectId: string,
+): Promise<CharacterVoiceAssignment[]> {
+  const result = await apiGet(
+    `/voices?projectId=${encodeURIComponent(projectId)}`,
+  );
+  const data = unwrapApiResult(result);
+  return data?.assignments || [];
+}
+
 export async function createAudioTrack(
   sceneId: string,
   projectId: string,
