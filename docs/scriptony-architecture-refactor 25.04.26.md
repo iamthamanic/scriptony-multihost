@@ -2181,3 +2181,35 @@ Editor-Readmodel aggregiert nur für die UI.
   - Rollback bei persistRipple ist best-effort zweiter Schritt (Appwrite ohne echte Multi-Doc-Transaktion); bei Rollback-Fehler bleibt Log in `console.error`.
 - **Notes:**
   - GraphQL-Compat: `UpdateTimelineNode` erwartet `changes`; Ripple-Persist umgeht fehlerhafte `_set`-Mutation durch direkte `updateDocument`-Pfad im Persist-Layer.
+
+---
+
+## Phase T51 — API Gateway File Split (Welle A)
+
+### Done Report: T51 — `api-gateway.ts` Split
+
+- **Date:** 2026-05-24
+- **Verification Marker:** ARCH-REF-T51-DONE
+
+#### What was implemented
+
+Extract-only split of `src/lib/api-gateway.ts` (667 lines, hard violation) into `src/lib/api-gateway/` without routing or HTTP behavior changes. `src/lib/api-gateway.ts` remains a thin barrel (~25 lines) so existing `from "./api-gateway"` imports stay valid.
+
+| File | Lines | Role |
+|------|------:|------|
+| `src/lib/api-gateway.ts` | 25 | Backward-compatible re-exports |
+| `src/lib/api-gateway/route-map.ts` | 285 | `BACKEND_FUNCTIONS`, `ROUTE_MAP`, `getBackendFunctionForRoute`, URL builders |
+| `src/lib/api-gateway/gateway-fetch.ts` | 324 | `apiGateway`, convenience HTTP helpers, `getApiBase` |
+| `src/lib/api-gateway/gateway-errors.ts` | 47 | `ApiGatewayError`, `ApiGatewayErrorLayer` |
+| `src/lib/api-gateway/types.ts` | 13 | `ApiGatewayOptions` |
+| `src/lib/api-gateway/index.ts` | 28 | Module barrel |
+
+#### Tests run
+
+- `npm run typecheck` → 0 Fehler
+- `npx eslint` (api-gateway scope) → 0 Fehler
+- `CHECK_MODE=full` project-rules: `src/lib/api-gateway.ts` no longer hard-fails; `gateway-fetch.ts` soft-warn 324 lines (≤500)
+
+#### Shimwrappercheck result
+
+- `SHIM_CHANGED_FILES="src/lib/api-gateway.ts,src/lib/api-gateway/..." CHECK_MODE=snippet npm run checks -- --frontend`: typecheck/eslint pass; full gate fails on pre-existing working-tree issues (prettier on unrelated files, full-repo project-rules, AI review on unrelated diffs) — not on api-gateway split code.
