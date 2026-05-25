@@ -20,6 +20,10 @@ export type {
 	TimelineRepository,
 	AudioRepository,
 	AudioClipUpdatePayload,
+	Asset,
+	AssetType,
+	AssetStorageRef,
+	ImportAssetInput,
 	AssetRepository,
 	ImageUploadGifMode,
 	JobService,
@@ -33,3 +37,6 @@ export type {
 
 export { createBackend } from "./create-backend";
 export { BackendProvider, useScriptonyBackend } from "./backend-provider";
+export { getBackendInstance, setBackendInstance } from "./backend-instance";
+export { LocalProjectContext } from "./local/LocalProjectContext";
+export { CloudActivationService } from "./sync/CloudActivationService";

@@ -11,6 +11,8 @@ import {
   uploadWorldImage,
   type ClientImageUploadPrepOptions,
 } from "./api/image-upload-api";
+import { detectRuntime } from "@/runtime/detect-runtime";
+import { getBackendInstance } from "@/backend/backend-instance";
 
 type UploadTarget =
   | { kind: "project-cover"; projectId: string }
@@ -54,7 +56,23 @@ export function startBackgroundUpload(options: BackgroundUploadOptions): void {
     try {
       let imageUrl: string;
 
-      if (target.kind === "project-cover") {
+      const runtime = detectRuntime();
+      const backend = getBackendInstance();
+
+      if (runtime.profile === "local" && backend) {
+        if (target.kind === "project-cover") {
+          const result = await backend.assets.uploadProjectImage(
+            target.projectId,
+            file,
+            prepOptions as { gifMode?: "keep" | "convert" | "strip" },
+          );
+          imageUrl = result.imageUrl;
+        } else {
+          throw new Error(
+            "Welt-Bild-Upload ist im lokalen Modus noch nicht verfügbar.",
+          );
+        }
+      } else if (target.kind === "project-cover") {
         imageUrl = await uploadProjectImage(
           target.projectId,
           file,

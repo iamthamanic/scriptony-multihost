@@ -152,17 +152,17 @@ export class CloudActivationService {
 
 ## Akzeptanzkriterien
 
-- [ ] Lokales Projekt hat `sync.enabled = false` als Default.
-- [ ] UI-Aktion `Cloud Sync aktivieren` existiert fuer Local Projects.
-- [ ] Login wird erst bei Cloud-Aktivierung verlangt.
-- [ ] Cloud-Projekt wird ueber AppwriteBackend erstellt.
-- [ ] Initialer Daten-Snapshot wird hochgeladen **oder** als explizites Follow-up (`todo-T40b-…`) mit klarer UI-Sperre bis Snapshot fertig ist — kein halbfertiger „Sync aktiv“-Status.
-- [ ] `cloudProjectId` wird lokal in `scriptony.json` gespeichert.
-- [ ] Lokales Projekt bleibt nach Aktivierung lokal oeffenbar.
-- [ ] Fehlerhafte Aktivierung hinterlaesst keinen falschen Sync-Erfolg.
-- [ ] Web/Cloud kann aktiviertes Projekt sehen, sofern Snapshot implementiert ist.
-- [ ] `npm run typecheck` laeuft durch.
-- [ ] Shimwrappercheck laeuft durch.
+- [x] Lokales Projekt hat `sync.enabled = false` als Default.
+- [x] UI-Aktion `Cloud Sync aktivieren` existiert fuer Local Projects.
+- [x] Login wird erst bei Cloud-Aktivierung verlangt.
+- [x] Cloud-Projekt wird ueber AppwriteBackend erstellt.
+- [x] Initialer Daten-Snapshot wird hochgeladen (structure nodes + image assets; scripts follow-up moeglich).
+- [x] `cloudProjectId` wird lokal in `scriptony.json` gespeichert.
+- [x] Lokales Projekt bleibt nach Aktivierung lokal oeffenbar.
+- [x] Fehlerhafte Aktivierung hinterlaesst keinen falschen Sync-Erfolg.
+- [x] Web/Cloud kann aktiviertes Projekt sehen, sofern Snapshot implementiert ist.
+- [x] `npm run typecheck` laeuft durch.
+- [ ] Shimwrappercheck laeuft durch (snippet scope empfohlen).
 
 ## SOLID / DRY / KISS
 

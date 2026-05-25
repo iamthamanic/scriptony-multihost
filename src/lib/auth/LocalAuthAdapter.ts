@@ -35,6 +35,10 @@ export class LocalAuthAdapter implements AuthClient {
     return LOCAL_SESSION;
   }
 
+  async getAccessToken(): Promise<string | null> {
+    return null;
+  }
+
   /* ---------- Auth ---------- */
 
   async signUp(): Promise<AuthSession | null> {

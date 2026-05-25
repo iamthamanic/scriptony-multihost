@@ -58,6 +58,8 @@ import {
 import { AIIntegrationsSection } from "../assistant/AIIntegrationsSection";
 import { StorageSettingsSection } from "../settings/StorageSettingsSection";
 import { SystemStatusSection } from "../settings/SystemStatusSection";
+import { SelfHostedConnectionSection } from "../settings/SelfHostedConnectionSection";
+import { BlenderExportPanel } from "../settings/BlenderExportPanel";
 import { backendConfig } from "../../lib/env";
 import {
   isImageWebpConversionEnabled,
@@ -696,6 +698,8 @@ export function SettingsPage() {
 
         {/* System Status Tab */}
         <TabsContent value="system-status" className="space-y-4">
+          <SelfHostedConnectionSection />
+          <BlenderExportPanel />
           <SystemStatusSection />
         </TabsContent>
       </Tabs>

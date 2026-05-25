@@ -11,6 +11,7 @@ import type {
 	CreateProjectPayload,
 	UpdateProjectPayload,
 } from "../ScriptonyBackend";
+import type { AuthClient } from "@/lib/auth/AuthClient";
 import { databases } from "@/lib/appwrite/appwrite";
 import { Query, ID } from "appwrite";
 import { getAuthClient } from "@/lib/auth/getAuthClient";
@@ -20,8 +21,14 @@ const COLLECTION_ID =
 	import.meta.env.VITE_APPWRITE_COLLECTION_PROJECTS || "projects";
 
 export class AppwriteProjectRepository implements ProjectRepository {
+	constructor(private readonly authClient?: AuthClient) {}
+
+	private auth(): AuthClient {
+		return this.authClient ?? getAuthClient();
+	}
+
 	async list(): Promise<Project[]> {
-		const auth = getAuthClient();
+		const auth = this.auth();
 		const session = await auth.getSession();
 		if (!session?.userId) throw new Error("Auth required");
 
@@ -38,7 +45,7 @@ export class AppwriteProjectRepository implements ProjectRepository {
 	async get(id: string): Promise<Project | null> {
 		try {
 			const doc = await databases.getDocument(DB_ID, COLLECTION_ID, id);
-			const auth = getAuthClient();
+			const auth = this.auth();
 			const session = await auth.getSession();
 			if (session?.userId && doc.userId !== session.userId) {
 				return null;
@@ -59,7 +66,7 @@ export class AppwriteProjectRepository implements ProjectRepository {
 	}
 
 	async create(payload: CreateProjectPayload): Promise<Project> {
-		const auth = getAuthClient();
+		const auth = this.auth();
 		const session = await auth.getSession();
 		if (!session?.userId) throw new Error("Auth required");
 
@@ -78,7 +85,7 @@ export class AppwriteProjectRepository implements ProjectRepository {
 	}
 
 	async update(id: string, payload: UpdateProjectPayload): Promise<Project> {
-		const auth = getAuthClient();
+		const auth = this.auth();
 		const session = await auth.getSession();
 		if (!session?.userId) throw new Error("Auth required");
 
@@ -100,7 +107,7 @@ export class AppwriteProjectRepository implements ProjectRepository {
 	}
 
 	async delete(id: string): Promise<void> {
-		const auth = getAuthClient();
+		const auth = this.auth();
 		const session = await auth.getSession();
 		if (!session?.userId) throw new Error("Auth required");
 

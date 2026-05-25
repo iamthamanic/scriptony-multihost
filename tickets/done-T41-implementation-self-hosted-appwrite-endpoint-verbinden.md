@@ -1,5 +1,7 @@
 # Scriptony Architecture Refactor Ticket T41 — Self-hosted Appwrite Endpoint verbinden
 
+**Status:** done (2026-05-24) — ARCH-REF-T41-DONE
+
 Stand: 2026-05-23
 
 ## Ziel

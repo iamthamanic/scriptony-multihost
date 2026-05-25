@@ -3,7 +3,8 @@
  * Location: src/lib/api-gateway/gateway-fetch.ts
  */
 
-import { backendConfig, joinUrl } from "../env";
+import { getBackendConfig, joinUrl } from "../env";
+import { getSidecarAuthToken } from "../local/sidecar-lifecycle";
 import { ApiGatewayError, type ApiGatewayErrorLayer } from "./gateway-errors";
 import {
   buildFunctionBaseUrl,
@@ -121,7 +122,14 @@ export async function apiGateway<T = any>(
     ...headers,
   };
 
-  const bearerToken = accessToken || backendConfig.publicAuthToken;
+  const backendConfig = getBackendConfig();
+  const sidecarToken =
+    route.startsWith("/v1/jobs") &&
+    backendConfig.functionsBaseUrl.includes("127.0.0.1")
+      ? getSidecarAuthToken()
+      : null;
+  const bearerToken =
+    accessToken || sidecarToken || backendConfig.publicAuthToken;
   if (bearerToken) {
     requestHeaders.Authorization = `Bearer ${bearerToken}`;
   }

@@ -60,7 +60,7 @@ npm run dev:vite
 ### Option C — Tauri desktop (Cloud client, Phase 1)
 
 Native desktop shell around the same React/Vite UI. Uses **cloud** runtime by
-default (not local mode until T38).
+default (not local mode until a `.scriptony` project is open; set `VITE_SCRIPTONY_RUNTIME=local` explicitly).
 
 **Prerequisites:** Rust toolchain (`cargo`, `rustc`). Install via
 [rustup](https://rustup.rs/) if missing.
@@ -114,7 +114,46 @@ VITE_SCRIPTONY_RUNTIME=cloud
 ```
 
 Local mode on desktop requires `VITE_SCRIPTONY_RUNTIME=local` explicitly
-(after T38).
+(see [LOCAL_PROJECT_FORMAT.md](LOCAL_PROJECT_FORMAT.md); open project via `useLocalProject().openProject(path)` on desktop).
+
+### Local project format (`.scriptony`, T37)
+
+Solo projects are stored as folders: `My_Movie.scriptony/` with `scriptony.json`,
+`database.sqlite`, and `assets/`. See **[LOCAL_PROJECT_FORMAT.md](LOCAL_PROJECT_FORMAT.md)**.
+
+TypeScript API: `src/local/` (`createProjectFolder`, `openProjectFolder`). Requires
+desktop (`npm run dev:desktop`). **T38** LocalBackend (projects/structure/scripts); **T39** local assets; **T40** per-project Cloud Sync activation.
+
+### Self-hosted Appwrite (T41)
+
+Studios can connect a private Appwrite instance without Docker locally:
+
+1. Open **Settings → System Status**
+2. Add endpoint + project ID, **Test connection**, then **Save & activate**
+3. Switch runtime to **Self-hosted Appwrite**
+
+The UI stores connections in `localStorage` and overrides `VITE_APPWRITE_*` for the active session. Ensure your Appwrite Console lists the Scriptony web origin in OAuth/Web redirects (CORS).
+
+### Local jobs sidecar (T43)
+
+In **local** runtime, job HTTP calls target `http://127.0.0.1:3765` (override: `VITE_SCRIPTONY_SIDECAR_PORT`).
+
+When a `.scriptony` project opens on desktop, Tauri spawns:
+
+```bash
+npm run sidecar:dev
+```
+
+(requires `SCRIPTONY_PROJECT_DIR` — set automatically by the desktop shell)
+
+Manual test:
+
+```bash
+SCRIPTONY_PROJECT_DIR=/path/to/MyProject.scriptony npm run sidecar:dev
+curl http://127.0.0.1:3765/health
+```
+
+MVP routes: `GET /health`, `POST /v1/jobs/:functionName`, `GET /v1/jobs/:id/status`, `GET /v1/jobs/:id/result`.
 
 ---
 

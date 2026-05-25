@@ -4,7 +4,7 @@
  */
 
 import {
-  backendConfig,
+  getBackendConfig,
   devFunctionUrlUsePlainHttp,
   joinUrl,
   upgradeHttpFunctionUrlForSecurePage,
@@ -67,6 +67,7 @@ export const EDGE_FUNCTIONS = BACKEND_FUNCTIONS;
  * Backend function base URLs
  */
 export function buildFunctionBaseUrl(functionName: string): string {
+  const backendConfig = getBackendConfig();
   /**
    * Dev-only: same-origin proxy in vite.config.ts avoids browser CORS when
    * Appwrite's executor returns errors without CORS headers (cold starts, crashes).

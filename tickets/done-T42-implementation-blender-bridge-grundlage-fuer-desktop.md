@@ -1,5 +1,7 @@
 # Scriptony Architecture Refactor Ticket T42 — Blender Bridge Grundlage fuer Desktop
 
+**Status:** done (2026-05-24) — ARCH-REF-T42-DONE
+
 Stand: 2026-05-23
 
 ## Ziel

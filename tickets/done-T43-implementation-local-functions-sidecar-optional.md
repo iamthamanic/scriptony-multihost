@@ -1,5 +1,7 @@
 # Scriptony Architecture Refactor Ticket T43 — Local Functions Sidecar (optional)
 
+**Status:** done (2026-05-24) — ARCH-REF-T43-DONE
+
 Stand: 2026-05-23
 
 ## Ziel

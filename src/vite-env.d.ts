@@ -1,5 +1,10 @@
 /// <reference types="vite/client" />
 
+declare module "*.wasm?url" {
+  const url: string;
+  export default url;
+}
+
 interface ImportMetaEnv {
   readonly VITE_APP_WEB_URL?: string;
   readonly VITE_BACKEND_API_BASE_URL?: string;

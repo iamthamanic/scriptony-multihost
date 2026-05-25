@@ -5,6 +5,9 @@
  */
 
 import { useState } from "react";
+import { CloudSyncActivateButton } from "../project/CloudSyncActivateButton";
+import { useLocalProject } from "@/hooks/useLocalProject";
+import { useRuntime } from "@/runtime";
 import { Button } from "../ui/button";
 import {
   Card,
@@ -38,6 +41,11 @@ const BACKEND_FUNCTIONS = [
 ];
 
 export function ApiDebugPage() {
+  const runtime = useRuntime();
+  const { openProject, isOpen, project } = useLocalProject();
+  const [localPath, setLocalPath] = useState("");
+  const [localOpenLoading, setLocalOpenLoading] = useState(false);
+  const [localOpenError, setLocalOpenError] = useState<string | null>(null);
   const [results, setResults] = useState<TestResult[]>(
     BACKEND_FUNCTIONS.map((fn) => ({ name: fn.name, status: "idle" as const })),
   );
@@ -307,6 +315,59 @@ export function ApiDebugPage() {
           </div>
         </CardContent>
       </Card>
+
+      {runtime?.profile === "local" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Local Project (T38/T40)</CardTitle>
+            <CardDescription>
+              Smoke/test: path must end with .scriptony and pass folder validation.
+              Production desktop should use a native folder picker (T36+).
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            <div className="flex gap-2">
+              <input
+                className="flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+                placeholder="/Users/you/Documents/my_movie.scriptony"
+                value={localPath}
+                onChange={(e) => setLocalPath(e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={localOpenLoading || !localPath.trim()}
+                onClick={() => {
+                  void (async () => {
+                    setLocalOpenLoading(true);
+                    setLocalOpenError(null);
+                    try {
+                      await openProject(localPath.trim());
+                    } catch (err) {
+                      setLocalOpenError(
+                        err instanceof Error ? err.message : String(err),
+                      );
+                    } finally {
+                      setLocalOpenLoading(false);
+                    }
+                  })();
+                }}
+              >
+                {localOpenLoading ? "Opening…" : "Open"}
+              </Button>
+            </div>
+            {localOpenError ? (
+              <p className="text-sm text-destructive">{localOpenError}</p>
+            ) : null}
+            {isOpen && project ? (
+              <p className="text-sm text-muted-foreground">
+                Open: {project.dirPath} ({project.manifest.title})
+              </p>
+            ) : null}
+            <CloudSyncActivateButton />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }

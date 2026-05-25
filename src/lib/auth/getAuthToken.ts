@@ -18,8 +18,5 @@ import { getAuthClient } from "./getAuthClient";
  * @returns Access token string or null if not authenticated
  */
 export async function getAuthToken(): Promise<string | null> {
-  const session = await getAuthClient().getSession();
-  const t = session?.accessToken;
-  if (typeof t !== "string" || !t.trim()) return null;
-  return t.trim();
+  return getAuthClient().getAccessToken();
 }

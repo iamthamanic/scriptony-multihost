@@ -201,16 +201,16 @@ CREATE TABLE IF NOT EXISTS change_log (
 
 ## Akzeptanzkriterien
 
-- [ ] Lokales Projektformat ist dokumentiert.
-- [ ] `scriptony.json` Schema ist definiert.
-- [ ] SQLite Initialschema fuer Kernentitaeten existiert.
-- [ ] Audio-/Timeline-Felder aus T31/T32 sind im Schema beruecksichtigt.
-- [ ] `change_log` ist fuer spaeteren Sync vorgesehen.
-- [ ] Projektordnerstruktur wird angelegt.
-- [ ] Keine Cloud-Verbindung ist fuer Projekterstellung notwendig.
-- [ ] Noch nicht implementierte Local-Repositories sind klar als spaetere Arbeit markiert.
-- [ ] `npm run typecheck` laeuft durch.
-- [ ] Shimwrappercheck laeuft durch.
+- [x] Lokales Projektformat ist dokumentiert (`docs/LOCAL_PROJECT_FORMAT.md`).
+- [x] `scriptony.json` Schema ist definiert (`src/local/project-manifest.ts`).
+- [x] SQLite Initialschema fuer Kernentitaeten existiert (`SCHEMA_STATEMENTS`, `database.sqlite` via `createProjectDatabase`).
+- [x] Audio-/Timeline-Felder aus T31/T32 sind im Schema beruecksichtigt.
+- [x] `change_log` ist fuer spaeteren Sync vorgesehen.
+- [x] Projektordnerstruktur wird angelegt (`createProjectFolder`).
+- [x] Keine Cloud-Verbindung ist fuer Projekterstellung notwendig.
+- [x] Noch nicht implementierte Local-Repositories sind klar als spaetere Arbeit markiert (T38).
+- [x] `npm run typecheck` laeuft durch.
+- [x] Shimwrappercheck laeuft durch (snippet, `src/local/**`).
 
 ## SOLID / DRY / KISS
 

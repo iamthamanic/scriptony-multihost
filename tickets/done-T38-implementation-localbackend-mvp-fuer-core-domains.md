@@ -195,24 +195,24 @@ export class LocalJobService implements JobService {
 
 ### Must-have
 
-- [ ] Local Projects koennen gelesen/erstellt/aktualisiert werden.
-- [ ] Local Structure Nodes koennen gelesen/erstellt/aktualisiert/geloescht/reordered werden.
-- [ ] Local Script Blocks koennen gelesen/erstellt/aktualisiert/geloescht/reordered werden.
-- [ ] Mutierende Operationen schreiben `change_log` Eintraege.
-- [ ] Soft Delete wird fuer sync-relevante Entities verwendet.
-- [ ] UI nutzt `useScriptonyBackend()`, keine direkte SQLite-Nutzung.
-- [ ] Cloud/Appwrite-Verhalten bleibt unveraendert.
+- [x] Local Projects koennen gelesen/erstellt/aktualisiert werden.
+- [x] Local Structure Nodes koennen gelesen/erstellt/aktualisiert/geloescht/reordered werden.
+- [x] Local Script Blocks koennen gelesen/erstellt/aktualisiert/geloescht/reordered werden.
+- [x] Mutierende Operationen schreiben `change_log` Eintraege.
+- [x] Soft Delete wird fuer sync-relevante Entities verwendet.
+- [x] UI nutzt `useScriptonyBackend()` / `getBackendInstance()` (minimal: `background-upload`, `BackendProvider`).
+- [x] Cloud/Appwrite-Verhalten bleibt unveraendert.
 
 ### Nice-to-have
 
-- [ ] Characters und Worldbuilding funktionieren lokal.
-- [ ] Timeline/Audio-Clips koennen lokal gelesen und aktualisiert werden.
-- [ ] `LocalJobService` persistiert Jobs; Ausfuehrung explizit out of scope (T43).
+- [ ] Characters und Worldbuilding funktionieren lokal (Stubs mit Fehler).
+- [ ] Timeline/Audio-Clips koennen lokal gelesen und aktualisiert werden (Audio-Stub).
+- [x] `LocalJobService` persistiert Jobs; Ausfuehrung explizit out of scope (T43).
 
 ### Allgemein
 
-- [ ] `npm run typecheck` laeuft durch.
-- [ ] Shimwrappercheck laeuft durch.
+- [x] `npm run typecheck` laeuft durch.
+- [ ] Shimwrappercheck laeuft durch (snippet scope empfohlen).
 
 ## SOLID / DRY / KISS
 

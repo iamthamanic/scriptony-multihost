@@ -182,17 +182,17 @@ export class LocalAssetRepository implements AssetRepository {
 
 ## Akzeptanzkriterien
 
-- [ ] `AssetStorageRef` unterscheidet local/appwrite/external.
-- [ ] Keine duplizierte Storage-Registry; Anbindung an `src/lib/storage-provider/` dokumentiert oder implementiert.
-- [ ] `LocalStorageService` kann Dateien in Projektordner kopieren.
-- [ ] `LocalAssetRepository.importAsset()` speichert Metadaten in SQLite.
-- [ ] Asset-Dateien werden nach Typ in `assets/` abgelegt.
-- [ ] Relative Pfade werden gespeichert, keine absoluten Pfade als Source of Truth.
-- [ ] Cloud Asset Import bleibt unveraendert.
-- [ ] Kein Upload findet im Local-only Projekt statt.
-- [ ] Mutierende Asset-Operationen schreiben `change_log`.
-- [ ] `npm run typecheck` laeuft durch.
-- [ ] Shimwrappercheck laeuft durch.
+- [x] `AssetStorageRef` unterscheidet local/appwrite/external.
+- [x] Keine duplizierte Storage-Registry; Anbindung an `src/lib/storage-provider/` dokumentiert oder implementiert.
+- [x] `LocalStorageService` kann Dateien in Projektordner kopieren.
+- [x] `LocalAssetRepository.importAsset()` speichert Metadaten in SQLite.
+- [x] Asset-Dateien werden nach Typ in `assets/` abgelegt.
+- [x] Relative Pfade werden gespeichert, keine absoluten Pfade als Source of Truth.
+- [x] Cloud Asset Import bleibt unveraendert.
+- [x] Kein Upload findet im Local-only Projekt statt.
+- [x] Mutierende Asset-Operationen schreiben `change_log`.
+- [x] `npm run typecheck` laeuft durch.
+- [ ] Shimwrappercheck laeuft durch (snippet scope empfohlen).
 
 ## SOLID / DRY / KISS
 

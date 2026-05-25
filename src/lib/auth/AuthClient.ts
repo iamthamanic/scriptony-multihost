@@ -28,6 +28,11 @@ export interface AuthClient {
   getSession(): Promise<AuthSession | null>;
 
   /**
+   * Bearer token for Scriptony HTTP functions (e.g. Appwrite JWT).
+   */
+  getAccessToken(): Promise<string | null>;
+
+  /**
    * Sign up with email and password
    */
   signUp(

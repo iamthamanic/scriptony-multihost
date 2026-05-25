@@ -168,7 +168,39 @@ export interface AudioRepository {
 
 export type ImageUploadGifMode = "keep" | "convert" | "strip";
 
+export type AssetType = "image" | "audio" | "video" | "document" | "other";
+
+export type AssetStorageRef =
+	| { mode: "local"; relativePath: string }
+	| { mode: "appwrite"; bucketId: string; fileId: string }
+	| { mode: "external"; url: string };
+
+export interface Asset {
+	id: string;
+	projectId: string;
+	type: AssetType;
+	filename: string;
+	mimeType: string | null;
+	sizeBytes: number | null;
+	storage: AssetStorageRef;
+	missing?: boolean;
+	createdAt: string;
+	updatedAt: string;
+}
+
+export interface ImportAssetInput {
+	projectId: string;
+	file: File;
+	type: AssetType;
+	originalFilename?: string;
+}
+
 export interface AssetRepository {
+	importAsset(input: ImportAssetInput): Promise<Asset>;
+	list(projectId: string): Promise<Asset[]>;
+	get(id: string): Promise<Asset | null>;
+	delete(id: string): Promise<void>;
+	resolveUrl(asset: Asset): Promise<string | null>;
 	uploadProjectImage(
 		projectId: string,
 		file: File,
@@ -238,6 +270,19 @@ export interface StorageRepository {
 	getUsage(providerId: string): Promise<StorageUsageInfo>;
 }
 
+import type { BlenderService } from "./blender/types";
+
+export type {
+	BlenderService,
+	ExportBlenderProjectInput,
+	BlenderExportResult,
+	InstallBlenderAddonInput,
+	ConnectBlenderInput,
+	BlenderConnection,
+	SyncBlenderSceneInput,
+	BlenderProjectSource,
+} from "./blender/types";
+
 // ── ScriptonyBackend ─────────────────────────────────────────────────────────
 
 export interface ScriptonyBackend {
@@ -253,6 +298,7 @@ export interface ScriptonyBackend {
 	readonly jobs: JobService;
 	readonly ai: AiService;
 	readonly storage: StorageRepository;
+	readonly blender: BlenderService;
 }
 
 export type {

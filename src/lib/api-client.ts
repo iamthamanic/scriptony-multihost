@@ -42,6 +42,8 @@ export type ApiResult<T = any> = ApiResponse<T> | ApiErrorResponse;
 
 interface RequestOptions extends RequestInit {
   requireAuth?: boolean;
+  /** When set, used instead of the singleton auth client token. */
+  accessToken?: string;
   timeout?: number;
 }
 
@@ -188,6 +190,7 @@ export async function apiRequest<T = any>(
 ): Promise<ApiResult<T>> {
   const {
     requireAuth = true,
+    accessToken: accessTokenOverride,
     timeout = API_CONFIG.REQUEST_TIMEOUT,
     headers = {},
     ...fetchOptions
@@ -202,7 +205,9 @@ export async function apiRequest<T = any>(
     try {
       // Get auth token if required
       let authToken: string | null = null;
-      if (requireAuth) {
+      if (accessTokenOverride) {
+        authToken = accessTokenOverride;
+      } else if (requireAuth) {
         authToken = await getAuthToken();
         if (!authToken) {
           console.warn(
@@ -292,7 +297,9 @@ export async function apiRequest<T = any>(
   try {
     // Get auth token if required
     let authToken: string | null = null;
-    if (requireAuth) {
+    if (accessTokenOverride) {
+      authToken = accessTokenOverride;
+    } else if (requireAuth) {
       authToken = await getAuthToken();
       if (!authToken) {
         console.warn(

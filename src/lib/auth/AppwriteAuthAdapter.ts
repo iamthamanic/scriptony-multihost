@@ -188,6 +188,13 @@ export class AppwriteAuthAdapter implements AuthClient {
     return this.mapSession();
   }
 
+  /** JWT for Scriptony function API calls (not the raw OAuth session secret). */
+  async getAccessToken(): Promise<string | null> {
+    const session = await this.mapSession();
+    if (!session?.userId) return null;
+    return this.getJwt();
+  }
+
   async signUp(
     email: string,
     password: string,

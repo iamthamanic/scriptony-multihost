@@ -2505,3 +2505,117 @@ Extract-only split of `src/lib/types/index.ts` (705 lines, hard violation) into 
 
 - OAuth in embedded WebView may be blocked by some providers; deep-link + custom scheme is the supported path; system-browser fallback optional later
 - Appwrite Console must register `scriptony://auth-callback` URLs manually per environment
+
+---
+
+## Phase T37 — Local Project Format und SQLite Schema
+
+### Done Report: T37 — Local Project Format
+
+- **Verification Marker:** ARCH-REF-T37-DONE
+- **Date:** 2026-05-24
+
+#### Delivered
+
+- `src/local/` — manifest (`scriptony.json`), schema DDL (`project-schema.ts`), folder I/O (`project-folder.ts`), DB init (`database-init.ts` via sql.js)
+- `createProjectFolder` — unique path resolution, no overwrite, `database.sqlite` with full schema
+- `@tauri-apps/plugin-fs` + `tauri-plugin-fs` + scoped capabilities (`local-project-fs.json`)
+- `docs/LOCAL_PROJECT_FORMAT.md` + link in `GETTING_STARTED.md`
+- Tests: `project-manifest`, `project-schema`, `project-folder`, `database-init`
+
+#### Tests run
+
+- `npm run test -- src/local/` — OK
+- `npm run typecheck` — OK
+- `cd src-tauri && cargo check` — OK
+
+#### Known risks / gaps
+
+- No dedicated „Neues lokales Projekt“ wizard yet; use API / ApiDebug path input
+- sql.js WASM path must resolve in production Tauri builds (uses `?url` import with fallback)
+- E2E desktop folder creation not automated in CI
+
+## Phase T38 — LocalBackend MVP
+
+### Done Report: T38 — LocalBackend MVP
+
+- **Verification Marker:** ARCH-REF-T38-DONE
+- **Date:** 2026-05-24
+
+#### Delivered
+
+- `LocalProjectContext`, file-backed `LocalDb`, `LocalBackend` wired via `LocalProjectProvider` + `createBackend(runtime, ctx)`
+- `LocalProjectRepository`, `LocalStructureRepository`, `LocalScriptRepository`, `LocalCharacterRepository`, `LocalWorldbuildingRepository` with `change_log` + soft delete
+- `useLocalProject` hook; `LocalBackendNotReady` when no project open
+
+#### Tests run
+
+- `npm run test -- src/backend/local/ src/local/` — OK
+- `npm run typecheck` — OK
+
+## Phase T39 — Local Asset Storage
+
+### Done Report: T39 — Local Asset Storage
+
+- **Verification Marker:** ARCH-REF-T39-DONE
+- **Date:** 2026-05-24
+
+#### Delivered
+
+- `Asset`, `AssetStorageRef`, extended `AssetRepository` on `ScriptonyBackend`
+- `LocalStorageService`, `LocalAssetRepository` (import, list, resolveUrl, upload wrappers)
+- `background-upload.ts` uses backend in local profile
+
+## Phase T40 — Cloud Sync pro Projekt
+
+### Done Report: T40 — Cloud Sync pro Projekt
+
+- **Verification Marker:** ARCH-REF-T40-DONE
+- **Date:** 2026-05-24
+
+#### Delivered
+
+- Manifest `syncStatus` / `lastError`; `CloudActivationService`, `InitialSnapshotUploader`
+- `CloudSyncActivateButton` + ApiDebug local project panel
+- No false `sync.enabled` on failed activation
+
+## Phase T41 — Self-hosted Appwrite (dynamic UI)
+
+### Done Report: T41 — Self-hosted Appwrite Endpoint
+
+- **Verification Marker:** ARCH-REF-T41-DONE
+- **Date:** 2026-05-24
+
+#### Delivered
+
+- `SelfHostedConnectionService` + `SelfHostedConnectionStore` (localStorage)
+- Dynamic `RuntimeProvider` (`setProfile`, `activateSelfHosted`, env override via `setRuntimeAppwriteOverride`)
+- Settings UI: `SelfHostedConnectionSection`, `RuntimeModeSelector`
+- Docs: `GETTING_STARTED.md`, `.env.local.example`
+
+## Phase T42 — Blender Bridge (Desktop export MVP)
+
+### Done Report: T42 — Blender Bridge
+
+- **Verification Marker:** ARCH-REF-T42-DONE
+- **Date:** 2026-05-24
+
+#### Delivered
+
+- `BlenderService` on `ScriptonyBackend`; `LocalBlenderService` / `AppwriteBlenderService`
+- Tauri commands: `blender_is_available`, `blender_get_version`, `blender_export_project` (stubs for live/sync)
+- `BlenderExportPanel` (desktop); `docs/BLENDER_EXPORT_PACKAGE.md`
+
+## Phase T43 — Local Functions Sidecar (jobs proxy)
+
+### Done Report: T43 — Local Jobs Sidecar
+
+- **Verification Marker:** ARCH-REF-T43-DONE
+- **Date:** 2026-05-24
+
+#### Delivered
+
+- `scripts/local-sidecar/server.mjs` — health + `/v1/jobs/*` against project `database.sqlite`
+- `getBackendConfig()` routes local profile to `http://127.0.0.1:3765`
+- Tauri `spawn_sidecar` / `stop_sidecar` + `sidecar-lifecycle.ts` wired in `useLocalProject`
+- `functions/_shared/jobs/JobStore.ts` interface (OCP for future adapters)

@@ -1,45 +1,49 @@
 /**
  * BackendProvider + useScriptonyBackend()
  *
- * T35: React Context für Domain-Backend.
- * Nutzt RuntimeProvider (T34) um das korrekte Backend zu instantiieren.
+ * T35/T38: Resolves AppwriteBackend or LocalBackend from runtime + open project.
  */
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import type { ScriptonyBackend } from "./ScriptonyBackend";
 import { useRuntime } from "@/runtime";
+import { useLocalProjectOptional } from "@/hooks/useLocalProject";
 import { createBackend } from "./create-backend";
+import { setBackendInstance } from "./backend-instance";
 
 const BackendContext = createContext<ScriptonyBackend | null>(null);
 
 export interface BackendProviderProps {
-	children: ReactNode;
-	/** Optional: override backend (für Tests). */
-	backend?: ScriptonyBackend;
+  children: ReactNode;
+  backend?: ScriptonyBackend;
 }
 
 export function BackendProvider({ children, backend }: BackendProviderProps) {
-	const runtime = useRuntime();
+  const runtime = useRuntime();
+  const localProject = useLocalProjectOptional()?.project ?? null;
 
-	const resolved = useMemo(() => {
-		if (backend) return backend;
-		if (!runtime) {
-			throw new Error("BackendProvider must be nested inside RuntimeProvider");
-		}
-		return createBackend(runtime);
-	}, [backend, runtime]);
+  const resolved = useMemo(() => {
+    if (backend) return backend;
+    if (!runtime) {
+      throw new Error("BackendProvider must be nested inside RuntimeProvider");
+    }
+    return createBackend(runtime, localProject);
+  }, [backend, runtime, localProject]);
 
-	return (
-		<BackendContext.Provider value={resolved}>
-			{children}
-		</BackendContext.Provider>
-	);
+  useEffect(() => {
+    setBackendInstance(resolved);
+    return () => setBackendInstance(null);
+  }, [resolved]);
+
+  return (
+    <BackendContext.Provider value={resolved}>{children}</BackendContext.Provider>
+  );
 }
 
 export function useScriptonyBackend(): ScriptonyBackend {
-	const ctx = useContext(BackendContext);
-	if (!ctx) {
-		throw new Error("useScriptonyBackend must be used inside BackendProvider");
-	}
-	return ctx;
+  const ctx = useContext(BackendContext);
+  if (!ctx) {
+    throw new Error("useScriptonyBackend must be used inside BackendProvider");
+  }
+  return ctx;
 }

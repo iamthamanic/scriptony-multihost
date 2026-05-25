@@ -104,11 +104,50 @@ export function devFunctionUrlUsePlainHttp(url: string): string {
 }
 
 let _backendConfig: BackendConfig | null = null;
+let _runtimeAppwriteOverride: AppwritePublicConfig | null = null;
+let _runtimeProfile: "local" | "cloud" | "selfHosted" | null = null;
+
+/** Default local jobs sidecar port (T43). Override via VITE_SCRIPTONY_SIDECAR_PORT. */
+export const SCRIPTONY_SIDECAR_DEFAULT_PORT = 3765;
+
+export function getScriptonySidecarBaseUrl(): string {
+  const port =
+    validateString(env.VITE_SCRIPTONY_SIDECAR_PORT) ||
+    String(SCRIPTONY_SIDECAR_DEFAULT_PORT);
+  return `http://127.0.0.1:${port}`;
+}
+
+/**
+ * UI-selected self-hosted Appwrite endpoint (T41). Cleared for cloud/local profiles.
+ */
+export function setRuntimeAppwriteOverride(
+  cfg: AppwritePublicConfig | null,
+): void {
+  _runtimeAppwriteOverride = cfg;
+  resetBackendConfigCache();
+}
+
+/** Active runtime profile for backend URL resolution (set by RuntimeProvider). */
+export function setBackendRuntimeProfile(
+  profile: "local" | "cloud" | "selfHosted" | null,
+): void {
+  _runtimeProfile = profile;
+  resetBackendConfigCache();
+}
+
+export function resetBackendConfigCache(): void {
+  _backendConfig = null;
+}
 
 /**
  * Appwrite endpoint + project for the web SDK (no API keys in the browser).
+ * When a self-hosted connection is active, uses the UI override instead of env.
  */
 export function getAppwritePublicConfig(): AppwritePublicConfig | null {
+  if (_runtimeAppwriteOverride) {
+    return _runtimeAppwriteOverride;
+  }
+
   const endpointRaw = validateString(env.VITE_APPWRITE_ENDPOINT);
   const projectId = validateString(env.VITE_APPWRITE_PROJECT_ID);
   if (!endpointRaw || !projectId) {
@@ -122,6 +161,9 @@ export function getAppwritePublicConfig(): AppwritePublicConfig | null {
 }
 
 export function getMissingAppwriteConfig(): string[] {
+  if (_runtimeAppwriteOverride) {
+    return [];
+  }
   const missing: string[] = [];
   if (!validateString(env.VITE_APPWRITE_ENDPOINT)) {
     missing.push("VITE_APPWRITE_ENDPOINT");
@@ -164,10 +206,13 @@ export function getBackendConfig(): BackendConfig {
     return _backendConfig;
   }
 
-  const functionsBaseUrl = trimTrailingSlash(
-    validateString(env.VITE_APPWRITE_FUNCTIONS_BASE_URL) ||
-      validateString(env.VITE_BACKEND_API_BASE_URL),
-  );
+  const functionsBaseUrl =
+    _runtimeProfile === "local"
+      ? getScriptonySidecarBaseUrl()
+      : trimTrailingSlash(
+          validateString(env.VITE_APPWRITE_FUNCTIONS_BASE_URL) ||
+            validateString(env.VITE_BACKEND_API_BASE_URL),
+        );
   const functionDomainMap = parseFunctionDomainMap(
     env.VITE_BACKEND_FUNCTION_DOMAIN_MAP,
   );

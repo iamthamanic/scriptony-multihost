@@ -1,0 +1,86 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "local-project-fs",
+  "description": "Filesystem access limited to *.scriptony project folders under user directories",
+  "windows": ["main"],
+  "permissions": [
+    {
+      "identifier": "fs:allow-exists",
+      "allow": [
+        { "path": "$HOME/**/*.scriptony" },
+        { "path": "$HOME/**/*.scriptony/**" },
+        { "path": "$DOCUMENT/**/*.scriptony" },
+        { "path": "$DOCUMENT/**/*.scriptony/**" },
+        { "path": "$DESKTOP/**/*.scriptony" },
+        { "path": "$DESKTOP/**/*.scriptony/**" },
+        { "path": "$DOWNLOAD/**/*.scriptony" },
+        { "path": "$DOWNLOAD/**/*.scriptony/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-mkdir",
+      "allow": [
+        { "path": "$HOME/**/*.scriptony" },
+        { "path": "$HOME/**/*.scriptony/**" },
+        { "path": "$DOCUMENT/**/*.scriptony" },
+        { "path": "$DOCUMENT/**/*.scriptony/**" },
+        { "path": "$DESKTOP/**/*.scriptony" },
+        { "path": "$DESKTOP/**/*.scriptony/**" },
+        { "path": "$DOWNLOAD/**/*.scriptony" },
+        { "path": "$DOWNLOAD/**/*.scriptony/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-file",
+      "allow": [
+        { "path": "$HOME/**/*.scriptony" },
+        { "path": "$HOME/**/*.scriptony/**" },
+        { "path": "$DOCUMENT/**/*.scriptony" },
+        { "path": "$DOCUMENT/**/*.scriptony/**" },
+        { "path": "$DESKTOP/**/*.scriptony" },
+        { "path": "$DESKTOP/**/*.scriptony/**" },
+        { "path": "$DOWNLOAD/**/*.scriptony" },
+        { "path": "$DOWNLOAD/**/*.scriptony/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-read-text-file",
+      "allow": [
+        { "path": "$HOME/**/*.scriptony" },
+        { "path": "$HOME/**/*.scriptony/**" },
+        { "path": "$DOCUMENT/**/*.scriptony" },
+        { "path": "$DOCUMENT/**/*.scriptony/**" },
+        { "path": "$DESKTOP/**/*.scriptony" },
+        { "path": "$DESKTOP/**/*.scriptony/**" },
+        { "path": "$DOWNLOAD/**/*.scriptony" },
+        { "path": "$DOWNLOAD/**/*.scriptony/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [
+        { "path": "$HOME/**/*.scriptony" },
+        { "path": "$HOME/**/*.scriptony/**" },
+        { "path": "$DOCUMENT/**/*.scriptony" },
+        { "path": "$DOCUMENT/**/*.scriptony/**" },
+        { "path": "$DESKTOP/**/*.scriptony" },
+        { "path": "$DESKTOP/**/*.scriptony/**" },
+        { "path": "$DOWNLOAD/**/*.scriptony" },
+        { "path": "$DOWNLOAD/**/*.scriptony/**" }
+      ]
+    },
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [
+        { "path": "$HOME/**/*.scriptony" },
+        { "path": "$HOME/**/*.scriptony/**" },
+        { "path": "$DOCUMENT/**/*.scriptony" },
+        { "path": "$DOCUMENT/**/*.scriptony/**" },
+        { "path": "$DESKTOP/**/*.scriptony" },
+        { "path": "$DESKTOP/**/*.scriptony/**" },
+        { "path": "$DOWNLOAD/**/*.scriptony" },
+        { "path": "$DOWNLOAD/**/*.scriptony/**" }
+      ]
+    }
+  ]
+}
