@@ -1,0 +1,157 @@
+/**
+ * Native range overrides — pseudo-elements are not in bundled index.css Tailwind scan.
+ */
+
+.mixer-slider {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  cursor: pointer;
+  background: transparent;
+  accent-color: transparent;
+  color-scheme: dark;
+}
+
+.mixer-slider::-webkit-slider-runnable-track {
+  height: 3px;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.mixer-slider::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  margin-top: -3.5px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background-color: var(--muted);
+  box-shadow: none;
+}
+
+.mixer-slider::-moz-range-track {
+  height: 3px;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+}
+
+.mixer-slider::-moz-range-progress {
+  background: transparent;
+}
+
+.mixer-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  background-color: var(--muted);
+  box-shadow: none;
+}
+
+/* ── Volume rail (neutral line + fill, white thumb) ─────────────── */
+
+.volume-slider-track {
+  position: relative;
+  display: flex;
+  flex: 1 1 0%;
+  align-items: center;
+  min-width: 0;
+  height: 20px;
+}
+
+.volume-slider-rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  z-index: 0;
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: 9999px;
+  background: hsl(var(--foreground) / 0.14);
+  pointer-events: none;
+}
+
+.volume-slider-fill {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  z-index: 0;
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: 9999px;
+  background: hsl(var(--foreground) / 0.35);
+  pointer-events: none;
+}
+
+.mixer-slider.volume-slider {
+  position: relative;
+  z-index: 1;
+  height: 20px;
+}
+
+.mixer-slider.volume-slider::-webkit-slider-thumb {
+  background-color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--foreground) / 0.35);
+}
+
+.mixer-slider.volume-slider::-moz-range-thumb {
+  background-color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--foreground) / 0.35);
+}
+
+/* ── Pan rail (colored line behind white thumb) ─────────────────── */
+
+.pan-slider-track {
+  position: relative;
+  display: flex;
+  flex: 1 1 0%;
+  align-items: center;
+  min-width: 0;
+  height: 20px;
+}
+
+.pan-slider-rail {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  z-index: 0;
+  height: 3px;
+  transform: translateY(-50%);
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+.pan-slider-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 0;
+  width: 1px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  background: hsl(var(--foreground) / 0.35);
+  pointer-events: none;
+}
+
+.mixer-slider.pan-slider {
+  position: relative;
+  z-index: 1;
+  height: 20px;
+}
+
+.mixer-slider.pan-slider::-webkit-slider-thumb {
+  background-color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--foreground) / 0.35);
+}
+
+.mixer-slider.pan-slider::-moz-range-thumb {
+  background-color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--foreground) / 0.35);
+}

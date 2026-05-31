@@ -157,6 +157,9 @@ export interface LaneState {
   pan: number; // -1…+1
   meterPeak: number; // 0–1+, for LevelMeter
   fxPresetId?: string; // T32: FX preset metadata, no processing
+  fxSlots?: string[];
+  fxChainEnabled?: boolean;
+  locked?: boolean;
 }
 
 export type LaneStates = Record<number, LaneState>;
@@ -195,4 +198,57 @@ export function hasOverlap(
   return laneClips.some(
     (c) => !(newClip.endSec <= c.startSec || newClip.startSec >= c.endSec),
   );
+}
+
+// ── UI Constants ───────────────────────────────────────────────
+
+export const LANE_UI = {
+  heightCompact: 152,
+  heightExpanded: 184,
+  mixerWidthClass: "w-[248px] min-w-[248px] max-w-[248px]",
+} as const;
+
+// ── Pan/Volume Helpers ─────────────────────────────────────────
+
+export function getPanTrackGradient(pan: number): string {
+  const clamped = Math.max(-1, Math.min(1, pan));
+  const thumbPercent = ((clamped + 1) / 2) * 100;
+  const neutral = "rgba(255,255,255,0.14)";
+  const blue = "rgba(59,130,246,0.6)";
+
+  if (Math.abs(clamped) < 0.02) {
+    return `linear-gradient(to right, ${neutral} 0%, ${neutral} 100%)`;
+  }
+
+  if (clamped < 0) {
+    return `linear-gradient(to right, ${neutral} 0%, ${neutral} ${thumbPercent}%, ${blue} ${thumbPercent}%, ${blue} 50%, ${neutral} 50%, ${neutral} 100%)`;
+  }
+
+  return `linear-gradient(to right, ${neutral} 0%, ${neutral} 50%, ${blue} 50%, ${blue} ${thumbPercent}%, ${neutral} ${thumbPercent}%, ${neutral} 100%)`;
+}
+
+export function getTimelineLaneLabel(laneIndex: number): string {
+  return `Audio ${getLaneLabel(laneIndex)}`;
+}
+
+export function parseVolumeDbInput(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.replace(/,/g, ".");
+  const match = normalized.match(/^-?\d+(\.\d+)?$/);
+  if (!match) return null;
+  const val = parseFloat(normalized);
+  if (Number.isNaN(val)) return null;
+  return Math.max(-96, Math.min(12, val));
+}
+
+export function parsePanReadout(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+  const normalized = trimmed.replace(/,/g, ".");
+  const match = normalized.match(/^-?\d+(\.\d+)?$/);
+  if (!match) return null;
+  const val = parseFloat(normalized);
+  if (Number.isNaN(val)) return null;
+  return Math.max(-100, Math.min(100, val));
 }
