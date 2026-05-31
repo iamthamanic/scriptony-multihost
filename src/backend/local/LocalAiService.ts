@@ -23,19 +23,134 @@ export class LocalAiService implements AiService {
   }
 
   async generateText(payload: AiPromptPayload): Promise<AiPromptResult> {
-    // Lokale Text-Generierung: Noch nicht implementiert (Phase 2)
-    // Fallback: Fehlermeldung, da keine Cloud-Verbindung im Local Mode
+    const { prompt, model } = payload;
+
+    // 1. Versuche Ollama (lokales LLM)
+    try {
+      const ollamaResult = await this.callOllama(prompt, model ?? "llama3");
+      return { text: ollamaResult, model: model ?? "llama3" };
+    } catch {
+      // Ollama nicht verfügbar — weiter zu API-Keys
+    }
+
+    // 2. Versuche gespeicherte API-Keys (OpenAI, Anthropic, Deepseek)
+    const apiKey = this.getStoredApiKey();
+    if (apiKey) {
+      try {
+        const provider = this.getStoredProvider() ?? "openai";
+        const result = await this.callCloudApi(provider, apiKey, prompt, model);
+        return { text: result, model: model ?? provider };
+      } catch {
+        // API-Call fehlgeschlagen — Fallback auf Stub
+      }
+    }
+
+    // 3. Stub: Keine lokale KI verfügbar
     return {
-      text: "[Lokale Text-Generierung ist noch nicht implementiert. Bitte Cloud-Modus verwenden.]",
+      text: "[Lokale Text-Generierung ist nicht verfügbar. Installiere Ollama (ollama.com) oder hinterlege einen API-Key in den Einstellungen.]",
       model: "local-stub",
     };
+  }
+
+  private async callOllama(prompt: string, model: string): Promise<string> {
+    const resp = await fetch("http://localhost:11434/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model, prompt, stream: false }),
+    });
+    if (!resp.ok) throw new Error(`Ollama error: ${resp.status}`);
+    const data = (await resp.json()) as { response: string };
+    return data.response;
+  }
+
+  private getStoredApiKey(): string | null {
+    try {
+      return localStorage.getItem("scriptony_local_api_key");
+    } catch {
+      return null;
+    }
+  }
+
+  private getStoredProvider(): string | null {
+    try {
+      return localStorage.getItem("scriptony_local_api_provider");
+    } catch {
+      return null;
+    }
+  }
+
+  private async callCloudApi(
+    provider: string,
+    apiKey: string,
+    prompt: string,
+    model?: string,
+  ): Promise<string> {
+    if (provider === "openai") {
+      return this.callOpenAI(apiKey, prompt, model ?? "gpt-4o-mini");
+    }
+    if (provider === "anthropic") {
+      return this.callAnthropic(apiKey, prompt, model ?? "claude-3-haiku-20240307");
+    }
+    if (provider === "deepseek") {
+      return this.callDeepseek(apiKey, prompt, model ?? "deepseek-chat");
+    }
+    throw new Error(`Unknown provider: ${provider}`);
+  }
+
+  private async callOpenAI(apiKey: string, prompt: string, model: string): Promise<string> {
+    const resp = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    const data = (await resp.json()) as { choices: Array<{ message: { content: string } }> };
+    return data.choices[0]?.message?.content ?? "";
+  }
+
+  private async callAnthropic(apiKey: string, prompt: string, model: string): Promise<string> {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 1024,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    const data = (await resp.json()) as { content: Array<{ text: string }> };
+    return data.content[0]?.text ?? "";
+  }
+
+  private async callDeepseek(apiKey: string, prompt: string, model: string): Promise<string> {
+    const resp = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    const data = (await resp.json()) as { choices: Array<{ message: { content: string } }> };
+    return data.choices[0]?.message?.content ?? "";
   }
 
   async streamText(
     payload: AiPromptPayload,
     onChunk: (chunk: string) => void,
   ): Promise<void> {
-    // Stub: liefert die ganze Antwort als einen Chunk
     const result = await this.generateText(payload);
     onChunk(result.text);
   }

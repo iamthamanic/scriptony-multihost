@@ -27,6 +27,7 @@ import {
   StubTimelineRepository,
   StubAiService,
   StubStorageRepository,
+  StubBeatRepository,
 } from "../appwrite/stubs";
 
 const NOT_READY = "Open a local .scriptony project first.";
@@ -155,6 +156,7 @@ export class LocalBackendNotReady implements ScriptonyBackend {
   readonly jobs = new NotReadyJobService();
   readonly ai = new StubAiService();
   readonly storage = new StubStorageRepository();
+  readonly beats = new StubBeatRepository();
   readonly blender = new AppwriteBlenderService();
 
   constructor(auth: AuthClient) {

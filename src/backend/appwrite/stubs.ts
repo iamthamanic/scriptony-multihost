@@ -14,6 +14,7 @@ import type {
 	WorldbuildingRepository,
 	WorldbuildingEntry,
 	TimelineRepository,
+	BeatRepository,
 	AiService,
 	AiPromptPayload,
 	AiPromptResult,
@@ -25,6 +26,11 @@ import type {
 	StorageUsageInfo,
 	StorageBucketKind,
 } from "../ScriptonyBackend";
+import type {
+	StoryBeat,
+	CreateBeatPayload,
+	UpdateBeatPayload,
+} from "@/lib/api/beats-api";
 
 // ── Structure ───────────────────────────────────────────────────────────────
 
@@ -127,6 +133,24 @@ export class StubTimelineRepository implements TimelineRepository {
 }
 
 // ── AI ────────────────────────────────────────────────────────────────────────
+
+export class StubBeatRepository implements BeatRepository {
+	async list(_projectId: string): Promise<StoryBeat[]> {
+		return [];
+	}
+	async get(_id: string): Promise<StoryBeat | null> {
+		return null;
+	}
+	async create(_projectId: string, _payload: CreateBeatPayload): Promise<StoryBeat> {
+		throw new Error("StubBeatRepository.create not implemented");
+	}
+	async update(_id: string, _patch: UpdateBeatPayload): Promise<StoryBeat> {
+		throw new Error("StubBeatRepository.update not implemented");
+	}
+	async delete(_id: string): Promise<void> {
+		throw new Error("StubBeatRepository.delete not implemented");
+	}
+}
 
 export class StubAiService implements AiService {
 	async generateText(_payload: AiPromptPayload): Promise<AiPromptResult> {

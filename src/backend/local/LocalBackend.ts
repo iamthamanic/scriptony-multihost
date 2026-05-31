@@ -62,6 +62,24 @@ export class LocalBackend implements ScriptonyBackend {
     const localAi = new LocalAiService();
     localAi.setProjectDir(localProject.dirPath);
     this.ai = localAi;
-    this.storage = new HybridStorageRepository();
+    
+    const localFileSaver = async (file: File, _containerId: string) => {
+      const asset = await this.assets.importAsset({
+        projectId: localProject.projectId,
+        file,
+        type: "other",
+      });
+      const localPath = asset.storage.mode === "local"
+        ? asset.storage.relativePath
+        : "";
+      return {
+        path: localPath,
+        id: asset.id,
+        size: asset.sizeBytes ?? 0,
+        mimeType: asset.mimeType ?? undefined,
+        url: localPath,
+      };
+    };
+    this.storage = new HybridStorageRepository(undefined, localFileSaver);
   }
 }

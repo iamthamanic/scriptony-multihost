@@ -7,6 +7,11 @@
  */
 
 import type { AuthClient } from "@/lib/auth/AuthClient";
+import type {
+	CreateBeatPayload,
+	StoryBeat,
+	UpdateBeatPayload,
+} from "@/lib/api/beats-api";
 import type { AudioClip, AudioTrack, CharacterVoiceAssignment } from "@/lib/types";
 import type { Character } from "@/lib/types";
 import type {
@@ -106,6 +111,16 @@ export interface CharacterRepository {
 	delete(id: string): Promise<void>;
 }
 
+// ── Story Beats (T62 — local SQLite; cloud uses HTTP beats-api) ───────────
+
+export interface BeatRepository {
+	list(projectId: string): Promise<StoryBeat[]>;
+	get(id: string): Promise<StoryBeat | null>;
+	create(projectId: string, payload: CreateBeatPayload): Promise<StoryBeat>;
+	update(id: string, patch: UpdateBeatPayload): Promise<StoryBeat>;
+	delete(id: string): Promise<void>;
+}
+
 // ── Worldbuilding ──────────────────────────────────────────────────────────
 
 export interface WorldbuildingEntry {
@@ -140,10 +155,15 @@ export interface TimelineRepository {
 
 export interface AudioClipUpdatePayload {
 	laneIndex?: number;
+	characterId?: string;
 	fxPresetId?: string;
+	fxSlots?: (string | null)[];
+	fxChainEnabled?: boolean;
 	startSec?: number;
 	endSec?: number;
 	orderIndex?: number;
+	audioFileId?: string;
+	waveformData?: number[];
 }
 
 export interface AudioRepository {
@@ -299,6 +319,7 @@ export interface ScriptonyBackend {
 	readonly ai: AiService;
 	readonly storage: StorageRepository;
 	readonly blender: BlenderService;
+	readonly beats: BeatRepository;
 }
 
 export type {
