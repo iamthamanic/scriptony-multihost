@@ -39,6 +39,7 @@ const CHANGE_LOG_TABLES = new Set<string>([
 	TABLE.AUDIO_CLIPS,
 	TABLE.ASSETS,
 	TABLE.JOBS,
+	TABLE.STORY_BEATS,
 ]);
 
 /** Assert that a table name is in the allowlist. Throws on unknown names. */

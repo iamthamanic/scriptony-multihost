@@ -224,6 +224,7 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   color        TEXT,
   notes        TEXT,
   order_index  INTEGER DEFAULT 0,
+  deleted_at   TEXT,
   created_at   TEXT,
   updated_at   TEXT
 )`,
