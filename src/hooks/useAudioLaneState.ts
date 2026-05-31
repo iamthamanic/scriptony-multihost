@@ -1,7 +1,7 @@
 /**
  * useAudioLaneState — T32 DAW Feature.
  *
- * Manages per-lane mixer state (mute, solo, volume, pan, fxPresetId, meterPeak).
+ * Manages per-lane mixer state (mute, solo, volume, pan, fxPresetId, meterPeak, fxSlots, fxChainEnabled).
  * State is React-only (not persisted to backend in T32).
  */
 
@@ -11,6 +11,7 @@ import {
   type LaneStates,
   createDefaultLaneState,
 } from "../lib/audio-lane";
+import type { FxSlotPresets } from "../lib/fx-chain";
 
 export function useAudioLaneState() {
   const [laneStates, setLaneStates] = useState<LaneStates>({});
@@ -54,13 +55,30 @@ export function useAudioLaneState() {
     [updateLane],
   );
 
+  const setFxSlots = useCallback(
+    (laneIndex: number, slots: FxSlotPresets) =>
+      updateLane(laneIndex, { fxSlots: slots }),
+    [updateLane],
+  );
+
+  const setFxChainEnabled = useCallback(
+    (laneIndex: number, enabled: boolean) =>
+      updateLane(laneIndex, { fxChainEnabled: enabled }),
+    [updateLane],
+  );
+
   const setMeterPeak = useCallback(
     (laneIndex: number, peak: number) =>
       updateLane(laneIndex, { meterPeak: peak }),
     [updateLane],
   );
 
-  /** Get or create lane state for a given lane index. */
+  const setLocked = useCallback(
+    (laneIndex: number, locked: boolean) =>
+      updateLane(laneIndex, { locked }),
+    [updateLane],
+  );
+
   const getLaneState = useCallback(
     (laneIndex: number): LaneState =>
       laneStates[laneIndex] || createDefaultLaneState(),
@@ -75,6 +93,9 @@ export function useAudioLaneState() {
     setVolume,
     setPan,
     setFxPreset,
+    setFxSlots,
+    setFxChainEnabled,
     setMeterPeak,
+    setLocked,
   };
 }

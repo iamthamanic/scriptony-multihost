@@ -5,8 +5,10 @@
  * No side effects, no React — just logic.
  */
 
+import { isCharacterDialogLane } from "./character-lane-map";
 import { LANE_SCHEMA } from "../lib/types";
 import type { AudioClip, AudioTrackType } from "../lib/types";
+import type { FxSlotPresets } from "./fx-chain";
 
 // ── Lane Assignment ──────────────────────────────────────────────────
 
@@ -157,7 +159,7 @@ export interface LaneState {
   pan: number; // -1…+1
   meterPeak: number; // 0–1+, for LevelMeter
   fxPresetId?: string; // T32: FX preset metadata, no processing
-  fxSlots?: string[];
+  fxSlots?: FxSlotPresets;
   fxChainEnabled?: boolean;
   locked?: boolean;
 }
@@ -252,3 +254,62 @@ export function parsePanReadout(raw: string): number | null {
   if (Number.isNaN(val)) return null;
   return Math.max(-100, Math.min(100, val));
 }
+
+/** Default placeholder lane indices (when no clips exist yet). */
+export const DEFAULT_VISIBLE_LANE_INDICES: readonly number[] = [100];
+
+/** Merge clip-derived lane indices with default placeholder lanes. */
+export function mergeVisibleLaneIndices(
+  clipLaneIndices: number[],
+  includeDefaults = true,
+  extraLanes: number[] = [],
+): number[] {
+  const merged = new Set(clipLaneIndices);
+  for (const lane of extraLanes) merged.add(lane);
+  if (includeDefaults) {
+    for (const lane of DEFAULT_VISIBLE_LANE_INDICES) merged.add(lane);
+  }
+  return [...merged].sort((a, b) => a - b);
+}
+
+/** Find the next free lane index for a given track type. */
+export function findFreeLaneForType(
+  clips: AudioClip[],
+  trackType: AudioTrackType | "global",
+): number | undefined {
+  const config = LANE_SCHEMA[trackType as keyof typeof LANE_SCHEMA];
+  if (!config) return undefined;
+  const occupied = new Set(clips.map((c) => c.laneIndex));
+  for (let i = config.base; i <= config.max; i++) {
+    if (!occupied.has(i)) return i;
+  }
+  return config.max;
+}
+
+/** Map lane index to AudioTrackType for new clips on that lane. */
+export function laneIndexToTrackType(laneIndex: number): AudioTrackType {
+  
+  const t = getLaneType(laneIndex);
+  if (t === "global") return "dialog";
+  if (t === "narrator") return "dialog";
+  return t as AudioTrackType;
+}
+
+/** CSS vars for pan track fill. */
+export function getPanFillVars(pan: number): {
+  "--pan-fill-start": string;
+  "--pan-fill-end": string;
+} {
+  const clamped = Math.max(-1, Math.min(1, pan));
+  const thumbPercent = ((clamped + 1) / 2) * 100;
+  return {
+    "--pan-fill-start": `${Math.min(50, thumbPercent)}%`,
+    "--pan-fill-end": `${Math.max(50, thumbPercent)}%`,
+  };
+}
+
+const PAN_TRACK_NEUTRAL = "rgba(255, 255, 255, 0.12)";
+const PAN_TRACK_BLUE = "rgba(59, 130, 246, 1)";
+const PAN_TRACK_RED = "rgba(239, 68, 68, 1)";
+
+/** Below this |pan|, track stays neutral (no L/R tint). */

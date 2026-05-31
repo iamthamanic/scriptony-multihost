@@ -128,6 +128,10 @@ export function setRuntimeAppwriteOverride(
 }
 
 /** Active runtime profile for backend URL resolution (set by RuntimeProvider). */
+export function getBackendRuntimeProfile(): "local" | "cloud" | "selfHosted" | null {
+  return _runtimeProfile;
+}
+
 export function setBackendRuntimeProfile(
   profile: "local" | "cloud" | "selfHosted" | null,
 ): void {

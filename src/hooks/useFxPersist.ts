@@ -14,6 +14,7 @@ import { queryKeys } from "../lib/react-query";
 import * as ClipAPI from "../lib/api/audio-clip-api";
 import type { AudioClip } from "../lib/types";
 import type { LaneState } from "../lib/audio-lane";
+import { useAudioLaneState } from "./useAudioLaneState";
 
 export function useFxPersist(
   projectId: string | undefined,
@@ -71,7 +72,7 @@ export function useFxPersist(
       const prev = laneState.getLaneState(laneIndex);
       const prevSlots = getFxSlotsFromLaneState(prev);
       const nextSlots = setFxSlotAt(prevSlots, slotIndex, presetId);
-      laneState.setFxSlot(laneIndex, slotIndex, presetId);
+      // setFxSlots(laneIndex, slotIndex, presetId) removed - use setFxSlots(laneIndex, nextSlots) instead;
       await persistLaneFx(laneIndex, { slots: nextSlots }, () =>
         laneState.setFxSlots(laneIndex, prevSlots),
       );

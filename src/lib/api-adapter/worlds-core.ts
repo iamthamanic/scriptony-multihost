@@ -4,6 +4,8 @@
  */
 
 import { cloudFetch } from "./cloud-fetch";
+
+const WORLDS_API_TIMEOUT_MS = 30000;
 import {
   dispatchByRuntime,
   getOpenLocalProjectId,

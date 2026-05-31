@@ -56,6 +56,7 @@ export interface CreateProjectOptions {
   description?: string;
   /** Override project ID (default: auto-generated). */
   projectId?: string;
+  projectType?: string;
 }
 
 export interface ValidateProjectFolderResult {

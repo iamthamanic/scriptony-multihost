@@ -1,0 +1,93 @@
+/**
+ * Local SQLite schema migrations (T62).
+ *
+ * Location: src/local/schema-migrations.ts
+ */
+
+import type { BindParams } from "sql.js";
+import type { LocalDb } from "@/backend/local/LocalDb";
+import { SCHEMA_META_TABLE, SCHEMA_VERSION, TABLE } from "./project-schema";
+
+/** Idempotent DDL for schema v2 (story_beats). */
+export const MIGRATION_V2_STATEMENTS: readonly string[] = [
+  `CREATE TABLE IF NOT EXISTS ${TABLE.STORY_BEATS} (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL,
+  user_id TEXT NOT NULL DEFAULT 'local-user',
+  label TEXT NOT NULL,
+  template_abbr TEXT,
+  description TEXT,
+  from_container_id TEXT NOT NULL,
+  to_container_id TEXT NOT NULL,
+  pct_from REAL NOT NULL DEFAULT 0,
+  pct_to REAL NOT NULL DEFAULT 0,
+  color TEXT,
+  notes TEXT,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  deleted_at TEXT,
+  FOREIGN KEY (project_id) REFERENCES ${TABLE.PROJECTS}(id) ON DELETE CASCADE
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_story_beats_project ON ${TABLE.STORY_BEATS}(project_id)`,
+];
+
+async function readSchemaVersion(db: LocalDb): Promise<number> {
+  const row = await db.get(
+    `SELECT value FROM ${SCHEMA_META_TABLE} WHERE key = 'version'`,
+  );
+  if (!row?.value) return 1;
+  const parsed = Number.parseInt(String(row.value), 10);
+  return Number.isFinite(parsed) ? parsed : 1;
+}
+
+async function setSchemaVersion(db: LocalDb, version: number): Promise<void> {
+  await db.run(
+    `INSERT INTO ${SCHEMA_META_TABLE} (key, value) VALUES ('version', ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    [String(version)],
+  );
+}
+
+/** Idempotent lane index remap for schema v3 (lane ranges v2). */
+export const MIGRATION_V3_LANE_REMAP: readonly {
+  sql: string;
+  params?: BindParams;
+}[] = [
+  {
+    sql: `UPDATE audio_clips SET lane_index = lane_index + 90 WHERE lane_index >= 10 AND lane_index <= 39 AND deleted_at IS NULL`,
+  },
+  {
+    sql: `UPDATE audio_clips SET lane_index = lane_index + 100 WHERE lane_index >= 90 AND lane_index <= 99 AND deleted_at IS NULL`,
+  },
+];
+
+/** Apply pending migrations up to SCHEMA_VERSION. */
+export async function migrateLocalDb(db: LocalDb): Promise<void> {
+  let version = await readSchemaVersion(db);
+
+  if (version < 2) {
+    for (const stmt of MIGRATION_V2_STATEMENTS) {
+      await db.run(stmt);
+    }
+    version = 2;
+    await setSchemaVersion(db, version);
+  }
+
+  if (version < 3) {
+    const clipsTable = await db.get(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'audio_clips'`,
+    );
+    if (clipsTable?.name) {
+      for (const { sql, params } of MIGRATION_V3_LANE_REMAP) {
+        await db.run(sql, params);
+      }
+    }
+    version = 3;
+    await setSchemaVersion(db, version);
+  }
+
+  if (version < SCHEMA_VERSION) {
+    await setSchemaVersion(db, SCHEMA_VERSION);
+  }
+}

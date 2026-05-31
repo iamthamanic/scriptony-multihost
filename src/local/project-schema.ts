@@ -34,6 +34,7 @@ export const TABLE = {
   JOBS: "jobs",
   CHANGE_LOG: "change_log",
   SCHEMA_META: SCHEMA_META_TABLE,
+  STORY_BEATS: "story_beats",
 } as const;
 
 export type TableName = (typeof TABLE)[keyof typeof TABLE];
@@ -209,6 +210,23 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
 )`,
   `CREATE INDEX IF NOT EXISTS idx_changelog_project ON ${TABLE.CHANGE_LOG}(project_id)`,
   `CREATE INDEX IF NOT EXISTS idx_changelog_unsynced ON ${TABLE.CHANGE_LOG}(synced_at) WHERE synced_at IS NULL`,
+  `CREATE TABLE IF NOT EXISTS ${TABLE.STORY_BEATS} (
+  id           TEXT PRIMARY KEY,
+  project_id   TEXT NOT NULL,
+  user_id      TEXT NOT NULL,
+  label        TEXT NOT NULL,
+  template_abbr TEXT,
+  description  TEXT,
+  from_container_id TEXT,
+  to_container_id   TEXT,
+  pct_from     REAL,
+  pct_to       REAL,
+  color        TEXT,
+  notes        TEXT,
+  order_index  INTEGER DEFAULT 0,
+  created_at   TEXT,
+  updated_at   TEXT
+)`,
 ];
 
 /**

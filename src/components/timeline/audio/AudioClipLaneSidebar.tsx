@@ -9,7 +9,7 @@ import {
   LANE_UI,
 } from "../../../lib/audio-lane";
 import { isCharacterDialogLane } from "../../../lib/character-lane-map";
-import { TrackHeader } from "../../audio/TrackHeader";
+import { TrackHeader } from "../../audio/track-header/TrackHeader";
 import { AddAudioTimelineMenu } from "./AddAudioTimelineMenu";
 import type { AudioClip, Character } from "../../../lib/types";
 import type { AudioClipLaneTracksProps } from "./AudioClipLaneTracks";

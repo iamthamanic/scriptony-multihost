@@ -12,7 +12,7 @@ export interface LevelMeterProps {
   /** Peak level 0–1+. Values >1 indicate clipping. */
   value: number;
   /** Height variant. "compact" = 16px, "default" = 24px */
-  variant?: "compact" | "default";
+  variant?: "compact" | "default" | "vertical";
   className?: string;
 }
 

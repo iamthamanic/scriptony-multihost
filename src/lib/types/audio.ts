@@ -3,6 +3,7 @@
  */
 
 import type { Character } from "./project";
+import type { FxSlotPresets } from "../fx-chain";
 
 export type AudioTrackType = "dialog" | "narrator" | "music" | "sfx" | "atmo";
 
@@ -63,6 +64,8 @@ export interface AudioClip {
   waveformData?: number[];
   crossScene?: boolean;
   fxPresetId?: string;
+  fxSlots?: FxSlotPresets;
+  fxChainEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
 }

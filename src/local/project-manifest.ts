@@ -64,6 +64,7 @@ export interface ProjectManifest {
   updatedAt: string;
   /** Sync metadata — disabled by default for local projects. */
   sync: ProjectSyncMeta;
+  projectType?: string;
 }
 
 // ── Validation ──────────────────────────────────────────────────────────────

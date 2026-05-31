@@ -22,3 +22,11 @@ export const FEATURE_FLAGS = {
 export function isFeatureEnabled(flag: keyof typeof FEATURE_FLAGS): boolean {
   return FEATURE_FLAGS[flag].enabled;
 }
+
+/** AudioClip-System: env flag or Höspiel project (timeline embed always uses clips). */
+export function isAudioClipSystemEnabled(projectType?: string | null): boolean {
+  return (
+    isFeatureEnabled("audioClipSystem") ||
+    (projectType ?? "").toLowerCase() === "audio"
+  );
+}

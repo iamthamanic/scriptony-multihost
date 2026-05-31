@@ -267,3 +267,28 @@ function parseJsonValue<T>(value: unknown): T | undefined {
 		return undefined;
 	}
 }
+
+import type { StoryBeat } from "@/lib/api/beats-api";
+
+/** Map a raw SQLite row to a StoryBeat (T62). */
+export function mapBeatRow(row: Record<string, unknown>): StoryBeat {
+  const now = new Date().toISOString();
+  return {
+    id: String(row.id ?? ""),
+    project_id: String(row.project_id ?? ""),
+    user_id: String(row.user_id ?? ""),
+    label: String(row.label ?? ""),
+    template_abbr: row.template_abbr ? String(row.template_abbr) : undefined,
+    description: row.description ? String(row.description) : undefined,
+    from_container_id: String(row.from_container_id ?? ""),
+    to_container_id: String(row.to_container_id ?? ""),
+    pct_from: Number(row.pct_from ?? 0),
+    pct_to: Number(row.pct_to ?? 0),
+    color: row.color ? String(row.color) : undefined,
+    notes: row.notes ? String(row.notes) : undefined,
+    order_index: Number(row.order_index ?? 0),
+    created_at: String(row.created_at ?? now),
+    updated_at: String(row.updated_at ?? now),
+  };
+}
+

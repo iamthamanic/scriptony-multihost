@@ -62,7 +62,7 @@ export function AudioClipLaneContent({
           pxPerSec={pxPerSec}
           
           onTrimEnd={onTrimEnd}
-          isEditable={!(laneState.getLaneState(laneIndex)?.locked ?? false ?? false)}
+          isEditable={!(laneState.getLaneState(laneIndex)?.locked ?? false)}
           onGenerateTts={() => onGenerateTts(clip)}
           allClips={allClips}
           onLaneChange={onLaneChange}

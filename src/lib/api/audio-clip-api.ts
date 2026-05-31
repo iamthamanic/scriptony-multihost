@@ -18,7 +18,15 @@ import type { AudioClip } from "../types";
 export type AudioClipUpdatePayload = Partial<
   Pick<
     AudioClip,
-    "laneIndex" | "fxPresetId" | "startSec" | "endSec" | "orderIndex"
+    | "laneIndex"
+    | "fxPresetId"
+    | "startSec"
+    | "endSec"
+    | "orderIndex"
+    | "characterId"
+    | "fxSlots"
+    | "fxChainEnabled"
+    | "audioFileId"
   >
 >;
 
@@ -54,7 +62,7 @@ function mapKeysToSnake(obj: Record<string, unknown>): Record<string, unknown> {
 
 export async function getProjectAudioClips(
   projectId: string,
-  _accessToken: string,
+  _accessToken?: string,
 ): Promise<AudioClip[]> {
   const result = await apiRequest<{ clips: AudioClip[] }>(
     `/audio-clips?project_id=${encodeURIComponent(projectId)}`,
@@ -68,7 +76,7 @@ export async function getProjectAudioClips(
 
 export async function getClipsByScene(
   sceneId: string,
-  _accessToken: string,
+  _accessToken?: string,
 ): Promise<AudioClip[]> {
   const result = await apiRequest<{ clips: AudioClip[] }>(
     `/clips?sceneId=${encodeURIComponent(sceneId)}`,
@@ -84,7 +92,7 @@ export async function createClip(
   sceneId: string,
   projectId: string,
   clipData: Partial<AudioClip>,
-  _accessToken: string,
+  _accessToken?: string,
 ): Promise<AudioClip> {
   const payload = mapKeysToSnake({
     sceneId,
@@ -108,7 +116,7 @@ export async function createClip(
 export async function updateClip(
   clipId: string,
   updates: AudioClipUpdatePayload,
-  _accessToken: string,
+  _accessToken?: string,
 ): Promise<AudioClip> {
   const result = await apiRequest<{ clip: AudioClip }>(`/clips/${clipId}`, {
     method: "PUT",
@@ -150,7 +158,7 @@ export interface RippleResult {
 
 export async function rippleClips(
   payload: RipplePayload,
-  _accessToken: string,
+  _accessToken?: string,
 ): Promise<RippleResult> {
   const snakePayload = {
     changedClipId: payload.changedClipId,
@@ -178,7 +186,7 @@ export async function rippleClips(
 
 export async function deleteClip(
   clipId: string,
-  _accessToken: string,
+  _accessToken?: string,
 ): Promise<void> {
   const result = await apiRequest<{ deleted: boolean }>(`/clips/${clipId}`, {
     method: "DELETE",
