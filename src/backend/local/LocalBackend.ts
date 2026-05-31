@@ -16,9 +16,11 @@ import { LocalStorageService } from "./LocalStorageService";
 import { LocalJobService } from "./LocalJobService";
 import { LocalBlenderService } from "./LocalBlenderService";
 import { LocalCharacterRepository } from "./LocalCharacterRepository";
+import { LocalBeatsRepository } from "./LocalBeatsRepository";
 import { LocalWorldbuildingRepository } from "./LocalWorldbuildingRepository";
 import { LocalTimelineRepository } from "./LocalTimelineRepository";
-import { StubAiService, StubStorageRepository } from "../appwrite/stubs";
+import { HybridAiService, HybridStorageRepository } from "../hybrid";
+import { LocalAiService } from "./LocalAiService";
 
 export class LocalBackend implements ScriptonyBackend {
   readonly auth: AuthClient;
@@ -26,13 +28,14 @@ export class LocalBackend implements ScriptonyBackend {
   readonly structure: LocalStructureRepository;
   readonly scripts: LocalScriptRepository;
   readonly characters: LocalCharacterRepository;
+  readonly beats: LocalBeatsRepository;
   readonly worldbuilding: LocalWorldbuildingRepository;
   readonly timeline: LocalTimelineRepository;
   readonly audio: LocalAudioRepository;
   readonly assets: LocalAssetRepository;
   readonly jobs: LocalJobService;
-  readonly ai = new StubAiService();
-  readonly storage = new StubStorageRepository();
+  readonly ai: LocalAiService;
+  readonly storage: HybridStorageRepository;
   readonly blender = new LocalBlenderService();
 
   /** Active local project session (manifest + persist). */
@@ -46,6 +49,7 @@ export class LocalBackend implements ScriptonyBackend {
     this.structure = new LocalStructureRepository(localProject.db);
     this.scripts = new LocalScriptRepository(localProject.db);
     this.characters = new LocalCharacterRepository(localProject.db);
+    this.beats = new LocalBeatsRepository(localProject.db);
     this.worldbuilding = new LocalWorldbuildingRepository(localProject.db);
     this.timeline = new LocalTimelineRepository(localProject.db);
     this.audio = new LocalAudioRepository(localProject.db);
@@ -55,5 +59,9 @@ export class LocalBackend implements ScriptonyBackend {
       storage,
     );
     this.jobs = new LocalJobService(localProject.db, localProject.projectId);
+    const localAi = new LocalAiService();
+    localAi.setProjectDir(localProject.dirPath);
+    this.ai = localAi;
+    this.storage = new HybridStorageRepository();
   }
 }

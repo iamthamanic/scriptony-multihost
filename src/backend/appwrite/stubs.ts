@@ -129,11 +129,12 @@ export class StubTimelineRepository implements TimelineRepository {
 // ── AI ────────────────────────────────────────────────────────────────────────
 
 export class StubAiService implements AiService {
-	async generateText(): Promise<AiPromptResult> {
-		throw new Error("StubAiService.generateText not implemented");
+	async generateText(_payload: AiPromptPayload): Promise<AiPromptResult> {
+		console.warn("[StubAiService] AI wird im Offline-Modus nicht unterstützt. Bitte melde dich an, um Cloud-KI zu nutzen.");
+		return { text: "[Offline-Modus: KI nicht verfügbar]" };
 	}
-	async streamText(): Promise<void> {
-		throw new Error("StubAiService.streamText not implemented");
+	async streamText(_payload: AiPromptPayload, _onChunk: (chunk: string) => void): Promise<void> {
+		console.warn("[StubAiService] Streaming wird im Offline-Modus nicht unterstützt.");
 	}
 }
 
@@ -141,33 +142,33 @@ export class StubAiService implements AiService {
 
 export class StubStorageRepository implements StorageRepository {
 	async listProviders(): Promise<StorageProviderConfig[]> {
-		throw new Error("StubStorageRepository.listProviders not implemented");
+		return [];
 	}
-	async getProviderMeta(): Promise<StorageProviderConfig | null> {
-		throw new Error("StubStorageRepository.getProviderMeta not implemented");
+	async getProviderMeta(_providerId: string): Promise<StorageProviderConfig | null> {
+		return null;
 	}
 	async getDefaultProviderId(): Promise<string | null> {
-		throw new Error("StubStorageRepository.getDefaultProviderId not implemented");
+		return null;
 	}
 	async getSelectedProviderId(): Promise<string | null> {
-		throw new Error("StubStorageRepository.getSelectedProviderId not implemented");
+		return null;
 	}
-	async setSelectedProviderId(): Promise<void> {
-		throw new Error("StubStorageRepository.setSelectedProviderId not implemented");
+	async setSelectedProviderId(_id: string): Promise<void> {
+		/* no-op */
 	}
-	async listContainers(): Promise<StorageContainer[]> {
-		throw new Error("StubStorageRepository.listContainers not implemented");
+	async listContainers(_providerId: string, _bucket: StorageBucketKind): Promise<StorageContainer[]> {
+		return [];
 	}
-	async listFiles(): Promise<StorageFile[]> {
-		throw new Error("StubStorageRepository.listFiles not implemented");
+	async listFiles(_providerId: string, _containerId: string): Promise<StorageFile[]> {
+		return [];
 	}
-	async uploadFile(): Promise<StorageFileInfo> {
-		throw new Error("StubStorageRepository.uploadFile not implemented");
+	async uploadFile(_providerId: string, _containerId: string, _file: File): Promise<StorageFileInfo> {
+		throw new Error("Upload ist nur im Online-Modus verfügbar. Bitte melde dich an.");
 	}
-	async deleteFile(): Promise<void> {
-		throw new Error("StubStorageRepository.deleteFile not implemented");
+	async deleteFile(_providerId: string, _fileId: string): Promise<void> {
+		/* no-op */
 	}
-	async getUsage(): Promise<StorageUsageInfo> {
-		throw new Error("StubStorageRepository.getUsage not implemented");
+	async getUsage(_providerId: string): Promise<StorageUsageInfo> {
+		return { usedBytes: 0, totalBytes: 0, fileCount: 0 };
 	}
 }

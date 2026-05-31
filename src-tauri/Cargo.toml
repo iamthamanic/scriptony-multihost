@@ -15,13 +15,19 @@ name = "app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.6.2" }
+tauri-build = { version = "2.6.2", features = [] }
 
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-tauri = { version = "2.11.2" }
+tauri = { version = "2.11.2", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-deep-link = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-store = "2"
 tauri-plugin-fs = "2"
+rfd = "0.16"
+tauri-plugin-mcp-bridge = { git = "https://github.com/hypothesi/mcp-server-tauri", subdir = "packages/tauri-plugin-mcp-bridge" }
+reqwest = { version = "0.12", features = ["blocking", "json"] }
+tokio = { version = "1.41", features = ["rt", "macros"] }

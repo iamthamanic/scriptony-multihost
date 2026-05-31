@@ -1,32 +1,43 @@
 /**
- * Hook für TTS-Generierung mit Job-Status-Polling.
+ * Hook fuer TTS-Generierung — Cloud und Lokal.
  *
  * T31: TTS-Pipeline und Audio-Generierung.
- * - startTts: Erstellt TTS-Job
- * - useTtsJobStatus: Pollt Job-Status (2s Intervall via setTimeout-Chain)
- * - Automatisches Clip-Refresh nach Abschluss
+ * - startTts: Erstellt TTS-Job (Cloud) oder ruft Kokoro Sidecar (Lokal)
+ * - startLocalTts: Direkte Kokoro-Synthese ohne Job-Queue
+ * - useTtsJobStatus: Pollt Cloud-Job-Status (2s Intervall)
  *
- * Security: setTimeout-Chain statt setInterval verhindert überlappende
- * Requests, wenn getTtsStatus länger als POLL_INTERVAL_MS dauert.
+ * Security: setTimeout-Chain statt setInterval verhindert ueberlappende
+ * Requests, wenn getTtsStatus laenger als POLL_INTERVAL_MS dauert.
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { createTtsJob, getTtsStatus } from "../lib/api/audio-tts-api";
+import {
+  ensureKokoroSidecar,
+  synthesizeLocal,
+  isKokoroHealthy,
+} from "../lib/api/local-tts-api";
 import { queryKeys } from "../lib/react-query";
 import type { TtsJobPayload, TtsJobStatus } from "../lib/api/audio-tts-api";
+import type { LocalTtsPayload } from "../lib/api/local-tts-api";
 import { isFeatureEnabled } from "../lib/feature-flags";
+import {
+  canUseCloudFeatures,
+  isLocalProfile,
+} from "@/lib/api-adapter/runtime-dispatch";
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLL_TIME_MS = 300_000; // 5 Minuten Timeout
 
 export interface UseTtsGenerationOptions {
+  projectDir?: string;
   sceneId?: string;
   onSuccess?: () => void;
 }
 
-/** Invalidiert Audio-Queries für die gegebene sceneId. */
+/** Invalidiert Audio-Queries fuer die gegebene sceneId. */
 function invalidateAudioQueries(
   queryClient: ReturnType<typeof useQueryClient>,
   effectiveSceneId: string,
@@ -37,21 +48,19 @@ function invalidateAudioQueries(
   queryClient.invalidateQueries({
     queryKey: queryKeys.audio.tracksByScene(effectiveSceneId),
   });
-  // T31: Bei leerer sceneId alle Audio-Queries invalidieren,
-  //   da ClipAudioTimeline mehrere Szenen abdeckt.
   if (!effectiveSceneId) {
-    queryClient.invalidateQueries({
-      queryKey: ["audio"],
-    });
+    queryClient.invalidateQueries({ queryKey: ["audio"] });
   }
 }
 
 export function useTtsGeneration({
+  projectDir,
   sceneId,
   onSuccess,
 }: UseTtsGenerationOptions) {
   const queryClient = useQueryClient();
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
+  const [localAudioPath, setLocalAudioPath] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<TtsJobStatus>("idle");
   const [progress, setProgress] = useState<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
@@ -71,13 +80,72 @@ export function useTtsGeneration({
     };
   }, []);
 
-  /**
-   * Startet die TTS-Generierung.
-   */
-  const startTts = useCallback(
+  // ── Lokale TTS via Kokoro (kein Cloud-API) ──────────────────────────────
+
+  const startLocalTts = useCallback(
+    async (payload: LocalTtsPayload, sceneIdOverride?: string) => {
+      if (!isFeatureEnabled("audioClipSystem")) {
+        toast.info("TTS-Pipeline ist noch nicht aktiviert.");
+        return;
+      }
+
+      const effectiveSceneId = sceneIdOverride || sceneId || "";
+      if (!projectDir) {
+        toast.error("Projektverzeichnis erforderlich fuer lokale TTS.");
+        return;
+      }
+
+      setError(null);
+      setJobStatus("processing");
+      setProgress(0);
+      setLocalAudioPath(null);
+      cancelledRef.current = false;
+
+      try {
+        // Sidecar starten (falls noch nicht laufend)
+        await ensureKokoroSidecar(projectDir);
+
+        const healthy = await isKokoroHealthy();
+        if (!healthy) {
+          throw new Error(
+            "Kokoro-Server nicht erreichbar. Bitte Seite neu laden.",
+          );
+        }
+
+        toast.info("TTS wird lokal generiert…");
+        const result = await synthesizeLocal(payload);
+        if (cancelledRef.current) return;
+
+        setLocalAudioPath(result.audioPath);
+        setProgress(100);
+        setJobStatus("completed");
+        invalidateAudioQueries(queryClient, effectiveSceneId);
+        toast.success("TTS erfolgreich generiert!");
+        onSuccess?.();
+      } catch (err) {
+        if (cancelledRef.current) return;
+        console.error("[useTtsGeneration] Local TTS failed:", err);
+        const msg = err instanceof Error ? err.message : "Unbekannter Fehler";
+        setError(msg);
+        setJobStatus("failed");
+        toast.error(`Lokale TTS fehlgeschlagen: ${msg}`);
+      }
+    },
+    [projectDir, sceneId, onSuccess, queryClient],
+  );
+
+  // ── Cloud TTS via Appwrite Functions (bestehender Code) ────────────────
+
+  const startCloudTts = useCallback(
     async (payload: TtsJobPayload, sceneIdOverride?: string) => {
       if (!isFeatureEnabled("audioClipSystem")) {
         toast.info("TTS-Pipeline ist noch nicht aktiviert.");
+        return;
+      }
+      if (isLocalProfile() && !canUseCloudFeatures()) {
+        toast.info(
+          "TTS benoetigt eine Cloud-Verbindung. Bitte Appwrite-Endpoint in .env.local konfigurieren.",
+        );
         return;
       }
 
@@ -93,6 +161,7 @@ export function useTtsGeneration({
       setError(null);
       setJobStatus("queued");
       setProgress(0);
+      setLocalAudioPath(null);
       startTimeRef.current = Date.now();
       jobIdRef.current = null;
       cancelledRef.current = false;
@@ -132,19 +201,17 @@ export function useTtsGeneration({
           );
         }
 
-        // Start setTimeout-Chain (kein setInterval — verhindert Überlappungen)
+        // setTimeout-Chain Polling
         const poll = async () => {
-          // Guard: cancel oder anderes Job
           if (cancelledRef.current || jobIdRef.current !== response.jobId) {
             return;
           }
 
-          // Timeout check
           if (Date.now() - startTimeRef.current > MAX_POLL_TIME_MS) {
             setJobStatus("failed");
             setActiveJobId(null);
             jobIdRef.current = null;
-            setError("TTS-Generierung hat das Zeitlimit überschritten.");
+            setError("TTS-Generierung hat das Zeitlimit ueberschritten.");
             toast.error("TTS-Generierung ist abgelaufen.");
             return;
           }
@@ -161,7 +228,7 @@ export function useTtsGeneration({
               invalidateAudioQueries(queryClient, effectiveSceneId);
               toast.success("TTS erfolgreich generiert!");
               onSuccess?.();
-              return; // Terminal — keine weitere Chain
+              return;
             } else if (status.status === "failed") {
               setJobStatus("failed");
               setError(status.error || "TTS-Generierung fehlgeschlagen.");
@@ -170,18 +237,17 @@ export function useTtsGeneration({
               toast.error(
                 `TTS fehlgeschlagen: ${status.error || "Unbekannter Fehler"}`,
               );
-              return; // Terminal
+              return;
             } else if (status.status === "cancelled") {
               setJobStatus("failed");
               setError("TTS-Generierung wurde abgebrochen.");
               setActiveJobId(null);
               jobIdRef.current = null;
               toast.info("TTS-Generierung abgebrochen.");
-              return; // Terminal
+              return;
             } else if (status.status === "processing") {
               setJobStatus("processing");
             }
-            // pending/queued: weiter pollen
           } catch (pollErr: unknown) {
             if (cancelledRef.current) return;
             const pollError = pollErr as {
@@ -189,7 +255,6 @@ export function useTtsGeneration({
               message?: string;
             };
             console.warn("[useTtsGeneration] Poll failed:", pollErr);
-            // 404/401 = terminal
             if (pollError.status === 404 || pollError.status === 401) {
               setJobStatus("failed");
               setError(
@@ -204,18 +269,15 @@ export function useTtsGeneration({
                   ? "TTS-Job nicht gefunden."
                   : "TTS-Job Zugriff verweigert.",
               );
-              return; // Terminal
+              return;
             }
-            // Transient error: nächste Chain starten
           }
 
-          // Nächster Tick — nur wenn nicht terminal oder abgebrochen
           if (!cancelledRef.current) {
             pollRef.current = setTimeout(poll, POLL_INTERVAL_MS);
           }
         };
 
-        // Erster Tick nach kurzem Delay
         pollRef.current = setTimeout(poll, POLL_INTERVAL_MS);
       } catch (err) {
         console.error("[useTtsGeneration] Start failed:", err);
@@ -230,9 +292,30 @@ export function useTtsGeneration({
     [sceneId, onSuccess, queryClient],
   );
 
+  // Unified entry point: route to local or cloud
+  const startTts = useCallback(
+    async (payload: TtsJobPayload, sceneIdOverride?: string) => {
+      if (isLocalProfile()) {
+        // Local mode: use Kokoro directly
+        await startLocalTts(
+          {
+            text: payload.text,
+            voice: payload.voiceId,
+            speed: payload.speed ?? 1.0,
+            format: "wav",
+          },
+          sceneIdOverride,
+        );
+      } else {
+        // Cloud mode: use Appwrite Functions
+        await startCloudTts(payload, sceneIdOverride);
+      }
+    },
+    [startLocalTts, startCloudTts],
+  );
+
   /**
-   * Stoppt nur das Frontend-Polling; der Backend-Job laeuft weiter.
-   * Kein echter Cancel — Backend-Cancel ist nicht implementiert (T31).
+   * Stoppt das Frontend-Polling / setzt State zurueck.
    */
   const stopPolling = useCallback(() => {
     cancelledRef.current = true;
@@ -241,6 +324,7 @@ export function useTtsGeneration({
       pollRef.current = null;
     }
     setActiveJobId(null);
+    setLocalAudioPath(null);
     jobIdRef.current = null;
     setJobStatus("idle");
     setProgress(undefined);
@@ -263,6 +347,7 @@ export function useTtsGeneration({
     stopPolling,
     retryTts,
     activeJobId,
+    localAudioPath,
     jobStatus,
     progress,
     error,

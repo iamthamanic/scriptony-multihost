@@ -4,8 +4,17 @@ mod commands;
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_deep_link::init())
+    .plugin(tauri_plugin_dialog::init())
+    .plugin(tauri_plugin_store::Builder::default().build())
     .plugin(tauri_plugin_fs::init())
+    .plugin(tauri_plugin_mcp_bridge::init())
     .invoke_handler(tauri::generate_handler![
+      commands::workspace::pick_workspace_folder,
+      commands::workspace::restore_workspace_scope,
+      commands::workspace::get_stored_workspace_root,
+      commands::workspace::clear_stored_workspace_root,
+      commands::workspace::register_workspace_scope,
+      commands::workspace::delete_workspace_project,
       commands::blender::blender_is_available,
       commands::blender::blender_get_version,
       commands::blender::blender_export_project,
@@ -15,6 +24,10 @@ pub fn run() {
       commands::sidecar::spawn_sidecar,
       commands::sidecar::stop_sidecar,
       commands::sidecar::sidecar_health,
+      commands::kokoro::start_kokoro_sidecar,
+      commands::kokoro::stop_kokoro_sidecar,
+      commands::kokoro::kokoro_health,
+      commands::kokoro::list_kokoro_voices,
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
