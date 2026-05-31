@@ -200,6 +200,7 @@ def serve_audio(filename: str):
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 def main():
+    global VOICES_DIR, OUTPUT_DIR
     parser = argparse.ArgumentParser(description="Kokoro Local TTS Server")
     parser.add_argument("--port", type=int, default=KOKORO_PORT, help="HTTP port")
     parser.add_argument("--host", default="127.0.0.1", help="Bind address")
@@ -207,7 +208,6 @@ def main():
     parser.add_argument("--output-dir", type=Path, default=OUTPUT_DIR, help="Output WAV directory")
     args = parser.parse_args()
 
-    global VOICES_DIR, OUTPUT_DIR
     VOICES_DIR = args.voices_dir
     OUTPUT_DIR = args.output_dir
     VOICES_DIR.mkdir(parents=True, exist_ok=True)
