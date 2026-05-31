@@ -5,9 +5,10 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT_DIR"
 export ROOT_DIR
 
-OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
+OLLAMA_HOST="${SHIM_OLLAMA_HOST:-${OLLAMA_HOST:-https://api.ollama.com}}"
 OLLAMA_MODEL="${SHIM_OLLAMA_MODEL:-kimi-k2.6:cloud}"
 OLLAMA_API_KEY="${OLLAMA_API_KEY:-}"
+
 REQUEST_TIMEOUT="${SHIM_AI_TIMEOUT_SEC:-300}"
 
 if ! command -v curl >/dev/null 2>&1; then
