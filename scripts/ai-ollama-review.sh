@@ -7,6 +7,7 @@ export ROOT_DIR
 
 OLLAMA_HOST="${OLLAMA_HOST:-http://localhost:11434}"
 OLLAMA_MODEL="${SHIM_OLLAMA_MODEL:-kimi-k2.6:cloud}"
+OLLAMA_API_KEY="${OLLAMA_API_KEY:-}"
 REQUEST_TIMEOUT="${SHIM_AI_TIMEOUT_SEC:-300}"
 
 if ! command -v curl >/dev/null 2>&1; then
@@ -19,9 +20,14 @@ if ! command -v jq >/dev/null 2>&1; then
   exit 0
 fi
 
-# Probe Ollama health
-if ! curl -fsS "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
-  echo "Ollama not reachable at $OLLAMA_HOST" >&2
+# Probe Ollama health (with auth if OLLAMA_API_KEY is set)
+CURL_AUTH=()
+if [[ -n "$OLLAMA_API_KEY" ]]; then
+  CURL_AUTH=(-H "Authorization: Bearer ${OLLAMA_API_KEY}")
+fi
+
+if ! curl -fsS ${CURL_AUTH[@]+"${CURL_AUTH[@]}"} "$OLLAMA_HOST/api/tags" >/dev/null 2>&1; then
+  echo "Ollama not reachable at $OLLAMA_HOST (unauthorized or offline)" >&2
   exit 77
 fi
 
@@ -136,6 +142,7 @@ BODY="$TMP_DIR/body.json"
 if ! curl -fsS \
   --max-time "$REQUEST_TIMEOUT" \
   -H "Content-Type: application/json" \
+  ${OLLAMA_API_KEY:+-H "Authorization: Bearer $OLLAMA_API_KEY"} \
   -d "@$TMP_DIR/request.json" \
   -o "$BODY" \
   -w "%{http_code}" \
