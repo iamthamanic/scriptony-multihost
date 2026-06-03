@@ -19,7 +19,8 @@ export function LocalProjectOpenGuard({
   onNavigate,
   children,
 }: LocalProjectOpenGuardProps) {
-  const { opening, openError, sessionMatches } = useEnsureLocalProjectOpen(projectId);
+  const { opening, openError, sessionMatches } =
+    useEnsureLocalProjectOpen(projectId);
 
   if (opening) {
     return (

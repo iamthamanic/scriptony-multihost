@@ -7,6 +7,12 @@
  */
 
 import { apiClient } from "../api-client";
+import { isLocalProfile } from "../api-adapter/runtime-dispatch";
+import {
+  CapabilityDeniedError,
+  requireCapability,
+} from "@/capabilities/registry";
+import { DomainAccessError } from "@/lib/api-adapter/domain-access";
 import { startJob, getJobStatus, getJobResult } from "../jobs/jobApi";
 import type {
   StyleGuideData,
@@ -28,6 +34,23 @@ export async function createReferenceWithFallback(
   projectId: string,
   payload: CreateReferencePayload,
 ): Promise<StyleGuideData> {
+  if (isLocalProfile()) {
+    try {
+      await requireCapability("hybrid.style_guide_write");
+    } catch (err) {
+      if (
+        err instanceof DomainAccessError ||
+        err instanceof CapabilityDeniedError
+      ) {
+        const error = new Error(
+          "Style-Guide-Upload (Cloud) ist offline. Appwrite anmelden oder Hybrid konfigurieren.",
+        );
+        (error as Error & { cause?: unknown }).cause = err;
+        throw error;
+      }
+      throw err;
+    }
+  }
   // For image uploads with files, always use job queue
   if (payload.fileBase64 || payload.kind === "image") {
     return createReferenceViaJob(projectId, payload);

@@ -3,14 +3,11 @@
  */
 
 import * as ClipAPI from "./api/audio-clip-api";
-import {
-  assignLaneIndex,
-  laneIndexToTrackType,
-} from "./audio-lane";
+import { assignLaneIndex, laneIndexToTrackType } from "./audio-lane";
 import { isCharacterDialogLane } from "./character-lane-map";
 import type { AudioClip, AudioTrackType } from "./types";
 import { estimateDurationSec } from "./audio-utils";
-import { createAudioTrack } from "./api/audio-story-api";
+import { createAudioTrack } from "@/lib/api-adapter/audio-story-adapter";
 import { resolveDomainAuthTokenOrEmpty } from "./api-adapter/domain-access";
 import { isFeatureEnabled } from "./feature-flags";
 export interface TimelineSceneRef {

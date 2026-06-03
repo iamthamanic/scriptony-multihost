@@ -127,8 +127,8 @@ export async function completeCreativeSession(
   await deps.sessions.update(updated);
 
   let profile =
-    (await deps.skills.getByUser(deps.userId)) ??
-    (await deps.skills.save({
+    (await deps.progress.getByUser(deps.userId)) ??
+    (await deps.progress.save({
       userId: deps.userId,
       originality: 12,
       conflict: 12,
@@ -165,7 +165,7 @@ export async function completeCreativeSession(
     profile.lastSessionDate = ended;
   }
 
-  await deps.skills.save(profile);
+  await deps.progress.save(profile);
 
   return { session: updated, profile };
 }
@@ -250,7 +250,7 @@ export async function getDailyChallengeUseCase(
 }
 
 export async function getRecommendationsUseCase(deps: CreativeGymDeps) {
-  const profile = await deps.skills.getByUser(deps.userId);
+  const profile = await deps.progress.getByUser(deps.userId);
   const sessions = await deps.sessions.listByUser(deps.userId);
   const recent = sessions.slice(0, 8).map((s) => s.challengeTemplateId);
   return deps.recommendations.getRecommendations({
@@ -333,7 +333,7 @@ export async function transferArtifactToCapsuleUseCase(
 }
 
 export async function getProgressOverviewUseCase(deps: CreativeGymDeps) {
-  const profile = await deps.skills.getByUser(deps.userId);
+  const profile = await deps.progress.getByUser(deps.userId);
   const sessions = await deps.sessions.listByUser(deps.userId);
   const completed = sessions.filter((s) => s.status === "completed");
   return {

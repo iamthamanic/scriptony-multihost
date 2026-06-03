@@ -41,137 +41,14 @@ const AUDIO_API_BASE = buildFunctionRouteUrl(EDGE_FUNCTIONS.AUDIO);
 // SHOT CRUD
 // =============================================================================
 
-export async function getShots(
-  sceneId: string,
-  accessToken: string,
-): Promise<Shot[]> {
-  // scriptony-shots: GET /shots/by-scene/:sceneId (nicht /shots/:id — das ist ein einzelner Shot)
-  const result = await apiGet(`/shots/by-scene/${encodeURIComponent(sceneId)}`);
-  const data = unwrapApiResult(result);
-  return data?.shots || [];
-}
-
-export async function getShot(
-  shotId: string,
-  accessToken: string,
-): Promise<Shot> {
-  const result = await apiGet(`/shots/${shotId}`);
-  const data = unwrapApiResult(result);
-  return data?.shot || data;
-}
-
-export async function createShot(
-  sceneId: string,
-  shotData: Partial<Shot>,
-  accessToken: string,
-): Promise<Shot> {
-  console.log("[Shots API] Creating shot:", { sceneId, shotData });
-
-  try {
-    // Extract project_id from shotData
-    const projectId =
-      (shotData as any).projectId || (shotData as any).project_id;
-
-    // Convert ALL camelCase to snake_case for backend
-    const payload: any = {
-      scene_id: sceneId,
-      project_id: projectId,
-    };
-
-    // Map common camelCase fields to snake_case
-    if ((shotData as any).shotNumber !== undefined) {
-      payload.shot_number = (shotData as any).shotNumber;
-    }
-    if (shotData.description !== undefined) {
-      payload.description = shotData.description;
-    }
-    if (shotData.duration !== undefined) {
-      payload.duration = shotData.duration;
-    }
-    if ((shotData as any).cameraAngle !== undefined) {
-      payload.camera_angle = (shotData as any).cameraAngle;
-    }
-    if ((shotData as any).shotType !== undefined) {
-      payload.shot_type = (shotData as any).shotType;
-    }
-    if ((shotData as any).imageUrl !== undefined) {
-      payload.image_url = (shotData as any).imageUrl;
-    }
-
-    const result = await apiPost("/shots", payload);
-
-    console.log("[Shots API] Raw result:", result);
-    const data = unwrapApiResult(result);
-    console.log("[Shots API] Unwrapped data:", data);
-    return data?.shot || data;
-  } catch (error) {
-    console.error("[Shots API] Error creating shot:", {
-      sceneId,
-      shotData,
-      error,
-      errorMessage: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
-}
-
-/** Strip values Appwrite url attributes reject; skip data-URL optimistic previews. */
-function sanitizeShotUpdatePayload(updates: Partial<Shot>): Partial<Shot> {
-  const out: Partial<Shot> = { ...updates };
-  if (out.imageUrl !== undefined) {
-    const u = out.imageUrl;
-    if (typeof u !== "string" || !u.trim() || u.startsWith("data:")) {
-      delete out.imageUrl;
-    }
-  }
-  return out;
-}
-
-export async function updateShot(
-  shotId: string,
-  updates: Partial<Shot>,
-  accessToken: string,
-): Promise<Shot | undefined> {
-  const payload = sanitizeShotUpdatePayload(updates) as Record<string, unknown>;
-  // Appwrite `shotlength_*` attributes are integers; floats break updates.
-  if (
-    typeof payload.shotlengthMinutes === "number" &&
-    Number.isFinite(payload.shotlengthMinutes)
-  ) {
-    payload.shotlengthMinutes = Math.max(
-      0,
-      Math.round(payload.shotlengthMinutes),
-    );
-  }
-  if (
-    typeof payload.shotlengthSeconds === "number" &&
-    Number.isFinite(payload.shotlengthSeconds)
-  ) {
-    payload.shotlengthSeconds = Math.max(
-      0,
-      Math.round(payload.shotlengthSeconds),
-    );
-  }
-  if (Object.keys(payload).length === 0) {
-    return undefined;
-  }
-  console.log("[Shots API] updateShot called:", {
-    shotId,
-    updates: payload,
-    updateType: typeof payload,
-  });
-  const result = await apiPut(`/shots/${shotId}`, payload);
-  const data = unwrapApiResult(result);
-  return data?.shot || data;
-}
-
-export async function deleteShot(
-  shotId: string,
-  accessToken: string,
-): Promise<void> {
-  const result = await apiDelete(`/shots/${shotId}`);
-  unwrapApiResult(result);
-}
+export {
+  getShots,
+  getShot,
+  createShot,
+  updateShot,
+  deleteShot,
+  getAllShotsByProject,
+} from "@/lib/api-adapter/shots-adapter";
 
 export async function reorderShots(
   sceneId: string,
@@ -492,18 +369,6 @@ export async function removeCharacterFromShot(
 // =============================================================================
 // BULK LOADERS - Performance Optimized 🚀
 // =============================================================================
-
-/**
- * Get ALL shots for a project in ONE API call
- */
-export async function getAllShotsByProject(
-  projectId: string,
-  accessToken: string,
-): Promise<Shot[]> {
-  const result = await apiGet(`/shots?project_id=${projectId}`);
-  const data = unwrapApiResult(result);
-  return data?.shots || [];
-}
 
 // =============================================================================
 // PROJECT INITIALIZATION

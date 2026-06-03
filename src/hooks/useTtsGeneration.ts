@@ -23,10 +23,8 @@ import { queryKeys } from "../lib/react-query";
 import type { TtsJobPayload, TtsJobStatus } from "../lib/api/audio-tts-api";
 import type { LocalTtsPayload } from "../lib/api/local-tts-api";
 import { isFeatureEnabled } from "../lib/feature-flags";
-import {
-  canUseCloudFeatures,
-  isLocalProfile,
-} from "@/lib/api-adapter/runtime-dispatch";
+import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
+import { requireCapability } from "@/capabilities/registry";
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLL_TIME_MS = 300_000; // 5 Minuten Timeout
@@ -142,10 +140,14 @@ export function useTtsGeneration({
         toast.info("TTS-Pipeline ist noch nicht aktiviert.");
         return;
       }
-      if (isLocalProfile() && !canUseCloudFeatures()) {
-        toast.info(
-          "TTS benoetigt eine Cloud-Verbindung. Bitte Appwrite-Endpoint in .env.local konfigurieren.",
-        );
+      try {
+        await requireCapability("hybrid.tts");
+      } catch (capErr) {
+        const msg =
+          capErr instanceof Error
+            ? capErr.message
+            : "TTS benötigt Cloud-Anmeldung (Kopfleiste → Cloud-Login).";
+        toast.info(msg);
         return;
       }
 

@@ -269,7 +269,7 @@ function parseJsonValue<T>(value: unknown): T | undefined {
 	}
 }
 
-import type { StoryBeat } from "@/lib/api/beats-api";
+import type { StoryBeat } from "@/lib/api/beats-api-types";
 
 /** Map a raw SQLite row to a StoryBeat (T62). */
 export function mapBeatRow(row: Record<string, unknown>): StoryBeat {

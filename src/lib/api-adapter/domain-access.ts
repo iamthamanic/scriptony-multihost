@@ -4,7 +4,7 @@
  * Location: src/lib/api-adapter/domain-access.ts
  */
 
-import { getAuthToken } from "@/lib/auth/getAuthToken";
+import { getCloudAccessToken } from "@/lib/auth/cloud-session";
 import { isDesktopShell } from "@/runtime/detect-runtime";
 import { getOpenLocalProjectId, isLocalProfile } from "./runtime-dispatch";
 
@@ -34,7 +34,7 @@ export function usesCloudHttpForDomain(): boolean {
 
 /** Throws when Cloud HTTP is required but no Appwrite session exists. */
 export async function requireCloudAuthToken(): Promise<string> {
-  const token = await getAuthToken();
+  const token = await getCloudAccessToken();
   if (!token) {
     throw new DomainAccessError();
   }

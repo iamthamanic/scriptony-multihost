@@ -16,15 +16,14 @@ import {
   createTauriWorkspaceFs,
   getWorkspaceRoot,
   listWorkspaceProjects,
+  restoreWorkspaceScope,
 } from "@/local/workspace";
 import { requireLocalBackend } from "./runtime-dispatch";
 import {
   isLocalDeleteConfirmationValid,
   localDeleteConfirmationErrorMessage,
 } from "@/lib/local-project-delete-confirmation";
-import {
-  removeLocalProjectByProjectId,
-} from "./local-project-resolve";
+import { removeLocalProjectByProjectId } from "./local-project-resolve";
 import {
   toLegacyProject,
   workspaceEntryToLegacyProject,
@@ -56,7 +55,9 @@ export async function mergeLocalLegacyProject(
   };
 }
 
-export function legacyFromCreateContext(ctx: LocalProjectContext): LegacyProject {
+export function legacyFromCreateContext(
+  ctx: LocalProjectContext,
+): LegacyProject {
   const type = ctx.manifest.projectType ?? "film";
   return {
     id: ctx.projectId,
@@ -95,6 +96,9 @@ export async function listLocalProjects(): Promise<LegacyProject[]> {
   const root = await getWorkspaceRoot();
   if (!root) return [];
 
+  // Re-apply Rust fs_scope for the trusted workspace root (same as LocalWorkspaceProvider).
+  await restoreWorkspaceScope();
+
   const fs = await createTauriWorkspaceFs();
   const entries = await listWorkspaceProjects(root, fs);
   let list = await Promise.all(
@@ -129,7 +133,9 @@ export async function listLocalProjects(): Promise<LegacyProject[]> {
   return list;
 }
 
-export async function getLocalProject(id: string): Promise<LegacyProject | null> {
+export async function getLocalProject(
+  id: string,
+): Promise<LegacyProject | null> {
   try {
     const backend = requireLocalBackend(id);
     const p = await backend.projects.get(id);
@@ -145,6 +151,7 @@ export async function getLocalProject(id: string): Promise<LegacyProject | null>
 
   const root = await getWorkspaceRoot();
   if (!root) return null;
+  await restoreWorkspaceScope();
   const fs = await createTauriWorkspaceFs();
   const entries = await listWorkspaceProjects(root, fs);
   const hit = entries.find((e) => e.projectId === id);

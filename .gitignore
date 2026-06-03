@@ -8,6 +8,7 @@ supabase/backups/*.dump
 .env.local
 .env.migration
 .env.*.local
+.env.shim.local
 scripts/.env
 scripts/.env.migration
 

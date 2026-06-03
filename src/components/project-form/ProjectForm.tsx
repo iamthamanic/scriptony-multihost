@@ -27,6 +27,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ProjectFieldTooltipIcon } from "@/components/project/ProjectFieldLabel";
+import { ProjectCloudSyncSection } from "@/components/project/ProjectCloudSyncSection";
 import type { World } from "@/lib/types";
 
 // =============================================================================
@@ -525,6 +526,8 @@ export function ProjectForm({
           placeholder="Weitere Gedanken, Ideen..."
         />
       </div>
+
+      {!isCreating ? <ProjectCloudSyncSection /> : null}
     </div>
   );
 }

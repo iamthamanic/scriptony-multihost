@@ -4,7 +4,11 @@
  */
 
 import { requireLocalBackend } from "./runtime-dispatch";
-import { localGetNodes, localGetShots, structureToTimelineNode } from "./timeline-local";
+import {
+  localGetNodes,
+  localGetShots,
+  structureToTimelineNode,
+} from "./timeline-local";
 import type { TimelineNode } from "@/lib/api/timeline-api-v2";
 
 export async function localBatchLoadTimeline(projectId: string): Promise<{

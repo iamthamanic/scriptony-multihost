@@ -13,10 +13,37 @@ import {
 } from "@/lib/api-client";
 import { dispatchByRuntime, requireLocalBackend } from "./runtime-dispatch";
 import {
+  cloudCreateCharacter,
+  cloudDeleteCharacter,
+  cloudGetCharacters,
+  cloudUpdateCharacter,
+} from "@/lib/api/project-characters-cloud-http";
+import {
   characterToLegacy,
   structureNodeToLegacyScene,
 } from "./legacy-shape-mappers";
 import type { StructureNode } from "@/backend/ScriptonyBackend";
+import type { Character } from "@/lib/types";
+
+function characterPatchFromRecord(
+  character: Record<string, unknown>,
+): Partial<Character> {
+  const role = character.role;
+  return {
+    name: typeof character.name === "string" ? character.name : undefined,
+    role:
+      role === "protagonist" ||
+      role === "antagonist" ||
+      role === "supporting" ||
+      role === "minor"
+        ? role
+        : undefined,
+    description:
+      typeof character.description === "string"
+        ? character.description
+        : undefined,
+  };
+}
 
 async function cloudFetch(
   endpoint: string,
@@ -140,12 +167,8 @@ export const charactersApiAdapter = {
   getAll: (projectId: string) =>
     dispatchByRuntime(
       async () => {
-        const data = (await cloudFetch(
-          `/projects/${projectId}/characters`,
-        )) as {
-          characters?: unknown[];
-        };
-        return data.characters ?? [];
+        const list = await cloudGetCharacters(projectId);
+        return list.map(characterToLegacy);
       },
       async () => {
         const backend = requireLocalBackend();
@@ -157,11 +180,11 @@ export const charactersApiAdapter = {
   create: (projectId: string, character: Record<string, unknown>) =>
     dispatchByRuntime(
       async () => {
-        const data = (await cloudFetch(`/projects/${projectId}/characters`, {
-          method: "POST",
-          body: character,
-        })) as { character?: unknown };
-        return data.character;
+        const created = await cloudCreateCharacter(
+          projectId,
+          characterPatchFromRecord(character),
+        );
+        return characterToLegacy(created);
       },
       async () => {
         const backend = requireLocalBackend();
@@ -185,14 +208,11 @@ export const charactersApiAdapter = {
   update: (projectId: string, id: string, character: Record<string, unknown>) =>
     dispatchByRuntime(
       async () => {
-        const data = (await cloudFetch(
-          `/projects/${projectId}/characters/${id}`,
-          {
-            method: "PUT",
-            body: character,
-          },
-        )) as { character?: unknown };
-        return data.character;
+        const updated = await cloudUpdateCharacter(
+          id,
+          characterPatchFromRecord(character),
+        );
+        return characterToLegacy(updated);
       },
       async () => {
         const backend = requireLocalBackend();
@@ -210,9 +230,7 @@ export const charactersApiAdapter = {
   delete: (projectId: string, id: string) =>
     dispatchByRuntime(
       async () => {
-        await cloudFetch(`/projects/${projectId}/characters/${id}`, {
-          method: "DELETE",
-        });
+        await cloudDeleteCharacter(id);
       },
       async () => {
         const backend = requireLocalBackend();

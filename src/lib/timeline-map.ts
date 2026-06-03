@@ -4,12 +4,10 @@
  */
 
 import * as TimelineAPIV2 from "./api/timeline-api-v2";
-import * as ShotsAPI from "./api/shots-api";
 import { nodeToAct, nodeToSequence, nodeToScene } from "./api/timeline-api";
 import type { TimelineData } from "../components/film/FilmDropdown";
 import type { BookTimelineData } from "../components/book/BookDropdown";
 import type { Clip, Shot } from "./types";
-import * as ClipsAPI from "./api/clips-api";
 
 export function ultraBatchToTimelineData(
   ultra: Awaited<ReturnType<typeof TimelineAPIV2.ultraBatchLoadProject>>,
@@ -130,7 +128,7 @@ export function enrichBookTimelineData(
 }
 
 /**
- * Load full timeline for a project (ultra batch, fallback batch+shots).
+ * Load full timeline for a project (cloud ultra-batch or local SQLite nodes).
  * Read-only: does not create acts/structure when empty (explicit user/script flows only).
  */
 export async function loadProjectTimelineBundle(
@@ -138,67 +136,7 @@ export async function loadProjectTimelineBundle(
   token: string,
   isBook: boolean,
 ): Promise<TimelineData | BookTimelineData> {
-  let loadedActs: ReturnType<typeof nodeToAct>[];
-  let allSequences: ReturnType<typeof nodeToSequence>[];
-  let allScenes: ReturnType<typeof nodeToScene>[];
-  let allShots: Shot[];
-  let allClips: Clip[];
-
-  try {
-    const ultraData = await TimelineAPIV2.ultraBatchLoadProject(
-      projectId,
-      token,
-      {
-        includeShots: true,
-        excludeContent: true,
-      },
-    );
-    const film = ultraBatchToTimelineData(ultraData);
-    loadedActs = film.acts;
-    allSequences = film.sequences;
-    allScenes = film.scenes;
-    allShots = film.shots ?? [];
-    allClips = film.clips || [];
-  } catch {
-    const batchData = await TimelineAPIV2.batchLoadTimeline(projectId, token, {
-      excludeContent: true,
-    }).catch(() => ({
-      acts: [],
-      sequences: [],
-      scenes: [],
-      stats: { totalNodes: 0, acts: 0, sequences: 0, scenes: 0 },
-    }));
-    let fallbackShots: unknown[];
-    try {
-      fallbackShots = await ShotsAPI.getAllShotsByProject(projectId, token);
-    } catch {
-      fallbackShots = [];
-    }
-    const film = batchTimelineToTimelineData(batchData, fallbackShots);
-    loadedActs = film.acts;
-    allSequences = film.sequences;
-    allScenes = film.scenes;
-    allShots = film.shots ?? [];
-    try {
-      allClips = await ClipsAPI.listClipsByProject(projectId, token);
-    } catch {
-      allClips = [];
-    }
-  }
-
-  if (isBook) {
-    return enrichBookTimelineData({
-      acts: loadedActs,
-      sequences: allSequences,
-      scenes: allScenes,
-    });
-  }
-
-  return {
-    acts: loadedActs,
-    sequences: allSequences,
-    scenes: allScenes,
-    shots: allShots as Shot[],
-    clips: allClips,
-  };
+  const { loadProjectTimelineBundleForRuntime } =
+    await import("./api-adapter/timeline-bundle");
+  return loadProjectTimelineBundleForRuntime(projectId, token, isBook);
 }

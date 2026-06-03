@@ -85,6 +85,78 @@ export async function listClips(
   }
 }
 
+export async function listClipsByProject(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
+  const bootstrap = await requireUserBootstrap(req);
+  if (!bootstrap) {
+    sendUnauthorized(res);
+    return;
+  }
+
+  const projectId =
+    getQuery(req, "projectId") ||
+    getQuery(req, "project_id") ||
+    getParam(req, "projectId") ||
+    getParam(req, "project_id");
+  if (!projectId) {
+    sendBadRequest(res, "projectId is required");
+    return;
+  }
+
+  try {
+    const data = await requestGraphql<{
+      audio_clips: Array<Record<string, unknown>>;
+    }>(
+      `
+			query GetAudioClipsByProject($projectId: uuid!) {
+				audio_clips(
+					where: { project_id: { _eq: $projectId } }
+					order_by: [{ lane_index: asc }, { order_index: asc }]
+				) {
+					id
+					track_id
+					scene_id
+					project_id
+					start_sec
+					end_sec
+					lane_index
+					order_index
+					audio_file_id
+					waveform_data
+					cross_scene
+					fx_preset_id
+					track_type
+					content
+					character_id
+					created_at
+					updated_at
+				}
+			}
+			`,
+      { projectId },
+    );
+
+    const clips = data.audio_clips ?? [];
+    if (clips.length > 0) {
+      const firstProjectId = (clips[0]?.project_id as string) || "";
+      if (
+        firstProjectId &&
+        !(await canReadProject(bootstrap.user.id, firstProjectId))
+      ) {
+        sendForbidden(res);
+        return;
+      }
+    }
+
+    sendJson(res, 200, { clips });
+  } catch (error) {
+    console.error("[Audio Story] Error fetching clips by project:", error);
+    sendServerError(res, "Failed to fetch audio clips");
+  }
+}
+
 export async function createClip(
   req: RequestLike,
   res: ResponseLike,

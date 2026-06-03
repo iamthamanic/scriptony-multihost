@@ -10,6 +10,7 @@
  */
 
 import type { AuthClient, AuthSession, AuthUserProfile } from "./AuthClient";
+import { LOCAL_DEV_BEARER } from "./local-dev-token";
 
 const LOCAL_USER_PROFILE: AuthUserProfile = {
   id: "local-user",
@@ -36,7 +37,9 @@ export class LocalAuthAdapter implements AuthClient {
   }
 
   async getAccessToken(): Promise<string | null> {
-    return null;
+    // Return a local-mode token so API calls can pass Authorization headers.
+    // Backend functions recognize the "local_" prefix and skip Appwrite JWT validation.
+    return LOCAL_DEV_BEARER;
   }
 
   /* ---------- Auth ---------- */

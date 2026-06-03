@@ -11,7 +11,7 @@ import type {
 	CreateBeatPayload,
 	StoryBeat,
 	UpdateBeatPayload,
-} from "@/lib/api/beats-api";
+} from "@/lib/api/beats-api-types";
 import type { AudioClip, AudioTrack, CharacterVoiceAssignment } from "@/lib/types";
 import type { Character } from "@/lib/types";
 import type {

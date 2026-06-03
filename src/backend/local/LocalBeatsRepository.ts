@@ -9,7 +9,7 @@ import type {
   CreateBeatPayload,
   StoryBeat,
   UpdateBeatPayload,
-} from "@/lib/api/beats-api";
+} from "@/lib/api/beats-api-types";
 import type { LocalDb } from "./LocalDb";
 import type { BindParams } from "sql.js";
 import { TABLE } from "@/local/project-schema";

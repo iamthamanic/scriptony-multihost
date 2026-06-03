@@ -14,16 +14,17 @@ import { useRippleDerivation } from "./useRippleDerivation";
 import { useFxPersist } from "./useFxPersist";
 import { useLaneDelete } from "./useLaneDelete";
 import { useClipTrim } from "./useClipTrim";
+import { mergeVisibleLaneIndices } from "../lib/audio-lane";
 import {
-  mergeVisibleLaneIndices,
-} from "../lib/audio-lane";
-import { characterIdForLaneIndex, isCharacterDialogLane } from "../lib/character-lane-map";
-import { migrateLegacyLaneIndex, needsLegacyLaneMigration } from "../lib/lane-index-migration";
+  characterIdForLaneIndex,
+  isCharacterDialogLane,
+} from "../lib/character-lane-map";
 import {
-  fxSlotsFromMetadata,
-  getFxSlotsFromLaneState,
-} from "../lib/fx-chain";
-import { updateAudioTrack } from "../lib/api/audio-story-api";
+  migrateLegacyLaneIndex,
+  needsLegacyLaneMigration,
+} from "../lib/lane-index-migration";
+import { fxSlotsFromMetadata, getFxSlotsFromLaneState } from "../lib/fx-chain";
+import { updateAudioTrack } from "@/lib/api-adapter/audio-story-adapter";
 import type { AudioClip } from "../lib/types";
 
 export function groupClipsByLane(
@@ -116,10 +117,7 @@ export function useProjectClipLanes(
   const clipUpdate = useClipUpdate(projectId ?? "");
 
   const trackMap = useMemo(() => {
-    const map = new Map<
-      string,
-      { ttsVoiceId?: string; content?: string }
-    >();
+    const map = new Map<string, { ttsVoiceId?: string; content?: string }>();
     for (const sceneTracks of Object.values(data?.tracksByScene ?? {})) {
       for (const t of sceneTracks) {
         map.set(t.id, { ttsVoiceId: t.ttsVoiceId, content: t.content });
@@ -236,10 +234,11 @@ export function useProjectClipLanes(
     laneState.setFxChainEnabled,
   ]);
 
-  const {
-    handleFxSlotChange,
-    handleFxChainEnabledChange,
-  } = useFxPersist(projectId, allClips, laneState);
+  const { handleFxSlotChange, handleFxChainEnabledChange } = useFxPersist(
+    projectId,
+    allClips,
+    laneState,
+  );
 
   const { isDeletingLane, handleDeleteLane } = useLaneDelete(projectId);
 
@@ -255,7 +254,8 @@ export function useProjectClipLanes(
     handlers: {
       handleTrimEnd,
       handleLaneChange,
-      handleDeleteLane: (laneIndex: number) => handleDeleteLane(laneIndex, allClips),
+      handleDeleteLane: (laneIndex: number) =>
+        handleDeleteLane(laneIndex, allClips),
       handleFxSlotChange,
       handleFxChainEnabledChange,
       handleGenerateTts,

@@ -33,9 +33,10 @@ import {
 import { useAudioTimeline } from "../../hooks/useAudioTimeline";
 import { useHierarchyCRUD } from "../../hooks/useHierarchyCRUD";
 import { type HierarchyLabels } from "../../hooks/useHierarchyCRUD";
-import { createAudioTrack } from "../../lib/api/audio-story-api";
-import * as ClipAPI from "../../lib/api/audio-clip-api";
-import { getAuthToken } from "../../lib/auth/getAuthToken";
+import {
+  createAudioTrack,
+  getClipsByScene,
+} from "@/lib/api-adapter/audio-story-adapter";
 import { queryKeys } from "../../lib/react-query";
 import type { AudioClip, Sequence, Scene, AudioTrack } from "../../lib/types";
 import { assignLaneIndex } from "../../lib/audio-lane";
@@ -116,12 +117,9 @@ export function AudioDropdown({ projectId, projectType }: AudioDropdownProps) {
       sceneId: string;
       type: string;
     }) => {
-      const token = await getAuthToken();
-      if (!token) throw new Error("Nicht authentifiziert");
-
       let laneIndex: number | undefined;
       if (FEATURE_FLAGS.audioClipSystem.enabled) {
-        const existingClips = await ClipAPI.getClipsByScene(sceneId, token);
+        const existingClips = await getClipsByScene(sceneId);
         const clipStartSec =
           existingClips.length > 0
             ? Math.max(...existingClips.map((c) => c.endSec ?? 0))
@@ -1029,8 +1027,6 @@ function TrackGroup({
   onPlayTrack: (id: string | null) => void;
   clips?: { id: string; trackId: string }[];
 }) {
-  if (tracks.length === 0) return null;
-
   const label =
     type === "dialog"
       ? "Dialog"
@@ -1052,19 +1048,28 @@ function TrackGroup({
           )}
         />
         <span>{label}</span>
+        <span className="text-[9px] text-muted-foreground/60 normal-case ml-1">
+          ({tracks.length})
+        </span>
       </div>
-      {tracks.map((track) => (
-        <TrackItem
-          key={track.id}
-          track={track}
-          voiceAssignments={voiceAssignments}
-          isPlaying={playingTrackId === track.id}
-          onPlay={() =>
-            onPlayTrack(playingTrackId === track.id ? null : track.id)
-          }
-          clips={clips}
-        />
-      ))}
+      {tracks.length === 0 ? (
+        <div className="text-[10px] text-muted-foreground/50 px-2 py-1 italic">
+          Noch keine {label}-Tracks
+        </div>
+      ) : (
+        tracks.map((track) => (
+          <TrackItem
+            key={track.id}
+            track={track}
+            voiceAssignments={voiceAssignments}
+            isPlaying={playingTrackId === track.id}
+            onPlay={() =>
+              onPlayTrack(playingTrackId === track.id ? null : track.id)
+            }
+            clips={clips}
+          />
+        ))
+      )}
     </div>
   );
 }

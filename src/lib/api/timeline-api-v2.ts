@@ -16,6 +16,21 @@ import {
   apiDelete,
   unwrapApiResult,
 } from "../api-client";
+import { usesCloudHttpForDomain } from "../api-adapter/domain-access";
+import {
+  localBatchLoadTimeline,
+  localBulkCreateNodes,
+  localCreateNode,
+  localDeleteNode,
+  localGetNode,
+  localGetNodeChildren,
+  localGetNodePath,
+  localGetNodes,
+  localInitializeProject,
+  localReorderNodes,
+  localUltraBatchLoadProject,
+  localUpdateNode,
+} from "../api-adapter/timeline-local";
 
 function getErrorStatus(error: unknown): number | undefined {
   if (!error || typeof error !== "object") {
@@ -129,6 +144,9 @@ export async function getNodes(filters: {
   templateId?: string;
   excludeContent?: boolean; // 🚀 NEW: Exclude content field for performance
 }): Promise<TimelineNode[]> {
+  if (!usesCloudHttpForDomain()) {
+    return localGetNodes(filters);
+  }
   const params = new URLSearchParams({
     project_id: filters.projectId,
   });
@@ -162,6 +180,9 @@ export async function getNodes(filters: {
  * Get single node by ID
  */
 export async function getNode(nodeId: string): Promise<TimelineNode> {
+  if (!usesCloudHttpForDomain()) {
+    return localGetNode(nodeId);
+  }
   const result = await apiGet(`/nodes/${nodeId}`);
   const data = unwrapApiResult(result);
   return data?.node || data;
@@ -174,6 +195,9 @@ export async function getNodeChildren(
   nodeId: string,
   recursive = false,
 ): Promise<TimelineNode[]> {
+  if (!usesCloudHttpForDomain()) {
+    return localGetNodeChildren(nodeId, recursive);
+  }
   const params = new URLSearchParams();
   if (recursive) {
     params.append("recursive", "true");
@@ -188,6 +212,9 @@ export async function getNodeChildren(
  * Get node path (from root to node)
  */
 export async function getNodePath(nodeId: string): Promise<any[]> {
+  if (!usesCloudHttpForDomain()) {
+    return localGetNodePath(nodeId);
+  }
   const result = await apiGet(`/nodes/${nodeId}/path`);
   const data = unwrapApiResult(result);
   return data?.path || [];
@@ -199,6 +226,9 @@ export async function getNodePath(nodeId: string): Promise<any[]> {
 export async function createNode(
   request: CreateNodeRequest,
 ): Promise<TimelineNode> {
+  if (!usesCloudHttpForDomain()) {
+    return localCreateNode(request);
+  }
   console.log("[Timeline API V2] Creating node:", request);
 
   try {
@@ -224,6 +254,9 @@ export async function updateNode(
   nodeId: string,
   updates: UpdateNodeRequest,
 ): Promise<TimelineNode> {
+  if (!usesCloudHttpForDomain()) {
+    return localUpdateNode(nodeId, updates);
+  }
   const result = await apiPut(`/nodes/${nodeId}`, updates);
   const data = unwrapApiResult(result);
   return data?.node || data;
@@ -233,6 +266,9 @@ export async function updateNode(
  * Delete node
  */
 export async function deleteNode(nodeId: string): Promise<void> {
+  if (!usesCloudHttpForDomain()) {
+    return localDeleteNode(nodeId);
+  }
   const result = await apiDelete(`/nodes/${nodeId}`);
   unwrapApiResult(result);
 }
@@ -241,6 +277,9 @@ export async function deleteNode(nodeId: string): Promise<void> {
  * Reorder nodes within parent
  */
 export async function reorderNodes(nodeIds: string[]): Promise<void> {
+  if (!usesCloudHttpForDomain()) {
+    return localReorderNodes(nodeIds);
+  }
   const result = await apiPost("/nodes/reorder", { nodeIds });
   unwrapApiResult(result);
 }
@@ -251,6 +290,9 @@ export async function reorderNodes(nodeIds: string[]): Promise<void> {
 export async function bulkCreateNodes(
   request: BulkCreateRequest,
 ): Promise<TimelineNode[]> {
+  if (!usesCloudHttpForDomain()) {
+    return localBulkCreateNodes(request);
+  }
   const result = await apiPost("/nodes/bulk", request);
   const data = unwrapApiResult(result);
   return data?.nodes || [];
@@ -262,6 +304,9 @@ export async function bulkCreateNodes(
 export async function initializeProject(
   request: InitializeProjectRequest,
 ): Promise<TimelineNode[]> {
+  if (!usesCloudHttpForDomain()) {
+    return localInitializeProject(request);
+  }
   const result = await apiPost("/initialize-project", request);
   const data = unwrapApiResult(result);
   return data?.nodes || [];
@@ -287,6 +332,9 @@ export async function batchLoadTimeline(
     scenes: number;
   };
 }> {
+  if (!usesCloudHttpForDomain()) {
+    return localBatchLoadTimeline(projectId);
+  }
   console.log("[Timeline API V2] 🚀 Batch loading timeline:", projectId);
   const timerLabel = `[Timeline API V2] Batch Load ${projectId}`;
   console.time(timerLabel);
@@ -346,6 +394,9 @@ export async function ultraBatchLoadProject(
     clips: number;
   };
 }> {
+  if (!usesCloudHttpForDomain()) {
+    return localUltraBatchLoadProject(projectId, options);
+  }
   if (editorReadModelRouteUnavailable) {
     const fallbackParams = new URLSearchParams({ project_id: projectId });
     if (options?.includeShots === false) {

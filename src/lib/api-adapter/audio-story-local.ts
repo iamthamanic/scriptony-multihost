@@ -18,17 +18,33 @@ export async function localGetSceneAudioTracks(
   return backend.audio.getTracks(sceneId);
 }
 
+export async function localGetProjectAudioClips(
+  projectId: string,
+): Promise<import("@/lib/types").AudioClip[]> {
+  const backend = requireLocalBackend(projectId);
+  return backend.audio.getClips(projectId);
+}
+
+export async function localGetClipsByScene(
+  sceneId: string,
+): Promise<import("@/lib/types").AudioClip[]> {
+  const backend = requireLocalBackend();
+  const projectId = backend.localProject.projectId;
+  const clips = await backend.audio.getClips(projectId);
+  return clips.filter((c) => c.sceneId === sceneId);
+}
+
 export async function localGetProjectAudioTracks(
   projectId: string,
 ): Promise<AudioTrack[]> {
-  const backend = requireLocalBackend();
+  const backend = requireLocalBackend(projectId);
   return backend.audio.getProjectTracks(projectId);
 }
 
 export async function localGetProjectVoiceAssignments(
   projectId: string,
 ): Promise<CharacterVoiceAssignment[]> {
-  const backend = requireLocalBackend();
+  const backend = requireLocalBackend(projectId);
   return backend.audio.getVoiceAssignments(projectId);
 }
 

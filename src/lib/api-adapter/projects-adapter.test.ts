@@ -49,6 +49,7 @@ vi.mock("@/local/workspace", () => ({
   getWorkspaceRoot: mockGetWorkspaceRoot,
   createTauriWorkspaceFs: vi.fn(),
   listWorkspaceProjects: mockListWorkspaceProjects,
+  restoreWorkspaceScope: vi.fn(async () => undefined),
 }));
 
 vi.mock("@/backend/local/LocalProjectContext", () => ({

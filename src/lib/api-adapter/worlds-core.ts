@@ -18,7 +18,6 @@ import {
   type LegacyWorld,
 } from "./legacy-shape-mappers";
 
-
 function syntheticLocalWorld(projectId: string, title: string): LegacyWorld {
   const worldId = localWorldIdForProject(projectId);
   const now = new Date().toISOString();

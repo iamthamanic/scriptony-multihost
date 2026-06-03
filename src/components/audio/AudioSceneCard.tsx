@@ -42,7 +42,7 @@ import { getAuthToken } from "../../lib/auth/getAuthToken";
 import {
   getSceneAudioTracks,
   createAudioTrack,
-} from "../../lib/api/audio-story-api";
+} from "@/lib/api-adapter/audio-story-adapter";
 import { toast } from "sonner";
 import { isFeatureEnabled } from "../../lib/feature-flags";
 import { useAudioClips } from "../../hooks/useAudioClips";

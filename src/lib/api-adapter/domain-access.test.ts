@@ -4,8 +4,8 @@ vi.mock("@/runtime/detect-runtime", () => ({
   isDesktopShell: vi.fn(() => true),
 }));
 
-vi.mock("@/lib/auth/getAuthToken", () => ({
-  getAuthToken: vi.fn(async () => null),
+vi.mock("@/lib/auth/cloud-session", () => ({
+  getCloudAccessToken: vi.fn(async () => null),
 }));
 
 vi.mock("@/backend/backend-instance", () => ({
@@ -22,7 +22,7 @@ vi.mock("@/lib/env", async (importOriginal) => {
   };
 });
 
-import { getAuthToken } from "@/lib/auth/getAuthToken";
+import { getCloudAccessToken } from "@/lib/auth/cloud-session";
 import { getBackendInstance } from "@/backend/backend-instance";
 import { getBackendRuntimeProfile } from "@/lib/env";
 import { isDesktopShell } from "@/runtime/detect-runtime";
@@ -39,7 +39,7 @@ describe("domain-access", () => {
     vi.mocked(getBackendRuntimeProfile).mockReturnValue("local");
     vi.mocked(isDesktopShell).mockReturnValue(true);
     vi.mocked(getBackendInstance).mockReturnValue(null);
-    vi.mocked(getAuthToken).mockResolvedValue(null);
+    vi.mocked(getCloudAccessToken).mockResolvedValue(null);
   });
 
   it("hasOpenLocalProject is false without backend session", () => {
@@ -82,7 +82,7 @@ describe("domain-access", () => {
   });
 
   it("requireCloudAuthToken returns token when present", async () => {
-    vi.mocked(getAuthToken).mockResolvedValue("jwt-abc");
+    vi.mocked(getCloudAccessToken).mockResolvedValue("jwt-abc");
     await expect(requireCloudAuthToken()).resolves.toBe("jwt-abc");
   });
 });

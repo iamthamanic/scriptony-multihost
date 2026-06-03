@@ -23,6 +23,61 @@ The project uses a remote Appwrite server.
 
 ## 2. Start the Dev Stack
 
+### Option C — Tauri desktop (default for product work)
+
+Native desktop shell around the same React/Vite UI. **Default runtime in Tauri is `local`** (`src/runtime/detect-runtime.ts`) — workspace scan + `.scriptony` folders, not Appwrite, unless you override env or switch profile in Settings.
+
+**Prerequisites:** Rust toolchain (`cargo`, `rustc`). Install via [rustup](https://rustup.rs/) if missing.
+
+```bash
+docker stop scriptony-frontend 2>/dev/null || true
+npm run dev:desktop
+```
+
+What happens:
+
+1. `tauri dev` runs `beforeDevCommand`: `npm run dev:vite` (Vite on **port 3000**).
+2. The **Tauri window** loads `http://localhost:3000` — this is **not** “use the web app in Safari/Chrome”; it is the desktop WebView with HMR.
+3. Production desktop builds use `dist/` (`npm run build:desktop`) — no dev server.
+
+**First-time in app:** pick a **workspace folder** (First-run gate or Settings → Speicher), then open or create a **`.scriptony`** project for full `LocalBackend` features.
+
+**`.env.local` (recommended for desktop-only work):**
+
+```bash
+VITE_SCRIPTONY_RUNTIME=local
+# Optional: omit or comment Appwrite vars until you need hybrid KI/TTS/sync.
+```
+
+See **[DESKTOP_FIRST_DEV.md](DESKTOP_FIRST_DEV.md)** (agent checklist, cloud-only APIs), **[ARCHITECTURE_LOCAL_CLOUD.md](ARCHITECTURE_LOCAL_CLOUD.md)** (3 Achsen, layer rules), **[DOMAIN_GLOSSAR.md](DOMAIN_GLOSSAR.md)** (domain → SQLite → routes), and **[LOCAL_PROJECT_FORMAT.md](LOCAL_PROJECT_FORMAT.md)**.
+
+### Repo map (local vs cloud code)
+
+```
+src/backend/local/          → SQLite source of truth (desktop)
+src/backend/appwrite/       → Web cloud backend
+src/backend/sync/           → Per-project cloud activation (T40)
+src/lib/api/                → Facades (UI imports only this)
+src/lib/api-adapter/        → dispatchByRuntime + *-local.ts
+src/lib/api/*-cloud-http.ts → Appwrite Functions gateway routes
+src/capabilities/         → Feature capability registry
+src/lib/auth/cloud-session.ts → JWT session (Axis 2)
+```
+
+**Port 3000 conflict:** If `npm run dev` (Docker) already started `scriptony-frontend` on port 3000:
+
+```bash
+docker stop scriptony-frontend
+```
+
+**Build installer:** `npm run build:desktop`
+
+**OAuth / deep links (cloud or hybrid on desktop):** Register in Appwrite Console (Auth → redirect URLs): `http://localhost:3000`, `scriptony://auth-callback`, etc. — only needed when testing cloud login on desktop.
+
+**Override to cloud on desktop (testing only):** `VITE_SCRIPTONY_RUNTIME=cloud` in `.env.local`.
+
+---
+
 ### Option A — Full local Docker (Appwrite + Bridge + Vite)
 
 Use this when you need the **whole** stack locally (Appwrite DB, Redis,
@@ -56,65 +111,6 @@ running:
 ```bash
 npm run dev:vite
 ```
-
-### Option C — Tauri desktop (Cloud client, Phase 1)
-
-Native desktop shell around the same React/Vite UI. Uses **cloud** runtime by
-default (not local mode until a `.scriptony` project is open; set `VITE_SCRIPTONY_RUNTIME=local` explicitly).
-
-**Prerequisites:** Rust toolchain (`cargo`, `rustc`). Install via
-[rustup](https://rustup.rs/) if missing.
-
-```bash
-npm run dev:desktop
-```
-
-This runs `tauri dev`, which starts Vite on port **3000** and opens the
-desktop window.
-
-`tauri.conf.json` uses `beforeDevCommand: npm run dev:vite` (not `dev:web`) so
-`dev:desktop` does not loop through `dev:web` → `tauri dev` again.
-
-**Build installer:**
-
-```bash
-npm run build:desktop
-```
-
-**Port 3000 conflict:** If `npm run dev` (Docker) already started
-`scriptony-frontend` on port 3000, stop it before desktop dev:
-
-```bash
-docker stop scriptony-frontend
-```
-
-Or use `npm run dev:desktop` without running full `npm run dev` first.
-
-**OAuth / deep links (T36b):** Desktop OAuth uses custom scheme
-`scriptony://auth-callback`. Register these URLs in the **Appwrite Console**
-(Auth → redirect URLs):
-
-- `http://localhost:3000`
-- `http://localhost:3000/reset-password`
-- `scriptony://auth-callback`
-- `scriptony://auth-callback/reset-password`
-- Your production web URL (`VITE_AUTH_REDIRECT_URL`)
-
-Optional env (defaults match Capacitor):
-
-```bash
-VITE_CAPACITOR_URL_SCHEME=scriptony
-VITE_CAPACITOR_CALLBACK_HOST=auth-callback
-```
-
-**Runtime override for desktop cloud testing:**
-
-```bash
-VITE_SCRIPTONY_RUNTIME=cloud
-```
-
-Local mode on desktop requires `VITE_SCRIPTONY_RUNTIME=local` explicitly
-(see [LOCAL_PROJECT_FORMAT.md](LOCAL_PROJECT_FORMAT.md); open project via `useLocalProject().openProject(path)` on desktop).
 
 ### Local project format (`.scriptony`, T37)
 
@@ -281,6 +277,13 @@ explicitly at the top. If the issue persists, verify the key has scope
 ## 8. Decision Tree
 
 ```
+Primary work: Tauri local app (default)?
+  → docker stop scriptony-frontend (if needed)
+  → npm run dev:desktop
+  → Workspace folder + open .scriptony project
+  → See docs/DESKTOP_FIRST_DEV.md
+  → Checks: CHECK_MODE=snippet SHIM_CHECKS_ARGS="--frontend" (no function deploy)
+
 Need to change DB schema?
   → Edit infra/appwrite/collections/<name>.json
   → Run: node scripts/infra/deploy-collections.mjs
@@ -305,6 +308,6 @@ Need full local stack?
 
 ---
 
-**Last updated**: 2026-05-14 — Added after Audio-Fix + Bridge-Fix session.
+**Last updated**: 2026-06-03 — Desktop-first (Option C) as default; runtime docs aligned with `detect-runtime.ts`.
 **Maintainers**: Keep this file in sync when adding new collections, scripts,
 or environment requirements.

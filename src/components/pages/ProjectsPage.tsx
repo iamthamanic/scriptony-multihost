@@ -89,7 +89,8 @@ import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { ProjectFieldTooltipIcon } from "../project/ProjectFieldLabel";
-import { ProjectForm, type ProjectFormData } from "../project-form";
+import type { ProjectFormData } from "../project-form";
+import { ProjectCloudSyncSection } from "../project/ProjectCloudSyncSection";
 import {
   InspirationField,
   InspirationList,
@@ -126,6 +127,10 @@ import {
   createCharacter as createCharacterApi,
   updateCharacter as updateCharacterApi,
 } from "../../lib/api/characters-api";
+import { createAudioTrack } from "@/lib/api-adapter/audio-story-adapter";
+import { LocalProjectOpenGuard } from "../desktop/LocalProjectOpenGuard";
+import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
+import { getStyleGuideUnavailableHint } from "@/lib/api-adapter/style-guide-adapter";
 import { getAuthToken } from "../../lib/auth/getAuthToken";
 import {
   validateImageFile,
@@ -468,6 +473,25 @@ function normalizeProjectClient(p: any) {
   };
 }
 
+/** Loads worldbuilding + style guide after LocalProjectOpenGuard opens SQLite. */
+function ProjectDetailLocalDataEffect({
+  projectId,
+  linkedWorldId,
+  onReady,
+}: {
+  projectId: string;
+  linkedWorldId?: string | null;
+  onReady: (projectId: string, linkedWorldId?: string | null) => void;
+}) {
+  const loadedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (loadedRef.current === projectId) return;
+    loadedRef.current = projectId;
+    onReady(projectId, linkedWorldId);
+  }, [projectId, linkedWorldId, onReady]);
+  return null;
+}
+
 /** Card title for project info blocks: Lucide icon matches project type (film / series / book / audio). */
 function ProjectInfoSectionTitle({ projectType }: { projectType: string }) {
   const { Icon } = getProjectTypeInfo(projectType);
@@ -627,22 +651,6 @@ export function ProjectsPage({
     setSelectedProject(selectedProjectId);
   }, [selectedProjectId]);
 
-  useEffect(() => {
-    if (selectedProjectId && projects.length > 0) {
-      console.time(`⏱️ [PERF] Total Project Load: ${selectedProjectId}`);
-      console.time(`⏱️ [PERF] Worldbuilding Load: ${selectedProjectId}`);
-
-      const project = projects.find(
-        (p) => String(p.id).trim() === String(selectedProjectId).trim(),
-      );
-      if (project && project.linkedWorldId) {
-        loadWorldbuildingItems(project.linkedWorldId);
-      }
-
-      void loadStyleGuide(selectedProjectId);
-    }
-  }, [selectedProjectId, projects]);
-
   const loadData = async () => {
     try {
       setLoading(true);
@@ -707,18 +715,20 @@ export function ProjectsPage({
     try {
       setStyleGuideLoading(true);
       setStyleGuideError(null);
-      let token = await getAuthToken();
-      if (!token) {
-        await new Promise((r) => setTimeout(r, 400));
-        token = await getAuthToken();
-      }
-      if (!token) {
-        setStyleGuide(null);
-        const msg =
-          "Nicht angemeldet oder JWT noch nicht bereit - bitte Seite aktualisieren oder neu anmelden.";
-        setStyleGuideError(msg);
-        toast.error(`Style Guide: ${msg}`);
-        return;
+      if (!isLocalProfile()) {
+        let token = await getAuthToken();
+        if (!token) {
+          await new Promise((r) => setTimeout(r, 400));
+          token = await getAuthToken();
+        }
+        if (!token) {
+          setStyleGuide(null);
+          const msg =
+            "Nicht angemeldet oder JWT noch nicht bereit - bitte Seite aktualisieren oder neu anmelden.";
+          setStyleGuideError(msg);
+          toast.error(`Style Guide: ${msg}`);
+          return;
+        }
       }
       const sg = await StyleGuideApi.getStyleGuide(projectId);
       setStyleGuide(sg);
@@ -726,8 +736,9 @@ export function ProjectsPage({
     } catch (error: unknown) {
       console.error("[StyleGuide] Error loading:", error);
       setStyleGuide(null);
-      const message =
-        error instanceof Error
+      const message = isLocalProfile()
+        ? getStyleGuideUnavailableHint()
+        : error instanceof Error
           ? error.message || "Style Guide konnte nicht geladen werden"
           : "Style Guide konnte nicht geladen werden";
       setStyleGuideError(message);
@@ -749,6 +760,28 @@ export function ProjectsPage({
       setStyleGuideLoading(false);
     }
   };
+
+  const loadProjectDetailData = (
+    projectId: string,
+    linkedWorldId?: string | null,
+  ) => {
+    console.time(`⏱️ [PERF] Total Project Load: ${projectId}`);
+    if (linkedWorldId) {
+      console.time(`⏱️ [PERF] Worldbuilding Load: ${projectId}`);
+      void loadWorldbuildingItems(linkedWorldId);
+    }
+    void loadStyleGuide(projectId);
+  };
+
+  useEffect(() => {
+    if (isLocalProfile()) return;
+    if (!selectedProjectId || projects.length === 0) return;
+    const project = projects.find(
+      (p) => String(p.id).trim() === String(selectedProjectId).trim(),
+    );
+    if (!project) return;
+    loadProjectDetailData(project.id, project.linkedWorldId);
+  }, [selectedProjectId, projects, loadProjectDetailData]);
 
   const handleCreateProject = async () => {
     if (!newProjectTitle.trim()) {
@@ -1140,65 +1173,82 @@ export function ProjectsPage({
   }
 
   if (selectedProjectId && currentProject) {
+    const projectDetail = (
+      <ProjectDetail
+        project={currentProject}
+        worlds={worlds}
+        onBack={() => onNavigate("projekte")}
+        onOpenWorldbuilding={() => onNavigate("worldbuilding")}
+        coverImage={projectCoverImages[currentProject.id]}
+        onCoverImageChange={async (imageUrl) => {
+          // Update local state immediately (optimistic UI)
+          setProjectCoverImages((prev) => ({
+            ...prev,
+            [currentProject.id]: imageUrl,
+          }));
+
+          // Update in database
+          try {
+            await projectsApi.update(currentProject.id, {
+              cover_image_url: imageUrl,
+            });
+          } catch (error) {
+            console.error("Error saving image URL to database:", error);
+            // Note: Toast already shown in handleFileChange
+          }
+        }}
+        worldbuildingItems={worldbuildingItems}
+        onUpdate={loadData}
+        onDelete={handleDeleteProject}
+        showDeleteDialog={showDeleteDialog}
+        setShowDeleteDialog={setShowDeleteDialog}
+        deletePassword={deletePassword}
+        setDeletePassword={setDeletePassword}
+        deleteLoading={deleteLoading}
+        onDuplicate={() => handleDuplicateProject(currentProject.id)}
+        onShowStats={() => {
+          setSelectedStatsProject(currentProject);
+          setShowStatsDialog(true);
+        }}
+        showStatsDialog={showStatsDialog}
+        setShowStatsDialog={setShowStatsDialog}
+        onTimelineDataChange={handleTimelineDataChange}
+        structureOpen={structureOpen}
+        setStructureOpen={setStructureOpen}
+        charactersOpen={charactersOpen}
+        setCharactersOpen={setCharactersOpen}
+        styleGuideOpen={styleGuideOpen}
+        setStyleGuideOpen={setStyleGuideOpen}
+        styleGuide={styleGuide}
+        styleGuideLoading={styleGuideLoading}
+        styleGuideError={styleGuideError}
+        onStyleGuideChange={setStyleGuide}
+        useStyleGuideForCover={useStyleGuideForCover}
+        setUseStyleGuideForCover={setUseStyleGuideForCover}
+        onRequestProjectExport={(snapshot, worldLabel) => {
+          setProjectExportSnapshot(snapshot);
+          setProjectExportWorldLabel(worldLabel);
+          setProjectExportOpen(true);
+        }}
+      />
+    );
     return (
       <>
-        <ProjectDetail
-          project={currentProject}
-          worlds={worlds}
-          onBack={() => onNavigate("projekte")}
-          onOpenWorldbuilding={() => onNavigate("worldbuilding")}
-          coverImage={projectCoverImages[currentProject.id]}
-          onCoverImageChange={async (imageUrl) => {
-            // Update local state immediately (optimistic UI)
-            setProjectCoverImages((prev) => ({
-              ...prev,
-              [currentProject.id]: imageUrl,
-            }));
-
-            // Update in database
-            try {
-              await projectsApi.update(currentProject.id, {
-                cover_image_url: imageUrl,
-              });
-            } catch (error) {
-              console.error("Error saving image URL to database:", error);
-              // Note: Toast already shown in handleFileChange
-            }
-          }}
-          worldbuildingItems={worldbuildingItems}
-          onUpdate={loadData}
-          onDelete={handleDeleteProject}
-          showDeleteDialog={showDeleteDialog}
-          setShowDeleteDialog={setShowDeleteDialog}
-          deletePassword={deletePassword}
-          setDeletePassword={setDeletePassword}
-          deleteLoading={deleteLoading}
-          onDuplicate={() => handleDuplicateProject(currentProject.id)}
-          onShowStats={() => {
-            setSelectedStatsProject(currentProject);
-            setShowStatsDialog(true);
-          }}
-          showStatsDialog={showStatsDialog}
-          setShowStatsDialog={setShowStatsDialog}
-          onTimelineDataChange={handleTimelineDataChange}
-          structureOpen={structureOpen}
-          setStructureOpen={setStructureOpen}
-          charactersOpen={charactersOpen}
-          setCharactersOpen={setCharactersOpen}
-          styleGuideOpen={styleGuideOpen}
-          setStyleGuideOpen={setStyleGuideOpen}
-          styleGuide={styleGuide}
-          styleGuideLoading={styleGuideLoading}
-          styleGuideError={styleGuideError}
-          onStyleGuideChange={setStyleGuide}
-          useStyleGuideForCover={useStyleGuideForCover}
-          setUseStyleGuideForCover={setUseStyleGuideForCover}
-          onRequestProjectExport={(snapshot, worldLabel) => {
-            setProjectExportSnapshot(snapshot);
-            setProjectExportWorldLabel(worldLabel);
-            setProjectExportOpen(true);
-          }}
-        />
+        {isLocalProfile() ? (
+          <LocalProjectOpenGuard
+            projectId={currentProject.id}
+            onNavigate={onNavigate}
+          >
+            <ProjectDetailLocalDataEffect
+              projectId={currentProject.id}
+              linkedWorldId={currentProject.linkedWorldId}
+              onReady={loadProjectDetailData}
+            />
+            {projectDetail}
+          </LocalProjectOpenGuard>
+        ) : (
+          projectDetail
+        )}
         <Suspense fallback={null}>
           <ProjectExportDialog
             open={projectExportOpen}
@@ -4911,6 +4961,43 @@ function ProjectDetail({
 
       console.log("[ProjectDetail] Character created:", createdCharacter);
 
+      // Auto-create dialog track for audio/hörspiel projects
+      const isAudioProject =
+        project.type === "audio" || project.type === "hörspiel";
+      if (isAudioProject && rqTimeline) {
+        const timelineData = rqTimeline as {
+          scenes?: Array<{ id: string }>;
+        };
+        const firstScene = timelineData.scenes?.[0];
+        if (firstScene?.id) {
+          try {
+            await createAudioTrack(firstScene.id, project.id, {
+              type: "dialog",
+              characterId: createdCharacter.id,
+              content: "",
+            });
+            // Invalidate audio timeline so the new track appears immediately
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.timeline.audioByProject(project.id),
+            });
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.audio.tracksByScene(firstScene.id),
+            });
+            toast.success(`Dialog-Track für ${createdCharacter.name} angelegt`);
+          } catch (err) {
+            console.error(
+              "[ProjectDetail] Failed to auto-create dialog track:",
+              err,
+            );
+            toast.error(
+              err instanceof Error
+                ? err.message
+                : "Dialog-Track konnte nicht angelegt werden",
+            );
+          }
+        }
+      }
+
       setCharactersState((prev) =>
         prev.map((char) =>
           char.id === tempId
@@ -6450,6 +6537,7 @@ function ProjectDetail({
                       </div>
                     </>
                   )}
+                  <ProjectCloudSyncSection />
                 </CardContent>
               </Card>
             </CollapsibleContent>
@@ -7468,6 +7556,7 @@ function ProjectDetail({
                     )}
                   </>
                 )}
+                <ProjectCloudSyncSection />
               </CardContent>
             </Card>
           </div>

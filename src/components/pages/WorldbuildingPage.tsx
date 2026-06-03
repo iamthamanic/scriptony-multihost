@@ -78,6 +78,7 @@ import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { EmptyState } from "../shared/EmptyState";
+import { WorldbuildingCloudSyncBanner } from "../world/WorldbuildingCloudSyncBanner";
 import {
   Select,
   SelectContent,
@@ -336,6 +337,10 @@ export function WorldbuildingPage({
   ) => {
     try {
       const updated = await worldsApi.update(worldId, updates);
+      if (!updated) {
+        toast.error("Welt konnte nicht aktualisiert werden.");
+        return;
+      }
 
       // Update local state
       setWorlds(
@@ -432,6 +437,7 @@ export function WorldbuildingPage({
 
   return (
     <div className="min-h-screen pb-24">
+      <WorldbuildingCloudSyncBanner />
       {/* Header - Mobile optimiert */}
       <div className="px-4 py-6 bg-gradient-to-b from-primary/5 to-transparent">
         <div className="flex items-center gap-1.5 mb-4">

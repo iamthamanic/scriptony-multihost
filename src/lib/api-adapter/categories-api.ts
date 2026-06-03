@@ -8,10 +8,7 @@ import {
   localNotSupported,
   requireLocalBackend,
 } from "./runtime-dispatch";
-import {
-  resolveLocalProjectId,
-  categoryIdForSlug,
-} from "./worlds-core";
+import { resolveLocalProjectId, categoryIdForSlug } from "./worlds-core";
 import { cloudFetch } from "./cloud-fetch";
 
 export const categoriesApiAdapter = {

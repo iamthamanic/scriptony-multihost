@@ -11,11 +11,9 @@ import {
   createTauriWorkspaceFs,
   getWorkspaceRoot,
   listWorkspaceProjects,
+  restoreWorkspaceScope,
 } from "@/local/workspace";
-import {
-  dispatchByRuntime,
-  isLocalProfile,
-} from "./runtime-dispatch";
+import { dispatchByRuntime, isLocalProfile } from "./runtime-dispatch";
 import {
   listLocalProjects,
   getLocalProject,
@@ -77,6 +75,7 @@ export const projectsApiAdapter = {
   delete: async (id: string, confirmation: string): Promise<void> => {
     const root = await getWorkspaceRoot();
     if (root && isDesktopShell()) {
+      await restoreWorkspaceScope();
       const fs = await createTauriWorkspaceFs();
       const entries = await listWorkspaceProjects(root, fs);
       if (entries.some((e) => e.projectId === id)) {

@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { useRuntime } from "@/runtime";
+import { isDesktopShell } from "@/runtime/detect-runtime";
 import { toast } from "sonner";
 import type { RuntimeProfile } from "@/runtime/runtime-profile";
 import type { SelfHostedConnection } from "@/backend/self-hosted";
@@ -25,8 +26,15 @@ export function RuntimeModeSelector({
   setProfile,
 }: RuntimeModeSelectorProps) {
   const runtime = useRuntime();
+  const desktopLocal = isDesktopShell() && runtime.profile === "local";
 
   const onChange = (value: string) => {
+    if (isDesktopShell() && value === "cloud") {
+      toast.error(
+        "Auf dem Desktop bleibt der Modus lokal. Cloud-Anmeldung: Button in der Kopfleiste neben Einstellungen.",
+      );
+      return;
+    }
     const profile = value as RuntimeProfile;
     void (async () => {
       try {
@@ -56,7 +64,9 @@ export function RuntimeModeSelector({
           <SelectValue placeholder="Modus wählen" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="cloud">Scriptony Cloud</SelectItem>
+          {!desktopLocal && (
+            <SelectItem value="cloud">Scriptony Cloud</SelectItem>
+          )}
           <SelectItem value="local">Lokal (.scriptony)</SelectItem>
           <SelectItem value="selfHosted" disabled={!active}>
             Self-hosted Appwrite
@@ -66,6 +76,9 @@ export function RuntimeModeSelector({
       <p className="text-xs text-muted-foreground">
         Aktuell: {runtime.profile}
         {runtime.selfHostedEndpoint ? ` — ${runtime.selfHostedEndpoint}` : ""}
+        {desktopLocal
+          ? " — Cloud-Features über Anmeldung in der Kopfleiste, nicht über Cloud-Modus."
+          : ""}
       </p>
     </div>
   );

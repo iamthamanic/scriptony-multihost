@@ -26,6 +26,8 @@ import { useIsMobile } from "./ui/use-mobile";
 import * as BeatsAPI from "../lib/api/beats-api";
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";
 import { useAppUndo } from "../hooks/useAppUndo";
+import { CloudSessionIndicator } from "./desktop/CloudSessionIndicator";
+import { StageLocalOnlyBanner } from "./stage/StageLocalOnlyBanner";
 
 /**
  * Hauptnavigation (Desktop + Mobile): Logo, Seiten, globaler Undo/Redo (useAppUndo), Theme, Einstellungen.
@@ -148,7 +150,10 @@ export function Navigation({
           totalUpdated += result.updated || 0;
         } else {
           const errorText = await recalcResponse.text();
-          console.log("Recalc error for project:", { title: project.title, errorText });
+          console.log("Recalc error for project:", {
+            title: project.title,
+            errorText,
+          });
         }
       }
 
@@ -302,6 +307,7 @@ export function Navigation({
   if (!isMobile) {
     return (
       <>
+        <StageLocalOnlyBanner currentPage={currentPage} />
         {/* Desktop Top Navigation */}
         <nav className="border-b border-border bg-card sticky top-0 z-50 shadow-sm">
           <div className="px-6 h-14 flex items-center justify-between">
@@ -380,6 +386,7 @@ export function Navigation({
               >
                 <Redo2 className="size-4" />
               </Button>
+              <CloudSessionIndicator />
               <Button
                 variant="ghost"
                 size="icon"
@@ -423,6 +430,7 @@ export function Navigation({
   // ========== MOBILE VIEW ==========
   return (
     <>
+      <StageLocalOnlyBanner currentPage={currentPage} />
       {/* Mobile-optimized Top Bar */}
       <nav className="border-b border-border bg-card sticky top-0 z-50 shadow-sm">
         <div className="px-4 h-14 flex items-center justify-between">
@@ -471,6 +479,7 @@ export function Navigation({
             >
               <Redo2 className="size-4" />
             </Button>
+            <CloudSessionIndicator />
             <Button
               variant="ghost"
               size="icon"

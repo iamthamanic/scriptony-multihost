@@ -41,4 +41,73 @@ export {
 
 export { resolveLocalProjectId, categoryIdForSlug } from "./worlds-core";
 
+export {
+  loadProjectTimelineBundleForRuntime,
+  loadCloudProjectTimelineBundle,
+} from "./timeline-bundle";
+
+export {
+  assignVoice,
+  createAudioTrack,
+  deleteAudioTrack,
+  getClipsByScene,
+  getProjectAudioClips,
+  getProjectAudioTracks,
+  getSceneAudioTracks,
+  getVoiceAssignments,
+  updateAudioTrack,
+} from "./audio-story-adapter";
+
 export * from "./legacy-shape-mappers";
+
+export {
+  getBeats,
+  createBeat,
+  updateBeat,
+  deleteBeat,
+  reorderBeats,
+} from "./beats-adapter";
+
+export {
+  getCharacters,
+  getCharacter,
+  createCharacter,
+  updateCharacter,
+  deleteCharacter,
+} from "./characters-adapter";
+
+export {
+  createClip,
+  updateClip,
+  rippleClips,
+  deleteClip,
+} from "./clips-adapter";
+
+export {
+  getShots,
+  getShot,
+  createShot,
+  updateShot,
+  deleteShot,
+  getAllShotsByProject,
+} from "./shots-adapter";
+
+export {
+  getStyleGuide,
+  getStyleGuideUnavailableHint,
+} from "./style-guide-adapter";
+
+export {
+  getActs,
+  createAct,
+  updateAct,
+  deleteAct,
+  getSequences,
+  createSequence,
+  updateSequence,
+  deleteSequence,
+  getScenes,
+  createScene,
+  updateScene,
+  deleteScene,
+} from "./timeline-structure-adapter";

@@ -68,8 +68,8 @@ describe("useProjectClipLanes helpers", () => {
 
   it("formats timeline lane labels for mockup", () => {
     expect(getTimelineLaneLabel(0)).toBe("Audio Dialog");
-    expect(getTimelineLaneLabel(100)).toBe("Audio SFX");
-    expect(getTimelineLaneLabel(101)).toBe("Audio SFX 2");
+    expect(getTimelineLaneLabel(10)).toBe("Audio SFX");
+    expect(getTimelineLaneLabel(11)).toBe("Audio SFX 2");
   });
 
   it("builds pan fill vars from center to thumb", () => {

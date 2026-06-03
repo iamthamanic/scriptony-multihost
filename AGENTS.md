@@ -10,6 +10,50 @@ involves starting the dev stack, deploying collections, or deploying functions,
 read **`docs/GETTING_STARTED.md`**. It contains the canonical commands,
 gotchas, and decision tree for this project. Update it when workflows change.
 
+**Default product focus (2026):** Tauri desktop, **local runtime** (`.scriptony` + SQLite). See **`docs/DESKTOP_FIRST_DEV.md`**, **`docs/ARCHITECTURE_LOCAL_CLOUD.md`** (3 Achsen: Shell / Cloud-Session / Daten-Ort), **`docs/DOMAIN_GLOSSAR.md`**, and **`.cursor/rules/scriptony-desktop-dev.mdc`**. Do not suggest Appwrite deploy, Docker `npm run dev`, or `verify:test-env` unless the ticket explicitly targets cloud, web, or hybrid.
+
+## Desktop-first development (default ticket mode)
+
+Use this unless the user or ticket explicitly asks for cloud, web, or Appwrite deploy.
+
+### Start and test
+
+```bash
+docker stop scriptony-frontend 2>/dev/null || true
+npm run dev:desktop
+```
+
+- **One command:** `dev:desktop` runs `tauri dev`, which starts Vite on port **3000** for the Tauri WebView only (HMR). Do not tell the user to open `http://localhost:3000` in a browser unless they are doing **web/cloud** work.
+- **Do not use** `npm run dev` (full Docker stack) for routine desktop tickets — it conflicts on port 3000 and pulls Appwrite into the loop.
+
+### Runtime and data
+
+- **Tauri default profile:** `local` (`src/runtime/detect-runtime.ts` — desktop shell without override).
+- **`.env.local`:** Prefer `VITE_SCRIPTONY_RUNTIME=local`. Appwrite vars (`VITE_APPWRITE_*`, `VITE_BACKEND_FUNCTION_DOMAIN_MAP`) are optional — only for **hybrid** features (KI/TTS/sync), not for listing projects/worlds from workspace.
+- **In-app:** Choose a **workspace folder**, open a **`.scriptony`** project for `LocalBackend` (timeline content, structure, scripts). See `docs/LOCAL_PROJECT_FORMAT.md`.
+- **Tauri FS:** Capabilities `workspace-fs` + `local-project-fs` in `src-tauri/tauri.conf.json`; workspace scans call `restoreWorkspaceScope()` before `readDir`.
+
+### Code changes (local features)
+
+- Route through **`src/lib/api-adapter/`** and **`dispatchByRuntime`** (`runtime-dispatch.ts`). Do not add new `apiGet` / `cloudFetch` calls from UI for data that exists locally.
+- **Capability gates:** [`src/capabilities/registry.ts`](src/capabilities/registry.ts) — `CLOUD_SESSION` vs `LOCAL_WHEN_PROJECT_OPEN`; cloud session via [`canUseCloudSession()`](src/lib/auth/cloud-session.ts).
+- **Legacy** `src/utils/api.tsx`: `projectsApi` / `worldsApi` / `itemsApi` / `categoriesApi` already delegate to adapters; extend adapters, not raw `apiFetch` in pages.
+- **Still cloud-only today:** many modules under `src/lib/api/` — see `docs/DESKTOP_FIRST_DEV.md` § Cloud-only APIs. New desktop features need a local branch or LocalBackend repo, not only Function deploy.
+
+### Checks (desktop / frontend tickets)
+
+```bash
+CHECK_MODE=snippet SHIM_CHECKS_ARGS="--frontend" SHIM_CHANGED_FILES="src/...,src-tauri/..." npm run checks
+```
+
+Add `src-tauri/` to `SHIM_CHANGED_FILES` when Rust or `tauri.conf.json` / capabilities change. Skip `--backend` and function deploy unless the ticket edits `functions/`.
+
+### When cloud/Appwrite still applies
+
+- Ticket says: cloud client, browser, function fix, collection deploy, production release.
+- Hybrid: user keeps `VITE_APPWRITE_*` and uses KI/TTS/upload — `canUseCloudFeatures()` in local profile.
+- Then follow § Appwrite below and `docs/GETTING_STARTED.md` Options A/B and deploy sections.
+
 ## Mandatory workflow (do not bypass)
 
 - **Run checks before push or deploy.** Do not call the real Appwrite deploy or push without going through the checked workflow.
@@ -50,6 +94,7 @@ Checks are configured in the dashboard or `.shimwrappercheckrc` (toggles and ord
 - **Dirty worktree ticket scope**: If unrelated user changes exist, set `SHIM_CHANGED_FILES` to the current ticket's files, for example `SHIM_CHANGED_FILES="scripts/run-checks.sh,AGENTS.md" CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks`.
 - **Backend-only ticket**: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --backend`
 - **Frontend-only ticket**: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --frontend`
+- **Desktop-first ticket (Tauri + React, no functions/)**: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="--frontend" SHIM_CHANGED_FILES="<src,src-tauri paths>" npm run checks` — do not require Appwrite deploy or `verify:test-env` unless the ticket is hybrid/cloud.
 - **Large refactor checkpoint**: `CHECK_MODE=full SHIM_CHECKS_ARGS="" npm run checks -- --refactor`
 - **Release/deploy gate**: Run `SHIM_RUN_NPM_AUDIT=1 CHECK_MODE=full SHIM_CHECKS_ARGS="" npm run checks -- --refactor`, then the relevant Appwrite verify/smoke scripts before any real deploy.
 - **Dependency-change gate**: If `package.json`, package lockfiles, or dependency tooling changed, also run `SHIM_RUN_NPM_AUDIT=1 CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks` or document why a known pre-existing vulnerability is out of scope.
@@ -58,6 +103,7 @@ Checks are configured in the dashboard or `.shimwrappercheckrc` (toggles and ord
   `SHIM_AI_REVIEW_BASE_REF=main CHECK_MODE=snippet SHIM_CHANGED_FILES="src/foo.ts,docs/bar.md" SHIM_CHECKS_ARGS="" npm run checks`  
   Alias: `AI_REVIEW_BASE_REF` (same meaning). Invalid `SHIM_AI_REVIEW_BASE_REF` fails the check (fix the ref and rerun).
 - **AI provider failures**: Codex usage limits, CLI failures, or missing `VERDICT: ACCEPT` do not count as a passed gate. Keep the ticket open and rerun the same scoped Shim command when the provider is available.
+- **Ollama AI review (`SHIM_AI_REVIEW_PROVIDER=ollama`)**: The key must be available to **bash**, not only to Vite. Use exact name `OLLAMA_API_KEY` (Bearer token for `https://api.ollama.com/api/generate`). Copy `.env.shim.local.example` → `.env.shim.local`, or `export OLLAMA_API_KEY=...` in the same terminal before `npm run checks`. `.env.local` is **not** loaded by `run-checks.sh`. Verify: `bash -c '[[ -n \"$OLLAMA_API_KEY\" ]] && echo ok || echo missing'`.
 
 ### Currently disabled or conditional
 
@@ -103,7 +149,8 @@ Checks are configured in the dashboard or `.shimwrappercheckrc` (toggles and ord
 
 ### Frontend (React/Vite/TypeScript)
 
-- **Use Appwrite SDK** (`src/lib/api/`): All Appwrite calls go through the API layer. No raw `fetch` to Appwrite endpoints in components.
+- **Desktop-first:** Prefer `src/lib/api-adapter/` + `dispatchByRuntime` for project/world/timeline data; use `LocalBackend` / `src/local/` for file-based projects. Appwrite SDK paths are for **cloud/hybrid** features unless a local adapter exists.
+- **Use Appwrite SDK** (`src/lib/api/`): Cloud/hybrid calls go through the API layer. No raw `fetch` to Appwrite endpoints in components.
 - **React Query** for server state: No direct `fetch`/Axios calls in UI components; use `@tanstack/react-query` hooks.
 - **No business logic in components**: Logic in hooks (`src/hooks/`) or services; keep pages and components slim.
 - **File and component size**: Max 300 lines per file, max 150 lines per component. Split when exceeding.

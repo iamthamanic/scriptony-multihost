@@ -79,7 +79,20 @@ describe("detectRuntime", () => {
     expect(config.isDesktop).toBe(true);
   });
 
-  it("sets isDesktop true for cloud profile inside Tauri shell", () => {
+  it("defaults to local profile inside Tauri shell (desktop-first)", () => {
+    Object.defineProperty(globalThis, "window", {
+      value: { __TAURI_INTERNALS__: {} },
+      writable: true,
+      configurable: true,
+    });
+    const config = detectRuntime();
+    expect(config.profile).toBe("local");
+    expect(config.isDesktop).toBe(true);
+    expect(config.isBrowser).toBe(false);
+  });
+
+  it("uses cloud profile in Tauri when VITE_SCRIPTONY_RUNTIME=cloud", () => {
+    vi.stubEnv("VITE_SCRIPTONY_RUNTIME", "cloud");
     Object.defineProperty(globalThis, "window", {
       value: { __TAURI_INTERNALS__: {} },
       writable: true,
@@ -88,6 +101,5 @@ describe("detectRuntime", () => {
     const config = detectRuntime();
     expect(config.profile).toBe("cloud");
     expect(config.isDesktop).toBe(true);
-    expect(config.isBrowser).toBe(false);
   });
 });

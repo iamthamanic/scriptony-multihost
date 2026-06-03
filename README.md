@@ -217,13 +217,21 @@ Self-Hosted-Anleitung ausführlich: [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.m
 
 ## Für Entwickler
 
+**Desktop (Standard):** [`docs/DESKTOP_FIRST_DEV.md`](docs/DESKTOP_FIRST_DEV.md) — `npm run dev:desktop`, lokale `.scriptony`-Projekte, ohne Appwrite im Alltag. Architektur (3 Achsen): [`docs/ARCHITECTURE_LOCAL_CLOUD.md`](docs/ARCHITECTURE_LOCAL_CLOUD.md), Domänen-Glossar: [`docs/DOMAIN_GLOSSAR.md`](docs/DOMAIN_GLOSSAR.md). Agent-Regeln: [`AGENTS.md`](AGENTS.md). Cloud/Docker: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md).
+
 ### Projektstruktur
 
 ```
 scriptony-multihost/
 ├── src/                    # React + Vite Frontend
+│   ├── backend/local/      # SQLite Source of Truth (Desktop)
+│   ├── backend/appwrite/   # Web Cloud Backend
+│   ├── backend/sync/       # Per-project Cloud activation (T40)
+│   ├── capabilities/       # Feature capability registry
 │   ├── components/         # Pages + UI-Komponenten
 │   ├── hooks/              # React Hooks (Business Logik, keine direkten API-Calls in UI)
+│   ├── lib/api/            # Facades (UI imports only this)
+│   ├── lib/api-adapter/    # dispatchByRuntime + *-local.ts
 │   ├── lib/                # API-Layer, Types, Utils, Auth, Templates
 │   ├── modules/            # Feature-Module (creative-gym, scriptony-ai)
 │   └── engines/            # Stage 2D (Konva), Stage 3D (Three.js/Babylon.js)
@@ -244,8 +252,12 @@ Welche Function für was zuständig ist: [`docs/backend-domain-map.md`](docs/bac
 ### Wichtige Dev-Commands
 
 ```bash
-# Entwicklung
-npm run dev              # Vite DevServer
+# Desktop (empfohlen)
+npm run dev:desktop      # Tauri + Vite (Port 3000 nur für WebView/HMR)
+
+# Cloud / Full stack
+npm run dev              # Docker Appwrite + Bridge + Vite
+npm run dev:vite         # Browser, remote Appwrite
 
 # Code-Checks (laufen automatisch beim Push)
 npm run lint             # ESLint

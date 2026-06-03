@@ -30,7 +30,7 @@ import type {
 	StoryBeat,
 	CreateBeatPayload,
 	UpdateBeatPayload,
-} from "@/lib/api/beats-api";
+} from "@/lib/api/beats-api-types";
 
 // ── Structure ───────────────────────────────────────────────────────────────
 

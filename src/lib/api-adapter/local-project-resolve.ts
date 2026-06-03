@@ -8,6 +8,7 @@ import {
   createTauriWorkspaceFs,
   getWorkspaceRoot,
   listWorkspaceProjects,
+  restoreWorkspaceScope,
 } from "@/local/workspace";
 
 export async function resolveDirPathByProjectId(
@@ -15,6 +16,7 @@ export async function resolveDirPathByProjectId(
 ): Promise<string | null> {
   const root = await getWorkspaceRoot();
   if (!root) return null;
+  await restoreWorkspaceScope();
   const fs = await createTauriWorkspaceFs();
   const entries = await listWorkspaceProjects(root, fs);
   const hit = entries.find((e) => e.projectId === projectId);

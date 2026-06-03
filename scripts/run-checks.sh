@@ -21,6 +21,14 @@ if [[ -f "$ROOT_DIR/.shimwrappercheckrc" ]]; then
   set +a
 fi
 
+# Optional secrets for shim (AI review). Not read from .env.local — Vite does not export to bash.
+if [[ -f "$ROOT_DIR/.env.shim.local" ]]; then
+  set -a
+  # shellcheck source=/dev/null
+  source "$ROOT_DIR/.env.shim.local" 2>/dev/null || true
+  set +a
+fi
+
 # Alias for agent/refactor workflows: if only REFACTOR_REPORT_FILE is set, map it to SHIM_REPORT_FILE.
 if [[ -z "${SHIM_REPORT_FILE:-}" ]] && [[ -n "${REFACTOR_REPORT_FILE:-}" ]]; then
   export SHIM_REPORT_FILE="$REFACTOR_REPORT_FILE"

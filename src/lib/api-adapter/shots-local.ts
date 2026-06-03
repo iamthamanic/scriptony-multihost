@@ -78,3 +78,11 @@ export async function localDeleteShot(shotId: string): Promise<void> {
   const backend = requireLocalBackend();
   await backend.structure.delete(shotId);
 }
+
+export async function localGetAllShotsByProject(
+  projectId: string,
+): Promise<Shot[]> {
+  const backend = requireLocalBackend(projectId);
+  const nodes = await backend.structure.getByProject(projectId);
+  return nodes.filter((n) => n.type === "shot").map(structureToShot);
+}

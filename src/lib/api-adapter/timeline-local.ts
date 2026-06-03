@@ -233,5 +233,8 @@ export async function localGetNodePath(
 }
 
 // Re-exports from extracted modules (T26)
-export { localBatchLoadTimeline, localUltraBatchLoadProject } from "./timeline-batch";
+export {
+  localBatchLoadTimeline,
+  localUltraBatchLoadProject,
+} from "./timeline-batch";
 export { localInitializeProject } from "./timeline-init";

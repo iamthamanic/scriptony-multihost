@@ -4,7 +4,9 @@
  */
 
 import type { CreativeGymMode } from "../domain/types";
+import type { GymProgressRepository } from "../domain/ports/gym-progress-repository";
 import type { CreativeGymDeps } from "./creative-gym-deps";
+import { LocalGymProgressRepository } from "../infrastructure/repositories/local-gym-progress-repository";
 import { LocalStorageModeResolver } from "../adapters/integrated/local-storage-mode-resolver";
 import { ScriptonyProjectBridge } from "../adapters/integrated/scriptony-project-bridge";
 import { NullProjectBridge } from "../adapters/standalone/null-project-bridge";
@@ -19,12 +21,15 @@ import { StubCreativeAssistPort } from "../infrastructure/providers/stub-creativ
 export function createCreativeGymDeps(
   userId: string,
   mode: CreativeGymMode,
+  progress?: GymProgressRepository,
 ): CreativeGymDeps {
+  const progressRepo = progress ?? new LocalGymProgressRepository(userId);
   return {
     userId,
     challenges: new InMemoryChallengeRepository(),
     sessions: new LocalSessionRepository(userId),
     artifacts: new LocalArtifactRepository(userId),
+    progress: progressRepo,
     skills: new LocalSkillProfileRepository(userId),
     recommendations: new HeuristicRecommendationPort(),
     projectBridge:

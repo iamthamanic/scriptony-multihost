@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockList = vi.fn(
-  async (): Promise<import("./beats-api").StoryBeat[]> => [],
+  async (_projectId: string): Promise<import("./beats-api").StoryBeat[]> => [],
 );
 const mockCreate = vi.fn(async () => ({
   id: "beat_1",
@@ -17,18 +17,17 @@ const mockCreate = vi.fn(async () => ({
   updated_at: "2026-01-01T00:00:00.000Z",
 }));
 
+vi.mock("@/lib/api-adapter/beats-local", () => ({
+  localGetBeats: (projectId: string) => mockList(projectId),
+  localCreateBeat: () => mockCreate(),
+  localUpdateBeat: vi.fn(),
+  localDeleteBeat: vi.fn(),
+}));
+
 vi.mock("@/lib/api-adapter/runtime-dispatch", () => ({
-  isLocalProfile: vi.fn(() => true),
-  getOpenLocalProjectId: vi.fn(() => "proj_1"),
-  requireLocalBackend: vi.fn(() => ({
-    beats: {
-      list: mockList,
-      create: mockCreate,
-      get: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-    },
-  })),
+  dispatchByRuntime: vi.fn(
+    (_cloud: () => Promise<unknown>, local: () => Promise<unknown>) => local(),
+  ),
 }));
 
 import { createBeat, getBeats } from "./beats-api";

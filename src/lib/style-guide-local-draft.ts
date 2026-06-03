@@ -5,11 +5,11 @@
  */
 
 import type { StyleGuideData } from "./api/style-guide-api";
-import { getAuthToken } from "./auth/getAuthToken";
 import {
   canUseCloudFeatures,
   isLocalProfile,
 } from "./api-adapter/runtime-dispatch";
+import { requireCapability } from "@/capabilities/registry";
 
 export function createEmptyStyleGuideDraft(projectId: string): StyleGuideData {
   return {
@@ -38,12 +38,17 @@ export function createEmptyStyleGuideDraft(projectId: string): StyleGuideData {
 export async function canUseCloudStyleGuide(): Promise<boolean> {
   if (!isLocalProfile()) return true;
   if (!canUseCloudFeatures()) return false;
-  return Boolean(await getAuthToken());
+  try {
+    await requireCapability("hybrid.style_guide_read");
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function localStyleGuideUnavailableHint(): string {
   if (!canUseCloudFeatures()) {
     return "Style Guide (Cloud) ist offline: Appwrite in .env.local konfigurieren oder Modus wechseln.";
   }
-  return "Style Guide (Cloud) benötigt eine Anmeldung bei Appwrite (Hybrid). Lokal wird ein Entwurf angezeigt.";
+  return "Style Guide (Cloud) benötigt Cloud-Anmeldung in der Kopfleiste. Lokal wird ein Entwurf angezeigt.";
 }

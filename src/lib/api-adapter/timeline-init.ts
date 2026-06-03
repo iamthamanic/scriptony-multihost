@@ -5,7 +5,10 @@
 
 import { requireLocalBackend } from "./runtime-dispatch";
 import { structureToTimelineNode } from "./timeline-local";
-import type { TimelineNode, InitializeProjectRequest } from "@/lib/api/timeline-api-v2";
+import type {
+  TimelineNode,
+  InitializeProjectRequest,
+} from "@/lib/api/timeline-api-v2";
 
 export async function localInitializeProject(
   request: InitializeProjectRequest,

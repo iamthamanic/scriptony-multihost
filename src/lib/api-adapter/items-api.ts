@@ -3,14 +3,8 @@
  * Extracted from worlds-adapter.ts to respect the 300-line file limit (T26).
  */
 
-import {
-  dispatchByRuntime,
-  requireLocalBackend,
-} from "./runtime-dispatch";
-import {
-  resolveLocalProjectId,
-  categoryIdForSlug,
-} from "./worlds-core";
+import { dispatchByRuntime, requireLocalBackend } from "./runtime-dispatch";
+import { resolveLocalProjectId, categoryIdForSlug } from "./worlds-core";
 import {
   worldbuildingToLegacyItem,
   type LegacyWorldItem,

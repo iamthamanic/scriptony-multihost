@@ -53,10 +53,8 @@ function buildRuntimeConfig(
  *
  * Priority:
  * 1. Explicit VITE_SCRIPTONY_RUNTIME env override (local | cloud | selfHosted)
- * 2. Default cloud (browser and Tauri desktop until local mode is product-ready)
- *
- * Cloud remains the safe default so existing users are never disrupted.
- * Tauri does not auto-switch to local — set VITE_SCRIPTONY_RUNTIME=local explicitly.
+ * 2. Desktop shell (Tauri/Electron) → local
+ * 3. Browser → cloud
  */
 export function detectRuntime(): RuntimeConfig {
   const explicitRuntime = import.meta.env.VITE_SCRIPTONY_RUNTIME;
@@ -93,6 +91,15 @@ export function detectRuntime(): RuntimeConfig {
     return buildRuntimeConfig("selfHosted", {
       selfHostedEndpoint: appwriteConfig?.endpoint,
     });
+  }
+
+  if (explicitRuntime === "cloud") {
+    return buildRuntimeConfig("cloud");
+  }
+
+  // Default: desktop shell → local, browser → cloud
+  if (isDesktopShell()) {
+    return buildRuntimeConfig("local");
   }
 
   return buildRuntimeConfig("cloud");

@@ -11,6 +11,13 @@ OLLAMA_API_KEY="${OLLAMA_API_KEY:-}"
 
 REQUEST_TIMEOUT="${SHIM_AI_TIMEOUT_SEC:-300}"
 
+if [[ -z "$OLLAMA_API_KEY" && "$OLLAMA_HOST" == *api.ollama.com* ]]; then
+  echo "OLLAMA_API_KEY is required for Ollama Cloud ($OLLAMA_HOST)." >&2
+  echo "Set it in .env.shim.local (see .env.shim.local.example) or export before npm run checks." >&2
+  echo ".env.local / VITE_* vars are not loaded by run-checks.sh." >&2
+  exit 1
+fi
+
 if ! command -v curl >/dev/null 2>&1; then
   echo "Skipping AI review: curl not available." >&2
   exit 0

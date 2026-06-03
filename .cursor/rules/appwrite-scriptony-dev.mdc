@@ -1,9 +1,11 @@
 ---
-description: Appwrite + Scriptony HTTP functions — local frontend env and verification
-alwaysApply: true
+description: Appwrite + Scriptony HTTP functions — use for cloud/web/deploy tickets only
+alwaysApply: false
 ---
 
 # Appwrite + Scriptony (Merksatz)
+
+**Scope:** Cloud browser client, self-hosted, Function deploy, collection deploy, hybrid KI on desktop. For **Tauri local-first** work, prefer `.cursor/rules/scriptony-desktop-dev.mdc` and `docs/DESKTOP_FIRST_DEV.md` — do not require Appwrite env or deploy unless the ticket says so.
 
 **Frontend (Mac):** Projektroot `.env.local` aus `.env.local.example`: `VITE_APPWRITE_ENDPOINT`, `VITE_APPWRITE_PROJECT_ID`, sowie `VITE_APPWRITE_FUNCTIONS_BASE_URL` oder `VITE_BACKEND_API_BASE_URL` (Basis-URL der deployten `scriptony-*` Funktionen). Redirects/Web-URL auf **Port 3000** (`vite.config.ts`): `VITE_APP_WEB_URL`, `VITE_AUTH_REDIRECT_URL`, `VITE_PASSWORD_RESET_REDIRECT_URL`.
 

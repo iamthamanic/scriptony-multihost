@@ -3,6 +3,7 @@
  */
 
 import { apiClient } from "../api-client";
+import { getStyleGuide as getStyleGuideForRuntime } from "@/lib/api-adapter/style-guide-adapter";
 
 export type StyleGuideItemKind = "image" | "text" | "link";
 
@@ -61,10 +62,7 @@ export interface StyleGuideResponse {
 export async function getStyleGuide(
   projectId: string,
 ): Promise<StyleGuideData> {
-  const res = await apiClient.get<StyleGuideResponse>(
-    `/style-guide/${projectId}`,
-  );
-  return res.styleGuide;
+  return getStyleGuideForRuntime(projectId);
 }
 
 export type PatchStyleGuidePayload = Partial<{

@@ -14,7 +14,7 @@ import { useState, useCallback } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "./useAuth";
-import * as TimelineAPI from "../lib/api/timeline-api";
+import * as TimelineAPI from "../lib/api-adapter/timeline-structure-adapter";
 import { queryKeys } from "../lib/react-query";
 import type { Act, Sequence, Scene } from "../lib/types";
 
