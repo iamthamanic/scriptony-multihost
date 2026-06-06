@@ -113,6 +113,7 @@
     "dev": "bash scripts/dev-with-bridge.sh",
     "dev:web": "npm run dev:vite",
     "dev:desktop": "tauri dev",
+    "tauri": "tauri",
     "sidecar:dev": "node scripts/local-sidecar/server.mjs",
     "dev:vite": "node scripts/assert-port-3000-for-scriptony.mjs && vite",
     "build": "vite build",
