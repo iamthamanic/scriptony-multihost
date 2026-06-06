@@ -39,6 +39,7 @@ repo-visualization*.html
 
 # Tauri updater signing key (public key lives in tauri.conf.json)
 .tauri/*.key
+.tauri/apple-certificate-base64.txt
 
 # LightRAG index data (local only)
 .rag/

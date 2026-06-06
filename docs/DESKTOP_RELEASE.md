@@ -8,6 +8,7 @@ Scriptony desktop builds use **Tauri 2** with the official updater plugin. Publi
 
 1. GitHub → **Settings → Secrets → Actions** → `TAURI_SIGNING_PRIVATE_KEY` = full contents of `.tauri/scriptony-updater.key`
 2. Generate key locally if missing: `CI=true npx tauri signer generate -w .tauri/scriptony-updater.key -f`
+3. **macOS Gatekeeper:** complete [macOS code signing (one-time)](#macos-code-signing-one-time) below
 
 **Every release:**
 
@@ -19,8 +20,8 @@ Scriptony desktop builds use **Tauri 2** with the official updater plugin. Publi
 npm run release:desktop:check
 
 # 3. Commit & push main, then tag
-git tag app-v0.1.1
-git push origin app-v0.1.1
+git tag app-v0.1.3
+git push origin app-v0.1.3
 ```
 
 4. Wait for **Actions → Desktop Release** (green)
@@ -54,7 +55,7 @@ Canonical URL constants for UI: `src/lib/desktop/desktop-release-constants.ts`
 
 ## One-time setup
 
-### Signing keys
+### Tauri updater signing keys
 
 ```bash
 mkdir -p .tauri
@@ -64,10 +65,69 @@ CI=true npx tauri signer generate -w .tauri/scriptony-updater.key -f
 - **Public key** → `src-tauri/tauri.conf.json` (`plugins.updater.pubkey`)
 - **Private key** → GitHub secret `TAURI_SIGNING_PRIVATE_KEY` (never commit)
 
+### macOS code signing (one-time)
+
+Required for **normal DMG install** without Terminal (`xattr -cr`). Costs **Apple Developer Program** (99 USD/year).
+
+#### 1. Create certificate (on your Mac)
+
+1. **Keychain Access** → Certificate Assistant → **Request a Certificate From a Certificate Authority** → save `.certSigningRequest`
+2. [Apple Developer → Certificates](https://developer.apple.com/account/resources/certificates/list) → **+** → **Developer ID Application** (not App Store / Apple Distribution)
+3. Upload CSR → download `.cer` → double-click to install
+
+#### 2. Export `.p12`
+
+1. Keychain → **My Certificates** → expand **Developer ID Application: …**
+2. Right-click the **private key** → **Export** → `scriptony-dev-id.p12` + password
+
+#### 3. App-specific password
+
+[appleid.apple.com](https://appleid.apple.com) → Sign-In and Security → **App-Specific Passwords** → create one for “Scriptony CI”
+
+#### 4. Push secrets to GitHub
+
+Helper script (prints values + `gh` commands):
+
+```bash
+npm run setup:apple-signing
+# or: bash scripts/export-apple-certificate-for-ci.sh ~/path/scriptony-dev-id.p12
+```
+
+| GitHub secret | Value |
+|---------------|--------|
+| `APPLE_CERTIFICATE` | Base64 of `.p12` (written to `.tauri/apple-certificate-base64.txt`) |
+| `APPLE_CERTIFICATE_PASSWORD` | Export password |
+| `APPLE_SIGNING_IDENTITY` | From `security find-identity -v -p codesigning` — full string |
+| `APPLE_TEAM_ID` | 10-char Team ID in parentheses |
+| `APPLE_ID` | Apple ID email |
+| `APPLE_PASSWORD` | App-specific password (not your login password) |
+
+Upload example:
+
+```bash
+gh secret set APPLE_CERTIFICATE < .tauri/apple-certificate-base64.txt
+gh secret set APPLE_CERTIFICATE_PASSWORD
+gh secret set APPLE_SIGNING_IDENTITY --body "Developer ID Application: Your Name (TEAMID)"
+gh secret set APPLE_TEAM_ID --body "TEAMID"
+gh secret set APPLE_ID --body "you@example.com"
+gh secret set APPLE_PASSWORD
+```
+
+CI imports the cert into a temporary keychain (`.github/workflows/desktop-release.yml`) and Tauri **signs + notarizes** the `.dmg`.
+
+#### 5. Verify after next release
+
+```bash
+codesign -dv --verbose=4 /Applications/Scriptony.app   # Developer ID Application
+spctl -a -vv /Applications/Scriptony.app             # accepted
+```
+
 ## Local signed build (optional)
 
 ```bash
 export TAURI_SIGNING_PRIVATE_KEY="$(cat .tauri/scriptony-updater.key)"
+# With cert in keychain:
+export APPLE_SIGNING_IDENTITY="Developer ID Application: …"
 npm run build:desktop
 ```
 
@@ -84,6 +144,8 @@ Web builds and `tauri dev` hide the updater UI.
 
 | File | Role |
 |------|------|
+| `scripts/export-apple-certificate-for-ci.sh` | Export `.p12` → base64 + secret checklist |
+| `.github/workflows/desktop-release.yml` | CI: keychain import + sign + notarize |
 | `src/lib/desktop/desktop-release-constants.ts` | GitHub release URLs (DRY) |
 | `src/lib/desktop/app-updater.ts` | Check / install / relaunch |
 | `src/lib/desktop/desktop-update-preferences.ts` | Startup check toggle |
@@ -94,7 +156,13 @@ Web builds and `tauri dev` hide the updater UI.
 
 ## macOS / Windows notes
 
-- **macOS:** Production updates expect signing + notarization for smooth Gatekeeper behavior.
+- **macOS:** Without Apple secrets, builds are ad-hoc signed → users see **“App ist beschädigt”** after browser download.
 - **Windows:** Installer may quit the running app during update — expected Tauri behavior.
 
-See also `docs/GETTING_STARTED.md` Option C (desktop dev).
+### macOS workaround (unsigned builds only)
+
+```bash
+xattr -cr /Applications/Scriptony.app
+```
+
+See also [Tauri macOS signing](https://v2.tauri.app/distribute/sign/macos/) and `docs/GETTING_STARTED.md` Option C (desktop dev).

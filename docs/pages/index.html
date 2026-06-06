@@ -207,6 +207,32 @@
         font-size: 0.85rem;
         color: var(--muted);
       }
+
+      .mac-help {
+        border-color: rgba(255, 180, 80, 0.45);
+        background: rgba(255, 180, 80, 0.08);
+      }
+
+      .mac-help h2 {
+        color: #ffd699;
+      }
+
+      .mac-help ol {
+        margin: 0;
+        padding-left: 1.2rem;
+        color: var(--text);
+      }
+
+      .mac-help li {
+        margin-bottom: 8px;
+      }
+
+      .mac-help code {
+        font-size: 0.85rem;
+        background: rgba(0, 0, 0, 0.25);
+        padding: 2px 6px;
+        border-radius: 6px;
+      }
     </style>
   </head>
   <body>
@@ -371,6 +397,22 @@
           "linux",
           linuxButtons,
         );
+
+        if (recommended === "mac") {
+          const help = document.createElement("section");
+          help.className = "card mac-help";
+          help.innerHTML = `
+            <h2>macOS: „App ist beschädigt“?</h2>
+            <p>Die DMG ist in Ordnung — macOS blockiert aktuell unsignierte Apps aus dem Browser-Download.</p>
+            <ol>
+              <li>DMG öffnen, <strong>Scriptony.app</strong> nach <strong>Programme</strong> ziehen.</li>
+              <li>Terminal öffnen und ausführen:<br /><code>xattr -cr /Applications/Scriptony.app</code></li>
+              <li>Scriptony aus Programme starten — oder Rechtsklick → <strong>Öffnen</strong> beim ersten Start.</li>
+            </ol>
+            <p class="note">Signiertes Release folgt, sobald Apple-Developer-Zertifikat in CI hinterlegt ist.</p>
+          `;
+          content.appendChild(help);
+        }
       }
 
       async function loadRelease() {

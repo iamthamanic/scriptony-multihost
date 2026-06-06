@@ -120,6 +120,7 @@
     "build:web": "npm run build",
     "build:desktop": "tauri build",
     "release:desktop:check": "node scripts/check-desktop-release-ready.mjs",
+    "setup:apple-signing": "bash scripts/export-apple-certificate-for-ci.sh",
     "test": "vitest run",
     "test:run": "vitest run",
     "test:watch": "vitest",

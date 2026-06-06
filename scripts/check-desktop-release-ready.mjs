@@ -99,4 +99,25 @@ console.log(
   "  5. Users download: https://iamthamanic.github.io/scriptony-multihost/\n",
 );
 
+const appleSecrets = [
+  "APPLE_CERTIFICATE",
+  "APPLE_CERTIFICATE_PASSWORD",
+  "APPLE_SIGNING_IDENTITY",
+  "APPLE_ID",
+  "APPLE_PASSWORD",
+  "APPLE_TEAM_ID",
+];
+
+console.log("macOS Gatekeeper (recommended for public DMG):");
+console.log(
+  "  Set GitHub Actions secrets (see docs/DESKTOP_RELEASE.md § macOS code signing):",
+);
+for (const name of appleSecrets) {
+  console.log(`    - ${name}`);
+}
+console.log("  Helper: npm run setup:apple-signing");
+console.log(
+  "  Without these secrets, macOS users must run: xattr -cr /Applications/Scriptony.app\n",
+);
+
 process.exit(ok ? 0 : 1);
