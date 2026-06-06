@@ -4,7 +4,7 @@
  *
  * Location: src/lib/desktop/desktop-release-constants.ts
  */
-export const DESKTOP_GITHUB_REPO = "iamthamanic/scriptony-appwrite";
+export const DESKTOP_GITHUB_REPO = "iamthamanic/scriptony-multihost";
 
 export const DESKTOP_RELEASES_URL = `https://github.com/${DESKTOP_GITHUB_REPO}/releases`;
 

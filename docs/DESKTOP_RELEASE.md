@@ -28,7 +28,7 @@ git push origin app-v0.1.0
 6. Install once yourself; test **Einstellungen → System → Nach Updates suchen**
 
 **User download (first install):**  
-https://github.com/iamthamanic/scriptony-appwrite/releases/latest
+https://github.com/iamthamanic/scriptony-multihost/releases/latest
 
 ---
 
@@ -42,7 +42,7 @@ Settings → System → manual check + startup toggle
 
 Update endpoint (`src-tauri/tauri.conf.json`):
 
-`https://github.com/iamthamanic/scriptony-appwrite/releases/latest/download/latest.json`
+`https://github.com/iamthamanic/scriptony-multihost/releases/latest/download/latest.json`
 
 Canonical URL constants for UI: `src/lib/desktop/desktop-release-constants.ts`
 

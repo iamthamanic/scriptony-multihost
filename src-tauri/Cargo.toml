@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Scriptony desktop shell"
 authors = ["Scriptony"]
 license = ""
-repository = "https://github.com/iamthamanic/scriptony-appwrite"
+repository = "https://github.com/iamthamanic/scriptony-multihost"
 edition = "2021"
 rust-version = "1.77.2"
 

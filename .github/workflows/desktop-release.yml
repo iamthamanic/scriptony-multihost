@@ -68,7 +68,7 @@ jobs:
             - **First install:** pick `.dmg` / `.msi` / `.exe` / `.AppImage` from Assets
             - **Updates:** installed apps check automatically via Settings → System
 
-            See [docs/DESKTOP_RELEASE.md](https://github.com/iamthamanic/scriptony-appwrite/blob/main/docs/DESKTOP_RELEASE.md) for maintainer notes.
+            See [docs/DESKTOP_RELEASE.md](https://github.com/iamthamanic/scriptony-multihost/blob/main/docs/DESKTOP_RELEASE.md) for maintainer notes.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}

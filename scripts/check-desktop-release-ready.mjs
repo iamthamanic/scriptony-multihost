@@ -96,7 +96,7 @@ console.log(
   "  4. GitHub Actions → Desktop Release → verify Release assets + latest.json",
 );
 console.log(
-  `  5. Users download: https://github.com/iamthamanic/scriptony-appwrite/releases/latest\n`,
+  `  5. Users download: https://github.com/iamthamanic/scriptony-multihost/releases/latest\n`,
 );
 
 process.exit(ok ? 0 : 1);
