@@ -38,7 +38,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Install Rust stable
@@ -50,7 +50,9 @@ jobs:
           workspaces: src-tauri
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
+        env:
+          HUSKY: "0"
 
       - name: Build and release Tauri app
         uses: tauri-apps/tauri-action@v0
