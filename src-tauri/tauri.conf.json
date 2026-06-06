@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "identifier": "ai.scriptony.app",
   "build": {
-    "frontendDist": "../dist",
+    "frontendDist": "../build",
     "devUrl": "http://localhost:3000",
     "beforeDevCommand": "npm run dev:vite",
     "beforeBuildCommand": "npm run build"
