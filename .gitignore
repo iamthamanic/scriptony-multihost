@@ -37,6 +37,9 @@ repo-visualization*.html
 .pi/
 **/.pi-lens/
 
+# Tauri updater signing key (public key lives in tauri.conf.json)
+.tauri/*.key
+
 # LightRAG index data (local only)
 .rag/
 scriptony-blender-addon.zip
@@ -45,3 +48,7 @@ scriptony_blender_extension.zip
 # Blender build artifacts
 tools/blender/dist/*
 eslint-fix.mjs
+
+
+#Ignore cursor AI rules
+.cursor/rules/codacy.mdc

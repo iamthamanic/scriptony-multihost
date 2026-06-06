@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Scriptony desktop shell"
 authors = ["Scriptony"]
 license = ""
-repository = ""
+repository = "https://github.com/iamthamanic/scriptony-appwrite"
 edition = "2021"
 rust-version = "1.77.2"
 
@@ -31,3 +31,5 @@ rfd = "0.16"
 tauri-plugin-mcp-bridge = { git = "https://github.com/hypothesi/mcp-server-tauri", subdir = "packages/tauri-plugin-mcp-bridge" }
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 tokio = { version = "1.41", features = ["rt", "macros"] }
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"

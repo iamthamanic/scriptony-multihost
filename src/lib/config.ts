@@ -84,6 +84,8 @@ export const STORAGE_KEYS = {
   ONBOARDING_COMPLETE: "scriptony_onboarding_complete",
   /** '1' = lossless WebP before upload (default). '0' = off. */
   IMAGE_UPLOAD_LOSSLESS_WEBP: "scriptony_image_upload_lossless_webp",
+  /** '1' = check for app updates on desktop startup (default). '0' = off. */
+  DESKTOP_UPDATE_ON_STARTUP: "scriptony_desktop_update_on_startup",
 } as const;
 
 // =============================================================================

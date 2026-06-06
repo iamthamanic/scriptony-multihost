@@ -9,6 +9,7 @@ import {
   installCapacitorUrlListener,
 } from "../capacitor/platform";
 import { installTauriDeepLinkListener } from "../desktop/tauri-deep-link";
+import { promptAppUpdateOnStartup } from "../desktop/prompt-app-update";
 
 /** Hydrate session storage and install URL/deep-link listeners. */
 export async function installShellAuthListeners(): Promise<void> {
@@ -16,6 +17,7 @@ export async function installShellAuthListeners(): Promise<void> {
     await hydrateNativeSessionStorage();
     await installCapacitorUrlListener();
     await installTauriDeepLinkListener();
+    void promptAppUpdateOnStartup();
   } catch (error) {
     console.warn("[Shell] Auth listener setup failed:", error);
   }

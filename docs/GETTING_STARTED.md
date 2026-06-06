@@ -70,9 +70,9 @@ src/lib/auth/cloud-session.ts → JWT session (Axis 2)
 docker stop scriptony-frontend
 ```
 
-**Build installer:** `npm run build:desktop`
+**Build installer:** `npm run build:desktop` — see **`docs/DESKTOP_RELEASE.md`** for signed releases, GitHub Actions, and in-app auto-update.
 
-**OAuth / deep links (cloud or hybrid on desktop):** Register in Appwrite Console (Auth → redirect URLs): `http://localhost:3000`, `scriptony://auth-callback`, etc. — only needed when testing cloud login on desktop.
+**Cloud login on desktop (Axis 2):** Header cloud button → **Scriptony Cloud** dialog with tabs **Managed** (`.env.local` `VITE_APPWRITE_*`) and **Self Host** (save server URL + Project ID to localStorage via T41 store — does not switch runtime profile). Email/password only; enable **Email/Password** in Appwrite Console. OAuth is not used for desktop cloud session.
 
 **Override to cloud on desktop (testing only):** `VITE_SCRIPTONY_RUNTIME=cloud` in `.env.local`.
 

@@ -24,6 +24,7 @@ import { Input } from "../ui/input";
 import { Tooltip, TooltipTrigger, TooltipContent } from "../ui/tooltip";
 import { backendConfig } from "../../lib/env";
 import { fetchBridgeHealth, type BridgeHealth } from "../../lib/bridge-health";
+import { AppUpdateCard } from "./AppUpdateCard";
 
 const HOST_PORT_DEFAULTS = {
   comfyui: 8188,
@@ -161,6 +162,7 @@ export function SystemStatusSection() {
 
   return (
     <div className="space-y-4">
+      <AppUpdateCard />
       {/* Bridge Status */}
       <Card>
         <CardHeader className="p-4 pb-2">

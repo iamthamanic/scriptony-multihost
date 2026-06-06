@@ -1,0 +1,74 @@
+# Desktop release workflow — builds signed Tauri installers and publishes GitHub Release artifacts.
+#
+# Trigger: push tag `app-v*` (e.g. app-v0.1.1) or manual dispatch.
+# Requires GitHub secret TAURI_SIGNING_PRIVATE_KEY (contents of .tauri/scriptony-updater.key).
+#
+# See docs/DESKTOP_RELEASE.md for the full release checklist.
+
+name: Desktop Release
+
+on:
+  push:
+    tags:
+      - "app-v*"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: "--target aarch64-apple-darwin"
+          - platform: macos-latest
+            args: "--target x86_64-apple-darwin"
+          - platform: ubuntu-22.04
+            args: ""
+          - platform: windows-latest
+            args: ""
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build and release Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: Scriptony ${{ github.ref_name }}
+          releaseBody: |
+            ## Scriptony Desktop
+
+            Download the installer for your platform below.
+
+            - **First install:** pick `.dmg` / `.msi` / `.exe` / `.AppImage` from Assets
+            - **Updates:** installed apps check automatically via Settings → System
+
+            See [docs/DESKTOP_RELEASE.md](https://github.com/iamthamanic/scriptony-appwrite/blob/main/docs/DESKTOP_RELEASE.md) for maintainer notes.
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}

@@ -114,7 +114,15 @@ Vom ersten Logline bis zum finalen Shot — alles in einer Anwendung, alles auf 
 
 ## Getting Started
 
-### Voraussetzungen
+### Desktop-App (Endnutzer)
+
+Lade die neueste **macOS / Windows / Linux**-Version von GitHub Releases:
+
+**[Scriptony Desktop — Latest Release](https://github.com/iamthamanic/scriptony-appwrite/releases/latest)**
+
+Nach der Erstinstallation prüft die App automatisch auf Updates (**Einstellungen → System**). Maintainer-Release-Prozess: [`docs/DESKTOP_RELEASE.md`](docs/DESKTOP_RELEASE.md).
+
+### Voraussetzungen (Entwicklung)
 
 - Node.js ≥ 18
 - Docker (für Self-Hosted Backend)
@@ -254,6 +262,8 @@ Welche Function für was zuständig ist: [`docs/backend-domain-map.md`](docs/bac
 ```bash
 # Desktop (empfohlen)
 npm run dev:desktop      # Tauri + Vite (Port 3000 nur für WebView/HMR)
+npm run build:desktop    # Installer lokal bauen
+npm run release:desktop:check  # Version-Sync + Release-Checkliste vor Tag app-v*
 
 # Cloud / Full stack
 npm run dev              # Docker Appwrite + Bridge + Vite
