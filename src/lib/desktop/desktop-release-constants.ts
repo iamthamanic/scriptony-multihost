@@ -6,6 +6,10 @@
  */
 export const DESKTOP_GITHUB_REPO = "iamthamanic/scriptony-multihost";
 
+/** Public download landing page (GitHub Pages). */
+export const DESKTOP_DOWNLOAD_PAGE_URL =
+  "https://iamthamanic.github.io/scriptony-multihost/";
+
 export const DESKTOP_RELEASES_URL = `https://github.com/${DESKTOP_GITHUB_REPO}/releases`;
 
 export const DESKTOP_LATEST_RELEASE_URL = `${DESKTOP_RELEASES_URL}/latest`;

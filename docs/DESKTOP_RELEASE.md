@@ -28,7 +28,13 @@ git push origin app-v0.1.1
 6. Install once yourself; test **Einstellungen → System → Nach Updates suchen**
 
 **User download (first install):**  
+https://iamthamanic.github.io/scriptony-multihost/
+
+GitHub Releases (Assets + Changelog):  
 https://github.com/iamthamanic/scriptony-multihost/releases/latest
+
+**GitHub Pages (one-time):** Repo → **Settings → Pages → Build and deployment → Source: GitHub Actions**.  
+Workflow: `.github/workflows/pages.yml` deploys `docs/pages/` on push to `main`.
 
 ---
 

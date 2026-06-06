@@ -116,9 +116,11 @@ Vom ersten Logline bis zum finalen Shot — alles in einer Anwendung, alles auf 
 
 ### Desktop-App (Endnutzer)
 
-Lade die neueste **macOS / Windows / Linux**-Version von GitHub Releases:
+Lade die neueste **macOS / Windows / Linux**-Version:
 
-**[Scriptony Desktop — Latest Release](https://github.com/iamthamanic/scriptony-multihost/releases/latest)**
+**[Scriptony Desktop — Download](https://iamthamanic.github.io/scriptony-multihost/)**
+
+Release Notes & alle Assets: [GitHub Releases](https://github.com/iamthamanic/scriptony-multihost/releases/latest)
 
 Nach der Erstinstallation prüft die App automatisch auf Updates (**Einstellungen → System**). Maintainer-Release-Prozess: [`docs/DESKTOP_RELEASE.md`](docs/DESKTOP_RELEASE.md).
 

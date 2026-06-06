@@ -16,7 +16,7 @@ import { Badge } from "../ui/badge";
 import { Switch } from "../ui/switch";
 import { Label } from "../ui/label";
 import { useAppUpdater } from "../../hooks/useAppUpdater";
-import { DESKTOP_LATEST_RELEASE_URL } from "../../lib/desktop/desktop-release-constants";
+import { DESKTOP_DOWNLOAD_PAGE_URL } from "../../lib/desktop/desktop-release-constants";
 import {
   isDesktopUpdateOnStartupEnabled,
   setDesktopUpdateOnStartupEnabled,
@@ -160,12 +160,12 @@ export function AppUpdateCard() {
 
           <Button variant="outline" className="h-9" asChild>
             <a
-              href={DESKTOP_LATEST_RELEASE_URL}
+              href={DESKTOP_DOWNLOAD_PAGE_URL}
               target="_blank"
               rel="noopener noreferrer"
             >
               <ExternalLink className="size-4 mr-2" />
-              Release-Seite
+              Download-Seite
             </a>
           </Button>
         </div>
