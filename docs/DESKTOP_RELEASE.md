@@ -19,8 +19,8 @@ Scriptony desktop builds use **Tauri 2** with the official updater plugin. Publi
 npm run release:desktop:check
 
 # 3. Commit & push main, then tag
-git tag app-v0.1.0
-git push origin app-v0.1.0
+git tag app-v0.1.1
+git push origin app-v0.1.1
 ```
 
 4. Wait for **Actions → Desktop Release** (green)

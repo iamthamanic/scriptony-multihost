@@ -1,6 +1,6 @@
 [package]
 name = "scriptony"
-version = "0.1.0"
+version = "0.1.1"
 description = "Scriptony desktop shell"
 authors = ["Scriptony"]
 license = ""
