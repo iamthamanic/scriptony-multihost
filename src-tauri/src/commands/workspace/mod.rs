@@ -6,17 +6,27 @@ pub mod paths;
 pub mod validation;
 
 use tauri::AppHandle;
-use tauri::Manager;
+use tauri_plugin_dialog::DialogExt;
 
 #[tauri::command]
 pub async fn pick_workspace_folder(app: AppHandle) -> Result<String, String> {
-    let picked = rfd::AsyncFileDialog::new()
-        .set_title("Scriptony-Workspace-Ordner wählen")
-        .pick_folder()
-        .await
-        .ok_or_else(|| "Folder selection cancelled".to_string())?;
+    let dialog_app = app.clone();
+    let picked = tauri::async_runtime::spawn_blocking(move || {
+        dialog_app
+            .dialog()
+            .file()
+            .set_title("Scriptony-Workspace-Ordner wählen")
+            .blocking_pick_folder()
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .ok_or_else(|| "Folder selection cancelled".to_string())?;
 
-    let path = picked.path().to_string_lossy().to_string();
+    let path = picked
+        .into_path()
+        .map_err(|e| e.to_string())?
+        .to_string_lossy()
+        .to_string();
     let canonical = validation::validate_workspace_root(&path)?;
     paths::allow_workspace_directory(&app, &canonical)?;
     paths::persist_trusted_root(&app, &canonical)?;

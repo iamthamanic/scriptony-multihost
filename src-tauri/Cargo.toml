@@ -1,6 +1,6 @@
 [package]
 name = "scriptony"
-version = "0.1.1"
+version = "0.1.2"
 description = "Scriptony desktop shell"
 authors = ["Scriptony"]
 license = ""
@@ -27,7 +27,6 @@ tauri-plugin-deep-link = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
 tauri-plugin-fs = "2"
-rfd = "0.16"
 tauri-plugin-mcp-bridge = { git = "https://github.com/hypothesi/mcp-server-tauri", subdir = "packages/tauri-plugin-mcp-bridge" }
 reqwest = { version = "0.12", features = ["blocking", "json"] }
 tokio = { version = "1.41", features = ["rt", "macros"] }
