@@ -68,6 +68,7 @@ export interface StructureNode {
 	type: string;
 	label: string;
 	orderIndex: number;
+	metadata?: Record<string, unknown>;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -168,6 +169,7 @@ export interface AudioClipUpdatePayload {
 
 export interface AudioRepository {
 	getClips(projectId: string): Promise<AudioClip[]>;
+	getClipsByScene(sceneId: string): Promise<AudioClip[]>;
 	getClip(clipId: string): Promise<AudioClip | null>;
 	createClip(sceneId: string, projectId: string, payload: Partial<AudioClip>): Promise<AudioClip>;
 	updateClip(clipId: string, patch: AudioClipUpdatePayload): Promise<AudioClip>;

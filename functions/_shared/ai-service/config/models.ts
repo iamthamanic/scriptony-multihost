@@ -408,11 +408,12 @@ export const MODELS: Record<string, ModelInfo[]> = {
  * Get all models for a provider
  */
 export function getModelsForProvider(provider: string): ModelInfo[] {
-  const key = provider === "ollama_local" ||
-      provider === "ollama_cloud" ||
-      provider === "ollama"
-    ? "ollama"
-    : provider;
+  const key =
+    provider === "ollama_local" ||
+    provider === "ollama_cloud" ||
+    provider === "ollama"
+      ? "ollama"
+      : provider;
   const rows = MODELS[key] || [];
   if (provider === "ollama_local" || provider === "ollama_cloud") {
     return rows.map((m) => ({ ...m, provider }));
@@ -437,7 +438,7 @@ export function getModelsForProviderFeature(
   feature: string,
 ): ModelInfo[] {
   return getModelsForProvider(provider).filter((model) =>
-    model.features.includes(feature)
+    model.features.includes(feature),
   );
 }
 

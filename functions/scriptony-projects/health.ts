@@ -88,8 +88,8 @@ export default async function handler(
         internalEndpoint: getAppwriteEndpoint(),
         publicEndpoint: getPublicAppwriteEndpoint(),
         envAppwriteEndpoint: process.env.APPWRITE_ENDPOINT || "(not set)",
-        envFunctionEndpoint: process.env.APPWRITE_FUNCTION_ENDPOINT ||
-          "(not set)",
+        envFunctionEndpoint:
+          process.env.APPWRITE_FUNCTION_ENDPOINT || "(not set)",
       },
     });
     console.log("[projects/health] success", {

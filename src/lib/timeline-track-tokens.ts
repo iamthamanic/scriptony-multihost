@@ -108,6 +108,10 @@ export type TimelineTrackClipOptions = {
   beatSkipFill?: boolean;
 };
 
+/** VET body-move grab affordance (trim handles keep cursor-ew-resize). */
+export const STRUCTURE_BODY_DRAG_GRAB_CLASS =
+  "cursor-grab active:cursor-grabbing";
+
 /**
  * `className` für eine Timeline-Clip-Zelle (Layout + Fill/Border aus Registry).
  * Beat: bei gesetztem `beat.color` zusätzlich `style={{ backgroundColor: beat.color }}` setzen; ohne Farbe nur diese Klassen.

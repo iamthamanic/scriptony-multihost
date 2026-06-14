@@ -38,7 +38,7 @@ export interface AppConfig {
 
 const env = import.meta.env;
 
-function trimTrailingSlash(value: string): string {
+export function trimTrailingSlash(value: string): string {
   return value.replace(/\/+$/, "");
 }
 
@@ -46,7 +46,7 @@ function trimLeadingSlash(value: string): string {
   return value.replace(/^\/+/, "");
 }
 
-function validateString(value: unknown): string {
+export function validateString(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
 }
 
@@ -105,6 +105,8 @@ export function devFunctionUrlUsePlainHttp(url: string): string {
 
 let _backendConfig: BackendConfig | null = null;
 let _runtimeAppwriteOverride: AppwritePublicConfig | null = null;
+/** Axis 2 cloud login on desktop (local shell) — set by cloud-appwrite-target. */
+let _cloudSessionAppwriteOverride: AppwritePublicConfig | null = null;
 let _runtimeProfile: "local" | "cloud" | "selfHosted" | null = null;
 
 /** Default local jobs sidecar port (T43). Override via VITE_SCRIPTONY_SIDECAR_PORT. */
@@ -127,8 +129,24 @@ export function setRuntimeAppwriteOverride(
   resetBackendConfigCache();
 }
 
+/** Cloud session (Axis 2) on desktop local profile — does not switch runtime.profile. */
+export function setCloudSessionAppwriteOverride(
+  cfg: AppwritePublicConfig | null,
+): void {
+  _cloudSessionAppwriteOverride = cfg;
+  resetBackendConfigCache();
+}
+
+export function getCloudSessionAppwriteOverride(): AppwritePublicConfig | null {
+  return _cloudSessionAppwriteOverride;
+}
+
 /** Active runtime profile for backend URL resolution (set by RuntimeProvider). */
-export function getBackendRuntimeProfile(): "local" | "cloud" | "selfHosted" | null {
+export function getBackendRuntimeProfile():
+  | "local"
+  | "cloud"
+  | "selfHosted"
+  | null {
   return _runtimeProfile;
 }
 
@@ -148,6 +166,9 @@ export function resetBackendConfigCache(): void {
  * When a self-hosted connection is active, uses the UI override instead of env.
  */
 export function getAppwritePublicConfig(): AppwritePublicConfig | null {
+  if (_cloudSessionAppwriteOverride) {
+    return _cloudSessionAppwriteOverride;
+  }
   if (_runtimeAppwriteOverride) {
     return _runtimeAppwriteOverride;
   }
@@ -165,7 +186,7 @@ export function getAppwritePublicConfig(): AppwritePublicConfig | null {
 }
 
 export function getMissingAppwriteConfig(): string[] {
-  if (_runtimeAppwriteOverride) {
+  if (_cloudSessionAppwriteOverride || _runtimeAppwriteOverride) {
     return [];
   }
   const missing: string[] = [];

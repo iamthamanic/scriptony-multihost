@@ -9,6 +9,10 @@ import type { ScriptonyBackend } from "@/backend/ScriptonyBackend";
 import type { LocalBackend } from "@/backend/local/LocalBackend";
 import { detectRuntime, isDesktopShell } from "@/runtime/detect-runtime";
 import type { RuntimeProfile } from "@/runtime/runtime-profile";
+import {
+  getCloudAuthTarget,
+  hasHybridFunctionsBaseUrl,
+} from "@/lib/auth/cloud-appwrite-target";
 import { getAppwritePublicConfig, getBackendRuntimeProfile } from "@/lib/env";
 
 /** Active profile from RuntimeProvider; falls back to env/shell detection before hydrate. */
@@ -25,11 +29,22 @@ export function isCloudProfile(): boolean {
   return p === "cloud" || p === "selfHosted";
 }
 
-/** True when Appwrite endpoint + project are configured (hybrid KI/TTS). */
+/** True when Appwrite endpoint + project are configured. */
 export function canUseCloudFeatures(): boolean {
   if (!isCloudProfile() && !isLocalProfile()) return false;
   const cfg = getAppwritePublicConfig();
   return Boolean(cfg?.endpoint && cfg?.projectId);
+}
+
+/**
+ * Hybrid KI/TTS: auth endpoint plus (on desktop local + self-host target) functions base URL in .env.
+ */
+export function canUseHybridFeatures(): boolean {
+  if (!canUseCloudFeatures()) return false;
+  if (isLocalProfile() && getCloudAuthTarget() === "selfHosted") {
+    return hasHybridFunctionsBaseUrl();
+  }
+  return true;
 }
 
 export function getActiveBackend(): ScriptonyBackend | null {

@@ -24,7 +24,7 @@ import type {
   CharacterVoiceAssignment,
 } from "../lib/types";
 
-const AUDIO_PROJECT_TYPES = ["audio", "hörspiel", "audiobook", "audio_book"];
+import { isAudioProjectType } from "../lib/project-type-audio";
 
 function trackSceneId(track: AudioTrack): string | undefined {
   const sid = track.sceneId?.trim();
@@ -85,9 +85,7 @@ export function useAudioTimeline(
   const { getAccessToken, loading: authLoading } = useAuth();
   const { data: structuralData } = useProjectTimeline(projectId, projectType);
 
-  const isAudioType = AUDIO_PROJECT_TYPES.includes(
-    (projectType ?? "").toLowerCase(),
-  );
+  const isAudioType = isAudioProjectType(projectType);
 
   return useQuery<AudioTimelineData>({
     queryKey: queryKeys.timeline.audioByProject(projectId || ""),

@@ -14,7 +14,11 @@ export async function createGymProgressRepository(
   try {
     await requireCapability("feature.creative_gym");
     return new CloudGymProgressRepository(userId);
-  } catch {
+  } catch (err) {
+    console.warn(
+      "[CreativeGym] Cloud repository unavailable, using local storage:",
+      err,
+    );
     return new LocalGymProgressRepository(userId);
   }
 }

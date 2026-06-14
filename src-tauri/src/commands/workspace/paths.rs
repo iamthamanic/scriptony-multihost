@@ -71,6 +71,9 @@ pub fn allow_workspace_directory(app: &AppHandle, canonical: &std::path::Path) -
     app.fs_scope()
         .allow_directory(canonical, true)
         .map_err(|e| e.to_string())?;
+    app.asset_protocol_scope()
+        .allow_directory(canonical, true)
+        .map_err(|e| e.to_string())?;
     Ok(())
 }
 

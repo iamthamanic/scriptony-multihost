@@ -85,14 +85,21 @@ async function listTracks(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 }
 
-async function listTracksByProject(req: RequestLike, res: ResponseLike): Promise<void> {
+async function listTracksByProject(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
     return;
   }
 
-  const projectId = getQuery(req, "projectId") || getQuery(req, "project_id") || getParam(req, "projectId") || getParam(req, "project_id");
+  const projectId =
+    getQuery(req, "projectId") ||
+    getQuery(req, "project_id") ||
+    getParam(req, "projectId") ||
+    getParam(req, "project_id");
   if (!projectId) {
     sendBadRequest(res, "projectId is required");
     return;
@@ -567,7 +574,11 @@ export default async function handler(
   // GET /tracks?sceneId=xxx OR /tracks?projectId=xxx (also accepts project_id)
   if (req.method === "GET" && !pathname.match(/tracks\/[\w-]+/)) {
     const sceneId = getQuery(req, "sceneId") || getParam(req, "sceneId");
-    const projectId = getQuery(req, "projectId") || getQuery(req, "project_id") || getParam(req, "projectId") || getParam(req, "project_id");
+    const projectId =
+      getQuery(req, "projectId") ||
+      getQuery(req, "project_id") ||
+      getParam(req, "projectId") ||
+      getParam(req, "project_id");
     if (sceneId) {
       await listTracks(req, res);
     } else if (projectId) {

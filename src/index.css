@@ -9219,3 +9219,29 @@ span[data-type="character-mention"]:hover {
     animation-duration: 1ms;
   }
 }
+
+/* Structure timeline playhead — position from useTimelineTransport (--playhead-left-px on scroll container) */
+.structure-timeline-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--playhead-left-px, 0);
+  width: 2px;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.structure-timeline-playhead.cursor-ew-resize {
+  z-index: 30;
+}
+
+.structure-timeline-playhead--scrub {
+  pointer-events: auto;
+  cursor: ew-resize;
+  touch-action: none;
+  width: 2px;
+  margin-left: -6px;
+  padding-left: 6px;
+  padding-right: 6px;
+  background-clip: content-box;
+}

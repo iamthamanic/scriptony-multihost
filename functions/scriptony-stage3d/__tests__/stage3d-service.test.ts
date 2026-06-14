@@ -248,7 +248,8 @@ describe("getOrCreateStage3dDocument idempotency", () => {
 
     for (const error of conflictErrors) {
       const msg = error.message;
-      const isConflict = msg.includes("unique") ||
+      const isConflict =
+        msg.includes("unique") ||
         msg.includes("already exists") ||
         msg.includes("conflict");
       expect(isConflict).toBe(true);

@@ -11,8 +11,8 @@ import { nodeToAct, nodeToSequence, nodeToScene } from "../api/timeline-api";
 import * as TimelineAPIV2 from "../api/timeline-api-v2";
 import * as ShotsAPI from "../api/shots-api";
 import * as ClipsAPI from "../api/clips-api";
-import type { TimelineData } from "../../components/film/FilmDropdown";
-import type { BookTimelineData } from "../../components/book/BookDropdown";
+import type { TimelineData } from "../../components/structure/DropdownView";
+import type { BookTimelineData } from "../../components/book/BookDropdownView";
 import type { Clip, Shot } from "../types";
 import {
   ultraBatchToTimelineData,
@@ -20,6 +20,10 @@ import {
   enrichBookTimelineData,
 } from "../timeline-map";
 import { dispatchByRuntime, requireLocalBackend } from "./runtime-dispatch";
+import {
+  normalizeSceneImageStoragePath,
+} from "@/lib/local-asset-display-url";
+import type { Scene } from "../types";
 
 const LOCAL_TEMPLATE_ID = "film";
 
@@ -28,6 +32,10 @@ const NODE_LEVEL: Record<string, 1 | 2 | 3> = {
   sequence: 2,
   scene: 3,
 };
+
+function parseNodeMetadata(node: StructureNode): Record<string, unknown> {
+  return node.metadata ?? {};
+}
 
 function structureNodeToTimelineNode(
   node: StructureNode,
@@ -44,7 +52,7 @@ function structureNodeToTimelineNode(
     title: node.label,
     description: "",
     orderIndex: node.orderIndex,
-    metadata: {},
+    metadata: parseNodeMetadata(node),
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
   };
@@ -64,6 +72,14 @@ function assignNodeNumbers(nodes: StructureNode[]): Map<string, number> {
       .forEach((n, idx) => numbers.set(n.id, idx + 1));
   }
   return numbers;
+}
+
+function normalizeSceneImageUrls(scenes: Scene[]): Scene[] {
+  return scenes.map((scene) => {
+    const normalized = normalizeSceneImageStoragePath(scene.imageUrl);
+    if (!normalized || normalized === scene.imageUrl) return scene;
+    return { ...scene, imageUrl: normalized };
+  });
 }
 
 async function loadLocalProjectTimelineBundle(
@@ -89,18 +105,42 @@ async function loadLocalProjectTimelineBundle(
       nodeToSequence(structureNodeToTimelineNode(n, numbers.get(n.id) ?? 1)),
     );
 
-  const scenes = nodes
-    .filter((n) => n.type === "scene")
+  const scenes = normalizeSceneImageUrls(
+    nodes
+      .filter((n) => n.type === "scene")
+      .sort((a, b) => a.orderIndex - b.orderIndex)
+      .map((n) =>
+        nodeToScene(structureNodeToTimelineNode(n, numbers.get(n.id) ?? 1)),
+      ),
+  );
+
+  const shots = nodes
+    .filter((n) => n.type === "shot")
     .sort((a, b) => a.orderIndex - b.orderIndex)
-    .map((n) =>
-      nodeToScene(structureNodeToTimelineNode(n, numbers.get(n.id) ?? 1)),
-    );
+    .map((n) => {
+      const imageUrl =
+        typeof n.metadata?.imageUrl === "string"
+          ? normalizeSceneImageStoragePath(n.metadata.imageUrl) ??
+            n.metadata.imageUrl
+          : undefined;
+      return {
+        id: n.id,
+        sceneId: n.parentId ?? "",
+        projectId: n.projectId,
+        shotNumber: String(numbers.get(n.id) ?? n.orderIndex + 1),
+        description: n.label,
+        orderIndex: n.orderIndex,
+        imageUrl,
+        createdAt: n.createdAt,
+        updatedAt: n.updatedAt,
+      } satisfies Shot;
+    });
 
   const base = {
     acts,
     sequences,
     scenes,
-    shots: [] as Shot[],
+    shots,
     clips: [] as Clip[],
   };
 

@@ -67,7 +67,7 @@ async function waitAttributesAvailable(
     });
     const attrs = list.attributes.filter((entry) => want.has(entry.key));
     const allThere = keys.every((key) =>
-      attrs.some((entry) => entry.key === key)
+      attrs.some((entry) => entry.key === key),
     );
     if (!allThere) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
@@ -129,59 +129,47 @@ async function ensureAttribute(collectionId, key, factory) {
 }
 
 async function ensureStringAttribute(collectionId, key, size, required) {
-  await ensureAttribute(
-    collectionId,
-    key,
-    () =>
-      databases.createStringAttribute({
-        databaseId: DB_ID,
-        collectionId,
-        key,
-        size,
-        required,
-      }),
+  await ensureAttribute(collectionId, key, () =>
+    databases.createStringAttribute({
+      databaseId: DB_ID,
+      collectionId,
+      key,
+      size,
+      required,
+    }),
   );
 }
 
 async function ensureIntegerAttribute(collectionId, key, required) {
-  await ensureAttribute(
-    collectionId,
-    key,
-    () =>
-      databases.createIntegerAttribute({
-        databaseId: DB_ID,
-        collectionId,
-        key,
-        required,
-      }),
+  await ensureAttribute(collectionId, key, () =>
+    databases.createIntegerAttribute({
+      databaseId: DB_ID,
+      collectionId,
+      key,
+      required,
+    }),
   );
 }
 
 async function ensureFloatAttribute(collectionId, key, required) {
-  await ensureAttribute(
-    collectionId,
-    key,
-    () =>
-      databases.createFloatAttribute({
-        databaseId: DB_ID,
-        collectionId,
-        key,
-        required,
-      }),
+  await ensureAttribute(collectionId, key, () =>
+    databases.createFloatAttribute({
+      databaseId: DB_ID,
+      collectionId,
+      key,
+      required,
+    }),
   );
 }
 
 async function ensureBooleanAttribute(collectionId, key, required) {
-  await ensureAttribute(
-    collectionId,
-    key,
-    () =>
-      databases.createBooleanAttribute({
-        databaseId: DB_ID,
-        collectionId,
-        key,
-        required,
-      }),
+  await ensureAttribute(collectionId, key, () =>
+    databases.createBooleanAttribute({
+      databaseId: DB_ID,
+      collectionId,
+      key,
+      required,
+    }),
   );
 }
 

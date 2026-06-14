@@ -4,7 +4,7 @@
  * Shell: delegiert an Clip- oder Legacy-Timeline je nach Feature-Flag.
  */
 
-import { FEATURE_FLAGS } from "../../lib/feature-flags";
+import { isAudioClipSystemEnabled } from "../../lib/feature-flags";
 import { ClipAudioTimeline } from "./ClipAudioTimeline";
 import { LegacyAudioTimeline } from "./LegacyAudioTimeline";
 
@@ -14,7 +14,7 @@ export interface AudioTimelineProps {
 }
 
 export function AudioTimeline({ projectId, projectType }: AudioTimelineProps) {
-  const useNewSystem = FEATURE_FLAGS.audioClipSystem.enabled;
+  const useNewSystem = isAudioClipSystemEnabled(projectType);
 
   if (useNewSystem) {
     return (

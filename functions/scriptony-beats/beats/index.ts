@@ -52,8 +52,8 @@ export default async function handler(
     }
 
     if (req.method === "GET") {
-      const projectId = getQuery(req, "project_id") ||
-        getQuery(req, "projectId");
+      const projectId =
+        getQuery(req, "project_id") || getQuery(req, "projectId");
       if (!projectId) {
         sendBadRequest(res, "project_id is required");
         return;

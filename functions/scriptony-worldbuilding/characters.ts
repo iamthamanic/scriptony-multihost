@@ -8,36 +8,36 @@
 import { requireUserBootstrap } from "../_shared/auth";
 import { requestGraphql } from "../_shared/graphql-compat";
 import {
-	getQuery,
-	type RequestLike,
-	type ResponseLike,
-	sendJson,
-	sendMethodNotAllowed,
-	sendServerError,
-	sendUnauthorized,
+  getQuery,
+  type RequestLike,
+  type ResponseLike,
+  sendJson,
+  sendMethodNotAllowed,
+  sendServerError,
+  sendUnauthorized,
 } from "../_shared/http";
 
 export default async function handler(
-	req: RequestLike,
-	res: ResponseLike,
+  req: RequestLike,
+  res: ResponseLike,
 ): Promise<void> {
-	if (req.method !== "GET") {
-		sendMethodNotAllowed(res, ["GET"]);
-		return;
-	}
+  if (req.method !== "GET") {
+    sendMethodNotAllowed(res, ["GET"]);
+    return;
+  }
 
-	try {
-		const bootstrap = await requireUserBootstrap(req);
-		if (!bootstrap) {
-			sendUnauthorized(res);
-			return;
-		}
+  try {
+    const bootstrap = await requireUserBootstrap(req);
+    if (!bootstrap) {
+      sendUnauthorized(res);
+      return;
+    }
 
-		const worldId = getQuery(req, "world_id");
-		const data = await requestGraphql<{
-			characters: Array<Record<string, any>>;
-		}>(
-			`
+    const worldId = getQuery(req, "world_id");
+    const data = await requestGraphql<{
+      characters: Array<Record<string, any>>;
+    }>(
+      `
         query GetWorldbuildingCharacters($organizationId: uuid!, $worldId: uuid) {
           characters(
             where: {
@@ -60,14 +60,14 @@ export default async function handler(
           }
         }
       `,
-			{
-				organizationId: bootstrap.organizationId,
-				worldId: worldId || null,
-			},
-		);
+      {
+        organizationId: bootstrap.organizationId,
+        worldId: worldId || null,
+      },
+    );
 
-		sendJson(res, 200, { characters: data.characters });
-	} catch (error) {
-		sendServerError(res, error);
-	}
+    sendJson(res, 200, { characters: data.characters });
+  } catch (error) {
+    sendServerError(res, error);
+  }
 }

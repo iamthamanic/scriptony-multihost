@@ -39,7 +39,8 @@ type AppwriteContext = {
 type Dispatch = (req: RequestLike, res: ResponseLike) => Promise<void>;
 
 export function getPathname(req: RequestLike): string {
-  const raw = (typeof req?.path === "string" && req.path) ||
+  const raw =
+    (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {
@@ -73,11 +74,9 @@ export function sendRouteNotFound(
 ): void {
   sendNotFound(
     res,
-    `Route not found for ${service}: ${req?.method || "GET"} ${
-      getPathname(
-        req,
-      )
-    }`,
+    `Route not found for ${service}: ${req?.method || "GET"} ${getPathname(
+      req,
+    )}`,
   );
 }
 

@@ -321,8 +321,9 @@ export function ApiDebugPage() {
           <CardHeader>
             <CardTitle>Local Project (T38/T40)</CardTitle>
             <CardDescription>
-              Smoke/test: path must end with .scriptony and pass folder validation.
-              Production desktop should use a native folder picker (T36+).
+              Smoke/test: path must end with .scriptony and pass folder
+              validation. Production desktop should use a native folder picker
+              (T36+).
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">

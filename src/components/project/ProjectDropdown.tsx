@@ -39,7 +39,7 @@ export function ProjectDropdown({
   narrativeStructure,
 }: ProjectDropdownProps) {
   const config = getProjectTypeConfig(projectType);
-  const DropdownView = config.views.dropdown as React.ComponentType<
+  const DropdownView = config.views.dropdownview as React.ComponentType<
     Record<string, unknown>
   >;
 

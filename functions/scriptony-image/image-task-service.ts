@@ -178,7 +178,8 @@ export async function failImageTask(
     completedAt: now,
   };
   if (error) {
-    update.prompt = (toString(row.prompt) ? toString(row.prompt) + " | " : "") +
+    update.prompt =
+      (toString(row.prompt) ? toString(row.prompt) + " | " : "") +
       `[error] ${error}`.slice(0, 2000);
   }
   const updated = await updateDocument(C.imageTasks, String(row.id), update);
@@ -199,12 +200,10 @@ export async function notifyStageRenderComplete(
   callbackBaseUrl: string,
   authToken?: string,
 ): Promise<{ ok: boolean; status: number; body?: string }> {
-  const url = `${
-    callbackBaseUrl.replace(
-      /\/+$/,
-      "",
-    )
-  }/stage/render-jobs/${jobId}/complete`;
+  const url = `${callbackBaseUrl.replace(
+    /\/+$/,
+    "",
+  )}/stage/render-jobs/${jobId}/complete`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };

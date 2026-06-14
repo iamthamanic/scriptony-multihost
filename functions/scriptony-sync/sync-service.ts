@@ -201,8 +201,8 @@ export async function syncGuides(
   const guideBundle = await createDocument(C.guideBundles, ID.unique(), {
     shotId: input.shotId,
     userId,
-    revision: input.guideBundleRevision ??
-      toInteger(shot.guideBundleRevision) + 1,
+    revision:
+      input.guideBundleRevision ?? toInteger(shot.guideBundleRevision) + 1,
     files: input.files ?? "{}",
     metadata: input.metadata ?? "{}",
     maskFileId: null,
@@ -214,8 +214,8 @@ export async function syncGuides(
   });
 
   const guideBundleId = String(guideBundle.id ?? guideBundle.$id ?? "");
-  const nextRevision = input.guideBundleRevision ??
-    toInteger(shot.guideBundleRevision) + 1;
+  const nextRevision =
+    input.guideBundleRevision ?? toInteger(shot.guideBundleRevision) + 1;
 
   const patch: Record<string, unknown> = {
     guideBundleRevision: nextRevision,

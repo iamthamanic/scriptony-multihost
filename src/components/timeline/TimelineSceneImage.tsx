@@ -4,6 +4,7 @@
  * darkening overlay to keep text readable.
  */
 import { cn } from "../ui/utils";
+import { useResolvedProjectAssetUrl } from "@/hooks/useResolvedProjectAssetUrl";
 
 interface TimelineSceneImageProps {
   imageUrl?: string;
@@ -16,12 +17,13 @@ export function TimelineSceneImage({
   className,
   darken = true,
 }: TimelineSceneImageProps) {
-  if (!imageUrl) return null;
+  const resolvedUrl = useResolvedProjectAssetUrl(imageUrl);
+  if (!resolvedUrl) return null;
   return (
     <div
       className={cn("absolute inset-0 rounded-[inherit] z-0", className)}
       style={{
-        backgroundImage: `url(${imageUrl})`,
+        backgroundImage: `url("${resolvedUrl.replace(/"/g, '\\"')}")`,
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}

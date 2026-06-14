@@ -288,7 +288,6 @@ export function findFreeLaneForType(
 
 /** Map lane index to AudioTrackType for new clips on that lane. */
 export function laneIndexToTrackType(laneIndex: number): AudioTrackType {
-  
   const t = getLaneType(laneIndex);
   if (t === "global") return "dialog";
   if (t === "narrator") return "dialog";

@@ -36,6 +36,8 @@ interface AudioTimelineSegmentProps {
   /** T28: Union-Typ für Transition Phase. */
   item: AudioTrack | AudioClip;
   pxPerSec: number;
+  /** Horizontal scroll offset (same as VET structure tracks). */
+  viewStartSec?: number;
   /** T30: Trim-Handler — wird bei Ende eines Resize-Drag aufgerufen. */
   onTrimEnd?: (clipId: string, newEndSec: number) => void;
   /** T30: Ob Trim erlaubt ist (nur im neuen Clip-System). */
@@ -51,6 +53,7 @@ interface AudioTimelineSegmentProps {
 export function AudioTimelineSegment({
   item,
   pxPerSec,
+  viewStartSec = 0,
   onTrimEnd,
   isEditable = false,
   onGenerateTts,
@@ -71,7 +74,7 @@ export function AudioTimelineSegment({
 
   const durationSec = Math.max(endSec - startSec, 0.1);
 
-  const startPx = startSec * pxPerSec;
+  const startPx = (startSec - viewStartSec) * pxPerSec;
   const widthPx = Math.max(durationSec * pxPerSec, 4); // Min 4px
 
   const trackType = isClip

@@ -3,10 +3,8 @@
  */
 
 import { useState } from "react";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
 import { toast } from "sonner";
+import { SelfHostedServerFields } from "@/components/auth/SelfHostedServerFields";
 
 interface SelfHostedConnectionFormProps {
   testConnection: (
@@ -24,15 +22,17 @@ export function SelfHostedConnectionForm({
   testConnection,
   saveAndActivate,
 }: SelfHostedConnectionFormProps) {
-  const [name, setName] = useState("");
-  const [endpoint, setEndpoint] = useState("");
-  const [projectId, setProjectId] = useState("");
+  const [values, setValues] = useState({
+    name: "",
+    endpoint: "",
+    projectId: "",
+  });
   const [busy, setBusy] = useState(false);
 
   const handleTest = async () => {
     setBusy(true);
     try {
-      const result = await testConnection(endpoint, projectId);
+      const result = await testConnection(values.endpoint, values.projectId);
       if (result.ok) {
         toast.success("Verbindung erfolgreich");
       } else {
@@ -46,11 +46,9 @@ export function SelfHostedConnectionForm({
   const handleSave = async () => {
     setBusy(true);
     try {
-      await saveAndActivate({ name, endpoint, projectId });
+      await saveAndActivate(values);
       toast.success("Self-hosted Server gespeichert und aktiviert");
-      setName("");
-      setEndpoint("");
-      setProjectId("");
+      setValues({ name: "", endpoint: "", projectId: "" });
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Speichern fehlgeschlagen",
@@ -61,47 +59,13 @@ export function SelfHostedConnectionForm({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="sh-name">Name</Label>
-        <Input
-          id="sh-name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="Studio Appwrite"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="sh-endpoint">Endpoint</Label>
-        <Input
-          id="sh-endpoint"
-          value={endpoint}
-          onChange={(e) => setEndpoint(e.target.value)}
-          placeholder="https://appwrite.example.com/v1"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="sh-project">Project ID</Label>
-        <Input
-          id="sh-project"
-          value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
-          placeholder="69abc..."
-        />
-      </div>
-      <div className="flex flex-wrap gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={busy}
-          onClick={handleTest}
-        >
-          Verbindung testen
-        </Button>
-        <Button type="button" disabled={busy} onClick={handleSave}>
-          Speichern & aktivieren
-        </Button>
-      </div>
-    </div>
+    <SelfHostedServerFields
+      values={values}
+      onChange={(patch) => setValues((v) => ({ ...v, ...patch }))}
+      busy={busy}
+      onTest={() => void handleTest()}
+      onSave={() => void handleSave()}
+      saveLabel="Speichern & aktivieren"
+    />
   );
 }

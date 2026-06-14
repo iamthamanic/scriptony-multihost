@@ -10,11 +10,7 @@
  */
 
 import { ID } from "node-appwrite";
-import {
-  createDocument,
-  getDocument,
-  C,
-} from "../../_shared/appwrite-db";
+import { createDocument, getDocument, C } from "../../_shared/appwrite-db";
 
 export type JobStatus =
   | "pending"
@@ -108,9 +104,8 @@ export async function getAudioProductionJob(
       id: doc.$id as string,
       status: (doc.status as JobStatus) || "pending",
       created_at: (doc.created_at as string) || new Date().toISOString(),
-      payload_json: typeof doc.payload_json === "string"
-        ? doc.payload_json
-        : undefined,
+      payload_json:
+        typeof doc.payload_json === "string" ? doc.payload_json : undefined,
     };
   } catch {
     return null;

@@ -9,6 +9,14 @@ import type { Shot } from "@/lib/types";
 import { requireLocalBackend } from "./runtime-dispatch";
 
 function structureToShot(node: StructureNode): Shot {
+  const imageUrl =
+    typeof node.metadata?.imageUrl === "string"
+      ? node.metadata.imageUrl
+      : undefined;
+  const shotImageMime =
+    typeof node.metadata?.shotImageMime === "string"
+      ? node.metadata.shotImageMime
+      : undefined;
   return {
     id: node.id,
     sceneId: node.parentId ?? "",
@@ -16,6 +24,8 @@ function structureToShot(node: StructureNode): Shot {
     shotNumber: String(node.orderIndex + 1),
     description: node.label,
     orderIndex: node.orderIndex,
+    imageUrl,
+    shotImageMime,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
   };
@@ -67,9 +77,23 @@ export async function localUpdateShot(
   updates: Partial<Shot>,
 ): Promise<Shot> {
   const backend = requireLocalBackend();
+  const existing = await backend.structure.getNode(shotId);
+  if (!existing || existing.type !== "shot") {
+    throw new Error(`Shot ${shotId} not found`);
+  }
+
+  const metadata = { ...(existing.metadata ?? {}) };
+  if (updates.imageUrl !== undefined) {
+    metadata.imageUrl = updates.imageUrl;
+  }
+  if (updates.shotImageMime !== undefined) {
+    metadata.shotImageMime = updates.shotImageMime;
+  }
+
   const node = await backend.structure.update(shotId, {
     label: updates.description ?? updates.shotNumber?.toString(),
     orderIndex: updates.orderIndex,
+    metadata,
   });
   return structureToShot(node);
 }

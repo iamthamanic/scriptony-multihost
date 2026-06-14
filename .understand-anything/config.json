@@ -1,0 +1,10 @@
+{
+  "language": "de",
+  "autoUpdate": false,
+  "scopes": {
+    "structureTimeline": [
+      "src/hooks/timeline",
+      "src/components/structure/timeline"
+    ]
+  }
+}

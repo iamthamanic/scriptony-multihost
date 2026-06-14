@@ -4,10 +4,7 @@
  */
 
 import { cn } from "../../../lib/utils";
-import {
-  getLaneType,
-  LANE_UI,
-} from "../../../lib/audio-lane";
+import { getLaneType, LANE_UI } from "../../../lib/audio-lane";
 import { isCharacterDialogLane } from "../../../lib/character-lane-map";
 import { TrackHeader } from "../../audio/track-header/TrackHeader";
 import { AddAudioTimelineMenu } from "./AddAudioTimelineMenu";
@@ -41,6 +38,7 @@ function renderAddAudioMenu(
 }
 
 export interface AudioClipLaneSidebarProps {
+  fullWidth?: boolean;
   laneIndex: number;
   expanded: boolean;
   expandedLane: number | null;
@@ -53,7 +51,11 @@ export interface AudioClipLaneSidebarProps {
   onSoloChange: (laneIndex: number, solo: boolean) => void;
   onVolumeChange: (laneIndex: number, volume: number) => void;
   onPanChange: (laneIndex: number, pan: number) => void;
-  onFxSlotChange: (laneIndex: number, slotIndex: number, presetId: string | null) => void;
+  onFxSlotChange: (
+    laneIndex: number,
+    slotIndex: number,
+    presetId: string | null,
+  ) => void;
   onFxChainEnabledChange: (laneIndex: number, enabled: boolean) => void;
   onRecordToggle?: (laneIndex: number) => void;
   onDeleteLane?: (laneIndex: number) => void;
@@ -62,6 +64,7 @@ export interface AudioClipLaneSidebarProps {
 }
 
 export function AudioClipLaneSidebar({
+  fullWidth = false,
   laneIndex,
   expanded,
   expandedLane,
@@ -87,7 +90,7 @@ export function AudioClipLaneSidebar({
   return (
     <div
       className={cn(
-        LANE_UI.mixerWidthClass,
+        fullWidth ? "w-full min-w-0 max-w-full" : LANE_UI.mixerWidthClass,
         "border-b border-border overflow-hidden shrink-0 min-w-0",
         className,
       )}

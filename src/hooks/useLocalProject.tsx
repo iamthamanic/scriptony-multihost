@@ -14,6 +14,7 @@ import {
 } from "react";
 import { LocalProjectContext } from "@/backend/local/LocalProjectContext";
 import { startSidecar, stopSidecar } from "@/lib/local/sidecar-lifecycle";
+import { restoreWorkspaceScope } from "@/local/workspace";
 
 interface LocalProjectSessionValue {
   project: LocalProjectContext | null;
@@ -40,6 +41,7 @@ export function LocalProjectProvider({ children }: { children: ReactNode }) {
     async (dirPath: string) => {
       const previous = project;
       const ctx = await LocalProjectContext.open(dirPath);
+      await restoreWorkspaceScope();
       if (previous) {
         await previous.close();
       }

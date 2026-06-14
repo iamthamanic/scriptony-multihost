@@ -42,6 +42,10 @@ export class LocalAuthAdapter implements AuthClient {
     return LOCAL_DEV_BEARER;
   }
 
+  async hasActiveSession(): Promise<boolean> {
+    return true;
+  }
+
   /* ---------- Auth ---------- */
 
   async signUp(): Promise<AuthSession | null> {

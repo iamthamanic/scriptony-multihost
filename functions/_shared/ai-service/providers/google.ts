@@ -124,8 +124,8 @@ export class GoogleProvider implements AIProvider {
             aspectRatio: options.size?.includes("1792")
               ? "16:9"
               : options.size?.includes("1024x1792")
-              ? "9:16"
-              : "1:1",
+                ? "9:16"
+                : "1:1",
           },
         }),
       },

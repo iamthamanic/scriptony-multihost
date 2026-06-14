@@ -55,6 +55,18 @@ describe("project-manifest", () => {
       expect(m.description).toBe("A test project");
     });
 
+    it("persists projectType and defaults to film", () => {
+      const audio = createManifest({
+        projectId: "local_audio",
+        title: "Hörspiel",
+        projectType: "audio",
+      });
+      expect(audio.projectType).toBe("audio");
+
+      const film = createManifest({ projectId: "local_film", title: "Film" });
+      expect(film.projectType).toBe("film");
+    });
+
     it("generates unique timestamps", () => {
       const m1 = createManifest({ projectId: "a", title: "A" });
       const m2 = createManifest({ projectId: "b", title: "B" });

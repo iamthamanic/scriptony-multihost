@@ -16,12 +16,10 @@ import {
 } from "../../_shared/http";
 
 function buildSlug(name: string): string {
-  return `${
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-  }-${Date.now()}`;
+  return `${name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")}-${Date.now()}`;
 }
 
 export default async function handler(

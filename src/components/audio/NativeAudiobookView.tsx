@@ -5,7 +5,7 @@ import {
   getAllScenesByProject,
 } from "../../lib/api/timeline-api";
 import { useAuth } from "../../hooks/useAuth";
-import type { TimelineData } from "../film/FilmDropdown";
+import type { TimelineData } from "../structure/DropdownView";
 
 /**
  * 🎙️ NATIVE AUDIOBOOK VIEW

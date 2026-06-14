@@ -13,6 +13,7 @@
 import * as NodesAPI from "./timeline-api-v2";
 import type { Act, Sequence, Scene } from "../types";
 import type { TimelineNode } from "./timeline-api-v2";
+import { normalizeSceneImageStoragePath } from "@/lib/local-asset-display-url";
 
 // Re-export V2 types and functions for new code
 export type {
@@ -123,8 +124,8 @@ export async function createAct(
     templateId: "film-3-act", // TODO: Get from project
     level: 1,
     parentId: null,
-    nodeNumber: actData.actNumber!,
-    title: actData.title || `Akt ${actData.actNumber}`,
+    nodeNumber: actData.actNumber ?? 1,
+    title: actData.title || `Akt ${actData.actNumber ?? 1}`,
     description: actData.description,
   });
 
@@ -190,8 +191,8 @@ export async function createSequence(
     templateId: act.templateId,
     level: 2,
     parentId: actId,
-    nodeNumber: sequenceData.sequenceNumber!,
-    title: sequenceData.title || `Sequenz ${sequenceData.sequenceNumber}`,
+    nodeNumber: sequenceData.sequenceNumber ?? 1,
+    title: sequenceData.title || `Sequenz ${sequenceData.sequenceNumber ?? 1}`,
     description: sequenceData.description,
     color: sequenceData.color,
   });
@@ -263,8 +264,8 @@ export async function createScene(
     templateId: sequence.templateId,
     level: 3,
     parentId: sequenceId,
-    nodeNumber: sceneData.sceneNumber!,
-    title: sceneData.title || `Szene ${sceneData.sceneNumber}`,
+    nodeNumber: sceneData.sceneNumber ?? 1,
+    title: sceneData.title || `Szene ${sceneData.sceneNumber ?? 1}`,
     description: sceneData.description,
     color: sceneData.color,
     metadata: {
@@ -275,7 +276,8 @@ export async function createScene(
     },
   });
 
-  return nodeToScene(node);
+  const scene = nodeToScene(node);
+  return { ...scene, sequenceId: scene.sequenceId ?? sequenceId };
 }
 
 export async function updateScene(
@@ -292,7 +294,10 @@ export async function updateScene(
   if (updates.characters !== undefined)
     metadata.characters = updates.characters;
   if (updates.content !== undefined) metadata.content = updates.content;
-  if (updates.imageUrl !== undefined) metadata.imageUrl = updates.imageUrl;
+  if (updates.imageUrl !== undefined) {
+    metadata.imageUrl =
+      normalizeSceneImageStoragePath(updates.imageUrl) ?? updates.imageUrl;
+  }
   if (updates.metadata) {
     Object.assign(metadata, updates.metadata);
   }

@@ -17,7 +17,8 @@ import {
 import { createAppwriteHandler } from "../_shared/appwrite-handler";
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) ||
+  const direct =
+    (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
 

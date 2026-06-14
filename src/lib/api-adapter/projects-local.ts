@@ -18,6 +18,8 @@ import {
   listWorkspaceProjects,
   restoreWorkspaceScope,
 } from "@/local/workspace";
+import { readProjectManifest } from "@/local/project-folder";
+import { isDesktopShell } from "@/runtime/detect-runtime";
 import { requireLocalBackend } from "./runtime-dispatch";
 import {
   isLocalDeleteConfirmationValid,
@@ -39,6 +41,17 @@ export async function mergeLocalLegacyProject(
   const projectType = base.projectType ?? base.type ?? "film";
   const logline =
     settings?.logline ?? parseLoglineFromPayload(base) ?? base.description;
+
+  let cloudSyncEnabled = false;
+  if (isDesktopShell()) {
+    try {
+      const manifest = await readProjectManifest(dirPath);
+      cloudSyncEnabled = manifest.sync.enabled === true;
+    } catch {
+      cloudSyncEnabled = false;
+    }
+  }
+
   return {
     ...base,
     ...localSettingsToLegacyFields(settings),
@@ -48,6 +61,7 @@ export async function mergeLocalLegacyProject(
     projectType,
     type,
     localDirPath: dirPath,
+    cloudSyncEnabled,
     linkedWorldId:
       settings?.linkedWorldId ?? base.linkedWorldId ?? `local-world-${base.id}`,
     world_id:

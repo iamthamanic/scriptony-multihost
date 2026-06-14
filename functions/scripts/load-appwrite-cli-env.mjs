@@ -30,15 +30,13 @@ function collectEnvPathsWalkingUp(startDir) {
   const out = [];
   let dir = resolve(startDir.trim());
   for (let depth = 0; depth < 14; depth++) {
-    for (
-      const name of [
-        ".env.server.local",
-        ".env.server",
-        ".env.local",
-        ".env",
-        ".env.migration",
-      ]
-    ) {
+    for (const name of [
+      ".env.server.local",
+      ".env.server",
+      ".env.local",
+      ".env",
+      ".env.migration",
+    ]) {
       const p = resolve(dir, name);
       if (existsSync(p)) out.push(p);
     }
@@ -145,8 +143,8 @@ export function loadAppwriteCliEnv() {
     !process.env.APPWRITE_PROJECT_ID?.trim() &&
     process.env.VITE_APPWRITE_PROJECT_ID?.trim()
   ) {
-    process.env.APPWRITE_PROJECT_ID = process.env.VITE_APPWRITE_PROJECT_ID
-      .trim();
+    process.env.APPWRITE_PROJECT_ID =
+      process.env.VITE_APPWRITE_PROJECT_ID.trim();
   }
 
   /** Viele .env-Dateien nutzen `APPWRITE_APIKEY` (Console/ältere Docs); SDK erwartet `APPWRITE_API_KEY`. */

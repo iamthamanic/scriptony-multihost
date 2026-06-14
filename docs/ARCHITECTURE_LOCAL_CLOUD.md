@@ -4,6 +4,7 @@
 > **Principle:** KISS · SOLID · DRY — one dispatch layer, domain names in code, HTTP routes only in `*-cloud-http.ts`.
 
 Canonical desktop workflow: [DESKTOP_FIRST_DEV.md](DESKTOP_FIRST_DEV.md).  
+**Generic multihost blueprint (new apps / AI handoff):** [MULTIHOST_BLUEPRINT.md](MULTIHOST_BLUEPRINT.md).  
 Domain mapping table: [DOMAIN_GLOSSAR.md](DOMAIN_GLOSSAR.md).  
 Capability gates: [`src/capabilities/registry.ts`](../src/capabilities/registry.ts).
 
@@ -100,9 +101,17 @@ See [`src/capabilities/registry.ts`](../src/capabilities/registry.ts):
 
 ---
 
+## Target vs today (axis 3)
+
+**Target (see [MULTIHOST_BLUEPRINT.md](MULTIHOST_BLUEPRINT.md) §4):** Promote LOCAL → CLOUD (Model A); local becomes read-only archive; cloud project is live server truth (Figma-style realtime).
+
+**Today (T40):** Cloud activation links a cloud project id; **local SQLite remains CRUD truth** while sync engine is still planned.
+
+---
+
 ## Explicitly out of scope here
 
-- Bidirectional real-time sync (separate ticket / `ProjectSyncEngine`)
+- Bidirectional real-time sync (separate ticket / `ProjectSyncEngine`) — superseded for new apps by blueprint Model A
 - Renaming server routes (e.g. `/timeline-characters`)
 - Global desktop “switch app to cloud mode” for end users
 

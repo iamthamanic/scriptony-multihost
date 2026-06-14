@@ -124,6 +124,16 @@ async function readManifest(dirPath: string): Promise<ProjectManifest> {
   return validateManifest(JSON.parse(raw));
 }
 
+/** Read scriptony.json from an open local project folder (desktop only). */
+export async function readProjectManifest(
+  dirPath: string,
+): Promise<ProjectManifest> {
+  if (!isDesktopShell()) {
+    throw new Error("Local project manifest requires desktop shell");
+  }
+  return readManifest(dirPath);
+}
+
 /** Create the top-level `.scriptony` folder; fail if it already exists (race-safe). */
 async function mkdirProjectRoot(dirPath: string): Promise<void> {
   const { mkdir, exists } = await import("@tauri-apps/plugin-fs");
@@ -237,6 +247,7 @@ export async function createProjectFolder(
     projectId,
     title: options.title,
     description: options.description,
+    projectType: options.projectType,
   });
 
   try {
@@ -253,6 +264,7 @@ export async function createProjectFolder(
       projectId: manifest.projectId,
       title: manifest.title,
       description: manifest.description,
+      projectType: manifest.projectType,
       createdAt: manifest.createdAt,
       updatedAt: manifest.updatedAt,
     });

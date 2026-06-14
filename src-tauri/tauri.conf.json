@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Scriptony",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "identifier": "ai.scriptony.app",
   "build": {
     "frontendDist": "../build",
@@ -21,6 +21,22 @@
     ],
     "security": {
       "capabilities": ["default", "local-project-fs", "workspace-fs"],
+      "assetProtocol": {
+        "enable": true,
+        "scope": {
+          "requireLiteralLeadingDot": false,
+          "allow": [
+            "$HOME/**/*.scriptony",
+            "$HOME/**/*.scriptony/**",
+            "$DOCUMENT/**/*.scriptony",
+            "$DOCUMENT/**/*.scriptony/**",
+            "$DESKTOP/**/*.scriptony",
+            "$DESKTOP/**/*.scriptony/**",
+            "$DOWNLOAD/**/*.scriptony",
+            "$DOWNLOAD/**/*.scriptony/**"
+          ]
+        }
+      },
       "csp": "default-src 'self' tauri: https://tauri.localhost; script-src 'self' tauri: https://tauri.localhost; style-src 'self' 'unsafe-inline'; connect-src 'self' https: wss:; img-src 'self' data: https: blob: asset: https://asset.localhost; font-src 'self' data: https:; media-src 'self' https: blob: asset: https://asset.localhost",
       "devCsp": "default-src 'self' tauri: http://localhost:3000 https://tauri.localhost; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://localhost:3000; style-src 'self' 'unsafe-inline'; connect-src 'self' https: wss: http://localhost:*; img-src 'self' data: https: blob: asset: https://asset.localhost; font-src 'self' data: https:; media-src 'self' https: blob: asset: https://asset.localhost"
     }

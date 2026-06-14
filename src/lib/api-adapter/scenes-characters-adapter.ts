@@ -195,6 +195,7 @@ export const charactersApiAdapter = {
             | "protagonist"
             | "antagonist"
             | "supporting"
+            | "minor"
             | undefined,
           description:
             typeof character.description === "string"

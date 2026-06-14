@@ -34,8 +34,8 @@ export default async function handler(
     }
 
     if (req.method === "GET") {
-      const projectId = getQuery(req, "project_id") ||
-        getQuery(req, "projectId");
+      const projectId =
+        getQuery(req, "project_id") || getQuery(req, "projectId");
       if (!projectId) {
         sendBadRequest(res, "project_id is required");
         return;
@@ -49,13 +49,14 @@ export default async function handler(
       if (!_project) return;
 
       const levelValue = getQuery(req, "level");
-      const parentQuery = getQuery(req, "parent_id") ??
-        getQuery(req, "parentId");
-      const parentId = parentQuery === undefined
-        ? undefined
-        : parentQuery === "null"
-        ? null
-        : parentQuery;
+      const parentQuery =
+        getQuery(req, "parent_id") ?? getQuery(req, "parentId");
+      const parentId =
+        parentQuery === undefined
+          ? undefined
+          : parentQuery === "null"
+            ? null
+            : parentQuery;
 
       const nodes = await getTimelineNodes({
         projectId,

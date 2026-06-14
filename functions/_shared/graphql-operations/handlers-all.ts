@@ -619,19 +619,20 @@ export const allHandlers: Record<string, Op> = {
     ),
   }),
 
-	PersistRipple: async (v) => {
-		const projectId = String(v.projectId ?? "").trim();
-		if (!projectId) {
-			throw new Error("PersistRipple requires projectId");
-		}
-		const { clip_patches, timeline_node_patches } = parseRipplePersistPatches(v);
-		const result = await persistRippleTransactional(
-			projectId,
-			clip_patches,
-			timeline_node_patches,
-		);
-		return { persistRipple: result };
-	},
+  PersistRipple: async (v) => {
+    const projectId = String(v.projectId ?? "").trim();
+    if (!projectId) {
+      throw new Error("PersistRipple requires projectId");
+    }
+    const { clip_patches, timeline_node_patches } =
+      parseRipplePersistPatches(v);
+    const result = await persistRippleTransactional(
+      projectId,
+      clip_patches,
+      timeline_node_patches,
+    );
+    return { persistRipple: result };
+  },
 
   BulkCreateTimelineNodes: async (v) => {
     const objects = v.objects as Record<string, unknown>[];

@@ -34,6 +34,14 @@ export class LocalAudioRepository implements AudioRepository {
 		return rows.map(mapAudioClipRow);
 	}
 
+	async getClipsByScene(sceneId: string): Promise<AudioClip[]> {
+		const rows = await this.db.all(
+			"SELECT * FROM audio_clips WHERE scene_id = ? AND deleted_at IS NULL ORDER BY lane_index, order_index ASC",
+			[sceneId],
+		);
+		return rows.map(mapAudioClipRow);
+	}
+
 	async getClip(clipId: string): Promise<AudioClip | null> {
 		const row = await this.db.get(
 			"SELECT * FROM audio_clips WHERE id = ? AND deleted_at IS NULL",

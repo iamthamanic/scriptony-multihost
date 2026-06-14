@@ -581,8 +581,7 @@ app.post("/ai/generate", async (c) => {
     // Import AI service
     const { chat } = await import("../_shared/ai-service");
 
-    const systemPrompt =
-      `You are a creative writing exercise generator for Scriptony Gym.
+    const systemPrompt = `You are a creative writing exercise generator for Scriptony Gym.
 Generate a unique, engaging writing exercise with the following structure:
 {
   "title": "Exercise title (catchy)",
@@ -664,8 +663,7 @@ app.post("/ai/feedback", async (c) => {
   try {
     const { chat } = await import("../_shared/ai-service");
 
-    const systemPrompt =
-      `You are a creative writing coach. Provide constructive, encouraging feedback.
+    const systemPrompt = `You are a creative writing coach. Provide constructive, encouraging feedback.
 Your feedback should be structured as:
 {
   "score": 85,
@@ -680,8 +678,7 @@ Be specific, supportive, and actionable. Focus on growth.`;
     const messages = [
       {
         role: "user" as const,
-        content:
-          `Please provide feedback on this writing submission:\n\n${submission}`,
+        content: `Please provide feedback on this writing submission:\n\n${submission}`,
       },
     ];
 
@@ -728,8 +725,7 @@ app.post("/ai/suggest", async (c) => {
   try {
     const { chat } = await import("../_shared/ai-service");
 
-    const systemPrompt =
-      `You are a creative writing coach. Suggest personalized exercises.
+    const systemPrompt = `You are a creative writing coach. Suggest personalized exercises.
 Return 3 exercise suggestions as:
 [
   {
@@ -743,11 +739,9 @@ Return 3 exercise suggestions as:
     const messages = [
       {
         role: "user" as const,
-        content: `Suggest exercises for a writer with this progress: ${
-          JSON.stringify(
-            progress || {},
-          )
-        }
+        content: `Suggest exercises for a writer with this progress: ${JSON.stringify(
+          progress || {},
+        )}
 Interests: ${interests?.join(", ") || "general improvement"}`,
       },
     ];

@@ -172,11 +172,9 @@ export function compileCompactPrompt(
   const pb = parseJsonStringArray(root.palette_background_json);
   if (pp.length || ps.length || pa.length || pb.length) {
     lines.push(
-      `Palette hints — primary: ${pp.join(", ")}; secondary: ${
-        ps.join(
-          ", ",
-        )
-      }; accent: ${pa.join(", ")}; background: ${pb.join(", ")}`,
+      `Palette hints — primary: ${pp.join(", ")}; secondary: ${ps.join(
+        ", ",
+      )}; accent: ${pa.join(", ")}; background: ${pb.join(", ")}`,
     );
   }
   const pinned = items.filter((i) => i.pinned).slice(0, 8);

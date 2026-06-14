@@ -56,7 +56,8 @@ import {
 } from "../_shared/jobs/jobWorker";
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) ||
+  const direct =
+    (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {
@@ -170,13 +171,16 @@ async function handlePostReference(
       kind: "image",
       title: (req.body as any)?.title ?? "",
       caption: (req.body as any)?.caption ?? "",
-      tags: typeof (req.body as any)?.tags === "string"
-        ? JSON.parse((req.body as any).tags || "[]")
-        : (req.body as any)?.tags,
-      influence: (req.body as any)?.influence != null
-        ? Number((req.body as any).influence)
-        : undefined,
-      pinned: (req.body as any)?.pinned === true ||
+      tags:
+        typeof (req.body as any)?.tags === "string"
+          ? JSON.parse((req.body as any).tags || "[]")
+          : (req.body as any)?.tags,
+      influence:
+        (req.body as any)?.influence != null
+          ? Number((req.body as any).influence)
+          : undefined,
+      pinned:
+        (req.body as any)?.pinned === true ||
         (req.body as any)?.pinned === "true",
     };
   } else {
@@ -223,11 +227,9 @@ async function handlePostReference(
     const uploaded = await uploadFileToStorage({
       file,
       bucketId: getStorageBucketId("projectImages"),
-      name: `${projectId}-style-ref-${Date.now()}.${
-        (
-          file.name.split(".").pop() || "jpg"
-        ).slice(0, 8)
-      }`,
+      name: `${projectId}-style-ref-${Date.now()}.${(
+        file.name.split(".").pop() || "jpg"
+      ).slice(0, 8)}`,
       metadata: {
         entity: "style_guide_item",
         projectId,
@@ -241,9 +243,10 @@ async function handlePostReference(
   }
 
   const orderIndex = await maxOrderIndex(root.id);
-  const caption = data.kind === "text"
-    ? String(data.text_body ?? data.caption ?? "").slice(0, 8000)
-    : String(data.caption ?? "").slice(0, 8000);
+  const caption =
+    data.kind === "text"
+      ? String(data.text_body ?? data.caption ?? "").slice(0, 8000)
+      : String(data.caption ?? "").slice(0, 8000);
 
   const itemRow = {
     visual_style_id: root.id,
@@ -677,9 +680,8 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         }
       }
     } catch (error) {
-      const errorMessage = error instanceof Error
-        ? error.message
-        : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       await failJob(jobContext.jobId, errorMessage);
       // Send immediate response to prevent timeout
       sendJson(res, 202, {

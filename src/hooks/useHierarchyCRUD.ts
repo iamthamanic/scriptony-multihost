@@ -16,7 +16,12 @@ import { toast } from "sonner";
 import { useAuth } from "./useAuth";
 import * as TimelineAPI from "../lib/api-adapter/timeline-structure-adapter";
 import { queryKeys } from "../lib/react-query";
-import type { Act, Sequence, Scene } from "../lib/types";
+import type { Act, Sequence, Scene, Shot } from "../lib/types";
+import {
+  duplicateActDeep,
+  duplicateSceneDeep,
+  duplicateSequenceDeep,
+} from "../lib/structure/structure-deep-duplicate";
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -37,7 +42,11 @@ export interface UseHierarchyCRUDOptions {
   acts: Act[];
   sequences: Sequence[];
   scenes: Scene[];
+  /** Film/series: shots duplicated with scenes. */
+  shots?: Shot[];
   labels?: HierarchyLabels;
+  /** Called after successful delete/duplicate (and create) — e.g. reload timeline view. */
+  onMutated?: () => void | Promise<void>;
 }
 
 export interface UseHierarchyCRUDReturn {
@@ -84,7 +93,15 @@ const DEFAULT_LABELS: HierarchyLabels = {
 export function useHierarchyCRUD(
   options: UseHierarchyCRUDOptions,
 ): UseHierarchyCRUDReturn {
-  const { projectId, projectType, acts, sequences, scenes } = options;
+  const {
+    projectId,
+    projectType,
+    acts,
+    sequences,
+    scenes,
+    shots = [],
+    onMutated,
+  } = options;
   const { getAccessToken } = useAuth();
   const queryClient = useQueryClient();
 
@@ -113,7 +130,8 @@ export function useHierarchyCRUD(
     await queryClient.invalidateQueries({
       queryKey: queryKeys.timeline.audioByProject(projectId),
     });
-  }, [queryClient, projectId]);
+    await onMutated?.();
+  }, [queryClient, projectId, onMutated]);
 
   // Helper: add/remove from pendingIds
   const addPending = useCallback((id: string) => {
@@ -386,35 +404,31 @@ export function useHierarchyCRUD(
   const handleDuplicateAct = useCallback(
     async (actId: string) => {
       addPending(actId);
+      const loadingId = toast.loading(
+        `${labels.act.singular} wird dupliziert…`,
+      );
       try {
         const token = await getAccessToken();
         if (!token) return;
 
-        const act = acts.find((a) => a.id === actId);
-        if (!act) return;
-
-        const freshActs = await TimelineAPI.getActs(projectId, token);
-        const maxNum =
-          freshActs.length > 0
-            ? Math.max(...freshActs.map((a) => a.actNumber || 0))
-            : 0;
-        const newNum = maxNum + 1;
-
-        await TimelineAPI.createAct(
+        const result = await duplicateActDeep({
+          actId,
           projectId,
-          {
-            actNumber: newNum,
-            title: `${act.title || labels.act.singular} (Kopie)`,
-            description: act.description,
-            orderIndex: freshActs.length,
-          },
           token,
-        );
+          acts,
+          sequences,
+          scenes,
+          shots,
+        });
 
-        toast.success(`${labels.act.singular} dupliziert`);
+        toast.dismiss(loadingId);
+        toast.success(
+          `${labels.act.singular} dupliziert (${result.sequencesCreated} ${labels.sequence.plural}, ${result.scenesCreated} ${labels.scene.plural}, ${result.shotsCreated} Shots)`,
+        );
         await invalidate();
       } catch (error) {
         console.error("Error duplicating act:", error);
+        toast.dismiss(loadingId);
         toast.error("Fehler beim Duplizieren");
       } finally {
         removePending(actId);
@@ -423,8 +437,11 @@ export function useHierarchyCRUD(
     [
       getAccessToken,
       acts,
+      sequences,
+      scenes,
+      shots,
       projectId,
-      labels.act,
+      labels,
       invalidate,
       addPending,
       removePending,
@@ -434,39 +451,30 @@ export function useHierarchyCRUD(
   const handleDuplicateSequence = useCallback(
     async (sequenceId: string) => {
       addPending(sequenceId);
+      const loadingId = toast.loading(
+        `${labels.sequence.singular} wird dupliziert…`,
+      );
       try {
         const token = await getAccessToken();
         if (!token) return;
 
-        const seq = sequences.find((s) => s.id === sequenceId);
-        if (!seq || !seq.actId) return;
-
-        const freshSeqs = await TimelineAPI.getAllSequencesByProject(
+        const result = await duplicateSequenceDeep({
+          sequenceId,
+          sequences,
+          scenes,
+          shots,
           projectId,
           token,
-        );
-        const actSeqs = freshSeqs.filter((s) => s.actId === seq.actId);
-        const maxNum =
-          actSeqs.length > 0
-            ? Math.max(...actSeqs.map((s) => s.sequenceNumber || 0))
-            : 0;
-        const newNum = maxNum + 1;
+        });
 
-        await TimelineAPI.createSequence(
-          seq.actId,
-          {
-            sequenceNumber: newNum,
-            title: `${seq.title || labels.sequence.singular} (Kopie)`,
-            description: seq.description,
-            orderIndex: actSeqs.length,
-          },
-          token,
+        toast.dismiss(loadingId);
+        toast.success(
+          `${labels.sequence.singular} dupliziert (${result.scenesCreated} ${labels.scene.plural}, ${result.shotsCreated} Shots)`,
         );
-
-        toast.success(`${labels.sequence.singular} dupliziert`);
         await invalidate();
       } catch (error) {
         console.error("Error duplicating sequence:", error);
+        toast.dismiss(loadingId);
         toast.error("Fehler beim Duplizieren");
       } finally {
         removePending(sequenceId);
@@ -475,8 +483,10 @@ export function useHierarchyCRUD(
     [
       getAccessToken,
       sequences,
+      scenes,
+      shots,
       projectId,
-      labels.sequence,
+      labels,
       invalidate,
       addPending,
       removePending,
@@ -486,41 +496,29 @@ export function useHierarchyCRUD(
   const handleDuplicateScene = useCallback(
     async (sceneId: string) => {
       addPending(sceneId);
+      const loadingId = toast.loading(
+        `${labels.scene.singular} wird dupliziert…`,
+      );
       try {
         const token = await getAccessToken();
         if (!token) return;
 
-        const scene = scenes.find((s) => s.id === sceneId);
-        if (!scene || !scene.sequenceId) return;
-
-        const freshScenes = await TimelineAPI.getAllScenesByProject(
+        const result = await duplicateSceneDeep({
+          sceneId,
+          scenes,
+          shots,
           projectId,
           token,
-        );
-        const seqScenes = freshScenes.filter(
-          (s) => s.sequenceId === scene.sequenceId,
-        );
-        const maxNum =
-          seqScenes.length > 0
-            ? Math.max(...seqScenes.map((s) => s.sceneNumber || 0))
-            : 0;
-        const newNum = maxNum + 1;
+        });
 
-        await TimelineAPI.createScene(
-          scene.sequenceId,
-          {
-            sceneNumber: newNum,
-            title: `${scene.title || labels.scene.singular} (Kopie)`,
-            description: scene.description,
-            orderIndex: seqScenes.length,
-          },
-          token,
+        toast.dismiss(loadingId);
+        toast.success(
+          `${labels.scene.singular} dupliziert (${result.shotsCreated} Shots)`,
         );
-
-        toast.success(`${labels.scene.singular} dupliziert`);
         await invalidate();
       } catch (error) {
         console.error("Error duplicating scene:", error);
+        toast.dismiss(loadingId);
         toast.error("Fehler beim Duplizieren");
       } finally {
         removePending(sceneId);
@@ -529,6 +527,7 @@ export function useHierarchyCRUD(
     [
       getAccessToken,
       scenes,
+      shots,
       projectId,
       labels.scene,
       invalidate,

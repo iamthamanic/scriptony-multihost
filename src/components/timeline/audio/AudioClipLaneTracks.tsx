@@ -35,6 +35,8 @@ export interface AudioClipLaneTracksProps {
   laneState: ReturnType<typeof useAudioLaneState>;
   handlers: AudioClipLaneHandlers;
   labelMode: "sidebar" | "content-only";
+  /** VET left column is already 248px — avoid double fixed width overflow. */
+  fullWidthSidebar?: boolean;
   className?: string;
   currentTimeSec?: number;
   expandedLane?: number | null;
@@ -73,6 +75,7 @@ export function AudioClipLaneTracks({
   laneState,
   handlers,
   labelMode,
+  fullWidthSidebar = false,
   className,
   currentTimeSec = 0,
   expandedLane = null,
@@ -119,6 +122,7 @@ export function AudioClipLaneTracks({
           return (
             <AudioClipLaneSidebar
               key={`lane-label-${laneIndex}`}
+              fullWidth={fullWidthSidebar}
               laneIndex={laneIndex}
               expanded={expanded}
               expandedLane={expandedLane}

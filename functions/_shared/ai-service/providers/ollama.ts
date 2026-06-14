@@ -137,11 +137,9 @@ function requestOllamaCloud(
       resolve({
         ok: false,
         status: 0,
-        error: `Provider timeout after ${
-          Math.round(
-            REQUEST_TIMEOUT_MS / 1000,
-          )
-        }s`,
+        error: `Provider timeout after ${Math.round(
+          REQUEST_TIMEOUT_MS / 1000,
+        )}s`,
       });
     });
     req.on("error", (err: Error) => {
@@ -235,7 +233,8 @@ export class OllamaProvider implements AIProvider {
       }
       const data = result.payload;
       const assistantMessage = data.choices?.[0]?.message;
-      const content = assistantMessage?.content?.trim() ||
+      const content =
+        assistantMessage?.content?.trim() ||
         assistantMessage?.reasoning?.trim() ||
         "";
 
@@ -358,11 +357,11 @@ export class OllamaProvider implements AIProvider {
       const body: Record<string, unknown> = useNative
         ? { model, prompt, stream: false }
         : {
-          model,
-          prompt,
-          size: options.size || "800x1200",
-          response_format: "b64_json",
-        };
+            model,
+            prompt,
+            size: options.size || "800x1200",
+            response_format: "b64_json",
+          };
 
       const result = await requestOllamaCloud(
         path,

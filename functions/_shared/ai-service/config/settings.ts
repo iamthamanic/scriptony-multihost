@@ -54,7 +54,7 @@ export async function updateAISettings(
           userId,
           feature as CanonicalAiFeature,
           config,
-        )
+        ),
       ),
     );
   }
@@ -83,7 +83,7 @@ export async function updateFeatureConfig(
 
 export function hasAPIKey(settings: AISettings, provider: string): boolean {
   return Object.keys(settings.api_keys).some((key) =>
-    key.endsWith(`:${provider}`)
+    key.endsWith(`:${provider}`),
   );
 }
 

@@ -39,7 +39,8 @@ export class AnthropicProvider implements AIProvider {
     options: ChatOptions,
   ): Promise<ChatResponse> {
     // Extract system message if present
-    const systemMessage = options.systemPrompt ||
+    const systemMessage =
+      options.systemPrompt ||
       messages.find((m) => m.role === "system")?.content ||
       "";
 
@@ -85,8 +86,8 @@ export class AnthropicProvider implements AIProvider {
       usage: {
         promptTokens: data.usage?.input_tokens ?? 0,
         completionTokens: data.usage?.output_tokens ?? 0,
-        totalTokens: (data.usage?.input_tokens ?? 0) +
-          (data.usage?.output_tokens ?? 0),
+        totalTokens:
+          (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0),
       },
       model: data.model,
       finishReason: data.stop_reason,

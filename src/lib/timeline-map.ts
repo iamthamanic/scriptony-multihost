@@ -5,8 +5,8 @@
 
 import * as TimelineAPIV2 from "./api/timeline-api-v2";
 import { nodeToAct, nodeToSequence, nodeToScene } from "./api/timeline-api";
-import type { TimelineData } from "../components/film/FilmDropdown";
-import type { BookTimelineData } from "../components/book/BookDropdown";
+import type { TimelineData } from "../components/structure/DropdownView";
+import type { BookTimelineData } from "../components/book/BookDropdownView";
 import type { Clip, Shot } from "./types";
 
 export function ultraBatchToTimelineData(

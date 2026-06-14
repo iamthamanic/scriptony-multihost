@@ -19,9 +19,8 @@ import {
   trimBeatLeft,
   trimBeatRight,
   type Beat,
-  type TrimLeftResult,
-  type TrimRightResult,
 } from "../components/timeline-helpers";
+import { commitBeatTrimPositions } from "./beats/beat-trim-commit";
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -58,47 +57,37 @@ export interface ClipTrimDragState {
  */
 export function applyBeatPreviewToDOM(
   containerEl: HTMLElement | null,
-  beats: Beat[],
+  snapshot: Beat[],
   trimmedBeatId: string,
+  handle: "left" | "right",
   trimResult: { pct_from: number; pct_to: number },
-  rippleBeats: Beat[],
   duration: number,
   pxPerSec: number,
   viewStartSec: number,
 ) {
   if (!containerEl) return;
 
-  // Build a map of beatId → { pct_from, pct_to }
-  const positions = new Map<string, { pct_from: number; pct_to: number }>();
+  const { beats: layoutBeats, durationScale } = commitBeatTrimPositions({
+    snapshot,
+    beatId: trimmedBeatId,
+    handle,
+    trimmedBeat: trimResult,
+  });
+  const effectiveDuration = duration * durationScale;
 
-  // Start with all beats at their current positions
-  for (const b of beats) {
-    positions.set(b.id, { pct_from: b.pct_from, pct_to: b.pct_to });
-  }
-
-  // Override with trimmed beat
-  positions.set(trimmedBeatId, trimResult);
-
-  // Override with rippled beats
-  for (const rb of rippleBeats) {
-    positions.set(rb.id, { pct_from: rb.pct_from, pct_to: rb.pct_to });
-  }
-
-  // Apply to DOM
-  for (const [beatId, pos] of positions) {
+  for (const b of layoutBeats) {
     const el = containerEl.querySelector(
-      `[data-beat-id="${beatId}"]`,
+      `[data-beat-id="${b.id}"]`,
     ) as HTMLElement | null;
     if (!el) continue;
 
-    const startSec = (pos.pct_from / 100) * duration;
-    const endSec = (pos.pct_to / 100) * duration;
+    const startSec = (b.pct_from / 100) * effectiveDuration;
+    const endSec = (b.pct_to / 100) * effectiveDuration;
     const x = (startSec - viewStartSec) * pxPerSec;
     const width = (endSec - startSec) * pxPerSec;
 
     el.style.transform = `translateX(${x}px)`;
     el.style.width = `${Math.max(2, width)}px`;
-    // Remove any left positioning (we're using transform now)
     el.style.left = "0";
   }
 }

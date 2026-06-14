@@ -12,7 +12,7 @@ const PROVIDERS: StorageProviderMeta[] = [
     id: "scriptony_cloud",
     name: "Scriptony Cloud",
     description:
-      "Projekte und Dateien werden in der Scriptony-Cloud gespeichert. Standard für alle Nutzer.",
+      "Projekte und Dateien werden in der Scriptony-Cloud gespeichert (Cloud-Anmeldung erforderlich).",
     backendSupported: true,
     comingSoon: false,
   },
@@ -64,7 +64,7 @@ const PROVIDERS: StorageProviderMeta[] = [
   },
 ];
 
-const DEFAULT_PROVIDER_ID = "scriptony_cloud";
+const DEFAULT_PROVIDER_ID = "local";
 
 const STORAGE_PREF_KEY = "scriptony_storage_provider_id";
 

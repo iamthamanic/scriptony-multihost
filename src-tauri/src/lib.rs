@@ -30,6 +30,9 @@ pub fn run() {
       commands::kokoro::list_kokoro_voices,
     ])
     .setup(|app| {
+      if let Ok(Some(root)) = commands::workspace::paths::load_trusted_root(app.handle()) {
+        let _ = commands::workspace::paths::allow_workspace_directory(app.handle(), &root);
+      }
       #[cfg(desktop)]
       {
         app.handle().plugin(tauri_plugin_updater::Builder::new().build())?;

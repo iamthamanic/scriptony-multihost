@@ -86,9 +86,10 @@ export function styleProfileRowToApi(row: StyleProfileRow): StyleProfileApi {
     projectId: normalizedProjectId(row.projectId),
     name: String(row.name ?? "").trim(),
     previewImageId: normalizedProjectId(row.previewImageId),
-    version: typeof row.version === "number"
-      ? row.version
-      : Number(row.version || 1) || 1,
+    version:
+      typeof row.version === "number"
+        ? row.version
+        : Number(row.version || 1) || 1,
     createdAt: String(
       row.createdAt ?? row.created_at ?? new Date().toISOString(),
     ),

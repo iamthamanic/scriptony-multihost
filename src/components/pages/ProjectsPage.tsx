@@ -118,7 +118,12 @@ import { LoadingSpinner } from "../shared/LoadingSpinner";
 import type { StyleGuideData } from "../../lib/api/style-guide-api";
 import * as StyleGuideApi from "../../lib/api/style-guide-api";
 import { ProjectCarousel } from "../project/ProjectCarousel";
+import { ProjectDeleteAlertDialog } from "../project/ProjectDeleteAlertDialog";
 import { ProjectSectionFrame } from "../project/ProjectSectionFrame";
+import { executeProjectDelete } from "../../lib/execute-project-delete";
+import { applyProjectCreateSetup } from "../../lib/projects/apply-project-create-setup";
+import type { ProjectDeletePolicyInput } from "../../lib/project-delete-policy";
+import { useRuntime } from "@/runtime";
 import { projectsApi, worldsApi, itemsApi } from "../../utils/api";
 import { toast } from "sonner";
 import {
@@ -127,7 +132,8 @@ import {
   createCharacter as createCharacterApi,
   updateCharacter as updateCharacterApi,
 } from "../../lib/api/characters-api";
-import { createAudioTrack } from "@/lib/api-adapter/audio-story-adapter";
+import { syncCharacterDialogOnCreate } from "@/lib/audio/sync-character-dialog-setup";
+import { isAudioProjectType } from "@/lib/project-type-audio";
 import { LocalProjectOpenGuard } from "../desktop/LocalProjectOpenGuard";
 import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
 import { getStyleGuideUnavailableHint } from "@/lib/api-adapter/style-guide-adapter";
@@ -156,8 +162,12 @@ import {
   prefetchProjectTimeline,
   setProjectTimelineCache,
 } from "../../hooks/useProjectTimeline";
-import type { TimelineData } from "../film/FilmDropdown";
-import type { BookTimelineData } from "../book/BookDropdown";
+import type { TimelineData } from "../structure/DropdownView";
+import type { BookTimelineData } from "../book/BookDropdownView";
+import {
+  applyBeatTemplateToProject,
+  isRegistryBeatTemplateKey,
+} from "../../lib/beats/apply-beat-template";
 import { useProjectTimeline } from "../../hooks/useProjectTimeline";
 import { useAuth } from "../../hooks/useAuth";
 import {
@@ -587,8 +597,9 @@ export function ProjectsPage({
     useState<string>("230");
 
   // Delete Project States
+  const runtime = useRuntime();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmValue, setDeleteConfirmValue] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
 
   // Stats & Logs Dialog
@@ -689,16 +700,19 @@ export function ProjectsPage({
     }
   };
 
-  const loadWorldbuildingItems = async (worldId: string) => {
-    try {
-      const items = await itemsApi.getAllForWorld(worldId);
-      setWorldbuildingItems(items);
-      console.timeEnd(`⏱️ [PERF] Worldbuilding Load: ${selectedProject}`);
-    } catch (error) {
-      console.error("Error loading worldbuilding items:", error);
-      console.timeEnd(`⏱️ [PERF] Worldbuilding Load: ${selectedProject}`);
-    }
-  };
+  const loadWorldbuildingItems = useCallback(
+    async (worldId: string) => {
+      try {
+        const items = await itemsApi.getAllForWorld(worldId);
+        setWorldbuildingItems(items);
+        console.timeEnd(`⏱️ [PERF] Worldbuilding Load: ${selectedProject}`);
+      } catch (error) {
+        console.error("Error loading worldbuilding items:", error);
+        console.timeEnd(`⏱️ [PERF] Worldbuilding Load: ${selectedProject}`);
+      }
+    },
+    [selectedProject],
+  );
 
   const handleTimelineDataChange = (
     projectId: string,
@@ -711,7 +725,7 @@ export function ProjectsPage({
     setProjectTimelineCache(queryClient, projectId, data);
   };
 
-  const loadStyleGuide = async (projectId: string) => {
+  const loadStyleGuide = useCallback(async (projectId: string) => {
     try {
       setStyleGuideLoading(true);
       setStyleGuideError(null);
@@ -759,19 +773,19 @@ export function ProjectsPage({
     } finally {
       setStyleGuideLoading(false);
     }
-  };
+  }, []);
 
-  const loadProjectDetailData = (
-    projectId: string,
-    linkedWorldId?: string | null,
-  ) => {
-    console.time(`⏱️ [PERF] Total Project Load: ${projectId}`);
-    if (linkedWorldId) {
-      console.time(`⏱️ [PERF] Worldbuilding Load: ${projectId}`);
-      void loadWorldbuildingItems(linkedWorldId);
-    }
-    void loadStyleGuide(projectId);
-  };
+  const loadProjectDetailData = useCallback(
+    (projectId: string, linkedWorldId?: string | null) => {
+      console.time(`⏱️ [PERF] Total Project Load: ${projectId}`);
+      if (linkedWorldId) {
+        console.time(`⏱️ [PERF] Worldbuilding Load: ${projectId}`);
+        void loadWorldbuildingItems(linkedWorldId);
+      }
+      void loadStyleGuide(projectId);
+    },
+    [loadWorldbuildingItems, loadStyleGuide],
+  );
 
   useEffect(() => {
     if (isLocalProfile()) return;
@@ -892,6 +906,7 @@ export function ProjectsPage({
       setProjects([...projects, normalizeProjectClient(project)]);
 
       const scriptFileToImport = newProjectScriptImportFile;
+      let skipNarrativeInit = false;
       if (scriptFileToImport) {
         try {
           const token = await getAuthToken();
@@ -909,6 +924,7 @@ export function ProjectsPage({
               token,
               scriptImportNs,
             );
+            skipNarrativeInit = true;
             await importScriptFileToProject(
               project.id,
               newProjectType,
@@ -925,6 +941,48 @@ export function ProjectsPage({
               : "Skript-Import fehlgeschlagen",
           );
         }
+      }
+
+      try {
+        const token = await getAuthToken();
+        const setup = await applyProjectCreateSetup({
+          projectId: project.id,
+          localDirPath:
+            typeof project.localDirPath === "string"
+              ? project.localDirPath
+              : undefined,
+          projectType: newProjectType,
+          narrativeStructure: narrativeStructureValue,
+          beatTemplate: beatTemplateValue,
+          authToken: token,
+          skipNarrativeInit,
+        });
+
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.beats.byProject(project.id),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.timeline.byProject(project.id),
+        });
+
+        if (setup.narrativeInitialized) {
+          toast.success("Narrativ-Struktur angelegt");
+        }
+        if (setup.beatsCreated > 0) {
+          toast.success(
+            `${setup.beatsCreated} Story Beats aus Template angelegt`,
+          );
+        }
+        for (const msg of setup.errors) {
+          toast.error(msg);
+        }
+      } catch (setupErr) {
+        console.error("[ProjectsPage] create project setup:", setupErr);
+        toast.error(
+          setupErr instanceof Error
+            ? setupErr.message
+            : "Zusatz-Setup nach Projektanlage fehlgeschlagen",
+        );
       }
 
       setShowNewProjectDialog(false);
@@ -999,33 +1057,37 @@ export function ProjectsPage({
     }
   };
 
-  const handleDeleteProject = async () => {
-    if (!deletePassword.trim()) {
-      toast.error("Bitte Passwort eingeben");
-      return;
-    }
-
-    if (!selectedProject) return;
+  const handleDeleteProject = async (
+    policyProject?: ProjectDeletePolicyInput & { id?: string },
+  ) => {
+    const projectId = policyProject?.id ?? selectedProject;
+    if (!projectId) return;
 
     setDeleteLoading(true);
 
     try {
-      await projectsApi.delete(selectedProject, deletePassword);
+      const projectToDelete =
+        policyProject ?? projects.find((p) => p.id === projectId) ?? undefined;
 
-      // Remove from local state
-      setProjects(projects.filter((p) => p.id !== selectedProject));
+      await executeProjectDelete(
+        projectId,
+        projectToDelete,
+        deleteConfirmValue,
+        runtime,
+      );
 
-      // Reset states
+      setProjects(projects.filter((p) => p.id !== projectId));
       setShowDeleteDialog(false);
-      setDeletePassword("");
-
+      setDeleteConfirmValue("");
       toast.success("Projekt erfolgreich gelöscht");
-
-      // Navigate back to projects list
       onNavigate("projekte");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting project:", error);
-      toast.error(error.message || "Fehler beim Löschen des Projekts");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Fehler beim Löschen des Projekts",
+      );
     } finally {
       setDeleteLoading(false);
     }
@@ -1202,8 +1264,8 @@ export function ProjectsPage({
         onDelete={handleDeleteProject}
         showDeleteDialog={showDeleteDialog}
         setShowDeleteDialog={setShowDeleteDialog}
-        deletePassword={deletePassword}
-        setDeletePassword={setDeletePassword}
+        deleteConfirmValue={deleteConfirmValue}
+        setDeleteConfirmValue={setDeleteConfirmValue}
         deleteLoading={deleteLoading}
         onDuplicate={() => handleDuplicateProject(currentProject.id)}
         onShowStats={() => {
@@ -2433,86 +2495,28 @@ export function ProjectsPage({
         />
       </Suspense>
 
-      {/* Delete Project Dialog - Must be here for list delete! */}
-      <AlertDialog
+      <ProjectDeleteAlertDialog
         open={showDeleteDialog && !selectedProjectId}
         onOpenChange={setShowDeleteDialog}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="size-10 rounded-full bg-red-500/10 flex items-center justify-center">
-                <AlertTriangle className="size-5 text-red-500" />
-              </div>
-              <AlertDialogTitle>Projekt wirklich löschen?</AlertDialogTitle>
-            </div>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Diese Aktion kann <strong>nicht rückgängig</strong> gemacht
-                  werden. Das Projekt wird permanent gelöscht, inklusive aller:
-                </p>
-                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                  <li>Szenen, Acts, Sequenzen</li>
-                  <li>Charaktere</li>
-                  <li>Shots & Timeline Nodes</li>
-                  <li>Projekt-Einstellungen</li>
-                </ul>
-                <div className="pt-2 space-y-2">
-                  <Label
-                    htmlFor="delete-password-list"
-                    className="text-foreground"
-                  >
-                    Gib dein Passwort ein, um zu bestätigen:
-                  </Label>
-                  <Input
-                    id="delete-password-list"
-                    type="password"
-                    placeholder="Dein Passwort"
-                    value={deletePassword}
-                    onChange={(e) => setDeletePassword(e.target.value)}
-                    disabled={deleteLoading}
-                    className="h-11"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && deletePassword.trim()) {
-                        handleDeleteProject();
-                      }
-                    }}
-                    autoFocus
-                  />
-                </div>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setDeletePassword("");
-              }}
-              disabled={deleteLoading}
-            >
-              Abbrechen
-            </AlertDialogCancel>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteProject}
-              disabled={deleteLoading || !deletePassword.trim()}
-            >
-              {deleteLoading ? (
-                <>
-                  <Loader2 className="size-4 mr-2 animate-spin" />
-                  Wird gelöscht...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="size-4 mr-2" />
-                  Projekt löschen
-                </>
-              )}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        project={projects.find((p) => p.id === selectedProject)}
+        projectTitle={
+          projects.find((p) => p.id === selectedProject)?.title as
+            | string
+            | undefined
+        }
+        confirmValue={deleteConfirmValue}
+        onConfirmValueChange={setDeleteConfirmValue}
+        loading={deleteLoading}
+        onConfirm={() => {
+          const p = projects.find((x) => x.id === selectedProject);
+          void handleDeleteProject(
+            p
+              ? { ...p, id: p.id, cloudSyncEnabled: p.cloudSyncEnabled }
+              : undefined,
+          );
+        }}
+        fieldIdPrefix="delete-project-list"
+      />
     </div>
   );
 }
@@ -3788,11 +3792,13 @@ interface ProjectDetailProps {
     categoryType: string;
   }>;
   onUpdate?: () => void;
-  onDelete: () => Promise<void>;
+  onDelete: (
+    policyProject?: ProjectDeletePolicyInput & { id?: string },
+  ) => Promise<void>;
   showDeleteDialog: boolean;
   setShowDeleteDialog: (show: boolean) => void;
-  deletePassword: string;
-  setDeletePassword: (password: string) => void;
+  deleteConfirmValue: string;
+  setDeleteConfirmValue: (value: string) => void;
   deleteLoading: boolean;
   onDuplicate?: () => void;
   onShowStats?: () => void;
@@ -3865,8 +3871,8 @@ function ProjectDetail({
   onDelete,
   showDeleteDialog,
   setShowDeleteDialog,
-  deletePassword,
-  setDeletePassword,
+  deleteConfirmValue,
+  setDeleteConfirmValue,
   deleteLoading,
   onDuplicate,
   onShowStats,
@@ -3887,9 +3893,7 @@ function ProjectDetail({
   setUseStyleGuideForCover,
   onRequestProjectExport,
 }: ProjectDetailProps) {
-  const [structureView, setStructureView] = useState<"dropdown" | "timeline">(
-    "dropdown",
-  );
+  const [structureViewFocusRequest, setStructureViewFocusRequest] = useState(0);
   const [showNewScene, setShowNewScene] = useState(false);
   const [showNewCharacter, setShowNewCharacter] = useState(false);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
@@ -3966,13 +3970,6 @@ function ProjectDetail({
   const [isCalculatingWords, setIsCalculatingWords] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  /** Timeline trim needs more span than project duration - confirm before extending stored minutes. */
-  const [projectDurationExtendOpen, setProjectDurationExtendOpen] =
-    useState(false);
-  const [pendingDurationHintSeconds, setPendingDurationHintSeconds] = useState<
-    number | null
-  >(null);
-
   const { loading: authLoading } = useAuth();
   const {
     data: rqTimeline,
@@ -3980,8 +3977,6 @@ function ProjectDetail({
     isFetching: rqTimelineFetching,
     isError: rqTimelineError,
   } = useProjectTimeline(project.id, project.type);
-
-  const { data: beatsForTemplateWarning } = useBeats(project.id);
 
   const isTimelineQueryBusy =
     !rqTimelineError &&
@@ -4058,46 +4053,56 @@ function ProjectDetail({
     editedDurationMinutes,
   );
 
-  const handleProjectDurationSecondsHint = useCallback(
-    (minSeconds: number) => {
+  /** CapCut-style: silently extend stored project duration when trim outgrows the ruler. */
+  const applyProjectDurationExtend = useCallback(
+    async (minSeconds: number) => {
       if (project.type === "book") return;
+
       const currentTotalMin = totalMinutesFromHourMinuteParts(
         editedDurationHours,
         editedDurationMinutes,
       );
       const requiredTotalMin = Math.ceil(minSeconds / 60);
       if (requiredTotalMin <= currentTotalMin) return;
-      setPendingDurationHintSeconds(minSeconds);
-      setProjectDurationExtendOpen(true);
-    },
-    [project.type, editedDurationHours, editedDurationMinutes],
-  );
 
-  const confirmProjectDurationExtend = useCallback(async () => {
-    if (pendingDurationHintSeconds == null) return;
-    const requiredTotalMin = Math.ceil(pendingDurationHintSeconds / 60);
-    const parts = splitTotalMinutesToHoursMinutesStrings(requiredTotalMin);
-    const durationStr = durationPartsToApiString(parts.h, parts.m);
-    try {
-      await projectsApi.update(project.id, { duration: durationStr });
+      const parts = splitTotalMinutesToHoursMinutesStrings(requiredTotalMin);
+      const durationStr = durationPartsToApiString(parts.h, parts.m);
+      // Optimistic — trim commit rebuilds tree in the same gesture; must not lag one frame.
       setEditedDurationHours(parts.h);
       setEditedDurationMinutes(parts.m);
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.projects.byId(project.id),
-      });
-      await queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
-      onUpdate?.();
-      toast.success("Projektdauer wurde angepasst.");
-    } catch (e: any) {
-      console.error("[ProjectDetail] extend duration:", e);
-      toast.error(
-        e?.message || "Projektdauer konnte nicht gespeichert werden.",
-      );
-    } finally {
-      setProjectDurationExtendOpen(false);
-      setPendingDurationHintSeconds(null);
-    }
-  }, [pendingDurationHintSeconds, project.id, onUpdate]);
+      try {
+        await projectsApi.update(project.id, { duration: durationStr });
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.projects.byId(project.id),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.projects.all,
+        });
+        // Do not call onUpdate/loadData here — it sets ProjectsPage loading=true,
+        // unmounts ProjectDetail, and StructureBeatsSection resets to Dropdown tab.
+      } catch (e: unknown) {
+        console.error("[ProjectDetail] auto extend duration:", e);
+        const msg =
+          e instanceof Error
+            ? e.message
+            : "Projektdauer konnte nicht angepasst werden.";
+        toast.error(msg);
+      }
+    },
+    [
+      project.type,
+      project.id,
+      editedDurationHours,
+      editedDurationMinutes,
+    ],
+  );
+
+  const handleProjectDurationSecondsHint = useCallback(
+    (minSeconds: number) => {
+      void applyProjectDurationExtend(minSeconds);
+    },
+    [applyProjectDurationExtend],
+  );
 
   const linkedWorldLabelForExport = useMemo(
     () =>
@@ -4961,41 +4966,50 @@ function ProjectDetail({
 
       console.log("[ProjectDetail] Character created:", createdCharacter);
 
-      // Auto-create dialog track for audio/hörspiel projects
-      const isAudioProject =
-        project.type === "audio" || project.type === "hörspiel";
-      if (isAudioProject && rqTimeline) {
+      if (isAudioProjectType(project.type) && rqTimeline) {
         const timelineData = rqTimeline as {
           scenes?: Array<{ id: string }>;
         };
-        const firstScene = timelineData.scenes?.[0];
-        if (firstScene?.id) {
-          try {
-            await createAudioTrack(firstScene.id, project.id, {
-              type: "dialog",
-              characterId: createdCharacter.id,
-              content: "",
-            });
-            // Invalidate audio timeline so the new track appears immediately
+        const firstSceneId = timelineData.scenes?.[0]?.id;
+        try {
+          const syncResult = await syncCharacterDialogOnCreate({
+            projectId: project.id,
+            characterId: createdCharacter.id,
+            firstSceneId,
+            projectType: project.type,
+          });
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.timeline.audioByProject(project.id),
+          });
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.audio.dialogLaneOrder(project.id),
+          });
+          if (firstSceneId) {
             void queryClient.invalidateQueries({
-              queryKey: queryKeys.timeline.audioByProject(project.id),
+              queryKey: queryKeys.audio.tracksByScene(firstSceneId),
             });
             void queryClient.invalidateQueries({
-              queryKey: queryKeys.audio.tracksByScene(firstScene.id),
+              queryKey: queryKeys.audio.clipsByScene(firstSceneId),
             });
-            toast.success(`Dialog-Track für ${createdCharacter.name} angelegt`);
-          } catch (err) {
-            console.error(
-              "[ProjectDetail] Failed to auto-create dialog track:",
-              err,
-            );
-            toast.error(
-              err instanceof Error
-                ? err.message
-                : "Dialog-Track konnte nicht angelegt werden",
-            );
           }
+          if (syncResult.laneOrderUpdated || syncResult.clipCreated) {
+            toast.success(`Dialog-Spur für ${createdCharacter.name} angelegt`);
+          }
+        } catch (err) {
+          console.error(
+            "[ProjectDetail] Failed to sync character dialog lane:",
+            err,
+          );
+          toast.error(
+            err instanceof Error
+              ? err.message
+              : "Dialog-Spur konnte nicht angelegt werden",
+          );
         }
+      } else if (isAudioProjectType(project.type) && !rqTimeline) {
+        toast.info(
+          "Charakter gespeichert. Lege zuerst eine Szene in der Struktur an, dann erscheint die Dialog-Spur.",
+        );
       }
 
       setCharactersState((prev) =>
@@ -5240,11 +5254,7 @@ function ProjectDetail({
 
     const beatChanged =
       (editedBeatTemplate || "") !== (project.beat_template || "");
-    if (
-      beatChanged &&
-      beatsForTemplateWarning &&
-      beatsForTemplateWarning.length > 0
-    ) {
+    if (beatChanged) {
       setBeatTemplateSaveDialogOpen(true);
       return;
     }
@@ -5257,16 +5267,48 @@ function ProjectDetail({
     setNarrativeOverwriteStep(1);
     const beatChanged =
       (editedBeatTemplate || "") !== (project.beat_template || "");
-    if (
-      beatChanged &&
-      beatsForTemplateWarning &&
-      beatsForTemplateWarning.length > 0
-    ) {
+    if (beatChanged) {
       setPendingNarrativeReplace(true);
       setBeatTemplateSaveDialogOpen(true);
       return;
     }
     void performSaveProjectInfo({ replaceNarrativeTimeline: true });
+  };
+
+  const applyBeatTemplateAfterSave = async () => {
+    const key = (editedBeatTemplate || "").trim();
+    if (!key) return;
+
+    try {
+      const result = await applyBeatTemplateToProject(project.id, key);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.beats.byProject(project.id),
+      });
+      setStructureViewFocusRequest((n) => n + 1);
+
+      if (result.kind === "created" && result.count > 0) {
+        toast.success(
+          `${result.count} Story Beats aus Template „${result.templateId}“ angelegt`,
+        );
+      } else if (result.kind === "created") {
+        toast.error("Keine Beats konnten aus dem Template angelegt werden.");
+      } else if (result.kind === "cleared-custom") {
+        toast.message(
+          "Custom-Template gespeichert. Bestehende Beats wurden entfernt — lege Beats manuell an oder wähle ein Registry-Template.",
+        );
+      } else if (result.kind === "unsupported") {
+        toast.message(
+          `Template gespeichert. ${result.deletedCount} Beat(s) entfernt — kein Registry-Preset für „${result.key}“. Beats manuell anlegen.`,
+        );
+      }
+    } catch (err) {
+      console.error("[ProjectDetail] apply beat template:", err);
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Beat-Template konnte nicht angewendet werden.",
+      );
+    }
   };
 
   const confirmBeatTemplateProjectSave = async () => {
@@ -5276,7 +5318,14 @@ function ProjectDetail({
     await performSaveProjectInfo(
       useReplace ? { replaceNarrativeTimeline: true } : undefined,
     );
+    await applyBeatTemplateAfterSave();
   };
+
+  const beatTemplateDialogIsCustom =
+    editedBeatTemplate.trim().startsWith("custom:") ||
+    editedBeatTemplate.trim() === "custom" ||
+    (editedBeatTemplate.trim() !== "" &&
+      !isRegistryBeatTemplateKey(editedBeatTemplate));
 
   const renderCoverDownloadMenu = () =>
     coverImage ? (
@@ -5417,11 +5466,21 @@ function ProjectDetail({
           <AlertDialogHeader>
             <AlertDialogTitle>Beat-Template geändert</AlertDialogTitle>
             <AlertDialogDescription>
-              Für dieses Projekt sind bereits Story-Beats angelegt. Beim
-              Speichern wird nur die Template-Zuordnung im Projekt aktualisiert
-              - bestehende Beats werden nicht automatisch umbenannt oder
-              gelöscht. Du kannst sie in der Struktur-Sektion bei Bedarf über
-              "Beats aus Template erzeugen" anpassen.
+              {beatTemplateDialogIsCustom ? (
+                <>
+                  Beim Speichern wird das Beat-Template aktualisiert. Alle
+                  bestehenden Story-Beats werden gelöscht. Für Custom-Templates
+                  werden keine neuen Beats automatisch angelegt — du legst sie
+                  manuell an oder wählst ein Registry-Template.
+                </>
+              ) : (
+                <>
+                  Beim Speichern wird das Beat-Template aktualisiert. Alle
+                  bestehenden Story-Beats werden gelöscht und aus dem neuen
+                  Template neu angelegt. Eigene Texte und Notizen in Beats gehen
+                  dabei verloren. Die Ansicht wechselt danach zur Timeline.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -5431,50 +5490,6 @@ function ProjectDetail({
               onClick={() => void confirmBeatTemplateProjectSave()}
             >
               Speichern
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog
-        open={projectDurationExtendOpen}
-        onOpenChange={(open) => {
-          setProjectDurationExtendOpen(open);
-          if (!open) setPendingDurationHintSeconds(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Projektdauer erhöhen?</AlertDialogTitle>
-            <AlertDialogDescription className="space-y-2">
-              <p>
-                Der Timeline-Inhalt braucht mindestens{" "}
-                <strong className="text-foreground">
-                  {pendingDurationHintSeconds != null
-                    ? Math.ceil(pendingDurationHintSeconds / 60)
-                    : "-"}{" "}
-                  Min.
-                </strong>{" "}
-                (
-                {pendingDurationHintSeconds != null
-                  ? `${pendingDurationHintSeconds} s`
-                  : ""}{" "}
-                erkannt). Die aktuelle Projektdauer ist kürzer - ohne Anpassung
-                bleibt die Expansion am rechten Ende begrenzt.
-              </p>
-              <p>
-                Soll die gespeicherte Projektdauer entsprechend verlängert
-                werden?
-              </p>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel type="button">Abbrechen</AlertDialogCancel>
-            <AlertDialogAction
-              type="button"
-              onClick={() => void confirmProjectDurationExtend()}
-            >
-              Projektdauer anpassen
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -7629,7 +7644,10 @@ function ProjectDetail({
           <StructureBeatsSection
             projectId={project.id}
             projectType={project.type}
-            beatTemplate={project.beat_template}
+            beatTemplate={
+              isEditingInfo ? editedBeatTemplate : project.beat_template
+            }
+            structureViewFocusRequest={structureViewFocusRequest}
             narrativeStructure={
               isEditingInfo
                 ? editedNarrativeStructure || ""
@@ -8161,81 +8179,17 @@ function ProjectDetail({
         </Suspense>
       )}
 
-      {/* Delete Project Dialog */}
-      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="p-2 rounded-full bg-destructive/10">
-                <Trash2 className="size-5 text-destructive" />
-              </div>
-              <AlertDialogTitle>Projekt wirklich löschen?</AlertDialogTitle>
-            </div>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
-                  Diese Aktion kann <strong>nicht rückgängig</strong> gemacht
-                  werden. Das Projekt <strong>"{project.title}"</strong> wird
-                  permanent gelöscht, inklusive aller:
-                </p>
-                <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-                  <li>Szenen</li>
-                  <li>Charaktere</li>
-                  <li>Episoden</li>
-                  <li>Projekt-Einstellungen</li>
-                </ul>
-                <div className="pt-2 space-y-2">
-                  <Label htmlFor="delete-password" className="text-foreground">
-                    Gib dein Passwort ein, um zu bestätigen:
-                  </Label>
-                  <Input
-                    id="delete-password"
-                    type="password"
-                    placeholder="Dein Passwort"
-                    value={deletePassword}
-                    onChange={(e) => setDeletePassword(e.target.value)}
-                    disabled={deleteLoading}
-                    className="h-11"
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && deletePassword.trim()) {
-                        onDelete();
-                      }
-                    }}
-                    autoFocus
-                  />
-                </div>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              onClick={() => {
-                setDeletePassword("");
-              }}
-              disabled={deleteLoading}
-            >
-              Abbrechen
-            </AlertDialogCancel>
-            <Button
-              variant="destructive"
-              onClick={onDelete}
-              disabled={deleteLoading || !deletePassword.trim()}
-            >
-              {deleteLoading ? (
-                <>
-                  <Loader2 className="size-4 mr-2 animate-spin" />
-                  Wird gelöscht...
-                </>
-              ) : (
-                <>
-                  <Trash2 className="size-4 mr-2" />
-                  Projekt löschen
-                </>
-              )}
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <ProjectDeleteAlertDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        project={project}
+        projectTitle={project.title}
+        confirmValue={deleteConfirmValue}
+        onConfirmValueChange={setDeleteConfirmValue}
+        loading={deleteLoading}
+        onConfirm={() => void onDelete(project)}
+        fieldIdPrefix="delete-project-detail"
+      />
 
       {/* Project Stats & Logs Dialog */}
       <Suspense fallback={null}>

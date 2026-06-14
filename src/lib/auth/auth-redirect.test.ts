@@ -13,11 +13,11 @@ vi.mock("../env", () => ({
 }));
 
 const { isNativePlatformMock } = vi.hoisted(() => ({
-	isNativePlatformMock: vi.fn(() => false),
+  isNativePlatformMock: vi.fn(() => false),
 }));
 
 vi.mock("../capacitor/platform", () => ({
-	isNativePlatform: () => isNativePlatformMock(),
+  isNativePlatform: () => isNativePlatformMock(),
 }));
 
 function cloudBrowser(): RuntimeConfig {
@@ -48,20 +48,20 @@ describe("auth-redirect", () => {
     );
   });
 
-	it("uses custom scheme on Tauri desktop", () => {
-		expect(getOAuthRedirectTarget(tauriDesktop())).toBe(
-			"scriptony://auth-callback",
-		);
-		expect(getPasswordResetRedirectTarget(tauriDesktop())).toBe(
-			"scriptony://auth-callback/reset-password",
-		);
-	});
+  it("uses custom scheme on Tauri desktop", () => {
+    expect(getOAuthRedirectTarget(tauriDesktop())).toBe(
+      "scriptony://auth-callback",
+    );
+    expect(getPasswordResetRedirectTarget(tauriDesktop())).toBe(
+      "scriptony://auth-callback/reset-password",
+    );
+  });
 
-	it("uses custom scheme on Capacitor native", () => {
-		isNativePlatformMock.mockReturnValue(true);
-		expect(getOAuthRedirectTarget(cloudBrowser())).toBe(
-			"scriptony://auth-callback",
-		);
-		isNativePlatformMock.mockReturnValue(false);
-	});
+  it("uses custom scheme on Capacitor native", () => {
+    isNativePlatformMock.mockReturnValue(true);
+    expect(getOAuthRedirectTarget(cloudBrowser())).toBe(
+      "scriptony://auth-callback",
+    );
+    isNativePlatformMock.mockReturnValue(false);
+  });
 });

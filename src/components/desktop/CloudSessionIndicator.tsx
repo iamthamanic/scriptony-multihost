@@ -11,16 +11,17 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useCloudSession } from "@/hooks/useCloudSession";
+import { CloudAuthTargetBadge } from "./CloudAuthTargetBadge";
 
 export function CloudSessionIndicator() {
   const {
     visible,
-    checking,
     hasSession,
     busy,
     configOk,
     hybridReady,
-    login,
+    authTarget,
+    openLoginDialog,
     logout,
   } = useCloudSession();
 
@@ -28,66 +29,34 @@ export function CloudSessionIndicator() {
     return null;
   }
 
-  if (checking) {
-    return (
-      <Button
-        variant="ghost"
-        size="icon"
-        className="size-9"
-        disabled
-        aria-label="Cloud"
-      >
-        <Loader2 className="size-4 animate-spin text-muted-foreground" />
-      </Button>
-    );
-  }
-
-  if (!configOk) {
-    return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="size-9 opacity-50"
-            disabled
-            aria-label="Cloud nicht konfiguriert"
-          >
-            <Cloud className="size-4 text-muted-foreground" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          Cloud (Hybrid): Appwrite in .env.local konfigurieren
-        </TooltipContent>
-      </Tooltip>
-    );
-  }
-
   if (hasSession) {
+    const targetLabel = authTarget === "selfHosted" ? "Self Host" : "Managed";
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-9"
-            disabled={busy}
-            aria-label="Cloud abmelden"
-            onClick={() => void logout()}
-          >
-            {busy ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <LogOut className="size-4 text-primary" />
-            )}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          Cloud angemeldet
-          {hybridReady ? " — KI/TTS verfügbar" : ""}
-        </TooltipContent>
-      </Tooltip>
+      <div className="flex items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9"
+              disabled={busy}
+              aria-label={`Cloud abmelden (${targetLabel})`}
+              onClick={() => void logout()}
+            >
+              {busy ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <LogOut className="size-4 text-primary" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            Cloud angemeldet ({targetLabel})
+            {hybridReady ? " — KI/TTS verfügbar" : ""}
+          </TooltipContent>
+        </Tooltip>
+        <CloudAuthTargetBadge target={authTarget} />
+      </div>
     );
   }
 
@@ -100,7 +69,7 @@ export function CloudSessionIndicator() {
           className="size-9"
           disabled={busy}
           aria-label="Bei Scriptony Cloud anmelden"
-          onClick={() => void login()}
+          onClick={openLoginDialog}
         >
           {busy ? (
             <Loader2 className="size-4 animate-spin" />
@@ -110,7 +79,9 @@ export function CloudSessionIndicator() {
         </Button>
       </TooltipTrigger>
       <TooltipContent>
-        Cloud anmelden (KI, TTS, Sync) — Arbeit bleibt lokal
+        {configOk
+          ? "Cloud anmelden (KI, TTS, Sync) — Arbeit bleibt lokal"
+          : "Cloud anmelden — Managed oder Self Host im Dialog"}
       </TooltipContent>
     </Tooltip>
   );

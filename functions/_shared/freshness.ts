@@ -150,10 +150,12 @@ export function computeFreshness(
   if (renderStale === "stale") reasons.push("render_stale");
   if (previewStale === "stale") reasons.push("preview_stale");
 
-  const anyStale = guidesStale === "stale" ||
+  const anyStale =
+    guidesStale === "stale" ||
     renderStale === "stale" ||
     previewStale === "stale";
-  const anyUnknown = guidesStale === "unknown" ||
+  const anyUnknown =
+    guidesStale === "unknown" ||
     renderStale === "unknown" ||
     previewStale === "unknown";
 

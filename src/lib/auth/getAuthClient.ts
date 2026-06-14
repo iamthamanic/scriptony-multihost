@@ -31,10 +31,10 @@ let _cachedRuntime: RuntimeConfig | null = null;
  * call uses the cached value instead of re-running `detectRuntime()`.
  */
 export function setAuthRuntime(runtime: RuntimeConfig): void {
-	if (_cachedRuntime && _cachedRuntime.profile !== runtime.profile) {
-		_client = null;
-	}
-	_cachedRuntime = runtime;
+  if (_cachedRuntime && _cachedRuntime.profile !== runtime.profile) {
+    _client = null;
+  }
+  _cachedRuntime = runtime;
 }
 
 /**
@@ -49,27 +49,27 @@ export function setAuthRuntime(runtime: RuntimeConfig): void {
  * backwards compatibility for non-React callers.
  */
 export function getAuthClient(runtime?: RuntimeConfig): AuthClient {
-	if (_client) return _client;
+  if (_client) return _client;
 
-	const effectiveRuntime = runtime ?? _cachedRuntime ?? detectRuntime();
+  const effectiveRuntime = runtime ?? _cachedRuntime ?? detectRuntime();
 
-	// Appwrite-based profiles still need a valid endpoint configuration.
-	if (effectiveRuntime.profile !== "local") {
-		const missing = getMissingAppwriteConfig();
-		if (missing.length > 0) {
-			throw new Error(`Appwrite auth requires: ${missing.join(", ")}`);
-		}
-	}
+  // Appwrite-based profiles still need a valid endpoint configuration.
+  if (effectiveRuntime.profile !== "local") {
+    const missing = getMissingAppwriteConfig();
+    if (missing.length > 0) {
+      throw new Error(`Appwrite auth requires: ${missing.join(", ")}`);
+    }
+  }
 
-	_client = createAuthFactory(effectiveRuntime);
-	return _client;
+  _client = createAuthFactory(effectiveRuntime);
+  return _client;
 }
 
 /**
  * Reset the singleton (useful for testing or hot-reload during runtime switching).
  */
 export function resetAuthClient(): void {
-	_client = null;
-	_cachedRuntime = null;
-	resetAppwriteClient();
+  _client = null;
+  _cachedRuntime = null;
+  resetAppwriteClient();
 }

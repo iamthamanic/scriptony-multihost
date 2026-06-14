@@ -25,6 +25,12 @@ export class AppwriteAudioRepository implements AudioRepository {
 		return ClipAPI.getProjectAudioClips(projectId, token ?? "");
 	}
 
+	async getClipsByScene(sceneId: string): Promise<AudioClip[]> {
+		const token = await getAuthToken();
+		const clips = await ClipAPI.getClipsByScene(sceneId, token ?? "");
+		return clips;
+	}
+
 	async getClip(clipId: string): Promise<AudioClip | null> {
 		// T35: No dedicated GET /clips/:id endpoint exists in the current API.
 		// Throwing explicitly so callers do not get silent false negatives.

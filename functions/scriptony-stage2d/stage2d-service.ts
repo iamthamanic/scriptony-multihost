@@ -210,9 +210,8 @@ export async function addLayer(
     name: input.name || "Untitled layer",
     visible: input.visible !== undefined ? input.visible : true,
     opacity: input.opacity !== undefined ? input.opacity : 1,
-    orderIndex: input.orderIndex !== undefined
-      ? input.orderIndex
-      : layers.length,
+    orderIndex:
+      input.orderIndex !== undefined ? input.orderIndex : layers.length,
     fileId: input.fileId ?? null,
     metadata: input.metadata ?? null,
   };

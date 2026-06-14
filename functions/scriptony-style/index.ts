@@ -45,7 +45,8 @@ import {
 } from "./style-service";
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) ||
+  const direct =
+    (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {
@@ -66,9 +67,10 @@ function getQueryParam(req: RequestLike, key: string): string {
   }
   try {
     const raw = typeof req?.url === "string" ? req.url : "";
-    const url = raw.startsWith("http://") || raw.startsWith("https://")
-      ? new URL(raw)
-      : new URL(raw, "http://local");
+    const url =
+      raw.startsWith("http://") || raw.startsWith("https://")
+        ? new URL(raw)
+        : new URL(raw, "http://local");
     return url.searchParams.get(key)?.trim() || "";
   } catch {
     return "";
@@ -199,10 +201,11 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
           sendNotFound(res, "Style profile not found");
           return;
         }
-        const profileProjectId = typeof profileRow.projectId === "string" &&
-            profileRow.projectId.trim()
-          ? profileRow.projectId.trim()
-          : null;
+        const profileProjectId =
+          typeof profileRow.projectId === "string" &&
+          profileRow.projectId.trim()
+            ? profileRow.projectId.trim()
+            : null;
         const shotProjectId =
           typeof shotRow.project_id === "string" && shotRow.project_id.trim()
             ? shotRow.project_id.trim()
@@ -266,7 +269,8 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         const body = normalizeStyleProfileUpdateBody(
           updateStyleProfileBodySchema.parse(await readJsonBody(req)),
         );
-        const hasUpdate = body.name !== undefined ||
+        const hasUpdate =
+          body.name !== undefined ||
           body.projectId !== undefined ||
           body.previewImageId !== undefined ||
           body.config !== undefined;

@@ -12,6 +12,7 @@
     "process:allow-restart",
     "dialog:default",
     "dialog:allow-ask",
-    "dialog:allow-message"
+    "dialog:allow-message",
+    "dialog:allow-open"
   ]
 }

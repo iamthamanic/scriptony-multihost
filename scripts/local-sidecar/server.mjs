@@ -41,11 +41,14 @@ async function openDb() {
 
 function corsHeaders(req) {
   const origin = req.headers.origin || "";
-  const allowOrigin = ALLOWED_ORIGINS.has(origin) ? origin : "http://127.0.0.1:3000";
+  const allowOrigin = ALLOWED_ORIGINS.has(origin)
+    ? origin
+    : "http://127.0.0.1:3000";
   return {
     "Content-Type": "application/json",
     "Access-Control-Allow-Origin": allowOrigin,
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Scriptony-Sidecar-Token",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Authorization, X-Scriptony-Sidecar-Token",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     Vary: "Origin",
   };
@@ -82,7 +85,8 @@ function createJob(functionName, payload) {
   const jobId = `local_${crypto.randomUUID()}`;
   const now = new Date().toISOString();
   const projectId =
-    db.exec("SELECT id FROM projects LIMIT 1")[0]?.values[0]?.[0] ?? "local-default";
+    db.exec("SELECT id FROM projects LIMIT 1")[0]?.values[0]?.[0] ??
+    "local-default";
 
   db.run(
     `INSERT INTO jobs (id, project_id, job_type, status, payload_json, created_at, updated_at)
@@ -212,7 +216,12 @@ async function handle(req, res) {
     } catch {
       result = null;
     }
-    sendJson(res, 200, { success: true, result, completedAt: job.updated_at }, req);
+    sendJson(
+      res,
+      200,
+      { success: true, result, completedAt: job.updated_at },
+      req,
+    );
     return;
   }
 

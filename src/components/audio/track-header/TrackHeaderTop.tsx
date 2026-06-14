@@ -56,8 +56,13 @@ export function TrackHeaderTop({
     Boolean(onReorderDrag);
 
   return (
-    <div className={cn("flex min-h-0 shrink-0 min-w-0 w-full items-center justify-between gap-2")}>
-      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden"
+    <div
+      className={cn(
+        "flex min-h-0 shrink-0 min-w-0 w-full items-center justify-between gap-2",
+      )}
+    >
+      <div
+        className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden"
         onDragOver={
           canDrag
             ? (e) => {
@@ -110,7 +115,8 @@ export function TrackHeaderTop({
           {label}
         </span>
       </div>
-      <div className="flex shrink-0 items-center gap-0.5"
+      <div
+        className="flex shrink-0 items-center gap-0.5"
         onDragOver={
           canDrag
             ? (e) => {

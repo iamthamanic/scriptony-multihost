@@ -156,8 +156,8 @@ export function classifyOllamaModelForFeature(
   const ttsHints = /bark|piper|speech|tts|xtts|coqui/i;
   const videoHints = /video|svd|zeroscope|ltx|animate|hunyuan|i2v|t2v/i;
 
-  const isObviousChat = textHints.test(n) && !embedHints.test(n) &&
-    !imageHints.test(n);
+  const isObviousChat =
+    textHints.test(n) && !embedHints.test(n) && !imageHints.test(n);
 
   switch (registryFeature) {
     case "text":
@@ -327,11 +327,9 @@ async function fetchOpenRouterModels(apiKey: string): Promise<OpenRouterRow[]> {
 }
 
 async function fetchGoogleModels(apiKey: string): Promise<ModelInfo[]> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${
-    encodeURIComponent(
-      apiKey,
-    )
-  }`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(
+    apiKey,
+  )}`;
   const response = await fetch(url);
   if (!response.ok) {
     const t = await response.text();
@@ -443,9 +441,10 @@ export async function discoverModels(
     case "ollama":
     case "ollama_local":
     case "ollama_cloud": {
-      const defaultBase = providerId === "ollama_cloud"
-        ? OLLAMA_CLOUD_ORIGIN
-        : "http://127.0.0.1:11434";
+      const defaultBase =
+        providerId === "ollama_cloud"
+          ? OLLAMA_CLOUD_ORIGIN
+          : "http://127.0.0.1:11434";
       const base = opts.baseUrl?.trim() || defaultBase;
       const names = await fetchOllamaModelNames(base, {
         apiKey: opts.apiKey,

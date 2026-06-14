@@ -65,7 +65,7 @@ export default async function handler(
       (category.world_items || []).map((item: Record<string, any>) => ({
         ...item,
         categoryName: category.name,
-      }))
+      })),
     );
 
     sendJson(res, 200, { items });

@@ -10,7 +10,9 @@ export interface UseAudioRecordingOptions {
   onRecordComplete: (file: File, laneIndex: number, startSec: number) => void;
 }
 
-export function useAudioRecording({ onRecordComplete }: UseAudioRecordingOptions) {
+export function useAudioRecording({
+  onRecordComplete,
+}: UseAudioRecordingOptions) {
   const [recordingLane, setRecordingLane] = useState<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordChunksRef = useRef<Blob[]>([]);
@@ -34,7 +36,9 @@ export function useAudioRecording({ onRecordComplete }: UseAudioRecordingOptions
       }
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
         const rec = new MediaRecorder(stream);
         recordChunksRef.current = [];
         mediaRecorderRef.current = rec;

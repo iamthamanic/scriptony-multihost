@@ -9,7 +9,7 @@ import type { AudioClip, AudioTrackType } from "./types";
 import { estimateDurationSec } from "./audio-utils";
 import { createAudioTrack } from "@/lib/api-adapter/audio-story-adapter";
 import { resolveDomainAuthTokenOrEmpty } from "./api-adapter/domain-access";
-import { isFeatureEnabled } from "./feature-flags";
+import { isAudioClipSystemEnabled } from "./feature-flags";
 export interface TimelineSceneRef {
   id: string;
   orderIndex?: number;
@@ -64,8 +64,9 @@ export async function createTimelineAudioOnLane(
   } = params;
   const trackType = params.trackType ?? laneIndexToTrackType(laneIndex);
 
+  const clipSystemActive = isAudioClipSystemEnabled(projectType);
   let laneForTrack = laneIndex;
-  if (isFeatureEnabled("audioClipSystem") && !characterId) {
+  if (clipSystemActive && !characterId) {
     const token = await resolveDomainAuthTokenOrEmpty();
     const existingClips = await ClipAPI.getClipsByScene(sceneId, token);
     const wpmEstimate = estimateDurationSec(content, { type: trackType });
@@ -91,10 +92,10 @@ export async function createTimelineAudioOnLane(
     characterId,
     startTime: startSec,
     duration: estimateDurationSec(content, { type: trackType }),
-    ...(isFeatureEnabled("audioClipSystem") ? { laneIndex: laneForTrack } : {}),
+    ...(clipSystemActive ? { laneIndex: laneForTrack } : {}),
   });
 
-  if (isFeatureEnabled("audioClipSystem") && clip?.id) {
+  if (clipSystemActive && clip?.id) {
     await ClipAPI.updateClip(
       clip.id,
       {

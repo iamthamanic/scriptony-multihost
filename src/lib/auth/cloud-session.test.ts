@@ -17,12 +17,9 @@ vi.mock("./createAuthFactory", () => ({
   })),
 }));
 
-vi.mock("../env", () => ({
-  getMissingAppwriteConfig: vi.fn(() => []),
-  getAppwritePublicConfig: vi.fn(() => ({
-    endpoint: "https://appwrite.example.com/v1",
-    projectId: "test-project",
-  })),
+vi.mock("./cloud-appwrite-target", () => ({
+  syncCloudAuthTargetToEnv: vi.fn().mockResolvedValue(undefined),
+  getMissingCloudAppwriteConfig: vi.fn(() => []),
 }));
 
 describe("isRealCloudToken", () => {

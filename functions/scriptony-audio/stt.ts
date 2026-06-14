@@ -100,9 +100,8 @@ app.get("/health", (c) => {
  * List all STT-capable providers
  */
 app.get("/providers", async (c) => {
-  const { PROVIDER_CAPABILITIES, PROVIDER_DISPLAY_NAMES } = await import(
-    "../_shared/ai-service/providers"
-  );
+  const { PROVIDER_CAPABILITIES, PROVIDER_DISPLAY_NAMES } =
+    await import("../_shared/ai-service/providers");
 
   const sttProviders = Object.entries(PROVIDER_CAPABILITIES)
     .filter(([_name, caps]) => caps.audio_stt)

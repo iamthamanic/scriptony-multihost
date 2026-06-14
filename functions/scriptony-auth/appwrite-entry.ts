@@ -9,6 +9,7 @@ import healthHandler from "./health";
 import signupHandler from "./signup";
 import createDemoUserHandler from "./create-demo-user";
 import profileHandler from "./profile";
+import deleteAccountHandler from "./delete-account";
 import organizationsHandler from "./organizations/index";
 import organizationByIdHandler from "./organizations/[id]";
 import integrationTokensHandler from "./integration-tokens/index";
@@ -40,6 +41,10 @@ async function dispatch(req: RequestLike, res: ResponseLike) {
   }
   if (pathname === "/profile") {
     await profileHandler(req, res);
+    return;
+  }
+  if (pathname === "/account") {
+    await deleteAccountHandler(req, res);
     return;
   }
   if (pathname === "/organizations") {

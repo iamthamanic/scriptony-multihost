@@ -6,10 +6,7 @@
 import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import {
-  getFxSlotsFromLaneState,
-  setFxSlotAt,
-} from "../lib/fx-chain";
+import { getFxSlotsFromLaneState, setFxSlotAt } from "../lib/fx-chain";
 import { queryKeys } from "../lib/react-query";
 import * as ClipAPI from "../lib/api/audio-clip-api";
 import type { AudioClip } from "../lib/types";

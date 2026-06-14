@@ -72,6 +72,11 @@ export async function createJwtSessionForUser(
   };
 }
 
+/** Permanently removes an Appwrite user (server API key). */
+export async function deleteAppwriteUserById(userId: string): Promise<void> {
+  await getUsersService().delete({ userId });
+}
+
 export function toAuthUser(user: AppwriteUser): AuthUser {
   const prefs = (user.prefs || {}) as Record<string, unknown>;
   return {
@@ -82,8 +87,8 @@ export function toAuthUser(user: AppwriteUser): AuthUser {
     defaultRole: user.labels?.includes("superadmin")
       ? "superadmin"
       : user.labels?.includes("admin")
-      ? "admin"
-      : "user",
+        ? "admin"
+        : "user",
     metadata: { ...prefs, labels: user.labels },
   };
 }

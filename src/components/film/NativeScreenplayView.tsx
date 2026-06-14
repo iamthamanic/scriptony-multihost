@@ -6,7 +6,7 @@ import {
 } from "../../lib/api/timeline-api";
 import { getAllShotsByProject } from "../../lib/api/shots-api";
 import { useAuth } from "../../hooks/useAuth";
-import type { TimelineData } from "./FilmDropdown";
+import type { TimelineData } from "../structure/DropdownView";
 
 /**
  * 🎬 NATIVE SCREENPLAY VIEW

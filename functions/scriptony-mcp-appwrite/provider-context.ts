@@ -28,9 +28,8 @@ export async function loadAssistantProfileSummary(
   }
 
   return {
-    providerId: typeof row.active_provider === "string"
-      ? row.active_provider
-      : null,
+    providerId:
+      typeof row.active_provider === "string" ? row.active_provider : null,
     modelId: typeof row.active_model === "string" ? row.active_model : null,
     resolutionNote: resolved.error,
   };

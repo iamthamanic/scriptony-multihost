@@ -188,6 +188,20 @@ export class AppwriteAuthAdapter implements AuthClient {
     return this.mapSession();
   }
 
+  /** One Appwrite round-trip — no JWT (for fast UI session probes). */
+  async hasActiveSession(): Promise<boolean> {
+    try {
+      await this.account.get();
+      return true;
+    } catch (e) {
+      if (e instanceof AppwriteException && (e.code === 401 || e.code === 0)) {
+        return false;
+      }
+      console.warn("[AppwriteAuthAdapter] hasActiveSession:", e);
+      return false;
+    }
+  }
+
   /** JWT for Scriptony function API calls (not the raw OAuth session secret). */
   async getAccessToken(): Promise<string | null> {
     const session = await this.mapSession();

@@ -137,8 +137,8 @@ export class OpenRouterProvider implements AIProvider {
 
     // With modalities, image comes back in choices[0].message.images[].image_url.url (data-URL or HTTP URL)
     if (options.modalities?.includes("image")) {
-      const imageUrl: string | undefined = data.choices?.[0]?.message?.images
-        ?.[0]?.image_url?.url;
+      const imageUrl: string | undefined =
+        data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
       if (imageUrl) {
         // Data-URL → extract base64; HTTP URL → pass through
         const b64Match = /^data:image\/[^;]+;base64,(.+)$/is.exec(

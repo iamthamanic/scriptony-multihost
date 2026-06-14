@@ -16,13 +16,13 @@ import { DomainAccessError } from "@/lib/api-adapter/domain-access";
 import { CloudActivationService } from "@/backend/sync/CloudActivationService";
 import { CloudLoginRequiredError } from "@/backend/sync/errors";
 import { AppwriteBackend } from "@/backend/appwrite/AppwriteBackend";
-import { getCloudAuthClient } from "@/lib/auth/cloud-session";
+import { prepareCloudAuthClient } from "@/lib/auth/cloud-session";
 import { isDesktopShell } from "@/runtime/detect-runtime";
 
 export function CloudSyncActivateButton() {
   const { project, isOpen } = useLocalProject();
   const runtime = useRuntime();
-  const { login } = useCloudSession();
+  const { openLoginDialog } = useCloudSession();
   const [loading, setLoading] = useState(false);
 
   if (
@@ -73,7 +73,7 @@ export function CloudSyncActivateButton() {
     setLoading(true);
     try {
       await requireCapability("sync.project_cloud");
-      const cloudAuth = getCloudAuthClient(runtime);
+      const cloudAuth = await prepareCloudAuthClient(runtime);
       const cloudBackend = new AppwriteBackend(cloudAuth);
       const service = new CloudActivationService(
         project,
@@ -89,8 +89,10 @@ export function CloudSyncActivateButton() {
         err instanceof CloudLoginRequiredError ||
         err instanceof DomainAccessError
       ) {
-        toast.message("Anmeldung erforderlich für Cloud Sync (Kopfleiste).");
-        await login();
+        toast.message(
+          "Bitte zuerst bei Scriptony Cloud anmelden (Dialog in der Kopfleiste).",
+        );
+        openLoginDialog();
         return;
       }
       if (err instanceof CapabilityDeniedError) {

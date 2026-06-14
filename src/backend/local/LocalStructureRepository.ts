@@ -32,6 +32,7 @@ export class LocalStructureRepository implements StructureRepository {
 	): Promise<StructureNode> {
 		const now = new Date().toISOString();
 		const id = localId("node");
+		const metadata = node.metadata ?? {};
 		const created: StructureNode = {
 			id,
 			projectId: node.projectId,
@@ -39,6 +40,7 @@ export class LocalStructureRepository implements StructureRepository {
 			type: node.type,
 			label: node.label,
 			orderIndex: node.orderIndex,
+			metadata,
 			createdAt: now,
 			updatedAt: now,
 		};
@@ -46,7 +48,7 @@ export class LocalStructureRepository implements StructureRepository {
 		await this.db.run(
 			`INSERT INTO ${TABLE.PROJECT_NODES}
         (id, project_id, parent_id, node_type, label, order_index, metadata, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, '{}', ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 			[
 				id,
 				node.projectId,
@@ -54,6 +56,7 @@ export class LocalStructureRepository implements StructureRepository {
 				node.type,
 				node.label,
 				node.orderIndex,
+				JSON.stringify(metadata),
 				now,
 				now,
 			],
@@ -96,6 +99,10 @@ export class LocalStructureRepository implements StructureRepository {
 		if (patch.orderIndex !== undefined) {
 			parts.push("order_index = ?");
 			values.push(patch.orderIndex);
+		}
+		if (patch.metadata !== undefined) {
+			parts.push("metadata = ?");
+			values.push(JSON.stringify(patch.metadata));
 		}
 		parts.push("updated_at = ?");
 		values.push(now);

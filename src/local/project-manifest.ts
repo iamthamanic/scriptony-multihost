@@ -165,14 +165,20 @@ export function createManifest(options: {
   projectId: string;
   title: string;
   description?: string;
+  projectType?: string;
 }): ProjectManifest {
   const now = new Date().toISOString();
+  const projectType =
+    typeof options.projectType === "string" && options.projectType.trim()
+      ? options.projectType.trim()
+      : "film";
   return {
     format: MANIFEST_FORMAT_ID,
     version: MANIFEST_FORMAT_VERSION,
     projectId: options.projectId,
     title: options.title,
     description: options.description,
+    projectType,
     storageMode: "local",
     createdAt: now,
     updatedAt: now,

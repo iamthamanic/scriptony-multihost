@@ -33,6 +33,11 @@ export interface AuthClient {
   getAccessToken(): Promise<string | null>;
 
   /**
+   * Fast session probe (e.g. Appwrite account.get) without issuing a JWT.
+   */
+  hasActiveSession(): Promise<boolean>;
+
+  /**
    * Sign up with email and password
    */
   signUp(

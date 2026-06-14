@@ -16,35 +16,45 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import { Separator } from "./ui/separator";
 import { BeatColumn } from "./timeline/BeatColumn";
-import { VideoEditorTimeline } from "./VideoEditorTimeline";
+import { StructureTimelineView } from "./structure/StructureTimelineView";
 import type { BeatCardData, TimelineNode } from "./timeline/BeatCard";
 import { ProjectDropdown } from "./project/ProjectDropdown";
-import type { TimelineData } from "./film/FilmDropdown";
-import type { BookTimelineData } from "./book/BookDropdown";
+import type { TimelineData } from "./structure/DropdownView";
+import type { BookTimelineData } from "./book/BookDropdownView";
 import { ScriptStructureImportButton } from "./ScriptStructureImportButton";
 import { NativeBookView } from "./book/NativeBookView";
 import { NativeScreenplayView } from "./film/NativeScreenplayView";
 import { NativeAudiobookView } from "./audio/NativeAudiobookView";
 import {
+  BEAT_TEMPLATES,
   generateBeatsFromTemplate,
   LITE_7_TEMPLATE,
-  SAVE_THE_CAT_TEMPLATE,
-  type BeatTemplate,
 } from "../lib/beat-templates";
-import { APP_UNDO_PRIORITY_TIMELINE } from "../lib/app-undo-operations";
 import {
-  useBeats,
-  useCreateBeat,
-  useUpdateBeat,
-  useDeleteBeat,
-} from "../hooks/useBeats";
-import * as TimelineAPI from "../lib/api/timeline-api";
+  applyBeatTemplateToProject,
+  isRegistryBeatTemplateKey,
+} from "../lib/beats/apply-beat-template";
+import {
+  DEFAULT_STRUCTURE_VIEW,
+  STRUCTURE_VIEW_IDS,
+  persistStructureView,
+  readPersistedStructureView,
+  type StructureViewId,
+} from "../lib/structure/structure-view-id";
+import { useQueryClient } from "@tanstack/react-query";
+import { isAudioProjectType } from "../lib/project-type-audio";
+import { cn } from "../lib/utils";
+import { queryKeys } from "../lib/react-query";
+import { APP_UNDO_PRIORITY_TIMELINE } from "../lib/app-undo-operations";
+import { useBeats } from "../hooks/useBeats";
 import { toast } from "sonner";
 import {
   TimelineStateProvider,
   useTimelineUndo,
   useOptionalTimelineState,
 } from "../contexts/TimelineStateContext";
+import { withFilmActsPctResolved } from "../lib/timeline-act-layout";
+import { isTrailingPointerActivationSuppressed } from "../lib/suppress-trailing-pointer-activation";
 
 /**
  * 🎬 STRUCTURE & BEATS SECTION
@@ -70,20 +80,16 @@ interface StructureBeatsSectionProps {
   readingSpeedWpm?: number;
   /** Film/Series/Audio: target length in **minutes** (from project detail); drives timeline ruler & duration label. */
   targetDurationMinutes?: string | number | null;
-  /** Film timeline: trim commit needs more seconds than current project duration — parent can offer to extend. */
+  /** Film timeline: trim commit needs more seconds than project duration — parent auto-extends stored duration. */
   onProjectDurationSecondsHint?: (minSeconds: number) => void;
   // 🚀 NEW: Loading state when parent is fetching cache
   isLoadingCache?: boolean;
+  /** Increment to switch to timeline view (e.g. after beat template apply in settings). */
+  structureViewFocusRequest?: number;
 }
 
 // LITE-7 Story Beat Preset (minimales Template für schnelles Prototyping)
 const MOCK_BEATS: BeatCardData[] = generateBeatsFromTemplate(LITE_7_TEMPLATE);
-
-/** Explicit beat generation only — no silent fallback to lite-7 or save-the-cat. */
-const SUPPORTED_BEAT_TEMPLATE_MAP: Record<string, BeatTemplate> = {
-  "lite-7": LITE_7_TEMPLATE,
-  "save-the-cat": SAVE_THE_CAT_TEMPLATE,
-};
 
 // 🧪 TEST: Hook bei 5% positionieren (oben sichtbar)
 const TEST_BEAT_HOOK: BeatCardData = {
@@ -202,13 +208,23 @@ export function StructureBeatsSection({
   targetDurationMinutes,
   onProjectDurationSecondsHint,
   isLoadingCache,
+  structureViewFocusRequest,
 }: StructureBeatsSectionProps) {
+  const queryClient = useQueryClient();
   const containerStackRef = useRef<HTMLDivElement>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(true); // DEFAULT: OPEN
-  const [structureView, setStructureView] = useState<
-    "dropdown" | "timeline" | "native"
-  >("dropdown");
+  const [structureView, setStructureView] = useState<StructureViewId>(() =>
+    readPersistedStructureView(projectId),
+  );
+  useEffect(() => {
+    setStructureView(readPersistedStructureView(projectId));
+  }, [projectId]);
+
+  useEffect(() => {
+    persistStructureView(projectId, structureView);
+  }, [projectId, structureView]);
+
   /** Timeline → FilmDropdown: welcher Shot aufgeklappt & gescrollt werden soll */
   const [expandShotId, setExpandShotId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -217,9 +233,6 @@ export function StructureBeatsSection({
 
   // 🚀 REACT QUERY: Lade Beats für dieses Projekt (mit Cache!)
   const { data: beatsData, isLoading: beatsLoading } = useBeats(projectId);
-  const createBeatMutation = useCreateBeat();
-  const updateBeatMutation = useUpdateBeat();
-  const deleteBeatMutation = useDeleteBeat();
   const [generatingBeatsFromTemplate, setGeneratingBeatsFromTemplate] =
     useState(false);
 
@@ -229,17 +242,6 @@ export function StructureBeatsSection({
   const [timelineData, setTimelineData] = useState<
     TimelineData | BookTimelineData | null
   >(initialData || null);
-
-  // 🔄 UPDATE: Sync timelineData when initialData changes
-  useEffect(() => {
-    if (initialData) {
-      console.log(
-        "[StructureBeatsSection] 🔄 Updating timelineData from initialData:",
-        initialData,
-      );
-      setTimelineData(initialData);
-    }
-  }, [initialData]);
 
   // 📖 Book: word/WPM-based length. 🎬 Film/Series/Audio: project "Dauer" field (minutes) → seconds for the timeline.
   const bookTimelineDuration = useMemo(() => {
@@ -256,17 +258,20 @@ export function StructureBeatsSection({
 
     if (projectType !== "book") {
       const mins = parseTargetMinutes(targetDurationMinutes);
-      if (mins != null && mins > 0) {
-        const sec = Math.max(1, Math.round(mins * 60));
-        console.log(
-          `[StructureBeatsSection] 🎬 Film timeline duration: ${mins} min → ${sec}s`,
-        );
-        return sec;
-      }
+      const fromProject =
+        mins != null && mins > 0 ? Math.max(1, Math.round(mins * 60)) : 300;
+      const fromLayout =
+        timelineData &&
+        "layoutProjectDurationSec" in timelineData &&
+        typeof timelineData.layoutProjectDurationSec === "number" &&
+        Number.isFinite(timelineData.layoutProjectDurationSec)
+          ? timelineData.layoutProjectDurationSec
+          : 0;
+      const sec = Math.max(fromProject, fromLayout);
       console.log(
-        "[StructureBeatsSection] ⚠️ No valid targetDurationMinutes — fallback 300s",
+        `[StructureBeatsSection] 🎬 Film timeline duration: ${(sec / 60).toFixed(0)} min → ${sec}s`,
       );
-      return 300;
+      return sec;
     }
 
     if (
@@ -368,6 +373,27 @@ export function StructureBeatsSection({
     }
   }, [projectType, readingSpeedWpm, timelineData, targetDurationMinutes]);
 
+  const timelineSeededForProjectRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    timelineSeededForProjectRef.current = null;
+  }, [projectId]);
+
+  // Seed timeline once per project open — not on RQ cache refresh or trim auto-extend.
+  useEffect(() => {
+    if (!initialData) return;
+    if (timelineSeededForProjectRef.current === projectId) return;
+    timelineSeededForProjectRef.current = projectId;
+    setTimelineData(
+      projectType === "book"
+        ? initialData
+        : withFilmActsPctResolved(
+            initialData as TimelineData,
+            bookTimelineDuration,
+          ),
+    );
+  }, [initialData, projectId, projectType, bookTimelineDuration]);
+
   // 🧪 TEST: Hook bei 5% positionieren (oben sichtbar)
   const TEST_BEAT_HOOK: BeatCardData = {
     ...MOCK_BEATS[0], // Hook (0-1%)
@@ -386,10 +412,10 @@ export function StructureBeatsSection({
   };
 
   const handleTimelineChange = (data: TimelineData | BookTimelineData) => {
+    // VET trim/move commits already carry pct from treeToTimelineData — re-resolving
+    // can repack spans and snap blocks back a few frames.
     setTimelineData(data);
-    if (onDataChange) {
-      onDataChange(data);
-    }
+    onDataChange?.(data);
   };
 
   // 🎯 Convert FilmDropdown TimelineData to BeatCard TimelineNode format
@@ -585,8 +611,14 @@ export function StructureBeatsSection({
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
+  useEffect(() => {
+    if (structureViewFocusRequest != null && structureViewFocusRequest > 0) {
+      setStructureView(STRUCTURE_VIEW_IDS.timelineview);
+    }
+  }, [structureViewFocusRequest]);
+
   const openSearchHit = (entry: SearchEntry) => {
-    setStructureView("dropdown");
+    setStructureView(STRUCTURE_VIEW_IDS.dropdownview);
     setSearchOpen(false);
     if (entry.type === "shot") {
       setExpandShotId(entry.id);
@@ -650,67 +682,35 @@ export function StructureBeatsSection({
 
   const handleGenerateBeatsFromTemplate = useCallback(async () => {
     if (beatsLoading || generatingBeatsFromTemplate) return;
-    if (beatsData && beatsData.length > 0) return;
 
     const key = beatTemplate?.trim();
-    if (!key || key.startsWith("custom:")) {
+    if (!key || !isRegistryBeatTemplateKey(key)) {
       toast.error(
         "Bitte ein unterstütztes Beat-Template in den Projekteinstellungen wählen.",
-      );
-      return;
-    }
-    const selectedTemplate = SUPPORTED_BEAT_TEMPLATE_MAP[key];
-    if (!selectedTemplate) {
-      toast.error(
-        `Das Beat-Template „${key}“ wird für die automatische Erzeugung noch nicht unterstützt.`,
       );
       return;
     }
 
     try {
       setGeneratingBeatsFromTemplate(true);
-      let firstActId = "placeholder-act-1";
-      let lastActId = "placeholder-act-3";
-      try {
-        const acts = await TimelineAPI.getActs(projectId);
-        if (acts.length > 0) {
-          firstActId = acts[0].id;
-          lastActId = acts[acts.length - 1].id;
-        }
-      } catch {
-        /* keep placeholders */
-      }
+      const result = await applyBeatTemplateToProject(projectId, key);
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.beats.byProject(projectId),
+      });
 
-      const generatedBeats = generateBeatsFromTemplate(selectedTemplate);
-      let successCount = 0;
-      for (let i = 0; i < generatedBeats.length; i++) {
-        const beat = generatedBeats[i];
-        try {
-          await createBeatMutation.mutateAsync({
-            project_id: projectId,
-            label: beat.label,
-            template_abbr:
-              beat.templateAbbr || key.toUpperCase().replace("-", ""),
-            description: beat.items?.join(", ") || "",
-            from_container_id: firstActId,
-            to_container_id: lastActId,
-            pct_from: beat.pctFrom,
-            pct_to: beat.pctTo === beat.pctFrom ? beat.pctFrom + 2 : beat.pctTo,
-            color: beat.color,
-            order_index: i,
-          });
-          successCount += 1;
-        } catch (error) {
-          console.error(
-            `[StructureBeatsSection] Failed to create beat "${beat.label}":`,
-            error,
-          );
-        }
-      }
-      if (successCount > 0) {
-        toast.success(`${successCount} Story Beats erzeugt`);
-      } else {
+      if (result.kind === "created" && result.count > 0) {
+        toast.success(`${result.count} Story Beats erzeugt`);
+        setStructureView(STRUCTURE_VIEW_IDS.timelineview);
+      } else if (result.kind === "created") {
         toast.error("Keine Beats konnten angelegt werden.");
+      } else if (result.kind === "cleared-custom") {
+        toast.message(
+          "Custom-Template: bestehende Beats wurden entfernt. Lege Beats manuell an.",
+        );
+      } else if (result.kind === "unsupported") {
+        toast.message(
+          `Template „${result.key}“: ${result.deletedCount} Beat(s) entfernt. Kein Registry-Preset — Beats manuell anlegen.`,
+        );
       }
     } catch (error) {
       console.error("[StructureBeatsSection] generate beats:", error);
@@ -720,11 +720,10 @@ export function StructureBeatsSection({
     }
   }, [
     beatTemplate,
-    beatsData,
     beatsLoading,
-    createBeatMutation,
     generatingBeatsFromTemplate,
     projectId,
+    queryClient,
   ]);
 
   // 🔄 Prepare initialData for TimelineStateProvider
@@ -854,23 +853,26 @@ export function StructureBeatsSection({
               {/* View Toggle */}
               <Tabs
                 value={structureView}
-                onValueChange={(v) => setStructureView(v as any)}
+                onValueChange={(v) => {
+                  if (isTrailingPointerActivationSuppressed()) return;
+                  setStructureView(v as StructureViewId);
+                }}
               >
                 <TabsList className="h-9">
                   <TabsTrigger
-                    value="dropdown"
+                    value={STRUCTURE_VIEW_IDS.dropdownview}
                     className="text-xs md:text-sm px-2 md:px-3"
                   >
                     Dropdown
                   </TabsTrigger>
                   <TabsTrigger
-                    value="timeline"
+                    value={STRUCTURE_VIEW_IDS.timelineview}
                     className="text-xs md:text-sm px-2 md:px-3"
                   >
                     Timeline
                   </TabsTrigger>
                   <TabsTrigger
-                    value="native"
+                    value={STRUCTURE_VIEW_IDS.nativeview}
                     className="text-xs md:text-sm px-2 md:px-3"
                   >
                     Native
@@ -885,13 +887,18 @@ export function StructureBeatsSection({
             <div
               className="flex flex-col border border-border rounded-lg overflow-hidden bg-background"
               style={{
-                height: structureView === "timeline" ? "600px" : "auto",
+                height:
+                  structureView === STRUCTURE_VIEW_IDS.timelineview
+                    ? isAudioProjectType(projectType)
+                      ? "min(800px, 72vh)"
+                      : "600px"
+                    : "auto",
               }}
             >
               {!beatsLoading && (!beatsData || beatsData.length === 0) && (
                 <div className="shrink-0 border-b border-border bg-muted/20 px-3 py-2.5 text-xs text-muted-foreground space-y-2">
                   {beatTemplate?.trim() &&
-                  SUPPORTED_BEAT_TEMPLATE_MAP[beatTemplate.trim()] ? (
+                  BEAT_TEMPLATES[beatTemplate.trim()] ? (
                     <>
                       <p>
                         Keine Story Beats angelegt. Du kannst Beats aus dem
@@ -916,9 +923,9 @@ export function StructureBeatsSection({
                     </p>
                   ) : beatTemplate?.trim() ? (
                     <p>
-                      Beat-Template „{beatTemplate}“ wird für die automatische
-                      Erzeugung noch nicht unterstützt. Unterstützt: lite-7,
-                      save-the-cat.
+                      Beat-Template „{beatTemplate}“ ist kein Registry-Preset.
+                      Wähle ein Template aus der Liste in den
+                      Projekteinstellungen oder lege Beats manuell an.
                     </p>
                   ) : (
                     <p>
@@ -930,9 +937,16 @@ export function StructureBeatsSection({
                 </div>
               )}
               {/* Container Stack - Dynamic Dropdown based on projectType */}
-              <div className="flex-1 min-h-0 overflow-y-auto h-full">
+              <div
+                className={cn(
+                  "flex-1 min-h-0 h-full",
+                  structureView === STRUCTURE_VIEW_IDS.timelineview
+                    ? "overflow-hidden"
+                    : "overflow-y-auto",
+                )}
+              >
                 {/* Never block Film/Book dropdown: they must mount to load from API if parent cache is empty. */}
-                {structureView === "dropdown" ? (
+                {structureView === STRUCTURE_VIEW_IDS.dropdownview ? (
                   <>
                     {isLoadingCache && !initialData ? (
                       <div className="flex items-center gap-2 border-b border-border/50 px-2 py-1.5 text-xs text-muted-foreground">
@@ -958,8 +972,8 @@ export function StructureBeatsSection({
                       narrativeStructure={narrativeStructure}
                     />
                   </>
-                ) : structureView === "timeline" ? (
-                  <VideoEditorTimeline
+                ) : structureView === STRUCTURE_VIEW_IDS.timelineview ? (
+                  <StructureTimelineView
                     projectId={projectId}
                     projectType={projectType}
                     initialData={timelineData}
@@ -971,12 +985,13 @@ export function StructureBeatsSection({
                     targetPages={targetPages}
                     readingSpeedWpm={readingSpeedWpm}
                     onOpenShotInStructureTree={(shotId) => {
+                      if (isTrailingPointerActivationSuppressed()) return;
                       setExpandShotId(shotId);
-                      setStructureView("dropdown");
+                      setStructureView(STRUCTURE_VIEW_IDS.dropdownview);
                     }}
                     onProjectDurationSecondsHint={onProjectDurationSecondsHint}
                   />
-                ) : structureView === "native" ? (
+                ) : structureView === STRUCTURE_VIEW_IDS.nativeview ? (
                   projectType === "book" ? (
                     <NativeBookView
                       key={`native-book-${projectId}-${structureView}`}

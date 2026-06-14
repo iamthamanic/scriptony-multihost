@@ -3,7 +3,12 @@
  */
 
 import type { RequestLike, ResponseLike } from "../../_shared/http";
-import { getParam, getQuery, sendBadRequest, sendMethodNotAllowed } from "../../_shared/http";
+import {
+  getParam,
+  getQuery,
+  sendBadRequest,
+  sendMethodNotAllowed,
+} from "../../_shared/http";
 import {
   createClip,
   deleteClip,
@@ -29,7 +34,11 @@ export default async function clipsRoutes(
 
   if (method === "GET" && !id) {
     const sceneId = getQuery(req, "sceneId") || getParam(req, "sceneId");
-    const projectId = getQuery(req, "projectId") || getQuery(req, "project_id") || getParam(req, "projectId") || getParam(req, "project_id");
+    const projectId =
+      getQuery(req, "projectId") ||
+      getQuery(req, "project_id") ||
+      getParam(req, "projectId") ||
+      getParam(req, "project_id");
     if (sceneId) {
       return listClips(req, res);
     }

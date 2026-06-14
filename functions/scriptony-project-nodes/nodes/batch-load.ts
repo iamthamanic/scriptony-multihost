@@ -52,9 +52,10 @@ export default async function handler(
       .map((node) => {
         if (!excludeContent || !node || typeof node !== "object") return node;
         const n = node as Record<string, unknown>;
-        const metadata = n.metadata && typeof n.metadata === "object"
-          ? { ...(n.metadata as Record<string, unknown>) }
-          : undefined;
+        const metadata =
+          n.metadata && typeof n.metadata === "object"
+            ? { ...(n.metadata as Record<string, unknown>) }
+            : undefined;
         if (metadata && "content" in metadata) {
           delete metadata.content;
         }

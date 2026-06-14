@@ -16,7 +16,7 @@ import {
 import { isNativePlatform } from "../capacitor/platform";
 
 function usesCustomSchemeCallback(runtime: RuntimeConfig): boolean {
-	return runtime.isDesktop || isNativePlatform();
+  return runtime.isDesktop || isNativePlatform();
 }
 
 /** Redirect URL for Appwrite OAuth success/failure. */

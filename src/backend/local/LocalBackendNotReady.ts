@@ -58,6 +58,9 @@ class NotReadyAudioRepository implements AudioRepository {
   async getClips(_projectId: string): Promise<AudioClip[]> {
     return notReady();
   }
+  async getClipsByScene(_sceneId: string): Promise<AudioClip[]> {
+    return notReady();
+  }
   async getClip(_clipId: string): Promise<AudioClip | null> {
     return notReady();
   }

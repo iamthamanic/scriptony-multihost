@@ -6,7 +6,7 @@ import {
   updateScene,
 } from "../../lib/api/timeline-api";
 import { useAuth } from "../../hooks/useAuth";
-import type { TimelineData } from "../film/FilmDropdown";
+import type { TimelineData } from "../structure/DropdownView";
 import { EditableParagraph } from "../shared/EditableParagraph";
 import { toast } from "sonner";
 import scriptonyLogo from "../../assets/scriptony-logo.png";

@@ -6,7 +6,11 @@
 import { useCallback } from "react";
 import { calculateRipple } from "../lib/ripple-engine";
 import type { AudioClip } from "../lib/types";
-import type { RippleScene, RippleSequence, RippleAct } from "./useRippleDerivation";
+import type {
+  RippleScene,
+  RippleSequence,
+  RippleAct,
+} from "./useRippleDerivation";
 import { useRippleUpdate } from "./useRippleUpdate";
 
 export function useClipTrim(
@@ -32,13 +36,19 @@ export function useClipTrim(
       const affectedSceneIds = new Set<string>();
       for (const clip of localResult.updatedClips) {
         const orig = allClips.find((c) => c.id === clip.id);
-        if (orig && (orig.startSec !== clip.startSec || orig.endSec !== clip.endSec)) {
+        if (
+          orig &&
+          (orig.startSec !== clip.startSec || orig.endSec !== clip.endSec)
+        ) {
           affectedSceneIds.add(clip.sceneId);
         }
       }
       for (const scene of localResult.updatedScenes) {
         const orig = rippleScenes.find((s) => s.id === scene.id);
-        if (orig && (orig.startSec !== scene.startSec || orig.endSec !== scene.endSec)) {
+        if (
+          orig &&
+          (orig.startSec !== scene.startSec || orig.endSec !== scene.endSec)
+        ) {
           affectedSceneIds.add(scene.id);
         }
       }
@@ -57,7 +67,14 @@ export function useClipTrim(
         affectedSceneIds: Array.from(affectedSceneIds),
       });
     },
-    [allClips, rippleScenes, rippleSequences, rippleActs, debouncedUpdate, projectId],
+    [
+      allClips,
+      rippleScenes,
+      rippleSequences,
+      rippleActs,
+      debouncedUpdate,
+      projectId,
+    ],
   );
 
   return { handleTrimEnd };

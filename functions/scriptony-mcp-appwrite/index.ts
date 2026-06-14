@@ -28,7 +28,8 @@ import { loadAssistantProfileSummary } from "./provider-context";
 const registry = createDefaultCapabilityRegistry();
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) ||
+  const direct =
+    (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {
@@ -51,8 +52,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
         status: "ok",
         service: "scriptony-mcp-appwrite",
         provider: "appwrite",
-        note:
-          "assistant_profile is included on authenticated POST /invoke responses only.",
+        note: "assistant_profile is included on authenticated POST /invoke responses only.",
         timestamp: new Date().toISOString(),
       });
       return;
@@ -96,8 +96,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
               },
             },
           ],
-          note:
-            "Invoke the same operations via Appwrite HTTP routes; MCP server can mirror this registry.",
+          note: "Invoke the same operations via Appwrite HTTP routes; MCP server can mirror this registry.",
         });
         return;
       }
@@ -131,9 +130,8 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
     const tool = typeof body.tool === "string" ? body.tool.trim() : undefined;
     const input = body.input;
     const approved = body.approved === true;
-    const projectId = typeof body.project_id === "string"
-      ? body.project_id.trim()
-      : undefined;
+    const projectId =
+      typeof body.project_id === "string" ? body.project_id.trim() : undefined;
 
     if (actionRaw === "invoke" && !tool) {
       sendBadRequest(res, 'invoke requires string "tool"');

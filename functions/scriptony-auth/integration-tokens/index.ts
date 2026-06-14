@@ -58,8 +58,8 @@ export default async function handler(
 
     if (req.method === "POST") {
       const body = await readJsonBody<{ name?: string }>(req);
-      const name = (body.name ?? "External Tool").trim().slice(0, 100) ||
-        "External Tool";
+      const name =
+        (body.name ?? "External Tool").trim().slice(0, 100) || "External Tool";
 
       const plainToken = randomBytes(32).toString("hex");
       const tokenHash = hashIntegrationToken(plainToken);

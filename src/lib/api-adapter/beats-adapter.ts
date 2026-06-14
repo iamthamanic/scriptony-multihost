@@ -18,6 +18,7 @@ import {
   localCreateBeat,
   localDeleteBeat,
   localGetBeats,
+  localReorderBeats,
   localUpdateBeat,
 } from "./beats-local";
 
@@ -52,10 +53,19 @@ export function deleteBeat(beatId: string): Promise<void> {
   );
 }
 
+async function cloudReorderBeats(
+  beats: { id: string; order_index: number }[],
+): Promise<void> {
+  for (const { id, order_index } of beats) {
+    await cloudUpdateBeat(id, { order_index });
+  }
+}
+
 export async function reorderBeats(
   beats: { id: string; order_index: number }[],
 ): Promise<void> {
-  await Promise.all(
-    beats.map(({ id, order_index }) => updateBeat(id, { order_index })),
+  return dispatchByRuntime(
+    () => cloudReorderBeats(beats),
+    () => localReorderBeats(beats),
   );
 }

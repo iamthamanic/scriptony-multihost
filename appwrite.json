@@ -13,7 +13,15 @@
       "logging": true,
       "entrypoint": "appwrite-entry.ts",
       "path": "functions/scriptony-audio-story",
-      "scopes": ["users.read", "teams.read", "databases.read", "databases.write", "storage.read", "storage.write", "execution.write"]
+      "scopes": [
+        "users.read",
+        "teams.read",
+        "databases.read",
+        "databases.write",
+        "storage.read",
+        "storage.write",
+        "execution.write"
+      ]
     }
   ]
 }

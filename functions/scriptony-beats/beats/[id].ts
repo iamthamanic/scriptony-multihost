@@ -132,21 +132,21 @@ export default async function handler(
               : {}),
             ...(changes.template_abbr !== undefined
               ? {
-                beat_type: changes.template_abbr,
-                template_abbr: changes.template_abbr,
-              }
+                  beat_type: changes.template_abbr,
+                  template_abbr: changes.template_abbr,
+                }
               : {}),
             ...(changes.description !== undefined
               ? {
-                content: changes.description,
-                description: changes.description,
-              }
+                  content: changes.description,
+                  description: changes.description,
+                }
               : {}),
             ...(changes.from_container_id !== undefined
               ? {
-                parent_beat_id: changes.from_container_id,
-                from_container_id: changes.from_container_id,
-              }
+                  parent_beat_id: changes.from_container_id,
+                  from_container_id: changes.from_container_id,
+                }
               : {}),
             ...(changes.to_container_id !== undefined
               ? { to_container_id: changes.to_container_id }

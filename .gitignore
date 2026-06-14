@@ -43,13 +43,13 @@ repo-visualization*.html
 
 # LightRAG index data (local only)
 .rag/
+
+# Understand Anything — local scratch only (graph JSON may be committed intentionally)
+.understand-anything/intermediate/
+.understand-anything/diff-overlay.json
 scriptony-blender-addon.zip
 scriptony_blender_addon.zip
 scriptony_blender_extension.zip
 # Blender build artifacts
 tools/blender/dist/*
 eslint-fix.mjs
-
-
-#Ignore cursor AI rules
-.cursor/rules/codacy.mdc

@@ -43,7 +43,8 @@ import {
 } from "./image-task-service";
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) ||
+  const direct =
+    (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {
@@ -64,9 +65,10 @@ function getQueryParam(req: RequestLike, key: string): string {
   }
   try {
     const raw = typeof req?.url === "string" ? req.url : "";
-    const url = raw.startsWith("http://") || raw.startsWith("https://")
-      ? new URL(raw)
-      : new URL(raw, "http://local");
+    const url =
+      raw.startsWith("http://") || raw.startsWith("https://")
+        ? new URL(raw)
+        : new URL(raw, "http://local");
     return url.searchParams.get(key)?.trim() || "";
   } catch {
     return "";

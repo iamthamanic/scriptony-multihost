@@ -36,6 +36,7 @@ import {
   listStorageProviders,
   getSelectedStorageProviderId,
   setSelectedStorageProviderId,
+  getDefaultStorageProviderId,
   getStorageProviderMeta,
   getStorageOAuthAuthorizeUrl,
   getStoredStorageOAuthTokens,
@@ -168,8 +169,13 @@ export function StorageSettingsSection() {
             <strong>
               {getStorageProviderMeta(selectedId)?.name ?? "Scriptony Cloud"}
             </strong>
-            . Weitere Anbieter kommen in Kürze – deine Datenhoheit bleibt
-            gewährleistet.
+            . Standard für neue Installationen:{" "}
+            <strong>
+              {getStorageProviderMeta(getDefaultStorageProviderId())?.name ??
+                "Lokal"}
+            </strong>
+            . Eine früher gespeicherte Auswahl in diesem Browser bleibt aktiv,
+            bis du sie änderst.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 pt-0 space-y-2">

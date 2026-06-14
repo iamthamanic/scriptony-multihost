@@ -38,10 +38,15 @@ export class SelfHostedConnectionStore {
   }
 
   async getActive(): Promise<SelfHostedConnection | null> {
+    return this.getActiveSync();
+  }
+
+  /** Synchronous read for cloud-auth target resolution (Axis 2). */
+  getActiveSync(): SelfHostedConnection | null {
     if (typeof window === "undefined") return null;
     const activeId = window.localStorage.getItem(ACTIVE_KEY);
     if (!activeId) return null;
-    return this.get(activeId);
+    return readAll().find((c) => c.id === activeId) ?? null;
   }
 
   async save(connection: SelfHostedConnection): Promise<void> {

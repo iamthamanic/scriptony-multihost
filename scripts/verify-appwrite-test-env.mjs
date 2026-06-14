@@ -276,7 +276,10 @@ for (const { url, label } of checks) {
     console.log("  Response OK:", { tag, brief });
   } else {
     failed = true;
-    console.log("  Response error:", { status: r.status, text: r.text.slice(0, 200) });
+    console.log("  Response error:", {
+      status: r.status,
+      text: r.text.slice(0, 200),
+    });
     if (
       label.includes("scriptony-assistant") ||
       label.includes("scriptony-mcp-appwrite") ||

@@ -96,6 +96,7 @@ export function mapNodeRow(row: Record<string, unknown>): StructureNode {
 		type: String(row.node_type ?? ""),
 		label: String(row.label ?? ""),
 		orderIndex: Number(row.order_index ?? 0),
+		metadata: parseJsonValue<Record<string, unknown>>(row.metadata) ?? {},
 		createdAt: String(row.created_at ?? ""),
 		updatedAt: String(row.updated_at ?? ""),
 	};

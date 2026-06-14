@@ -19,9 +19,9 @@ import type { AuthClient } from "./AuthClient";
  * - selfHosted → AppwriteAuthAdapter with user-specified endpoint
  */
 export function createAuthFactory(runtime: RuntimeConfig): AuthClient {
-	if (runtime.profile === "local") {
-		return new LocalAuthAdapter();
-	}
+  if (runtime.profile === "local") {
+    return new LocalAuthAdapter();
+  }
 
-	return new AppwriteAuthAdapter();
+  return new AppwriteAuthAdapter();
 }

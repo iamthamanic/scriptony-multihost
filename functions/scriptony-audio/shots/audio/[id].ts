@@ -52,12 +52,7 @@ async function syncAssetFromUrl(
     Query.limit(1),
   ]);
   if (documents.length > 0) {
-    await database.updateDocument(
-      dbId(),
-      C.assets,
-      documents[0].$id,
-      updates,
-    );
+    await database.updateDocument(dbId(), C.assets, documents[0].$id, updates);
   }
 }
 
@@ -139,16 +134,13 @@ export default async function handler(
       );
 
       // T09: Asset-Metadaten synchronisieren
-      void syncAssetFromUrl(
-        updated.update_shot_audio_by_pk?.file_url,
-        {
-          updated_at: new Date().toISOString(),
-          metadata: JSON.stringify({
-            ...cleanedChanges,
-            updated_by: "legacy-patch",
-          }),
-        },
-      ).catch((err) => {
+      void syncAssetFromUrl(updated.update_shot_audio_by_pk?.file_url, {
+        updated_at: new Date().toISOString(),
+        metadata: JSON.stringify({
+          ...cleanedChanges,
+          updated_by: "legacy-patch",
+        }),
+      }).catch((err) => {
         console.error("[Shot Audio] Asset sync failed:", err);
       });
 

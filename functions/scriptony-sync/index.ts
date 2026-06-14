@@ -39,7 +39,8 @@ import {
 import { userCanAccessShot } from "../_shared/puppet-helpers";
 
 function getPathname(req: RequestLike): string {
-  const direct = (typeof req?.path === "string" && req.path) ||
+  const direct =
+    (typeof req?.path === "string" && req.path) ||
     (typeof req?.url === "string" && req.url) ||
     "/";
   try {

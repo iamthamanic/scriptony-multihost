@@ -56,13 +56,14 @@ export class HuggingFaceProvider implements AIProvider {
     // HuggingFace uses different endpoints per model
     const model = options.model || "meta-llama/Llama-3.2-3B-Instruct";
 
-    const prompt = messages
-      .map((m) => {
-        if (m.role === "system") return `<|system|>\n${m.content}</s>\n`;
-        if (m.role === "user") return `<|user|>\n${m.content}</s>\n`;
-        return `<|assistant|>\n${m.content}</s>\n`;
-      })
-      .join("") + "<|assistant|>\n";
+    const prompt =
+      messages
+        .map((m) => {
+          if (m.role === "system") return `<|system|>\n${m.content}</s>\n`;
+          if (m.role === "user") return `<|user|>\n${m.content}</s>\n`;
+          return `<|assistant|>\n${m.content}</s>\n`;
+        })
+        .join("") + "<|assistant|>\n";
 
     const response = await fetch(`${this.baseUrl}/${model}`, {
       method: "POST",
@@ -194,8 +195,8 @@ export class HuggingFaceProvider implements AIProvider {
     prompt: string,
     options: VideoOptions,
   ): Promise<VideoResponse> {
-    const model = options.model ||
-      "ali-vilab/modelscope-damo-text-to-video-synthesis";
+    const model =
+      options.model || "ali-vilab/modelscope-damo-text-to-video-synthesis";
 
     // Video generation is async, return job ID
     const response = await fetch(`${this.baseUrl}/${model}`, {

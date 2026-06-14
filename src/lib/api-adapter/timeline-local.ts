@@ -53,7 +53,10 @@ export function structureToTimelineNode(
     orderIndex: node.orderIndex,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
-    metadata: { node_type: node.type },
+    metadata: {
+      ...(node.metadata ?? {}),
+      node_type: node.type,
+    },
   };
 }
 
@@ -127,12 +130,18 @@ export async function localCreateNode(
 ): Promise<TimelineNode> {
   const backend = requireLocalBackend();
   const type = LEVEL_TYPE[request.level] ?? "scene";
+  const nodeNumber =
+    typeof request.nodeNumber === "number" &&
+    Number.isFinite(request.nodeNumber)
+      ? request.nodeNumber
+      : 1;
+  const orderIndex = Math.max(0, nodeNumber - 1);
   const node = await backend.structure.create({
     projectId: request.projectId,
     parentId: request.parentId ?? null,
     type,
     label: request.title,
-    orderIndex: request.nodeNumber - 1,
+    orderIndex,
   });
   return structureToTimelineNode(node, request.templateId);
 }
@@ -142,11 +151,32 @@ export async function localUpdateNode(
   updates: UpdateNodeRequest,
 ): Promise<TimelineNode> {
   const backend = requireLocalBackend();
-  const node = await backend.structure.update(nodeId, {
-    label: updates.title,
-    orderIndex: updates.orderIndex,
-    parentId: updates.parentId ?? undefined,
-  });
+  const existing = await backend.structure.getNode(nodeId);
+  if (!existing) {
+    throw new Error(`Node ${nodeId} not found`);
+  }
+
+  const patch: Partial<StructureNode> = {};
+
+  if (updates.title !== undefined) {
+    patch.label = updates.title;
+  }
+  if (updates.orderIndex !== undefined) {
+    patch.orderIndex = updates.orderIndex;
+  } else if (updates.nodeNumber !== undefined) {
+    patch.orderIndex = Math.max(0, updates.nodeNumber - 1);
+  }
+  if (updates.parentId !== undefined) {
+    patch.parentId = updates.parentId;
+  }
+  if (updates.metadata !== undefined) {
+    patch.metadata = {
+      ...(existing.metadata ?? {}),
+      ...updates.metadata,
+    };
+  }
+
+  const node = await backend.structure.update(nodeId, patch);
   return structureToTimelineNode(node);
 }
 

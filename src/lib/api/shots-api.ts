@@ -29,6 +29,14 @@ import {
   assertPreparedImageWithinUploadLimit,
   fileToBase64,
 } from "./image-upload-api";
+import {
+  hasOpenLocalProject,
+  usesCloudHttpForDomain,
+} from "@/lib/api-adapter/domain-access";
+import { requireLocalBackend } from "@/lib/api-adapter/runtime-dispatch";
+import { localUpdateShot } from "@/lib/api-adapter/shots-local";
+import { normalizeSceneImageStoragePath } from "@/lib/local-asset-display-url";
+import { restoreWorkspaceScope } from "@/local/workspace";
 import { getActs } from "./timeline-api";
 import { initializeProject } from "./timeline-api-v2";
 import { narrativeStructureToInitializeProjectPayload } from "../narrative-structure-init";
@@ -67,6 +75,69 @@ export async function reorderShots(
 // =============================================================================
 
 export async function uploadShotImage(
+  shotId: string,
+  file: File,
+  accessToken: string,
+  prepOptions?: { gifMode?: ImageUploadGifMode },
+): Promise<string> {
+  if (!usesCloudHttpForDomain()) {
+    if (!hasOpenLocalProject()) {
+      throw new Error(
+        "Bitte zuerst ein lokales .scriptony-Projekt im Workspace öffnen.",
+      );
+    }
+    return localUploadShotImage(shotId, file, prepOptions);
+  }
+  return cloudUploadShotImage(shotId, file, accessToken, prepOptions);
+}
+
+async function localUploadShotImage(
+  shotId: string,
+  file: File,
+  prepOptions?: { gifMode?: ImageUploadGifMode },
+): Promise<string> {
+  const backend = requireLocalBackend();
+  const shotNode = await backend.structure.getNode(shotId);
+  if (!shotNode || shotNode.type !== "shot") {
+    throw new Error(`Shot ${shotId} nicht gefunden`);
+  }
+
+  if (backend.localProject.projectId !== shotNode.projectId) {
+    throw new Error(
+      "Geöffnetes lokales Projekt stimmt nicht mit dem Shot überein.",
+    );
+  }
+
+  await restoreWorkspaceScope();
+
+  const ready = await prepareImageFileForUpload(file, prepOptions);
+  assertPreparedImageWithinUploadLimit(ready, 5);
+
+  const asset = await backend.assets.importAsset({
+    projectId: shotNode.projectId,
+    file: ready,
+    type: "image",
+    originalFilename: ready.name,
+  });
+
+  const storedPath =
+    asset.storage.mode === "local" ? asset.storage.relativePath : "";
+  if (!storedPath) {
+    throw new Error("Bild konnte nicht im Projekt gespeichert werden");
+  }
+
+  const normalized =
+    normalizeSceneImageStoragePath(storedPath) ?? storedPath;
+
+  await localUpdateShot(shotId, {
+    imageUrl: normalized,
+    shotImageMime: ready.type || undefined,
+  });
+
+  return normalized;
+}
+
+async function cloudUploadShotImage(
   shotId: string,
   file: File,
   accessToken: string,

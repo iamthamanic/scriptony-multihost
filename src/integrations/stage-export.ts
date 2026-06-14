@@ -3,8 +3,8 @@
  * Die Engine (`StageCanvas`) kennt nur `Stage2DExportAdapter` — keine direkten API-Imports dort.
  */
 import type { QueryClient } from "@tanstack/react-query";
-import type { BookTimelineData } from "@/components/book/BookDropdown";
-import type { TimelineData } from "@/components/film/FilmDropdown";
+import type { BookTimelineData } from "@/components/book/BookDropdownView";
+import type { TimelineData } from "@/components/structure/DropdownView";
 import { getAuthToken } from "@/lib/auth/getAuthToken";
 import {
   getAllShotsByProject,

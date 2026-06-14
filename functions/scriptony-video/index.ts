@@ -106,9 +106,8 @@ app.get("/health", (c) => {
  * List all video-capable providers
  */
 app.get("/providers", async (c) => {
-  const { PROVIDER_CAPABILITIES, PROVIDER_DISPLAY_NAMES } = await import(
-    "../_shared/ai-service/providers"
-  );
+  const { PROVIDER_CAPABILITIES, PROVIDER_DISPLAY_NAMES } =
+    await import("../_shared/ai-service/providers");
 
   const videoProviders = Object.entries(PROVIDER_CAPABILITIES)
     .filter(([_name, caps]) => caps.video)

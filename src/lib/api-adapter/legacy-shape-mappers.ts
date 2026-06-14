@@ -28,6 +28,8 @@ export interface LegacyProject {
   lastEdited?: string;
   last_edited?: string;
   localDirPath?: string;
+  /** Local manifest: cloud sync activated (T40). */
+  cloudSyncEnabled?: boolean;
   user_id?: string;
   organizationId?: string;
   [key: string]: unknown;

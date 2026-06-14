@@ -13,6 +13,7 @@ import { renderHook, act } from "@testing-library/react";
 import { useHierarchyCRUD } from "../useHierarchyCRUD";
 import * as TimelineAPI from "../../lib/api/timeline-api";
 import { getProjectTypeConfig } from "../../lib/projectTypeRegistry";
+import { duplicateActDeep } from "../../lib/structure/structure-deep-duplicate";
 
 // ─── Mocks ───────────────────────────────────────────────────────
 
@@ -51,7 +52,30 @@ vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
+    loading: vi.fn(() => "loading-toast-id"),
+    dismiss: vi.fn(),
   },
+}));
+
+vi.mock("../../lib/structure/structure-deep-duplicate", () => ({
+  duplicateActDeep: vi.fn().mockResolvedValue({
+    act: { id: "act-3", title: "Akt 1 (Kopie)" },
+    sequencesCreated: 1,
+    scenesCreated: 2,
+    shotsCreated: 3,
+  }),
+  duplicateSequenceDeep: vi.fn().mockResolvedValue({
+    sequence: { id: "seq-3" },
+    sequencesCreated: 1,
+    scenesCreated: 1,
+    shotsCreated: 1,
+  }),
+  duplicateSceneDeep: vi.fn().mockResolvedValue({
+    scene: { id: "scene-3" },
+    sequencesCreated: 0,
+    scenesCreated: 1,
+    shotsCreated: 1,
+  }),
 }));
 
 // ─── Test Data ────────────────────────────────────────────────────
@@ -342,27 +366,19 @@ describe("useHierarchyCRUD", () => {
   // ─── Duplicate ──────────────────────────────────────────────
 
   describe("handleDuplicateAct", () => {
-    it("duplicates an act with (Kopie) suffix", async () => {
-      (TimelineAPI.getActs as any).mockResolvedValue(mockActs);
-      (TimelineAPI.createAct as any).mockResolvedValue({
-        id: "act-3",
-        projectId: "proj-1",
-        actNumber: 3,
-        title: "Akt 1 (Kopie)",
-      });
-
+    it("deep-duplicates an act including descendants", async () => {
       const { result } = setup();
 
       await act(async () => {
         await result.current.handleDuplicateAct("act-1");
       });
 
-      expect(TimelineAPI.createAct).toHaveBeenCalledWith(
-        "proj-1",
+      expect(duplicateActDeep).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: "Akt 1 (Kopie)",
+          actId: "act-1",
+          projectId: "proj-1",
+          token: "mock-token",
         }),
-        "mock-token",
       );
     });
   });

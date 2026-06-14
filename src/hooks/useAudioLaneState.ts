@@ -74,8 +74,7 @@ export function useAudioLaneState() {
   );
 
   const setLocked = useCallback(
-    (laneIndex: number, locked: boolean) =>
-      updateLane(laneIndex, { locked }),
+    (laneIndex: number, locked: boolean) => updateLane(laneIndex, { locked }),
     [updateLane],
   );
 

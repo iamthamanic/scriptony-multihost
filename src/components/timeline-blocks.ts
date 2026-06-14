@@ -1,9 +1,40 @@
 /**
- * 🎬 TIMELINE BLOCK CALCULATIONS
- * Extracted from VideoEditorTimeline for better performance
+ * @deprecated Film layout: use projectStructureBlocksFromTree (src/lib/timeline-tree/projectBlocks.ts).
+ * Book word timing: use src/lib/timeline-book-duration.ts.
+ * Kept for legacy fallback when USE_HIERARCHICAL_STRUCTURE_RIPPLE is off.
  */
 
+import { resolveFilmActGlobalSpans } from "../lib/timeline-act-layout";
+import {
+  bookDurationSecForWordCount,
+  calculateWordCountFromContent,
+} from "../lib/timeline-book-duration";
+
+export { calculateWordCountFromContent } from "../lib/timeline-book-duration";
+
 const DEFAULT_EMPTY_ACT_MIN = 5;
+
+/** Film: act global shell from resolved spans (never raw overlapping pct). */
+function filmActShellSecById(
+  acts: Array<{ id: string }>,
+  duration: number,
+): Map<string, { startSec: number; endSec: number; durSec: number }> {
+  const spans = resolveFilmActGlobalSpans(acts, duration);
+  const out = new Map<
+    string,
+    { startSec: number; endSec: number; durSec: number }
+  >();
+  for (const act of acts) {
+    const span = spans.get(act.id);
+    if (!span) continue;
+    out.set(act.id, {
+      startSec: span.startSec,
+      endSec: span.endSec,
+      durSec: Math.max(0, span.endSec - span.startSec),
+    });
+  }
+  return out;
+}
 
 interface TimelineData {
   acts?: any[];
@@ -12,6 +43,7 @@ interface TimelineData {
 }
 
 interface BlockResult {
+  id: string;
   startSec: number;
   endSec: number;
   x: number;
@@ -20,35 +52,7 @@ interface BlockResult {
   [key: string]: any;
 }
 
-/**
- * Calculate word count from Tiptap JSON content
- */
-export function calculateWordCountFromContent(content: any): number {
-  if (!content) return 0;
-
-  let text = "";
-
-  const extractText = (node: any) => {
-    if (node.type === "text") {
-      text += node.text + " ";
-    }
-    if (node.content && Array.isArray(node.content)) {
-      node.content.forEach(extractText);
-    }
-  };
-
-  try {
-    const parsed = typeof content === "string" ? JSON.parse(content) : content;
-    extractText(parsed);
-    const words = text
-      .trim()
-      .split(/\s+/)
-      .filter((w) => w.length > 0);
-    return words.length;
-  } catch (error) {
-    return 0;
-  }
-}
+export type { BlockResult };
 
 /**
  * Calculate act blocks for timeline
@@ -63,6 +67,10 @@ export function calculateActBlocks(
   readingSpeedWpm?: number,
 ): BlockResult[] {
   if (!timelineData?.acts) return [];
+
+  const filmActSpans = !isBookProject
+    ? resolveFilmActGlobalSpans(timelineData.acts, duration)
+    : null;
 
   return timelineData.acts.map((act, actIndex) => {
     if (isBookProject && readingSpeedWpm) {
@@ -119,23 +127,10 @@ export function calculateActBlocks(
         visible: endSec >= viewStartSec && startSec <= viewEndSec,
       };
     } else {
-      // 🎬 FILM: Use manual trim pct if present; otherwise equal distribution.
-      const totalActs = timelineData.acts?.length || 1;
-      const actDurationFallback = duration / totalActs;
-
-      const meta = (act as any).metadata ?? {};
-      const pctFrom =
-        typeof meta?.pct_from === "number" ? meta.pct_from : undefined;
-      const pctTo = typeof meta?.pct_to === "number" ? meta.pct_to : undefined;
-
-      const startSec =
-        pctFrom !== undefined
-          ? (pctFrom / 100) * duration
-          : actIndex * actDurationFallback;
-      const endSec =
-        pctTo !== undefined
-          ? (pctTo / 100) * duration
-          : (actIndex + 1) * actDurationFallback;
+      // 🎬 FILM: resolved global spans (de-overlap corrupt pct metadata).
+      const span = filmActSpans?.get(act.id);
+      const startSec = span?.startSec ?? 0;
+      const endSec = span?.endSec ?? duration;
 
       const x = (startSec - viewStartSec) * pxPerSec;
       const width = (endSec - startSec) * pxPerSec;
@@ -224,30 +219,20 @@ export function calculateSequenceBlocks(
       }
     });
   } else {
-    // 🎬 FILM: Use manual trim pct if present; otherwise equal distribution.
-    (timelineData.acts || []).forEach((act, actIndex) => {
+    // 🎬 FILM: resolved act shells + seq pct (matches calculateActBlocks).
+    const acts = timelineData.acts || [];
+    const actShells = filmActShellSecById(acts, duration);
+    const totalActs = acts.length || 1;
+    const actDurationFallback = duration / totalActs;
+
+    acts.forEach((act, actIndex) => {
       const sequences = (timelineData.sequences || []).filter(
         (s) => s.actId === act.id,
       );
 
-      const totalActs = timelineData.acts?.length || 1;
-      const actDurationFallback = duration / totalActs;
-      const actMeta = (act as any).metadata ?? {};
-      const actPctFrom =
-        typeof actMeta?.pct_from === "number" ? actMeta.pct_from : undefined;
-      const actPctTo =
-        typeof actMeta?.pct_to === "number" ? actMeta.pct_to : undefined;
-
-      const actStartSec =
-        actPctFrom !== undefined
-          ? (actPctFrom / 100) * duration
-          : actIndex * actDurationFallback;
-      const actEndSec =
-        actPctTo !== undefined
-          ? (actPctTo / 100) * duration
-          : (actIndex + 1) * actDurationFallback;
-
-      const actDurSec = Math.max(0, actEndSec - actStartSec);
+      const shell = actShells.get(act.id);
+      const actStartSec = shell?.startSec ?? actIndex * actDurationFallback;
+      const actDurSec = shell?.durSec ?? actDurationFallback;
       const sequenceDurationFallback =
         sequences.length > 0 ? actDurSec / sequences.length : actDurSec;
 
@@ -362,30 +347,19 @@ export function calculateSceneBlocks(
       }
     });
   } else {
-    // 🎬 FILM: Use manual trim pct if present; otherwise equal distribution.
-    (timelineData.acts || []).forEach((act, actIndex) => {
+    const acts = timelineData.acts || [];
+    const actShells = filmActShellSecById(acts, duration);
+    const totalActs = acts.length || 1;
+    const actDurationFallback = duration / totalActs;
+
+    acts.forEach((act, actIndex) => {
       const sequences = (timelineData.sequences || []).filter(
         (s) => s.actId === act.id,
       );
 
-      const totalActs = timelineData.acts?.length || 1;
-      const actDurationFallback = duration / totalActs;
-      const actMeta = (act as any).metadata ?? {};
-      const actPctFrom =
-        typeof actMeta?.pct_from === "number" ? actMeta.pct_from : undefined;
-      const actPctTo =
-        typeof actMeta?.pct_to === "number" ? actMeta.pct_to : undefined;
-
-      const actStartSec =
-        actPctFrom !== undefined
-          ? (actPctFrom / 100) * duration
-          : actIndex * actDurationFallback;
-      const actEndSec =
-        actPctTo !== undefined
-          ? (actPctTo / 100) * duration
-          : (actIndex + 1) * actDurationFallback;
-
-      const actDurSec = Math.max(0, actEndSec - actStartSec);
+      const shell = actShells.get(act.id);
+      const actStartSec = shell?.startSec ?? actIndex * actDurationFallback;
+      const actDurSec = shell?.durSec ?? actDurationFallback;
       const sequenceDurationFallback =
         sequences.length > 0 ? actDurSec / sequences.length : actDurSec;
 

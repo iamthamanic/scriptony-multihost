@@ -6,7 +6,8 @@
 const https = require("https");
 const http = require("http");
 
-const APPWRITE_ENDPOINT = process.env.APPWRITE_ENDPOINT || "http://localhost/v1";
+const APPWRITE_ENDPOINT =
+  process.env.APPWRITE_ENDPOINT || "http://localhost/v1";
 const APPWRITE_PROJECT_ID = process.env.APPWRITE_PROJECT_ID || "";
 const APPWRITE_API_KEY = process.env.APPWRITE_API_KEY || "";
 
@@ -20,7 +21,7 @@ function makeRequest(method, path, data = null) {
     const isHttps = APPWRITE_ENDPOINT.startsWith("https");
     const client = isHttps ? https : http;
     const url = new URL(APPWRITE_ENDPOINT + path);
-    
+
     const options = {
       hostname: url.hostname,
       port: url.port || (isHttps ? 443 : 80),
@@ -66,7 +67,13 @@ async function main() {
     logging: true,
     entrypoint: "index.js",
     commands: "npm install",
-    scopes: ["collections.read", "collections.write", "documents.read", "documents.write", "files.read"],
+    scopes: [
+      "collections.read",
+      "collections.write",
+      "documents.read",
+      "documents.write",
+      "files.read",
+    ],
   });
 
   if (result.status >= 400) {

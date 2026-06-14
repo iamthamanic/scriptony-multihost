@@ -60,14 +60,12 @@ export function AudioClipLaneContent({
           key={clip.id}
           item={clip}
           pxPerSec={pxPerSec}
-          
+          viewStartSec={viewStartSec}
           onTrimEnd={onTrimEnd}
           isEditable={!(laneState.getLaneState(laneIndex)?.locked ?? false)}
           onGenerateTts={() => onGenerateTts(clip)}
           allClips={allClips}
           onLaneChange={onLaneChange}
-          
-          
         />
       ))}
     </div>

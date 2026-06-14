@@ -26,6 +26,7 @@ import {
 import { fxSlotsFromMetadata, getFxSlotsFromLaneState } from "../lib/fx-chain";
 import { updateAudioTrack } from "@/lib/api-adapter/audio-story-adapter";
 import type { AudioClip } from "../lib/types";
+import { isAudioProjectType } from "../lib/project-type-audio";
 
 export function groupClipsByLane(
   clips: AudioClip[],
@@ -57,7 +58,7 @@ export function useProjectClipLanes(
   options?: UseProjectClipLanesOptions,
 ) {
   const enabled = options?.enabled ?? true;
-  const isAudioProject = (projectType ?? "").toLowerCase() === "audio";
+  const isAudioProject = isAudioProjectType(projectType);
   const queryEnabled = enabled && isAudioProject && !!projectId;
 
   const { data, isLoading } = useAudioTimeline(

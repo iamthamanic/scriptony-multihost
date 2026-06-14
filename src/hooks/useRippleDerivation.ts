@@ -33,7 +33,11 @@ export interface RippleAct {
 }
 
 export interface TimelineData {
-  scenes: Array<{ id: string; orderIndex?: number; sequenceId?: string | null }>;
+  scenes: Array<{
+    id: string;
+    orderIndex?: number;
+    sequenceId?: string | null;
+  }>;
   sequences: Array<{ id: string; orderIndex?: number; actId?: string | null }>;
   acts: Array<{ id: string; orderIndex?: number }>;
 }

@@ -17,9 +17,7 @@ export async function localGetClipsByScene(
   sceneId: string,
 ): Promise<AudioClip[]> {
   const backend = requireLocalBackend();
-  const projectId = backend.localProject.projectId;
-  const clips = await backend.audio.getClips(projectId);
-  return clips.filter((c) => c.sceneId === sceneId);
+  return backend.audio.getClipsByScene(sceneId);
 }
 
 export async function localCreateClip(
