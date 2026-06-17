@@ -19,6 +19,8 @@ interface TimelineClipImageBodyProps {
   placeholderClassName?: string;
   thumbBorderClassName?: string;
   onPlaceholderClick?: () => void;
+  /** When true, image/thumbnail only (title rendered by overlay). */
+  hideLabel?: boolean;
 }
 
 export function TimelineClipImageBody({
@@ -30,6 +32,7 @@ export function TimelineClipImageBody({
   placeholderClassName = "border border-dashed border-muted-foreground/45 bg-muted/40",
   thumbBorderClassName = "border border-muted-foreground/40 bg-muted",
   onPlaceholderClick,
+  hideLabel = false,
 }: TimelineClipImageBodyProps) {
   const layout = getTimelineClipImageLayout(clipWidthPx, imgUrl);
   const resolvedUrl = useResolvedProjectAssetUrl(imgUrl);
@@ -50,14 +53,16 @@ export function TimelineClipImageBody({
             className="absolute inset-0 h-full w-full object-cover -z-10"
           />
         ) : null}
-        <span
-          className={cn(
-            "text-[10px] font-medium truncate pointer-events-auto",
-            fullBleedTextClassName,
-          )}
-        >
-          {displayText}
-        </span>
+        {!hideLabel ? (
+          <span
+            className={cn(
+              "text-[10px] font-medium truncate pointer-events-auto",
+              fullBleedTextClassName,
+            )}
+          >
+            {displayText}
+          </span>
+        ) : null}
       </div>
     );
   }
@@ -104,14 +109,16 @@ export function TimelineClipImageBody({
           <Camera className="size-3 opacity-45" />
         </button>
       )}
-      <span
-        className={cn(
-          "text-[10px] font-medium truncate min-w-0 pointer-events-auto",
-          inlineTextClassName,
-        )}
-      >
-        {displayText}
-      </span>
+      {!hideLabel ? (
+        <span
+          className={cn(
+            "text-[10px] font-medium truncate min-w-0 pointer-events-auto",
+            inlineTextClassName,
+          )}
+        >
+          {displayText}
+        </span>
+      ) : null}
     </div>
   );
 }
