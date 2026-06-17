@@ -39,7 +39,7 @@ import * as TimelineAPI from "../../../lib/api/timeline-api";
 import * as ShotsAPI from "../../../lib/api/shots-api";
 import { useAuth } from "../../../hooks/useAuth";
 import type { TimelineData } from "../../../lib/timeline-data";
-import type { BookTimelineData } from "@/lib/book-timeline-data";
+import type { BookTimelineData } from "../../book/BookDropdownView";
 import type {
   Character,
   Clip,
@@ -149,7 +149,6 @@ import {
   SCENE_AUDIO_LINK_CHIP_CLASS,
 } from "@/lib/scene-audio-lane-link";
 import { TimelineStructureAudioLinkChip } from "../../timeline/TimelineStructureAudioLinkChip";
-import { AudioLaneDeleteAlertDialog } from "../../audio/AudioLaneDeleteAlertDialog";
 import { getTimelineStrategy, type AddNodeKind } from "./strategies";
 import { TRIM_GRAB_PRESET_BASE_HEX } from "../../../lib/trim-handle-colors";
 import {
@@ -6271,18 +6270,6 @@ export function StructureTimelineEditor({
           isSubmitting={structureImageDrop.dropSubmitting}
           onConfirm={() => void structureImageDrop.confirmPendingDrop()}
           onCancel={structureImageDrop.cancelPendingDrop}
-        />
-      ) : null}
-
-      {showAudioDawLanes ? (
-        <AudioLaneDeleteAlertDialog
-          open={timelineAudio.laneDelete.pending !== null}
-          pending={timelineAudio.laneDelete.pending}
-          loading={timelineAudio.laneDelete.isDeletingLane}
-          onOpenChange={(open) => {
-            if (!open) timelineAudio.laneDelete.cancelDelete();
-          }}
-          onConfirm={() => void timelineAudio.laneDelete.confirmDelete()}
         />
       ) : null}
     </div>

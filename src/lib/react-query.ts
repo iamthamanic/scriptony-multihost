@@ -95,6 +95,8 @@ export const queryKeys = {
     charactersByProject: (projectId: string) =>
       ["characters", "project", projectId] as const,
     localVoices: () => ["audio", "localVoices"] as const,
+    sceneAudioLaneLinks: (projectId: string) =>
+      ["audio", "sceneAudioLaneLinks", projectId] as const,
   },
 
   // Playbook

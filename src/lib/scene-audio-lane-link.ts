@@ -5,7 +5,7 @@
 
 import { getLaneType } from "./audio-lane";
 import { isCharacterDialogLane } from "./character-lane-map";
-import { V2_LANE_RANGES } from "./lane-index-migration";
+import { LANE_SCHEMA } from "./types";
 import type { Character } from "./types";
 
 export type SceneAudioLaneLinkKind = "dialog" | "sfx";
@@ -30,13 +30,13 @@ export function formatSceneAudioLinkBadge(
   laneIndex: number,
   characterName?: string,
 ): string {
+  if (getLaneType(laneIndex) === "sfx") {
+    const num = laneIndex - LANE_SCHEMA.sfx.base + 1;
+    return `Audio SFX ${num} linked`;
+  }
   if (isCharacterDialogLane(laneIndex)) {
     const name = characterName?.trim() || "Dialog";
     return `Audio Dialog ${name} linked`;
-  }
-  if (getLaneType(laneIndex) === "sfx") {
-    const num = laneIndex - V2_LANE_RANGES.sfx.base + 1;
-    return `Audio SFX ${num} linked`;
   }
   return `Audio ${laneIndex} linked`;
 }
@@ -46,13 +46,13 @@ export function formatSceneAudioLinkShort(
   laneIndex: number,
   characterName?: string,
 ): string {
+  if (getLaneType(laneIndex) === "sfx") {
+    const num = laneIndex - LANE_SCHEMA.sfx.base + 1;
+    return `SFX ${num}`;
+  }
   if (isCharacterDialogLane(laneIndex)) {
     const name = characterName?.trim() || "Dialog";
     return `Dialog ${name}`;
-  }
-  if (getLaneType(laneIndex) === "sfx") {
-    const num = laneIndex - V2_LANE_RANGES.sfx.base + 1;
-    return `SFX ${num}`;
   }
   return `Audio ${laneIndex}`;
 }
@@ -154,6 +154,15 @@ export function linkableLaneOptions(
 ): LinkableAudioLaneOption[] {
   const options: LinkableAudioLaneOption[] = [];
   for (const laneIndex of sortedLaneIndices) {
+    if (getLaneType(laneIndex) === "sfx") {
+      const num = laneIndex - LANE_SCHEMA.sfx.base + 1;
+      options.push({
+        laneIndex,
+        kind: "sfx",
+        label: `Audio SFX ${num}`,
+      });
+      continue;
+    }
     if (isCharacterDialogLane(laneIndex)) {
       const character = getCharacterForLane(laneIndex);
       if (!character) continue;
@@ -162,15 +171,6 @@ export function linkableLaneOptions(
         kind: "dialog",
         characterId: character.id,
         label: `Audio Dialog ${character.name}`,
-      });
-      continue;
-    }
-    if (getLaneType(laneIndex) === "sfx") {
-      const num = laneIndex - V2_LANE_RANGES.sfx.base + 1;
-      options.push({
-        laneIndex,
-        kind: "sfx",
-        label: `Audio SFX ${num}`,
       });
     }
   }

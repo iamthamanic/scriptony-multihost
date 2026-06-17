@@ -12,7 +12,7 @@ import {
   showSceneAudioLinkClipLabel,
   SCENE_AUDIO_LINK_CLIP_LABEL_MIN_PX,
 } from "../scene-audio-lane-link";
-import { V2_LANE_RANGES } from "../lane-index-migration";
+import { LANE_SCHEMA } from "../types";
 
 import type { Character } from "../types";
 
@@ -22,25 +22,23 @@ describe("scene-audio-lane-link", () => {
       "Audio Dialog Max Weber linked",
     );
     expect(formatSceneAudioLinkShort(0, "Max Weber")).toBe("Dialog Max Weber");
-    const sfxLane = V2_LANE_RANGES.sfx.base;
+    const sfxLane = LANE_SCHEMA.sfx.base;
     expect(formatSceneAudioLinkBadge(sfxLane)).toBe("Audio SFX 1 linked");
     expect(formatSceneAudioLinkShort(sfxLane)).toBe("SFX 1");
     expect(getSceneAudioLinkLabel(0, "Anna").short).toBe("Dialog Anna");
   });
 
   it("lists only dialog lanes with characters and sfx lanes", () => {
-    const options = linkableLaneOptions(
-      [0, V2_LANE_RANGES.sfx.base, 1],
-      (lane) =>
-        lane === 0
-          ? ({
-              id: "c1",
-              name: "Anna",
-              projectId: "p1",
-              createdAt: "",
-              updatedAt: "",
-            } satisfies Character)
-          : undefined,
+    const options = linkableLaneOptions([0, LANE_SCHEMA.sfx.base, 1], (lane) =>
+      lane === 0
+        ? ({
+            id: "c1",
+            name: "Anna",
+            projectId: "p1",
+            createdAt: "",
+            updatedAt: "",
+          } satisfies Character)
+        : undefined,
     );
     expect(options).toHaveLength(2);
     expect(options[0]?.kind).toBe("dialog");

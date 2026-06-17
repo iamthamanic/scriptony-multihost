@@ -52,7 +52,7 @@ export interface CreateTimelineAudioParams {
 /** Create track (+ clip when clip system active) on the given lane. */
 export async function createTimelineAudioOnLane(
   params: CreateTimelineAudioParams,
-): Promise<{ trackId: string; clipId?: string }> {
+): Promise<{ trackId: string; clipId?: string; clip?: AudioClip }> {
   const {
     projectId,
     projectType,
@@ -108,7 +108,7 @@ export async function createTimelineAudioOnLane(
     );
   }
 
-  return { trackId: track.id, clipId: clip?.id };
+  return { trackId: track.id, clipId: clip?.id, clip: clip ?? undefined };
 }
 
 /** Attach uploaded/recorded blob URL to clip (local preview path). */
