@@ -27,6 +27,15 @@ export function SceneTrackClipBody({
   const showMinimal = !isAudioProject && scene.width < 60;
 
   if (isAudioProject) {
+    if (!sceneImgUrl) {
+      return (
+        <div
+          className="pointer-events-none h-full min-w-0 relative z-0"
+          aria-hidden
+        />
+      );
+    }
+
     return (
       <TimelineClipImageBody
         imgUrl={sceneImgUrl}
@@ -37,6 +46,7 @@ export function SceneTrackClipBody({
         placeholderClassName="border border-dashed border-pink-400/45 bg-pink-100/40 dark:bg-pink-950/40"
         thumbBorderClassName="border border-pink-700/40 bg-muted"
         onPlaceholderClick={() => void onPickAndUploadSceneImage(scene.id)}
+        hideLabel
       />
     );
   }

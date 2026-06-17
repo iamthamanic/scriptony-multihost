@@ -14,6 +14,7 @@ import {
   type TimelineSceneTiming,
 } from "../lib/timeline-add-audio";
 import { persistClipAudioFile } from "../lib/local-project-audio";
+import { addClipToAudioTimelineCache } from "../lib/audio-timeline-cache";
 import { queryKeys } from "../lib/react-query";
 import { useTtsGeneration } from "./useTtsGeneration";
 import { useAudioRecording } from "./useAudioRecording";
@@ -21,7 +22,33 @@ import * as ClipAPI from "../lib/api/audio-clip-api";
 import { getAuthToken } from "../lib/auth/getAuthToken";
 import { laneIndexToTrackType, findFreeLaneForType } from "../lib/audio-lane";
 import { isAudioClipSystemEnabled } from "../lib/feature-flags";
+import {
+  getLinkForLane,
+  resolveLinkedAudioStartSec,
+  type SceneAudioLaneLinkMap,
+  type StructureTimeBlock,
+} from "../lib/scene-audio-lane-link";
 import type { AudioClip } from "../lib/types";
+
+export interface LinkedLaneAudioContext {
+  links: SceneAudioLaneLinkMap;
+  getBlockForNode: (nodeId: string) => StructureTimeBlock | undefined;
+  resolveSceneIdForNode: (nodeId: string) => string | undefined;
+  seekPlayhead: (sec: number) => void;
+  onClipCommitted?: (clip: {
+    sceneId: string;
+    startSec: number;
+    endSec: number;
+    linkedNodeId: string;
+  }) => Promise<void>;
+}
+
+export interface LaneAudioPlacement {
+  sceneId: string;
+  startSec: number;
+  blockEndSec: number;
+  linkedNodeId: string;
+}
 
 export interface UseTimelineAddAudioOptions {
   projectId: string | undefined;
@@ -31,6 +58,7 @@ export interface UseTimelineAddAudioOptions {
   currentTimeSec?: number;
   getCharacterIdForLane?: (laneIndex: number) => string | undefined;
   allClips?: AudioClip[];
+  linkedLaneAudio?: LinkedLaneAudioContext;
 }
 
 export function useTimelineAddAudio({
@@ -41,6 +69,7 @@ export function useTimelineAddAudio({
   currentTimeSec = 0,
   getCharacterIdForLane,
   allClips = [],
+  linkedLaneAudio,
 }: UseTimelineAddAudioOptions) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -50,6 +79,20 @@ export function useTimelineAddAudio({
   const [isBusy, setIsBusy] = useState(false);
 
   const { startTts } = useTtsGeneration({ sceneId: "" });
+
+  const applyClipToCache = useCallback(
+    (clip: AudioClip | undefined, sceneId: string) => {
+      if (!projectId || !clip?.id) return;
+      addClipToAudioTimelineCache(queryClient, projectId, clip);
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.timeline.audioByProject(projectId),
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.audio.clipsByScene(sceneId),
+      });
+    },
+    [projectId, queryClient],
+  );
 
   const invalidateProject = useCallback(
     (sceneId: string) => {
@@ -64,33 +107,91 @@ export function useTimelineAddAudio({
     [queryClient, projectId],
   );
 
-  const resolveScene = useCallback(() => {
-    const sceneId = resolveSceneIdForTimeline(
-      scenes,
-      currentTimeSec,
-      sceneTiming,
-    );
-    if (!sceneId) {
-      toast.error("Keine Szene vorhanden — zuerst Struktur anlegen.");
-      return undefined;
-    }
-    return sceneId;
-  }, [scenes, currentTimeSec, sceneTiming]);
+  const resolveLanePlacement = useCallback(
+    (
+      laneIndex: number,
+      requestedStartSec: number,
+    ): LaneAudioPlacement | null => {
+      const linked = linkedLaneAudio
+        ? getLinkForLane(linkedLaneAudio.links, laneIndex)
+        : undefined;
+      if (linked && linkedLaneAudio) {
+        const block = linkedLaneAudio.getBlockForNode(linked.nodeId);
+        const sceneId = linkedLaneAudio.resolveSceneIdForNode(linked.nodeId);
+        if (!block || !sceneId) {
+          toast.error("Verlinkte Szene nicht gefunden.");
+          return null;
+        }
+        const startSec = resolveLinkedAudioStartSec({
+          currentTimeSec: requestedStartSec,
+          block,
+          seekPlayhead: linkedLaneAudio.seekPlayhead,
+        });
+        return {
+          sceneId,
+          startSec,
+          blockEndSec: block.endSec,
+          linkedNodeId: linked.nodeId,
+        };
+      }
+      const sceneId = resolveSceneIdForTimeline(
+        scenes,
+        requestedStartSec,
+        sceneTiming,
+      );
+      if (!sceneId) {
+        toast.error("Keine Szene vorhanden — zuerst Struktur anlegen.");
+        return null;
+      }
+      return {
+        sceneId,
+        startSec: requestedStartSec,
+        blockEndSec: Number.POSITIVE_INFINITY,
+        linkedNodeId: sceneId,
+      };
+    },
+    [linkedLaneAudio, scenes, sceneTiming],
+  );
+
+  const finalizeClipCommit = useCallback(
+    async (
+      clip: AudioClip | undefined,
+      placement: LaneAudioPlacement,
+      endSecOverride?: number,
+    ) => {
+      if (!clip?.id) return;
+      const endSec = endSecOverride ?? clip.endSec;
+      applyClipToCache({ ...clip, endSec }, placement.sceneId);
+      if (
+        linkedLaneAudio?.onClipCommitted &&
+        Number.isFinite(placement.blockEndSec) &&
+        endSec > placement.blockEndSec + 1e-4
+      ) {
+        await linkedLaneAudio.onClipCommitted({
+          sceneId: placement.sceneId,
+          startSec: placement.startSec,
+          endSec,
+          linkedNodeId: placement.linkedNodeId,
+        });
+      }
+    },
+    [applyClipToCache, linkedLaneAudio],
+  );
 
   const addFromFile = useCallback(
     async (file: File, laneIndex: number, startSec: number) => {
       if (!projectId) return;
-      const sceneId = resolveScene();
-      if (!sceneId) return;
+      const placement = resolveLanePlacement(laneIndex, startSec);
+      if (!placement) return;
 
       setIsBusy(true);
       try {
-        const { clipId } = await createTimelineAudioOnLane({
+        const { clipId, clip } = await createTimelineAudioOnLane({
           projectId,
           projectType,
-          sceneId,
+          sceneId: placement.sceneId,
           laneIndex,
-          startSec,
+          startSec: placement.startSec,
           content: file.name,
           trackType: laneIndexToTrackType(laneIndex),
           characterId: getCharacterIdForLane?.(laneIndex),
@@ -98,22 +199,28 @@ export function useTimelineAddAudio({
 
         if (!clipId) {
           toast.success("Track angelegt");
-          invalidateProject(sceneId);
+          if (clip) await finalizeClipCommit(clip, placement);
+          else invalidateProject(placement.sceneId);
           return;
         }
 
         const { storagePath, peaks, durationSec } =
           await persistClipAudioFile(file);
         await attachAudioBlobToClip(clipId, storagePath, peaks);
+        const endSec =
+          placement.startSec +
+          (durationSec > 0
+            ? durationSec
+            : (clip?.endSec ?? 0) - placement.startSec);
         if (durationSec > 0) {
           const token = await getAuthToken();
-          await ClipAPI.updateClip(
-            clipId,
-            { endSec: startSec + durationSec },
-            token ?? "",
-          );
+          await ClipAPI.updateClip(clipId, { endSec }, token ?? "");
         }
-        invalidateProject(sceneId);
+        await finalizeClipCommit(
+          clip ? { ...clip, endSec } : undefined,
+          placement,
+          endSec,
+        );
         toast.success("Audio hochgeladen");
       } catch (err) {
         toast.error(
@@ -126,8 +233,9 @@ export function useTimelineAddAudio({
     [
       projectId,
       projectType,
-      resolveScene,
+      resolveLanePlacement,
       invalidateProject,
+      finalizeClipCommit,
       getCharacterIdForLane,
     ],
   );
@@ -135,8 +243,8 @@ export function useTimelineAddAudio({
   const addGenerated = useCallback(
     async (laneIndex: number, startSec: number) => {
       if (!projectId) return;
-      const sceneId = resolveScene();
-      if (!sceneId) return;
+      const placement = resolveLanePlacement(laneIndex, startSec);
+      if (!placement) return;
 
       const trackType = laneIndexToTrackType(laneIndex);
       const defaultText =
@@ -157,17 +265,17 @@ export function useTimelineAddAudio({
 
       setIsBusy(true);
       try {
-        const { trackId, clipId } = await createTimelineAudioOnLane({
+        const { trackId, clipId, clip } = await createTimelineAudioOnLane({
           projectId,
           projectType,
-          sceneId,
+          sceneId: placement.sceneId,
           laneIndex,
-          startSec,
+          startSec: placement.startSec,
           content: text.trim(),
           trackType,
           characterId: getCharacterIdForLane?.(laneIndex),
         });
-        invalidateProject(sceneId);
+        await finalizeClipCommit(clip, placement);
         toast.success("Audio-Clip angelegt");
 
         if (
@@ -182,7 +290,7 @@ export function useTimelineAddAudio({
               text: text.trim(),
               voiceId: "",
             },
-            sceneId,
+            placement.sceneId,
           );
           toast.info(
             "TTS gestartet — Voice in den Einstellungen zuweisen falls nötig.",
@@ -199,8 +307,8 @@ export function useTimelineAddAudio({
     [
       projectId,
       projectType,
-      resolveScene,
-      invalidateProject,
+      resolveLanePlacement,
+      finalizeClipCommit,
       startTts,
       getCharacterIdForLane,
     ],
@@ -230,27 +338,26 @@ export function useTimelineAddAudio({
 
   const addSfxLane = useCallback(async () => {
     if (!projectId) return;
-    const sceneId = resolveScene();
-    if (!sceneId) return;
-
     const laneIndex = findFreeLaneForType(allClips, "sfx");
     if (laneIndex === undefined) {
       toast.error("Keine freie SFX-Spur verfügbar.");
       return;
     }
+    const placement = resolveLanePlacement(laneIndex, currentTimeSec);
+    if (!placement) return;
 
     setIsBusy(true);
     try {
-      await createTimelineAudioOnLane({
+      const { clip } = await createTimelineAudioOnLane({
         projectId,
         projectType,
-        sceneId,
+        sceneId: placement.sceneId,
         laneIndex,
-        startSec: currentTimeSec,
+        startSec: placement.startSec,
         content: "SFX",
         trackType: "sfx",
       });
-      invalidateProject(sceneId);
+      await finalizeClipCommit(clip, placement);
       toast.success(`SFX-Spur angelegt`);
     } catch (err) {
       toast.error(
@@ -264,8 +371,8 @@ export function useTimelineAddAudio({
   }, [
     projectId,
     projectType,
-    resolveScene,
-    invalidateProject,
+    resolveLanePlacement,
+    finalizeClipCommit,
     allClips,
     currentTimeSec,
   ]);

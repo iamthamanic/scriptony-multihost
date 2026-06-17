@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import "./styles/scene-audio-link-chip.css";
 import "./styles/safe-area.css";
 import { installShellAuthListeners } from "./lib/shell/install-shell-auth-listeners";
 import { client } from "./lib/appwrite/appwrite";

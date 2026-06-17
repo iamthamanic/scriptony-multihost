@@ -24,6 +24,7 @@ import { getTrackBlockText } from "./track-block-text";
 import { SceneTrackClipBody } from "./SceneTrackClipBody";
 import type { SceneTrackProps } from "./track-types";
 import { createTimelineImageDropBindings } from "../../../../lib/timeline-image-drop-bindings";
+import { TimelineStructureClipTopBar } from "../../../timeline/TimelineStructureClipTopBar";
 
 const SCENE_TRIM_GRAB_STYLES = getTrimGrabHandleStyles({
   preset: "scene",
@@ -49,6 +50,9 @@ export function SceneTrack({
   onSceneImageFileDrop,
   onFilmSceneClipImageDrop,
   emptyLaneDropBindings,
+  getAudioLinkLabel,
+  onAudioLinkClick,
+  onOpenSceneEditDirect,
 }: SceneTrackProps) {
   return (
     <div
@@ -65,6 +69,8 @@ export function SceneTrack({
           "scene",
           index,
         );
+        const sceneTitle =
+          scene.title?.trim() || displayText || `Scene ${index + 1}`;
         const sceneImgUrl = isAudioProject
           ? timelineClipPreviewUrl(
               scene as Parameters<typeof timelineClipPreviewUrl>[0],
@@ -86,6 +92,8 @@ export function SceneTrack({
                   onFilmSceneClipImageDrop(scene.id, file, event.clientX),
                 )
               : undefined;
+        const audioLink = getAudioLinkLabel?.(scene.id);
+        const openEdit = onOpenSceneEditDirect ?? onOpenSceneEdit;
 
         return (
           <div
@@ -136,10 +144,6 @@ export function SceneTrack({
                 clearTimeout(sceneTitleClickTimerRef.current);
                 sceneTitleClickTimerRef.current = null;
               }
-              console.log(
-                "[VideoEditorTimeline] 🚀 Opening Content Modal for scene:",
-                scene.id,
-              );
               onOpenSceneContentModal(scene);
             }}
             onPointerDown={(e) => {
@@ -147,6 +151,26 @@ export function SceneTrack({
               onStructureMoveMouseDown("scene", scene.id, e);
             }}
           >
+            {isAudioProject ? (
+              <TimelineStructureClipTopBar
+                title={sceneTitle}
+                variant="scene"
+                clipWidthPx={scene.width}
+                hasSceneImage={Boolean(sceneImgUrl)}
+                imageBackdrop={isAudioProject}
+                audioLink={audioLink}
+                showPhotoPlaceholder={!sceneImgUrl && scene.width >= 26}
+                onPhotoPlaceholderClick={() =>
+                  void onPickAndUploadSceneImage(scene.id)
+                }
+                onEditTitle={() => openEdit(scene.id)}
+                onEditAudioLink={
+                  audioLink && onAudioLinkClick
+                    ? () => onAudioLinkClick(scene.id)
+                    : undefined
+                }
+              />
+            ) : null}
             <SceneTrackClipBody
               scene={scene}
               displayText={displayText}
@@ -177,7 +201,6 @@ export function SceneTrack({
           </div>
         );
       })}
-
     </div>
   );
 }

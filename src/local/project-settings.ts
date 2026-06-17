@@ -27,6 +27,17 @@ export interface LocalProjectSettings {
   cover_image_url?: string;
   /** Character IDs in mixer column order (dialog lanes 0..n-1). */
   dialog_lane_order?: string[];
+  /** Scene or shot id → linked audio DAW lane (dialog or SFX). */
+  scene_audio_lane_links?: Record<
+    string,
+    {
+      laneIndex: number;
+      kind: "dialog" | "sfx";
+      characterId?: string;
+    }
+  >;
+  /** Default project style profile (not exclusive). */
+  activeStyleProfileId?: string | null;
 }
 
 export function parseProjectTypeFromPayload(
@@ -111,6 +122,18 @@ export function apiPayloadToLocalSettings(
   if (typeof project.cover_image_url === "string") {
     settings.cover_image_url = project.cover_image_url;
   }
+  if (project.activeStyleProfileId !== undefined) {
+    settings.activeStyleProfileId =
+      project.activeStyleProfileId === null
+        ? null
+        : String(project.activeStyleProfileId);
+  }
+  if (project.active_style_profile_id !== undefined) {
+    settings.activeStyleProfileId =
+      project.active_style_profile_id === null
+        ? null
+        : String(project.active_style_profile_id);
+  }
 
   return settings;
 }
@@ -137,6 +160,8 @@ export function localSettingsToLegacyFields(
     inspirations: settings.inspirations,
     cover_image_url: settings.cover_image_url,
     dialog_lane_order: settings.dialog_lane_order,
+    activeStyleProfileId: settings.activeStyleProfileId,
+    active_style_profile_id: settings.activeStyleProfileId,
   };
 }
 

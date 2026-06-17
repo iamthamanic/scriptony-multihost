@@ -5,7 +5,8 @@
  * Used instead of a 3-dot dropdown on narrow lane clips (click conflicts in VET).
  */
 
-import { Copy, Info, Trash2 } from "lucide-react";
+import type { ReactNode } from "react";
+import { Copy, Info, Link2, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { SceneImageUploadField } from "./SceneImageUploadField";
 import {
@@ -43,6 +44,12 @@ export interface TimelineNodeEditDialogProps {
   sceneImageUrl?: string;
   sceneImageUploading?: boolean;
   onSceneImageSelected?: (file: File) => void;
+  /** Scene/shot ↔ audio lane link block */
+  audioLaneLinkSection?: ReactNode;
+  showAudioLaneLinkButton?: boolean;
+  audioLaneLinkDisabled?: boolean;
+  audioLaneLinkDisabledHint?: string;
+  onLinkAudioLane?: () => void;
 }
 
 export function TimelineNodeEditDialog({
@@ -67,6 +74,11 @@ export function TimelineNodeEditDialog({
   sceneImageUrl,
   sceneImageUploading = false,
   onSceneImageSelected,
+  audioLaneLinkSection,
+  showAudioLaneLinkButton = false,
+  audioLaneLinkDisabled = false,
+  audioLaneLinkDisabledHint,
+  onLinkAudioLane,
 }: TimelineNodeEditDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -107,6 +119,7 @@ export function TimelineNodeEditDialog({
               label="Szenenbild"
             />
           ) : null}
+          {audioLaneLinkSection}
         </div>
         <DialogFooter className="flex-col gap-3 sm:flex-col sm:space-x-0">
           <div className="flex flex-wrap gap-2 w-full">
@@ -132,6 +145,22 @@ export function TimelineNodeEditDialog({
               >
                 <Copy className="size-3.5" />
                 Duplicate
+              </Button>
+            ) : null}
+            {showAudioLaneLinkButton && onLinkAudioLane ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="gap-1.5"
+                disabled={audioLaneLinkDisabled}
+                title={
+                  audioLaneLinkDisabled ? audioLaneLinkDisabledHint : undefined
+                }
+                onClick={onLinkAudioLane}
+              >
+                <Link2 className="size-3.5" />
+                Link
               </Button>
             ) : null}
             {showInfo && onInfo ? (
