@@ -16,6 +16,8 @@ import { getTimelineClipImageLayout } from "../../../../lib/timeline-clip-previe
 import { getTimelineTrackClipClasses } from "../../../../lib/timeline-track-tokens";
 import { TimelineClipImageBody } from "../../../timeline/TimelineClipImageBody";
 import { TimelineTrackAddButton } from "../../../timeline/TimelineTrackAddButton";
+import { TimelineStructureAudioLinkChip } from "../../../timeline/TimelineStructureAudioLinkChip";
+import { TimelineStructureClipTopBar } from "../../../timeline/TimelineStructureClipTopBar";
 import { getTrackBlockText } from "./track-block-text";
 import type { ShotTrackLabelProps, ShotTrackProps } from "./track-types";
 import { createTimelineImageDropBindings } from "../../../../lib/timeline-image-drop-bindings";
@@ -36,16 +38,27 @@ export function ShotTrackLabel({
   onToggleMagnet,
   onResizeStart,
   onAddShot,
+  sidebarAudioLink,
+  onSidebarAudioLinkClick,
 }: ShotTrackLabelProps) {
   return (
     <div
-      className="border-b border-border px-1 flex items-center justify-between gap-0.5 bg-card relative"
+      className="border-b border-border px-1.5 flex items-center justify-between gap-1 bg-card relative"
       style={{ height: `${trackHeightPx}px` }}
     >
-      <span className="text-[9px] text-foreground font-medium truncate min-w-0">
+      <span className="text-[9px] text-foreground font-medium truncate min-w-0 shrink">
         Shot
       </span>
-      <div className="flex items-center gap-0.5 shrink-0">
+      <div className="flex items-center gap-1 shrink-0 min-w-0">
+        {sidebarAudioLink && onSidebarAudioLinkClick ? (
+          <TimelineStructureAudioLinkChip
+            shortLabel={sidebarAudioLink.short}
+            fullLabel={sidebarAudioLink.full}
+            variant="shot"
+            size="sidebar"
+            onClick={() => onSidebarAudioLinkClick(sidebarAudioLink.nodeId)}
+          />
+        ) : null}
         <TimelineTrackAddButton
           onClick={onAddShot}
           title={`${shotAddLabel} hinzufügen`}
@@ -106,6 +119,9 @@ export function ShotTrack({
   shotPreviewUrl,
   onShotImageFileDrop,
   emptyLaneDropBindings,
+  getAudioLinkLabel,
+  onAudioLinkClick,
+  onOpenShotEditDirect,
 }: ShotTrackProps) {
   return (
     <div
@@ -122,6 +138,8 @@ export function ShotTrack({
           "shot",
           index,
         );
+        const shotTitle =
+          shot.label?.trim() || displayText || `Shot ${index + 1}`;
         const imgUrl = shotPreviewUrl(shot) ?? "";
         const shotImageLayout = getTimelineClipImageLayout(shot.width, imgUrl);
         const clipImageDrop = onShotImageFileDrop
@@ -129,6 +147,8 @@ export function ShotTrack({
               onShotImageFileDrop(shot.id, file),
             )
           : undefined;
+        const audioLink = getAudioLinkLabel?.(shot.id);
+        const openEdit = onOpenShotEditDirect ?? onOpenShotEdit;
 
         return (
           <div
@@ -171,6 +191,20 @@ export function ShotTrack({
               onOpenShotEdit(shot.id);
             }}
           >
+            <TimelineStructureClipTopBar
+              title={shotTitle}
+              variant="shot"
+              clipWidthPx={shot.width}
+              hasSceneImage={Boolean(imgUrl)}
+              imageBackdrop={Boolean(imgUrl)}
+              audioLink={audioLink}
+              onEditTitle={() => openEdit(shot.id)}
+              onEditAudioLink={
+                audioLink && onAudioLinkClick
+                  ? () => onAudioLinkClick(shot.id)
+                  : undefined
+              }
+            />
             <div
               className={SHOT_TRIM_GRAB_STYLES.handleLeftClassName}
               style={SHOT_TRIM_GRAB_STYLES.leftStyle}
@@ -197,11 +231,11 @@ export function ShotTrack({
               inlineTextClassName="text-yellow-900 dark:text-yellow-100"
               placeholderClassName="border border-dashed border-yellow-600/45 bg-yellow-100/40 dark:bg-yellow-950/40"
               thumbBorderClassName="border border-yellow-700/40 bg-muted"
+              hideLabel
             />
           </div>
         );
       })}
-
     </div>
   );
 }

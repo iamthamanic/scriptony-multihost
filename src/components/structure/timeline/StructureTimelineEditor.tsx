@@ -14,6 +14,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../../ui/dropdown-menu";
 import {
@@ -42,7 +43,6 @@ import type { BookTimelineData } from "../../book/BookDropdownView";
 import type {
   Character,
   Clip,
-  ShotAudio,
   Act,
   Sequence,
   Scene,
@@ -70,6 +70,11 @@ import { StructureTimelinePreviewPanel } from "./StructureTimelinePreviewPanel";
 import { StructureTimelineToolbar } from "./StructureTimelineToolbar";
 import { StructureTimelineRuler } from "./StructureTimelineRuler";
 import { StructureTimelinePlayheadOverlay } from "./StructureTimelinePlayheadOverlay";
+import { StructureTimelineFilmProductionTracks } from "./StructureTimelineFilmProductionTracks";
+import {
+  getPageMarkerInterval,
+  shotBlockPreviewUrl,
+} from "./structure-timeline-editor-helpers";
 import {
   ActTrack,
   BeatTrack,
@@ -132,6 +137,18 @@ import {
   StructureTimelineAudioLaneLabels,
   StructureTimelineAudioLaneScrollRows,
 } from "./tracks/StructureTimelineAudioLanes";
+import { SceneAudioLaneLinkSection } from "../../timeline/SceneAudioLaneLinkSection";
+import { useSceneAudioLaneLinks } from "../../../hooks/useSceneAudioLaneLinks";
+import type { LinkedLaneAudioContext } from "../../../hooks/useTimelineAddAudio";
+import { expandTimelineDataForLinkedNodeClip } from "../../../lib/expand-structure-for-audio-clip";
+import {
+  formatSceneAudioLinkBadge,
+  getLinkForNode,
+  getSceneAudioLinkLabel,
+  resolveSidebarStructureAudioLink,
+  SCENE_AUDIO_LINK_CHIP_CLASS,
+} from "@/lib/scene-audio-lane-link";
+import { TimelineStructureAudioLinkChip } from "../../timeline/TimelineStructureAudioLinkChip";
 import { getTimelineStrategy, type AddNodeKind } from "./strategies";
 import { TRIM_GRAB_PRESET_BASE_HEX } from "../../../lib/trim-handle-colors";
 import {
@@ -144,12 +161,8 @@ import { useTimelineTransport } from "../../../hooks/timeline/useTimelineTranspo
 import { resolveTimelineTransportGuard } from "../../../hooks/timeline/resolveTimelineTransportGuard";
 import { useTimelinePlayback } from "../../../hooks/timeline/useTimelinePlayback";
 import { useTimelineZoom } from "../../../hooks/timeline/useTimelineZoom";
-import { MIN_LABEL_SPACING_PX } from "@/lib/timeline-ruler-scale";
 import { useTimelineEditorData } from "../../../hooks/timeline/useTimelineEditorData";
-import {
-  projectStructureBlocksFromTree,
-  filmStructureClipStyle,
-} from "../../../lib/timeline-tree/projectBlocks";
+import { projectStructureBlocksFromTree } from "../../../lib/timeline-tree/projectBlocks";
 import {
   commitBeatTrimPositions,
   packBeatsGapless,
@@ -282,85 +295,6 @@ export interface StructureTimelineEditorProps {
 
 type EditableTitleKind = AddNodeKind | "beat";
 
-// Page steps for page markers (in pages)
-const PAGE_STEPS = [1, 2, 5, 10, 20, 50, 100, 200, 500];
-
-function shotBlockPreviewUrl(
-  shot: Parameters<typeof timelineClipPreviewUrl>[0],
-) {
-  return timelineClipPreviewUrl(shot);
-}
-
-/** Playback length of one clip (trim region or file duration) for proportional layout inside the shot bar. */
-function shotAudioPlayDurationSec(a: ShotAudio): number {
-  const s = a.startTime;
-  const e = a.endTime;
-  if (typeof s === "number" && typeof e === "number" && e > s) return e - s;
-  if (typeof a.duration === "number" && a.duration > 0) return a.duration;
-  return 1;
-}
-
-function layoutShotAudioSegments(
-  files: ShotAudio[],
-): { id: string; widthFrac: number; title: string }[] {
-  if (files.length === 0) return [];
-  const durs = files.map(shotAudioPlayDurationSec);
-  const sum = durs.reduce((x, y) => x + y, 0) || 1;
-  return files.map((f, i) => ({
-    id: f.id,
-    widthFrac: durs[i]! / sum,
-    title: (f.label || f.fileName || "Audio").slice(0, 48),
-  }));
-}
-
-// 🎯 ADAPTIVE PAGE MARKERS: Choose interval based on available space (intelligent like time markers!)
-function getPageMarkerInterval(
-  pxPerSec: number,
-  wordsPerPage: number,
-  readingSpeedWpm: number,
-): number {
-  // Calculate how many pixels one page occupies
-  const secondsPerPage = (wordsPerPage / readingSpeedWpm) * 60;
-  const pxPerPage = pxPerSec * secondsPerPage;
-
-  // Calculate minimum pages between ticks to maintain MIN_LABEL_SPACING_PX
-  const minPagesBetweenTicks = MIN_LABEL_SPACING_PX / pxPerPage;
-
-  // Find the smallest page step that satisfies the spacing requirement
-  return (
-    PAGE_STEPS.find((step) => step >= minPagesBetweenTicks) ??
-    PAGE_STEPS[PAGE_STEPS.length - 1]
-  );
-}
-
-// 📖 Calculate word count from TipTap content (same logic as BookDropdown)
-function calculateWordCountFromContent(content: any): number {
-  if (!content?.content || !Array.isArray(content.content)) {
-    return 0;
-  }
-
-  let totalWords = 0;
-  for (const node of content.content) {
-    if (node.type === "paragraph" && node.content) {
-      for (const child of node.content) {
-        if (child.type === "text" && child.text) {
-          const words = child.text
-            .trim()
-            .split(/\s+/)
-            .filter((w: string) => w.length > 0);
-          totalWords += words.length;
-        }
-      }
-    }
-  }
-  return totalWords;
-}
-
-/**
- * Einmal pro Track-Preset — `baseColorHex` erzwingt berechnete Inline-Farben (wie bei Shots/Beats mit Farbe).
- * Nur Tailwind-`bg-*` würde bei zusammengesetzten Klassennamen im Build oft fehlen → Griffe unsichtbar.
- */
-
 export function StructureTimelineEditor({
   projectId,
   projectType = "film",
@@ -377,6 +311,15 @@ export function StructureTimelineEditor({
 }: StructureTimelineEditorProps) {
   const { getAccessToken } = useAuth();
   const queryClient = useQueryClient();
+  const sceneAudioLaneLinks = useSceneAudioLaneLinks(projectId);
+  const commitLinkedAudioClipRef = useRef<
+    (clip: {
+      sceneId: string;
+      startSec: number;
+      endSec: number;
+      linkedNodeId: string;
+    }) => Promise<void>
+  >(async () => {});
 
   // 🎬 SHOT MODAL: Open ShotCard directly in timeline (no view switch)
   const [selectedShotId, setSelectedShotId] = useState<string | null>(null);
@@ -772,6 +715,8 @@ export function StructureTimelineEditor({
     title: string;
     description: string;
   } | null>(null);
+  const [focusLinkSection, setFocusLinkSection] = useState(false);
+  const [requestOpenLinkPicker, setRequestOpenLinkPicker] = useState(false);
   const [infoDialogOpen, setInfoDialogOpen] = useState(false);
   const [infoDialogData, setInfoDialogData] = useState<{
     type: "act" | "sequence" | "scene" | "shot";
@@ -2896,6 +2841,31 @@ export function StructureTimelineEditor({
     readingSpeedWpm,
   });
 
+  const linkedLaneAudio = useMemo((): LinkedLaneAudioContext => {
+    return {
+      links: sceneAudioLaneLinks.links,
+      getBlockForNode: (nodeId) =>
+        sceneBlocksRef.current.find((b) => b.id === nodeId) ??
+        shotBlocksRef.current.find((b) => b.id === nodeId),
+      resolveSceneIdForNode: (nodeId) => {
+        const td = timelineDataRef.current;
+        if (td && "shots" in td) {
+          const shot = (td as TimelineData).shots?.find((s) => s.id === nodeId);
+          if (shot) {
+            const row = shot as { sceneId?: string; scene_id?: string };
+            return row.sceneId ?? row.scene_id;
+          }
+        }
+        if (sceneBlocksRef.current.some((b) => b.id === nodeId)) {
+          return nodeId;
+        }
+        return undefined;
+      },
+      seekPlayhead: playheadSeek,
+      onClipCommitted: (clip) => commitLinkedAudioClipRef.current(clip),
+    };
+  }, [sceneAudioLaneLinks.links, playheadSeek]);
+
   const timelineAudio = useStructureTimelineAudioLanes({
     projectId,
     projectType,
@@ -2903,7 +2873,11 @@ export function StructureTimelineEditor({
     viewStartSec,
     totalWidthPx,
     currentTimeSec: currentTime,
+    linkedLaneAudio,
   });
+  const hasVisibleAudioLanes =
+    timelineAudio.laneProps.sortedLaneIndices.length > 0;
+  const showAudioDawLaneRows = showAudioDawLanes && hasVisibleAudioLanes;
 
   // 📊 LOAD TIMELINE DATA (props → context hydrate → single batch fetch)
   useEffect(() => {
@@ -3316,94 +3290,6 @@ export function StructureTimelineEditor({
     }
   };
 
-  // ⚠️ DEPRECATED: Old inline calculation (replaced by memoized version below)
-  // Kept for reference only - not used in render
-  const actBlocks_DEPRECATED = (timelineData?.acts || []).map(
-    (act, actIndex) => {
-      if (isBookProject && readingSpeedWpm) {
-        // 📖 BOOK: Position based on cumulative duration
-        // Acts with text: duration = (wordCount / wpm) * 60
-        // Empty acts: duration = DEFAULT_EMPTY_ACT_SECONDS
-        const acts = timelineData?.acts || [];
-        const sequences = timelineData?.sequences || [];
-        const scenes = timelineData?.scenes || [];
-
-        // 🚀 CALCULATE: Act word count from scenes (since acts are containers)
-        const getActWordCount = (actId: string): number => {
-          const actSequences = sequences.filter((s) => s.actId === actId);
-          const actScenes = scenes.filter((sc) =>
-            actSequences.some((seq) => seq.id === sc.sequenceId),
-          );
-
-          return actScenes.reduce((sum, sc) => {
-            // Try DB wordCount first
-            const dbWordCount = sc.metadata?.wordCount || sc.wordCount || 0;
-            if (dbWordCount > 0) return sum + dbWordCount;
-
-            // Fallback: Calculate from content
-            const contentWordCount = calculateWordCountFromContent(sc.content);
-            return sum + contentWordCount;
-          }, 0);
-        };
-
-        // Calculate start time (cumulative duration of all previous acts)
-        let startSec = 0;
-        for (let i = 0; i < actIndex; i++) {
-          const prevAct = acts[i];
-          const prevActWordCount = getActWordCount(prevAct.id);
-
-          if (prevActWordCount > 0) {
-            startSec += (prevActWordCount / readingSpeedWpm) * 60; // Seconds
-          } else {
-            startSec += DEFAULT_EMPTY_ACT_MIN * 60; // 300 seconds
-          }
-        }
-
-        // Calculate this act's duration
-        const actWordCount = getActWordCount(act.id);
-        const actDuration =
-          actWordCount > 0
-            ? (actWordCount / readingSpeedWpm) * 60
-            : DEFAULT_EMPTY_ACT_MIN * 60;
-
-        const endSec = startSec + actDuration;
-        const x = (startSec - viewStartSec) * pxPerSec;
-        const width = (endSec - startSec) * pxPerSec;
-
-        console.log(
-          `[VideoEditorTimeline] 📊 Act "${act.title}": ${actWordCount} words → ${(actDuration / 60).toFixed(2)} min (${startSec.toFixed(0)}s - ${endSec.toFixed(0)}s)`,
-        );
-
-        return {
-          ...act,
-          wordCount: actWordCount, // Include calculated word count
-          startSec,
-          endSec,
-          x,
-          width,
-          visible: endSec >= viewStartSec && startSec <= viewEndSec,
-        };
-      } else {
-        // 🎬 FILM: Equal distribution
-        const totalActs = timelineData?.acts?.length || 1;
-        const actDuration = duration / totalActs;
-        const startSec = actIndex * actDuration;
-        const endSec = (actIndex + 1) * actDuration;
-        const x = (startSec - viewStartSec) * pxPerSec;
-        const width = (endSec - startSec) * pxPerSec;
-
-        return {
-          ...act,
-          startSec,
-          endSec,
-          x,
-          width,
-          visible: endSec >= viewStartSec && startSec <= viewEndSec,
-        };
-      }
-    },
-  );
-
   const filmStructureTree = structureTrimBridge.tree;
   const useFilmTreeLayout =
     USE_HIERARCHICAL_STRUCTURE_RIPPLE && !!filmStructureTree && !!timelineData;
@@ -3476,102 +3362,6 @@ export function StructureTimelineEditor({
     return out;
   }, [actBlocks, isBookProject]);
 
-  // ⚠️ DEPRECATED: Old inline calculation (replaced by memoized version below)
-  // Kept for reference only - not used in render
-  const sequenceBlocks_DEPRECATED: any[] = [];
-
-  if (isBookProject && totalWords && readingSpeedWpm) {
-    // 📖 BOOK: Position based on ACTUAL word count from scenes
-    const acts = timelineData?.acts || [];
-    const sequences = timelineData?.sequences || [];
-    const scenes = timelineData?.scenes || [];
-    const secondsPerWord = 60 / readingSpeedWpm;
-
-    // 🚀 HELPER: Calculate sequence word count from scenes
-    const getSequenceWordCount = (sequenceId: string): number => {
-      const seqScenes = scenes.filter((sc) => sc.sequenceId === sequenceId);
-      return seqScenes.reduce((sum, sc) => {
-        // Try DB wordCount first
-        const dbWordCount = sc.metadata?.wordCount || sc.wordCount || 0;
-        if (dbWordCount > 0) return sum + dbWordCount;
-
-        // Fallback: Calculate from content
-        return sum + calculateWordCountFromContent(sc.content);
-      }, 0);
-    };
-
-    let wordsSoFar = 0;
-
-    acts.forEach((act) => {
-      const actSequences = sequences.filter((s) => s.actId === act.id);
-
-      actSequences.forEach((sequence) => {
-        const seqWords = getSequenceWordCount(sequence.id);
-
-        if (seqWords > 0) {
-          const startSec = wordsSoFar * secondsPerWord;
-          const endSec = (wordsSoFar + seqWords) * secondsPerWord;
-          const x = (startSec - viewStartSec) * pxPerSec;
-          const width = (endSec - startSec) * pxPerSec;
-
-          console.log(
-            `[VideoEditorTimeline] 📗 Seq "${sequence.title}": ${seqWords} words → ${startSec.toFixed(0)}s - ${endSec.toFixed(0)}s`,
-          );
-
-          sequenceBlocks_DEPRECATED.push({
-            ...sequence,
-            wordCount: seqWords,
-            startSec,
-            endSec,
-            x,
-            width,
-            visible: endSec >= viewStartSec && startSec <= viewEndSec,
-          });
-
-          wordsSoFar += seqWords;
-        }
-      });
-
-      // Add empty act padding if act had no sequences with text
-      const actSequenceWords = actSequences.reduce(
-        (sum, seq) => sum + getSequenceWordCount(seq.id),
-        0,
-      );
-      if (actSequenceWords === 0) {
-        // Empty act: add default duration
-        wordsSoFar += (DEFAULT_EMPTY_ACT_MIN * 60) / secondsPerWord; // Convert 5 min to words
-      }
-    });
-  } else {
-    // 🎬 FILM: Equal distribution within acts
-    (timelineData?.acts || []).forEach((act, actIndex) => {
-      const sequences = (timelineData?.sequences || []).filter(
-        (s) => s.actId === act.id,
-      );
-      const totalActs = timelineData?.acts?.length || 1;
-      const actDuration = duration / totalActs;
-      const actStartSec = actIndex * actDuration;
-      const sequenceDuration =
-        sequences.length > 0 ? actDuration / sequences.length : actDuration;
-
-      sequences.forEach((sequence, seqIndex) => {
-        const startSec = actStartSec + seqIndex * sequenceDuration;
-        const endSec = startSec + sequenceDuration;
-        const x = (startSec - viewStartSec) * pxPerSec;
-        const width = (endSec - startSec) * pxPerSec;
-
-        sequenceBlocks_DEPRECATED.push({
-          ...sequence,
-          startSec,
-          endSec,
-          x,
-          width,
-          visible: endSec >= viewStartSec && startSec <= viewEndSec,
-        });
-      });
-    });
-  }
-
   // 🚀 OPTIMIZED: Memoized sequence blocks calculation
   const sequenceBlocksLive = useMemo(() => {
     const start = performance.now();
@@ -3622,118 +3412,6 @@ export function StructureTimelineEditor({
     sequenceBlocksLive,
     vetStructureLayoutFrozen,
   );
-
-  // ⚠️ DEPRECATED: Old inline calculation (replaced by memoized version below)
-  // Kept for reference only - not used in render
-  const sceneBlocks_DEPRECATED: any[] = [];
-
-  if (isBookProject && readingSpeedWpm) {
-    // 📖 BOOK: Position based on word count from content
-    const scenes = timelineData?.scenes || [];
-    const sequences = timelineData?.sequences || [];
-    const acts = timelineData?.acts || [];
-    const secondsPerWord = 60 / readingSpeedWpm;
-
-    let wordsSoFar = 0;
-
-    acts.forEach((act) => {
-      const actSequences = sequences.filter((s) => s.actId === act.id);
-
-      actSequences.forEach((sequence) => {
-        const seqScenes = scenes.filter((sc) => sc.sequenceId === sequence.id);
-
-        seqScenes.forEach((scene) => {
-          // Calculate scene word count from content
-          const dbWordCount = scene.metadata?.wordCount || scene.wordCount || 0;
-          const sceneWords =
-            dbWordCount > 0
-              ? dbWordCount
-              : calculateWordCountFromContent(scene.content);
-
-          if (sceneWords > 0) {
-            const startSec = wordsSoFar * secondsPerWord;
-            const endSec = (wordsSoFar + sceneWords) * secondsPerWord;
-            const x = (startSec - viewStartSec) * pxPerSec;
-            const width = (endSec - startSec) * pxPerSec;
-
-            console.log(
-              `[VideoEditorTimeline] �� Scene "${scene.title}": ${sceneWords} words → ${startSec.toFixed(0)}s - ${endSec.toFixed(0)}s`,
-            );
-
-            sceneBlocks_DEPRECATED.push({
-              ...scene,
-              wordCount: sceneWords,
-              startSec,
-              endSec,
-              x,
-              width,
-              visible: endSec >= viewStartSec && startSec <= viewEndSec,
-            });
-
-            wordsSoFar += sceneWords;
-          }
-        });
-      });
-
-      // Add empty act padding if act had no scenes with text
-      const actScenes = scenes.filter((sc) =>
-        actSequences.some((seq) => seq.id === sc.sequenceId),
-      );
-      const actSceneWords = actScenes.reduce((sum, sc) => {
-        const dbWordCount = sc.metadata?.wordCount || sc.wordCount || 0;
-        return (
-          sum +
-          (dbWordCount > 0
-            ? dbWordCount
-            : calculateWordCountFromContent(sc.content))
-        );
-      }, 0);
-
-      if (actSceneWords === 0) {
-        // Empty act: add default duration
-        wordsSoFar += (DEFAULT_EMPTY_ACT_MIN * 60) / secondsPerWord; // Convert 5 min to words
-      }
-    });
-  } else {
-    // 🎬 FILM: Equal distribution within sequences
-    (timelineData?.acts || []).forEach((act, actIndex) => {
-      const sequences = (timelineData?.sequences || []).filter(
-        (s) => s.actId === act.id,
-      );
-      const totalActs = timelineData?.acts?.length || 1;
-      const actDuration = duration / totalActs;
-      const actStartSec = actIndex * actDuration;
-      const sequenceDuration =
-        sequences.length > 0 ? actDuration / sequences.length : actDuration;
-
-      sequences.forEach((sequence, seqIndex) => {
-        const scenes = (timelineData?.scenes || []).filter(
-          (sc) => sc.sequenceId === sequence.id,
-        );
-        const seqStartSec = actStartSec + seqIndex * sequenceDuration;
-        const sceneDuration =
-          scenes.length > 0
-            ? sequenceDuration / scenes.length
-            : sequenceDuration;
-
-        scenes.forEach((scene, sceneIndex) => {
-          const startSec = seqStartSec + sceneIndex * sceneDuration;
-          const endSec = startSec + sceneDuration;
-          const x = (startSec - viewStartSec) * pxPerSec;
-          const width = (endSec - startSec) * pxPerSec;
-
-          sceneBlocks_DEPRECATED.push({
-            ...scene,
-            startSec,
-            endSec,
-            x,
-            width,
-            visible: endSec >= viewStartSec && startSec <= viewEndSec,
-          });
-        });
-      });
-    });
-  }
 
   // 🚀 OPTIMIZED: Memoized scene blocks calculation
   const sceneBlocksLive = useMemo(() => {
@@ -4582,6 +4260,185 @@ export function StructureTimelineEditor({
     [beats, openNodeEditDialog, timelineData],
   );
 
+  const openNodeEditWithAudioLinkFocus = useCallback(
+    (kind: AddNodeKind | "beat", id: string) => {
+      setFocusLinkSection(true);
+      setRequestOpenLinkPicker(false);
+      openNodeEditForKind(kind, id);
+    },
+    [openNodeEditForKind],
+  );
+
+  const commitLinkedAudioClip = useCallback(
+    async (clip: {
+      sceneId: string;
+      startSec: number;
+      endSec: number;
+      linkedNodeId: string;
+    }) => {
+      const td = timelineDataRef.current as TimelineData | null;
+      if (!td) return;
+
+      const linkedBlock =
+        sceneBlocksRef.current.find((b) => b.id === clip.linkedNodeId) ??
+        shotBlocksRef.current.find((b) => b.id === clip.linkedNodeId);
+      if (!linkedBlock) return;
+
+      const scene = td.scenes?.find((s) => s.id === clip.sceneId);
+      const seq = scene
+        ? td.sequences?.find((s) => s.id === scene.sequenceId)
+        : undefined;
+      const act = seq ? td.acts?.find((a) => a.id === seq.actId) : undefined;
+      const sceneBlock = sceneBlocksRef.current.find(
+        (b) => b.id === clip.sceneId,
+      );
+      const sequenceBlock = seq
+        ? sequenceBlocksRef.current.find((b) => b.id === seq.id)
+        : undefined;
+      const actBlock = act
+        ? actBlocksRef.current.find((b) => b.id === act.id)
+        : undefined;
+      if (!sceneBlock || !sequenceBlock || !actBlock) return;
+
+      const expanded = expandTimelineDataForLinkedNodeClip({
+        timelineData: td,
+        clip,
+        linkedBlock,
+        blocks: { actBlock, sequenceBlock, sceneBlock },
+        totalDurSec: durationRef.current,
+      });
+      if (!expanded) return;
+
+      const token = await getAccessToken();
+      if (!token) return;
+
+      const { expansion } = expanded;
+      if (expansion.act && act && isPersistedTimelineNodeId(act.id)) {
+        await TimelineAPI.updateAct(
+          act.id,
+          {
+            metadata: {
+              ...(act.metadata || {}),
+              pct_from: expansion.act.pct_from,
+              pct_to: expansion.act.pct_to,
+            },
+          },
+          token,
+        );
+      }
+      if (expansion.sequence && seq && isPersistedTimelineNodeId(seq.id)) {
+        await TimelineAPI.updateSequence(
+          seq.id,
+          {
+            metadata: {
+              ...(seq.metadata || {}),
+              pct_from: expansion.sequence.pct_from,
+              pct_to: expansion.sequence.pct_to,
+            },
+          },
+          token,
+        );
+      }
+      if (expansion.scene && scene && isPersistedTimelineNodeId(scene.id)) {
+        await TimelineAPI.updateScene(
+          scene.id,
+          {
+            metadata: {
+              ...(scene.metadata || {}),
+              pct_from: expansion.scene.pct_from,
+              pct_to: expansion.scene.pct_to,
+            },
+          },
+          token,
+        );
+      }
+
+      setTimelineData(expanded.timelineData);
+      onDataChange?.(expanded.timelineData);
+    },
+    [getAccessToken, onDataChange],
+  );
+  commitLinkedAudioClipRef.current = commitLinkedAudioClip;
+
+  const getSceneAudioLinkOccupantLabel = useCallback(
+    (nodeId: string) => {
+      if (!timelineData) return nodeId;
+      if ("shots" in timelineData) {
+        const shot = (timelineData as TimelineData).shots?.find(
+          (s) => s.id === nodeId,
+        );
+        if (shot) return String(shot.shotNumber ?? nodeId);
+      }
+      const scene = timelineData.scenes?.find((s) => s.id === nodeId);
+      return scene?.title?.trim() || nodeId;
+    },
+    [timelineData],
+  );
+
+  const getAudioLinkLabel = useCallback(
+    (nodeId: string) => {
+      const link = getLinkForNode(sceneAudioLaneLinks.links, nodeId);
+      if (!link) return undefined;
+      const character =
+        timelineAudio.laneProps.characterLanes.getCharacterForLane(
+          link.laneIndex,
+        );
+      return getSceneAudioLinkLabel(link.laneIndex, character?.name);
+    },
+    [sceneAudioLaneLinks.links, timelineAudio.laneProps.characterLanes],
+  );
+
+  const sidebarSceneAudioLink = useMemo(() => {
+    if (isBookProject) return null;
+    return resolveSidebarStructureAudioLink({
+      editingDialogOpen: nodeEditDialogOpen,
+      editingNodeId: editingNode?.kind === "scene" ? editingNode.id : undefined,
+      editingNodeKind: editingNode?.kind === "scene" ? "scene" : undefined,
+      blocks: sceneBlocks.map((b) => ({
+        id: b.id,
+        startSec: b.startSec,
+        endSec: b.endSec,
+      })),
+      viewStartSec,
+      viewEndSec,
+      getLabel: getAudioLinkLabel,
+    });
+  }, [
+    isBookProject,
+    nodeEditDialogOpen,
+    editingNode,
+    sceneBlocks,
+    viewStartSec,
+    viewEndSec,
+    getAudioLinkLabel,
+  ]);
+
+  const sidebarShotAudioLink = useMemo(() => {
+    if (isBookProject || isAudioProject) return null;
+    return resolveSidebarStructureAudioLink({
+      editingDialogOpen: nodeEditDialogOpen,
+      editingNodeId: editingNode?.kind === "shot" ? editingNode.id : undefined,
+      editingNodeKind: editingNode?.kind === "shot" ? "shot" : undefined,
+      blocks: shotBlocks.map((b) => ({
+        id: (b as { id: string }).id,
+        startSec: (b as { startSec: number }).startSec,
+        endSec: (b as { endSec: number }).endSec,
+      })),
+      viewStartSec,
+      viewEndSec,
+      getLabel: getAudioLinkLabel,
+    });
+  }, [
+    isAudioProject,
+    isBookProject,
+    nodeEditDialogOpen,
+    editingNode,
+    shotBlocks,
+    viewStartSec,
+    viewEndSec,
+    getAudioLinkLabel,
+  ]);
+
   const handleDuplicateShot = useCallback(
     async (shotId: string) => {
       if (!timelineData || !("shots" in timelineData)) return;
@@ -4967,6 +4824,8 @@ export function StructureTimelineEditor({
   const closeNodeEdit = useCallback(() => {
     setNodeEditDialogOpen(false);
     setEditingNode(null);
+    setFocusLinkSection(false);
+    setRequestOpenLinkPicker(false);
   }, []);
 
   const commitNodeEdit = useCallback(async () => {
@@ -5620,13 +5479,27 @@ export function StructureTimelineEditor({
             />
           </div>
           <div
-            className="border-b border-border px-1 flex items-center justify-between gap-0.5 bg-card relative"
+            className="border-b border-border px-1.5 flex items-center justify-between gap-1 bg-card relative"
             style={{ height: `${trackHeights.scene}px` }}
           >
-            <span className="text-[9px] text-foreground font-medium truncate min-w-0">
+            <span className="text-[9px] text-foreground font-medium truncate min-w-0 shrink">
               {strategy.sceneTrackLabel}
             </span>
-            <div className="flex items-center gap-0.5 shrink-0">
+            <div className="flex items-center gap-1 shrink-0 min-w-0">
+              {sidebarSceneAudioLink ? (
+                <TimelineStructureAudioLinkChip
+                  shortLabel={sidebarSceneAudioLink.short}
+                  fullLabel={sidebarSceneAudioLink.full}
+                  variant="scene"
+                  size="sidebar"
+                  onClick={() =>
+                    openNodeEditWithAudioLinkFocus(
+                      "scene",
+                      sidebarSceneAudioLink.nodeId,
+                    )
+                  }
+                />
+              ) : null}
               <TimelineTrackAddButton
                 onClick={() => openAddDialogForKind("scene")}
                 title={`${labelByKind.scene} hinzufügen`}
@@ -5684,7 +5557,7 @@ export function StructureTimelineEditor({
               onMouseDown={(e) => handleResizeStart("scene", e)}
             />
           </div>
-          {showAudioDawLanes && (
+          {showAudioDawLaneRows && (
             <StructureTimelineAudioLaneLabels
               laneProps={timelineAudio.laneProps}
               addAudio={timelineAudio.addAudio}
@@ -5707,6 +5580,10 @@ export function StructureTimelineEditor({
                 }
                 onResizeStart={(e) => handleResizeStart("shot", e)}
                 onAddShot={() => openAddDialogForKind("shot")}
+                sidebarAudioLink={sidebarShotAudioLink ?? undefined}
+                onSidebarAudioLinkClick={(shotId) =>
+                  openNodeEditWithAudioLinkFocus("shot", shotId)
+                }
               />
               {showEditorialClipTrack && (
                 <div
@@ -5921,6 +5798,18 @@ export function StructureTimelineEditor({
                 emptyLaneDropBindings={
                   structureImageDrop.emptySceneLaneDropBindings
                 }
+                getAudioLinkLabel={
+                  !isBookProject ? getAudioLinkLabel : undefined
+                }
+                onAudioLinkClick={
+                  !isBookProject && isAudioProject
+                    ? (sceneId) =>
+                        openNodeEditWithAudioLinkFocus("scene", sceneId)
+                    : undefined
+                }
+                onOpenSceneEditDirect={(sceneId) =>
+                  openNodeEditForKind("scene", sceneId)
+                }
               />
 
               {showFilmProductionTracks && (
@@ -5947,11 +5836,23 @@ export function StructureTimelineEditor({
                   emptyLaneDropBindings={
                     structureImageDrop.emptyShotLaneDropBindings
                   }
+                  getAudioLinkLabel={
+                    !isBookProject ? getAudioLinkLabel : undefined
+                  }
+                  onAudioLinkClick={
+                    !isBookProject
+                      ? (shotId) =>
+                          openNodeEditWithAudioLinkFocus("shot", shotId)
+                      : undefined
+                  }
+                  onOpenShotEditDirect={(shotId) =>
+                    openNodeEditForKind("shot", shotId)
+                  }
                 />
               )}
             </TimelineStructureSelectionStack>
 
-            {showAudioDawLanes && (
+            {showAudioDawLaneRows && (
               <StructureTimelineAudioLaneScrollRows
                 laneProps={timelineAudio.laneProps}
                 isLoading={timelineAudio.lanes.isLoading}
@@ -5960,233 +5861,24 @@ export function StructureTimelineEditor({
 
             {/* Shot-Musik/SFX (Film/Serie) — Shot-Spur liegt im Structure-Selection-Stack */}
             {showFilmProductionTracks && (
-              <>
-                {/* Editorial timeline clips (NLE) — persisted `clips`; gray track under shots */}
-                {showEditorialClipTrack && (
-                  <div
-                    className="relative border-b border-border bg-muted/20 ring-1 ring-inset ring-zinc-500/15 dark:ring-zinc-400/20"
-                    style={{ height: `${trackHeights.editorialClip}px` }}
-                  >
-                    {clipBlocks.map((c: any, idx: number) => (
-                      <div
-                        key={c.id}
-                        className="absolute top-0.5 bottom-0.5 rounded border-2 border-zinc-400/80 dark:border-zinc-500 bg-zinc-200/90 dark:bg-zinc-800/85 overflow-hidden flex items-stretch"
-                        style={{
-                          left: `${c.x}px`,
-                          width: `${Math.max(2, c.width)}px`,
-                        }}
-                        title="Editorial Clip (Trim)"
-                      >
-                        <div
-                          className="w-1 shrink-0 bg-zinc-500 hover:bg-zinc-400 cursor-ew-resize z-10"
-                          onPointerDown={(e) =>
-                            handleNleClipPointerDown(
-                              {
-                                id: c.id,
-                                sceneId: c.sceneId,
-                                shotId: c.shotId,
-                                startSec: c.startSec,
-                                endSec: c.endSec,
-                              },
-                              "left",
-                              e,
-                            )
-                          }
-                        />
-                        <div className="flex-1 min-w-0 flex items-center justify-center px-1 pointer-events-none">
-                          <span className="text-[9px] text-zinc-800 dark:text-zinc-100 truncate font-medium">
-                            {getTrackBlockText("Clip", c.width, "shot", idx)}
-                          </span>
-                        </div>
-                        <div
-                          className="w-1 shrink-0 bg-zinc-500 hover:bg-zinc-400 cursor-ew-resize z-10"
-                          onPointerDown={(e) =>
-                            handleNleClipPointerDown(
-                              {
-                                id: c.id,
-                                sceneId: c.sceneId,
-                                shotId: c.shotId,
-                                startSec: c.startSec,
-                                endSec: c.endSec,
-                              },
-                              "right",
-                              e,
-                            )
-                          }
-                        />
-                      </div>
-                    ))}
-                    {clipBlocks.length === 0 && (
-                      <div className="absolute inset-0 flex items-center px-2 pointer-events-none">
-                        <span className="text-[9px] text-muted-foreground">
-                          {((timelineData as TimelineData)?.shots?.length ??
-                            0) === 0
-                            ? "Zuerst Shots anlegen (Struktur oder + Add Item); Clips folgen automatisch."
-                            : "Editorial Clips (erscheinen nach Migration oder Sync mit scriptony-clips)"}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Musik: eine Zelle pro Shot — gleiche x/Breite wie Shot (mit Trim mitbewegt) */}
-                <div
-                  className="relative border-b border-border bg-muted/15"
-                  style={{ height: `${trackHeights.music}px` }}
-                >
-                  {shotBlocks.map((shot) => {
-                    const full = (timelineData as TimelineData)?.shots?.find(
-                      (sh: any) => sh.id === shot.id,
-                    );
-                    const files = (full?.audioFiles || []).filter(
-                      (a) => a.type === "music",
-                    );
-                    const segments = layoutShotAudioSegments(files);
-                    const w = Math.max(2, shot.width);
-                    return (
-                      <div
-                        key={`music-${shot.id}`}
-                        role={
-                          canOpenShot && !blockUnderlyingLanePointerEvents
-                            ? "button"
-                            : undefined
-                        }
-                        tabIndex={
-                          canOpenShot && !blockUnderlyingLanePointerEvents
-                            ? 0
-                            : undefined
-                        }
-                        className={cn(
-                          "absolute top-0.5 bottom-0.5 rounded border border-violet-400/70 dark:border-violet-600/60 bg-violet-50/80 dark:bg-violet-950/35 overflow-hidden flex",
-                          canOpenShot &&
-                            !blockUnderlyingLanePointerEvents &&
-                            "cursor-pointer hover:ring-1 hover:ring-violet-500/50",
-                          blockUnderlyingLanePointerEvents &&
-                            "pointer-events-none",
-                        )}
-                        style={{
-                          ...filmStructureClipStyle(
-                            { x: shot.x, width: w },
-                            useFilmTreeLayout,
-                          ),
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openShot(shot.id);
-                        }}
-                        onKeyDown={(e) => {
-                          if (!canOpenShot) return;
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            openShot(shot.id);
-                          }
-                        }}
-                        title={
-                          files.length
-                            ? `${files.length} Musik-Clip(s) — Klick: Shot im Strukturbaum`
-                            : "Keine Musik — Klick: Shot im Strukturbaum"
-                        }
-                      >
-                        {files.length === 0 ? (
-                          <div className="flex-1 flex items-center justify-center min-w-0">
-                            <span className="text-[8px] text-muted-foreground truncate px-0.5">
-                              —
-                            </span>
-                          </div>
-                        ) : (
-                          segments.map((seg) => (
-                            <div
-                              key={seg.id}
-                              className="h-full min-w-0 bg-violet-500/75 dark:bg-violet-500/50 border-r border-violet-900/20 last:border-r-0"
-                              style={{ width: `${seg.widthFrac * 100}%` }}
-                              title={seg.title}
-                            />
-                          ))
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* SFX: gleiche Geometrie wie Shot-Zeile */}
-                <div
-                  className="relative border-b border-border bg-muted/15"
-                  style={{ height: `${trackHeights.sfx}px` }}
-                >
-                  {shotBlocks.map((shot) => {
-                    const full = (timelineData as TimelineData)?.shots?.find(
-                      (sh: any) => sh.id === shot.id,
-                    );
-                    const files = (full?.audioFiles || []).filter(
-                      (a) => a.type === "sfx",
-                    );
-                    const segments = layoutShotAudioSegments(files);
-                    const w = Math.max(2, shot.width);
-                    return (
-                      <div
-                        key={`sfx-${shot.id}`}
-                        role={
-                          canOpenShot && !blockUnderlyingLanePointerEvents
-                            ? "button"
-                            : undefined
-                        }
-                        tabIndex={
-                          canOpenShot && !blockUnderlyingLanePointerEvents
-                            ? 0
-                            : undefined
-                        }
-                        className={cn(
-                          "absolute top-0.5 bottom-0.5 rounded border border-orange-400/80 dark:border-orange-600/55 bg-orange-50/85 dark:bg-orange-950/30 overflow-hidden flex",
-                          canOpenShot &&
-                            !blockUnderlyingLanePointerEvents &&
-                            "cursor-pointer hover:ring-1 hover:ring-orange-500/50",
-                          blockUnderlyingLanePointerEvents &&
-                            "pointer-events-none",
-                        )}
-                        style={{
-                          ...filmStructureClipStyle(
-                            { x: shot.x, width: w },
-                            useFilmTreeLayout,
-                          ),
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openShot(shot.id);
-                        }}
-                        onKeyDown={(e) => {
-                          if (!canOpenShot) return;
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            openShot(shot.id);
-                          }
-                        }}
-                        title={
-                          files.length
-                            ? `${files.length} SFX — Klick: Shot im Strukturbaum`
-                            : "Keine SFX — Klick: Shot im Strukturbaum"
-                        }
-                      >
-                        {files.length === 0 ? (
-                          <div className="flex-1 flex items-center justify-center min-w-0">
-                            <span className="text-[8px] text-muted-foreground truncate px-0.5">
-                              —
-                            </span>
-                          </div>
-                        ) : (
-                          segments.map((seg) => (
-                            <div
-                              key={seg.id}
-                              className="h-full min-w-0 bg-orange-500/80 dark:bg-orange-500/45 border-r border-orange-900/25 last:border-r-0"
-                              style={{ width: `${seg.widthFrac * 100}%` }}
-                              title={seg.title}
-                            />
-                          ))
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
+              <StructureTimelineFilmProductionTracks
+                showEditorialClipTrack={showEditorialClipTrack}
+                trackHeights={{
+                  editorialClip: trackHeights.editorialClip,
+                  music: trackHeights.music,
+                  sfx: trackHeights.sfx,
+                }}
+                clipBlocks={clipBlocks}
+                shotBlocks={shotBlocks}
+                timelineData={timelineData}
+                useFilmTreeLayout={useFilmTreeLayout}
+                canOpenShot={canOpenShot}
+                blockUnderlyingLanePointerEvents={
+                  blockUnderlyingLanePointerEvents
+                }
+                onOpenShot={openShot}
+                onNleClipPointerDown={handleNleClipPointerDown}
+              />
             )}
 
             <StructureTimelinePlayheadOverlay
@@ -6220,6 +5912,17 @@ export function StructureTimelineEditor({
                 {labelByKind[kind]} hinzufügen
               </DropdownMenuItem>
             ))}
+            {showAudioDawLanes && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  disabled={timelineAudio.addAudio.isBusy}
+                  onClick={() => void timelineAudio.addAudio.addSfxLane()}
+                >
+                  SFX-Spur hinzufügen
+                </DropdownMenuItem>
+              </>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -6370,6 +6073,53 @@ export function StructureTimelineEditor({
             void uploadSceneImageForPreview(editingNode.id, file);
           }
         }}
+        showAudioLaneLinkButton={
+          !isBookProject &&
+          !!editingNode &&
+          ((isAudioProject && editingNode.kind === "scene") ||
+            (showFilmProductionTracks && editingNode.kind === "shot"))
+        }
+        audioLaneLinkDisabled={
+          timelineAudio.laneProps.sortedLaneIndices.length === 0
+        }
+        audioLaneLinkDisabledHint="Zuerst Spur über Add Item anlegen"
+        onLinkAudioLane={() => setRequestOpenLinkPicker(true)}
+        audioLaneLinkSection={
+          editingNode &&
+          !isBookProject &&
+          ((isAudioProject && editingNode.kind === "scene") ||
+            (showFilmProductionTracks && editingNode.kind === "shot")) ? (
+            <SceneAudioLaneLinkSection
+              nodeId={editingNode.id}
+              nodeTitle={editingNode.title || editingNode.id}
+              links={sceneAudioLaneLinks.links}
+              sortedLaneIndices={timelineAudio.laneProps.sortedLaneIndices}
+              getCharacterForLane={
+                timelineAudio.laneProps.characterLanes.getCharacterForLane
+              }
+              getOccupantLabel={getSceneAudioLinkOccupantLabel}
+              focusLinkSection={focusLinkSection}
+              onFocusHandled={() => setFocusLinkSection(false)}
+              requestOpenLinkPicker={requestOpenLinkPicker}
+              onLinkPickerRequestHandled={() => setRequestOpenLinkPicker(false)}
+              isBusy={sceneAudioLaneLinks.isLinking}
+              onLink={async (option, stealFromNodeId) => {
+                await sceneAudioLaneLinks.linkLane({
+                  nodeId: editingNode.id,
+                  link: {
+                    laneIndex: option.laneIndex,
+                    kind: option.kind,
+                    characterId: option.characterId,
+                  },
+                  stealFromNodeId,
+                });
+              }}
+              onUnlink={async () => {
+                await sceneAudioLaneLinks.unlinkLane(editingNode.id);
+              }}
+            />
+          ) : null
+        }
       />
 
       {infoDialogData ? (

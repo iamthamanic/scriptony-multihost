@@ -7,6 +7,7 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { useProjectClipLanes } from "../../../../hooks/useProjectClipLanes";
 import { useTimelineAddAudio } from "../../../../hooks/useTimelineAddAudio";
+import type { LinkedLaneAudioContext } from "../../../../hooks/useTimelineAddAudio";
 import { LANE_UI } from "../../../../lib/audio-lane";
 import { cn } from "../../../../lib/utils";
 import {
@@ -21,6 +22,7 @@ export interface StructureTimelineAudioLanesProps {
   viewStartSec: number;
   totalWidthPx: number;
   currentTimeSec: number;
+  linkedLaneAudio?: LinkedLaneAudioContext;
 }
 
 export function useStructureTimelineAudioLanes(
@@ -35,6 +37,7 @@ export function useStructureTimelineAudioLanes(
     currentTimeSec: props.currentTimeSec,
     getCharacterIdForLane: lanes.characterLanes.characterIdForLane,
     allClips: lanes.allClips,
+    linkedLaneAudio: props.linkedLaneAudio,
   });
 
   const laneProps = {

@@ -92,6 +92,11 @@ export type SceneTrackProps = StructureTrackBaseProps & {
   emptyLaneDropBindings?: TimelineImageDropBindings;
   /** @deprecated Film scene lane uses emptyLaneDropBindings (shot workflow). */
   filmSceneLaneHintBindings?: TimelineImageDropBindings;
+  getAudioLinkLabel?: (
+    nodeId: string,
+  ) => { short: string; full: string } | undefined;
+  onAudioLinkClick?: (nodeId: string) => void;
+  onOpenSceneEditDirect?: (sceneId: string) => void;
 };
 
 export type ShotTrackLabelProps = {
@@ -104,6 +109,8 @@ export type ShotTrackLabelProps = {
   onToggleMagnet: () => void;
   onResizeStart: (e: React.MouseEvent) => void;
   onAddShot: () => void;
+  sidebarAudioLink?: { short: string; full: string; nodeId: string };
+  onSidebarAudioLinkClick?: (nodeId: string) => void;
 };
 
 export type ShotTrackProps = StructureTrackBaseProps & {
@@ -122,4 +129,9 @@ export type ShotTrackProps = StructureTrackBaseProps & {
   shotPreviewUrl: (shot: StructureTimelineBlock) => string | null | undefined;
   onShotImageFileDrop?: (shotId: string, file: File) => void;
   emptyLaneDropBindings?: TimelineImageDropBindings;
+  getAudioLinkLabel?: (
+    nodeId: string,
+  ) => { short: string; full: string } | undefined;
+  onAudioLinkClick?: (nodeId: string) => void;
+  onOpenShotEditDirect?: (shotId: string) => void;
 };
