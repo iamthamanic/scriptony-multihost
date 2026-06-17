@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/fallow-rs/fallow/main/schema.json",
+  // Scriptony core only — ignore bundles, MCP subproject, agent tooling (T70).
+  "ignorePatterns": [
+    "functions/**/index.js",
+    "**/node_modules/**",
+    "**/mcp-server-tauri/**",
+    ".agents/**",
+    "docs/archive/**",
+    "build/**",
+    "dist/**",
+    "src-tauri/target/**",
+    ".fallow/**",
+  ],
+  "entry": ["src/**/*.{ts,tsx}", "functions/**/*.ts"],
+  "rules": {
+    "unused-exports": "warn",
+    "unresolved-imports": "error",
+  },
+}
