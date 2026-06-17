@@ -207,6 +207,7 @@ export function hasOverlap(
 export const LANE_UI = {
   heightCompact: 152,
   heightExpanded: 184,
+  sectionHeaderMinHeight: "1.75rem",
   mixerWidthClass: "w-[248px] min-w-[248px] max-w-[248px]",
 } as const;
 
