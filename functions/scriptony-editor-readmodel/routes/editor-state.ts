@@ -41,14 +41,12 @@ import { stripContentFromNodes } from "../services/editor-mappers";
 const querySchema = z.object({
   lite: z
     .enum(["true", "false"])
-    .transform((v) => v === "true")
-    .optional()
-    .default(false),
+    .default("false")
+    .transform((v) => v === "true"),
   exclude_content: z
     .enum(["true", "false"])
-    .transform((v) => v === "true")
-    .optional()
-    .default(false),
+    .default("false")
+    .transform((v) => v === "true"),
 });
 
 export default async function handler(

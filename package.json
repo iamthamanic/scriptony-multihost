@@ -80,7 +80,8 @@
     "sql.js": "^1.14.1",
     "tailwind-merge": "*",
     "vaul": "^1.1.2",
-    "wavesurfer.js": "^7.8.10"
+    "wavesurfer.js": "^7.8.10",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.2.0",
@@ -208,6 +209,6 @@
     "checks": "bash scripts/run-checks.sh",
     "checks:frontend": "bash scripts/run-checks.sh --frontend",
     "checks:backend": "bash scripts/run-checks.sh --backend",
-    "prepare": "husky"
+    "prepare": "node -e \"if(!process.env.CI&&!process.env.GITHUB_ACTIONS){require('child_process').execSync('npx husky',{stdio:'inherit'})}\""
   }
 }
