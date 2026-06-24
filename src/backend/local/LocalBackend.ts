@@ -20,6 +20,7 @@ import { LocalBeatsRepository } from "./LocalBeatsRepository";
 import { LocalWorldbuildingRepository } from "./LocalWorldbuildingRepository";
 import { LocalTimelineRepository } from "./LocalTimelineRepository";
 import { HybridAiService, HybridStorageRepository } from "../hybrid";
+import { LocalMveRepository } from "./LocalMveRepository";
 import { LocalAiService } from "./LocalAiService";
 
 export class LocalBackend implements ScriptonyBackend {
@@ -36,6 +37,7 @@ export class LocalBackend implements ScriptonyBackend {
   readonly jobs: LocalJobService;
   readonly ai: LocalAiService;
   readonly storage: HybridStorageRepository;
+  readonly mve: LocalMveRepository;
   readonly blender = new LocalBlenderService();
 
   /** Active local project session (manifest + persist). */
@@ -53,6 +55,7 @@ export class LocalBackend implements ScriptonyBackend {
     this.worldbuilding = new LocalWorldbuildingRepository(localProject.db);
     this.timeline = new LocalTimelineRepository(localProject.db);
     this.audio = new LocalAudioRepository(localProject.db);
+    this.mve = new LocalMveRepository(localProject.db);
     this.assets = new LocalAssetRepository(
       localProject.db,
       localProject.dirPath,

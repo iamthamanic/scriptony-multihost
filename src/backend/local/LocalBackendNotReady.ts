@@ -28,6 +28,7 @@ import {
   StubAiService,
   StubStorageRepository,
   StubBeatRepository,
+  StubMveRepository,
 } from "../appwrite/stubs";
 
 const NOT_READY = "Open a local .scriptony project first.";
@@ -146,6 +147,48 @@ class NotReadyAssetRepository {
   }
 }
 
+class NotReadyMveRepository extends StubMveRepository {
+  override async listLines(): Promise<never> {
+    return notReady();
+  }
+  override async listLinesByScene(): Promise<never> {
+    return notReady();
+  }
+  override async getLine(): Promise<never> {
+    return notReady();
+  }
+  override async getLineByAudioClipId(): Promise<never> {
+    return notReady();
+  }
+  override async createLine(): Promise<never> {
+    return notReady();
+  }
+  override async updateLine(): Promise<never> {
+    return notReady();
+  }
+  override async deleteLine(): Promise<never> {
+    return notReady();
+  }
+  override async listVoiceProfiles(): Promise<never> {
+    return notReady();
+  }
+  override async getVoiceProfile(): Promise<never> {
+    return notReady();
+  }
+  override async getVoiceProfileForCharacter(): Promise<never> {
+    return notReady();
+  }
+  override async createVoiceProfile(): Promise<never> {
+    return notReady();
+  }
+  override async updateVoiceProfile(): Promise<never> {
+    return notReady();
+  }
+  override async deleteVoiceProfile(): Promise<never> {
+    return notReady();
+  }
+}
+
 export class LocalBackendNotReady implements ScriptonyBackend {
   readonly auth: AuthClient;
   readonly projects = new NotReadyProjectRepository();
@@ -160,6 +203,7 @@ export class LocalBackendNotReady implements ScriptonyBackend {
   readonly ai = new StubAiService();
   readonly storage = new StubStorageRepository();
   readonly beats = new StubBeatRepository();
+  readonly mve = new NotReadyMveRepository();
   readonly blender = new AppwriteBlenderService();
 
   constructor(auth: AuthClient) {

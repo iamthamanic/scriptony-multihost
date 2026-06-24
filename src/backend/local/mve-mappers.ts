@@ -1,0 +1,83 @@
+/**
+ * MVE SQLite row mappers — Line and VoiceProfile domain ↔ DB.
+ * Location: src/backend/local/mve-mappers.ts
+ */
+
+import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
+import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-direction";
+import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
+import { parseMveLine, parseMveVoiceProfile } from "@/lib/multi-voice-engine/schema/parse";
+
+function parseJson<T>(value: unknown, field: string): T | undefined {
+  if (value == null || value === "") return undefined;
+  if (typeof value === "object") return value as T;
+  try {
+    return JSON.parse(String(value)) as T;
+  } catch (error) {
+    console.warn(`[mve-mappers] Failed to parse ${field}:`, error);
+    return undefined;
+  }
+}
+
+export function mapMveLineRow(row: Record<string, unknown>): MveLine {
+  const direction = parseJson<MveLineDirection>(row.direction_json, "direction_json");
+  const candidate = {
+    id: String(row.id ?? ""),
+    sceneId: String(row.scene_id ?? ""),
+    orderIndex: Number(row.order_index ?? 0),
+    type: row.line_type ?? "dialogue",
+    characterId: row.character_id ? String(row.character_id) : undefined,
+    text: row.text != null ? String(row.text) : undefined,
+    direction,
+    selectedTakeId: row.selected_take_id
+      ? String(row.selected_take_id)
+      : undefined,
+    status: row.status ?? "draft",
+    audioClipId: row.audio_clip_id ? String(row.audio_clip_id) : undefined,
+    createdAt: String(row.created_at ?? ""),
+    updatedAt: String(row.updated_at ?? ""),
+  };
+  const parsed = parseMveLine(candidate);
+  if (!parsed.success) {
+    throw new Error(
+      `Invalid MVE line row ${candidate.id}: ${parsed.messages.join("; ")}`,
+    );
+  }
+  return parsed.data;
+}
+
+export function mapMveVoiceProfileRow(
+  row: Record<string, unknown>,
+): MveVoiceProfile {
+  const projectId = String(row.project_id ?? "");
+  const candidate = {
+    id: String(row.id ?? ""),
+    userId: String(row.user_id ?? "local-user"),
+    workspaceId: projectId,
+    name: String(row.name ?? ""),
+    language: row.language ?? "de",
+    engine: row.engine ?? "elevenlabs",
+    type: row.profile_type ?? "default",
+    status: row.status ?? "draft",
+    baseVoiceId: row.base_voice_id ? String(row.base_voice_id) : undefined,
+    referenceAudioUrl: row.reference_audio_url
+      ? String(row.reference_audio_url)
+      : undefined,
+    description: row.description != null ? String(row.description) : undefined,
+    attributes: parseJson(row.attributes_json, "attributes_json"),
+    defaultSettings: parseJson(row.default_settings_json, "default_settings_json"),
+    consentStatus: row.consent_status ?? "not_required",
+    commercialUseAllowed: Number(row.commercial_use_allowed ?? 0) === 1,
+    previewText: row.preview_text != null ? String(row.preview_text) : undefined,
+    version: Number(row.version ?? 1),
+    createdAt: String(row.created_at ?? ""),
+    updatedAt: String(row.updated_at ?? ""),
+  };
+  const parsed = parseMveVoiceProfile(candidate);
+  if (!parsed.success) {
+    throw new Error(
+      `Invalid MVE voice profile row ${candidate.id}: ${parsed.messages.join("; ")}`,
+    );
+  }
+  return parsed.data;
+}

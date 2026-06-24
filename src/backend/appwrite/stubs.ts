@@ -25,6 +25,7 @@ import type {
 	StorageFileInfo,
 	StorageUsageInfo,
 	StorageBucketKind,
+	MveRepository,
 } from "../ScriptonyBackend";
 import type {
 	StoryBeat,
@@ -162,7 +163,49 @@ export class StubAiService implements AiService {
 	}
 }
 
-// ── Storage ───────────────────────────────────────────────────────────────────
+// ── Multi-Voice Engine ────────────────────────────────────────────────────────
+
+export class StubMveRepository implements MveRepository {
+	async listLines(): Promise<never> {
+		throw new Error("MVE lines are only available in local desktop projects.");
+	}
+	async listLinesByScene(): Promise<never> {
+		throw new Error("MVE lines are only available in local desktop projects.");
+	}
+	async getLine(): Promise<never> {
+		throw new Error("MVE lines are only available in local desktop projects.");
+	}
+	async getLineByAudioClipId(): Promise<never> {
+		throw new Error("MVE lines are only available in local desktop projects.");
+	}
+	async createLine(): Promise<never> {
+		throw new Error("MVE lines are only available in local desktop projects.");
+	}
+	async updateLine(): Promise<never> {
+		throw new Error("MVE lines are only available in local desktop projects.");
+	}
+	async deleteLine(): Promise<never> {
+		throw new Error("MVE lines are only available in local desktop projects.");
+	}
+	async listVoiceProfiles(): Promise<never> {
+		throw new Error("MVE voice profiles are only available in local desktop projects.");
+	}
+	async getVoiceProfile(): Promise<never> {
+		throw new Error("MVE voice profiles are only available in local desktop projects.");
+	}
+	async getVoiceProfileForCharacter(): Promise<never> {
+		throw new Error("MVE voice profiles are only available in local desktop projects.");
+	}
+	async createVoiceProfile(): Promise<never> {
+		throw new Error("MVE voice profiles are only available in local desktop projects.");
+	}
+	async updateVoiceProfile(): Promise<never> {
+		throw new Error("MVE voice profiles are only available in local desktop projects.");
+	}
+	async deleteVoiceProfile(): Promise<never> {
+		throw new Error("MVE voice profiles are only available in local desktop projects.");
+	}
+}
 
 export class StubStorageRepository implements StorageRepository {
 	async listProviders(): Promise<StorageProviderConfig[]> {

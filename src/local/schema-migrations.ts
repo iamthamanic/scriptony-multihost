@@ -6,7 +6,12 @@
 
 import type { BindParams } from "sql.js";
 import type { LocalDb } from "@/backend/local/LocalDb";
-import { SCHEMA_META_TABLE, SCHEMA_VERSION, TABLE } from "./project-schema";
+import {
+  SCHEMA_META_TABLE,
+  SCHEMA_VERSION,
+  TABLE,
+  MVE_SCHEMA_STATEMENTS,
+} from "./project-schema";
 
 /** Idempotent DDL for schema v2 (story_beats). */
 export const MIGRATION_V2_STATEMENTS: readonly string[] = [
@@ -62,6 +67,9 @@ export const MIGRATION_V3_LANE_REMAP: readonly {
   },
 ];
 
+/** Idempotent DDL for schema v4 (multi-voice-engine). */
+export const MIGRATION_V4_STATEMENTS = MVE_SCHEMA_STATEMENTS;
+
 /** Apply pending migrations up to SCHEMA_VERSION. */
 export async function migrateLocalDb(db: LocalDb): Promise<void> {
   let version = await readSchemaVersion(db);
@@ -84,6 +92,14 @@ export async function migrateLocalDb(db: LocalDb): Promise<void> {
       }
     }
     version = 3;
+    await setSchemaVersion(db, version);
+  }
+
+  if (version < 4) {
+    for (const stmt of MIGRATION_V4_STATEMENTS) {
+      await db.run(stmt);
+    }
+    version = 4;
     await setSchemaVersion(db, version);
   }
 
