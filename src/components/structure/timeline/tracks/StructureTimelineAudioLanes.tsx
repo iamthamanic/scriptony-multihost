@@ -8,8 +8,10 @@ import { Plus } from "lucide-react";
 import { useProjectClipLanes } from "../../../../hooks/useProjectClipLanes";
 import { useTimelineAddAudio } from "../../../../hooks/useTimelineAddAudio";
 import { useMveLines } from "../../../../hooks/useMveLines";
+import { useMveVoiceProfiles } from "../../../../hooks/useMveVoiceProfiles";
 import type { LinkedLaneAudioContext } from "../../../../hooks/useTimelineAddAudio";
-import { LANE_UI } from "../../../../lib/audio-lane";
+import { LANE_UI, laneIndexToTrackType } from "../../../../lib/audio-lane";
+import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
 import { cn } from "../../../../lib/utils";
 import {
   StructureTimelineClipLaneContent,
@@ -32,6 +34,7 @@ export function useStructureTimelineAudioLanes(
   const [expandedLane, setExpandedLane] = useState<number | null>(null);
   const lanes = useProjectClipLanes(props.projectId, props.projectType);
   const mve = useMveLines(props.projectId);
+  const mveVoices = useMveVoiceProfiles(props.projectId);
   const backfilledClipIds = useRef(new Set<string>());
 
   useEffect(() => {
@@ -74,12 +77,48 @@ export function useStructureTimelineAudioLanes(
     [mve],
   );
 
+  const getVoiceIdForLane = useCallback(
+    (laneIndex: number) => {
+      if (!mveVoices.enabled) return undefined;
+      const characterId = lanes.characterLanes.characterIdForLane(laneIndex);
+      if (!characterId) return undefined;
+      return resolveMveTtsVoiceId(
+        mveVoices.profileByCharacterId.get(characterId),
+      );
+    },
+    [lanes.characterLanes, mveVoices],
+  );
+
+  const getGenerateBlockReason = useCallback(
+    (laneIndex: number) => {
+      if (!mveVoices.enabled) return undefined;
+      const trackType = laneIndexToTrackType(laneIndex);
+      if (trackType !== "dialog" && trackType !== "narrator") {
+        return undefined;
+      }
+      const characterId = lanes.characterLanes.characterIdForLane(laneIndex);
+      if (!characterId) {
+        return "Kein Charakter für diese Dialog-Spur.";
+      }
+      const profile = mveVoices.profileByCharacterId.get(characterId);
+      if (!resolveMveTtsVoiceId(profile)) {
+        return "Charakter hat keine Stimme — im Characters-Panel zuweisen.";
+      }
+      return undefined;
+    },
+    [lanes.characterLanes, mveVoices],
+  );
+
   const addAudio = useTimelineAddAudio({
     projectId: props.projectId,
     projectType: props.projectType,
     scenes: lanes.scenes,
     currentTimeSec: props.currentTimeSec,
     getCharacterIdForLane: lanes.characterLanes.characterIdForLane,
+    getVoiceIdForLane: mveVoices.enabled ? getVoiceIdForLane : undefined,
+    getGenerateBlockReason: mveVoices.enabled
+      ? getGenerateBlockReason
+      : undefined,
     allClips: lanes.allClips,
     linkedLaneAudio: props.linkedLaneAudio,
     onClipCommittedMve: mve.enabled ? mve.ensureForClip : undefined,
@@ -104,6 +143,7 @@ export function useStructureTimelineAudioLanes(
       triggerUpload: addAudio.triggerUpload,
       toggleRecord: addAudio.toggleRecord,
       addSfxLane: addAudio.addSfxLane,
+      generateBlockReasonForLane: addAudio.generateBlockReasonForLane,
     },
     characterLanes: {
       getCharacterForLane: lanes.characterLanes.getCharacterForLane,

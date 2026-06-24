@@ -60,6 +60,7 @@ export class LocalMveVoiceProfileRepository {
       engine: payload.engine ?? "elevenlabs",
       type: payload.type ?? "default",
       status: payload.status ?? "draft",
+      characterId: payload.characterId,
       baseVoiceId: payload.baseVoiceId,
       referenceAudioUrl: payload.referenceAudioUrl,
       description: payload.description,

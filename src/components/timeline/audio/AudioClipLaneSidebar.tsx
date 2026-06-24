@@ -23,6 +23,7 @@ function renderAddAudioMenu(
   startSec: number,
   locked: boolean,
 ) {
+  const generateBlockReason = addAudio.generateBlockReasonForLane?.(laneIndex);
   return (
     <AddAudioTimelineMenu
       laneIndex={laneIndex}
@@ -32,6 +33,8 @@ function renderAddAudioMenu(
       onRecord={addAudio.toggleRecord}
       onUpload={addAudio.triggerUpload}
       onGenerate={addAudio.addGenerated}
+      generateDisabled={Boolean(generateBlockReason)}
+      generateDisabledTitle={generateBlockReason}
       variant="compact"
     />
   );

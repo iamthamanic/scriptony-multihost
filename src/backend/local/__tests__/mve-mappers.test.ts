@@ -39,6 +39,8 @@ describe("mve-mappers", () => {
       status: "ready",
       consent_status: "not_required",
       commercial_use_allowed: 0,
+      character_id: "char_abc",
+      base_voice_id: "af_bella",
       version: 1,
       created_at: "2026-06-24T10:00:00.000Z",
       updated_at: "2026-06-24T10:00:00.000Z",
@@ -46,6 +48,8 @@ describe("mve-mappers", () => {
 
     expect(profile.name).toBe("Narrator");
     expect(profile.workspaceId).toBe("proj_1");
+    expect(profile.characterId).toBe("char_abc");
+    expect(profile.baseVoiceId).toBe("af_bella");
     expect(profile.commercialUseAllowed).toBe(false);
   });
 });

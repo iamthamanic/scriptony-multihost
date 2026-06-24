@@ -50,6 +50,7 @@ export interface AudioClipLaneTracksProps {
     | "triggerUpload"
     | "toggleRecord"
     | "addSfxLane"
+    | "generateBlockReasonForLane"
   >;
   characterLanes?: Pick<
     ReturnType<typeof useCharacterLaneMap>,

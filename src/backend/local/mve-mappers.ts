@@ -59,6 +59,7 @@ export function mapMveVoiceProfileRow(
     engine: row.engine ?? "elevenlabs",
     type: row.profile_type ?? "default",
     status: row.status ?? "draft",
+    characterId: row.character_id ? String(row.character_id) : undefined,
     baseVoiceId: row.base_voice_id ? String(row.base_voice_id) : undefined,
     referenceAudioUrl: row.reference_audio_url
       ? String(row.reference_audio_url)

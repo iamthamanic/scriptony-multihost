@@ -88,6 +88,11 @@ const ProjectRecoveryPage = lazy(() =>
     default: module.ProjectRecoveryPage,
   })),
 );
+const MveVoiceUiPreviewPage = lazy(() =>
+  import("../components/qa/MveVoiceUiPreviewPage").then((module) => ({
+    default: module.MveVoiceUiPreviewPage,
+  })),
+);
 const ScriptonyAssistant = lazy(() =>
   import("../components/assistant/ScriptonyAssistant").then((module) => ({
     default: module.ScriptonyAssistant,
@@ -209,6 +214,12 @@ export function AppContent() {
         );
       case "api-test":
         return <ApiTestPage />;
+      case "qa-mve-voice":
+        return import.meta.env.DEV ? (
+          <MveVoiceUiPreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
       case "project-recovery":
         return <ProjectRecoveryPage onBack={() => onNavigate("projekte")} />;
       default:

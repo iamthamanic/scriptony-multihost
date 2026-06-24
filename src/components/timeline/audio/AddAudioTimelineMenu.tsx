@@ -21,6 +21,9 @@ export interface AddAudioTimelineMenuProps {
   onUpload: (laneIndex: number, startSec: number) => void;
   onGenerate: (laneIndex: number, startSec: number) => void;
   triggerClassName?: string;
+  /** When set, Generate Audio menu item is disabled (e.g. missing character voice). */
+  generateDisabled?: boolean;
+  generateDisabledTitle?: string;
   /** compact + in header | panel at playhead | default labeled button */
   variant?: "compact" | "panel" | "default";
 }
@@ -34,6 +37,8 @@ export function AddAudioTimelineMenu({
   onUpload,
   onGenerate,
   triggerClassName,
+  generateDisabled,
+  generateDisabledTitle,
   variant = "default",
 }: AddAudioTimelineMenuProps) {
   const content = (
@@ -57,6 +62,12 @@ export function AddAudioTimelineMenu({
       </DropdownMenuItem>
       <DropdownMenuItem
         onClick={() => onGenerate(laneIndex, startSec)}
+        disabled={generateDisabled}
+        aria-label={
+          generateDisabled && generateDisabledTitle
+            ? `Generate Audio: ${generateDisabledTitle}`
+            : "Generate Audio"
+        }
         className="gap-2"
       >
         <Sparkles className="size-4" aria-hidden />

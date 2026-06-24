@@ -58,6 +58,8 @@ export const MveVoiceProfileSchema = z.object({
   defaultSettings: MveVoiceRenderSettingsSchema.optional(),
   consentStatus: MveConsentStatusSchema.default("not_required"),
   commercialUseAllowed: z.boolean().default(false),
+  /** Linked project character (SQLite character_id) */
+  characterId: MveIdSchema.optional(),
   /** Standard sentence for voice preview in Characters panel */
   previewText: z.string().min(1).max(500).optional(),
   version: z.number().int().min(1).default(1),

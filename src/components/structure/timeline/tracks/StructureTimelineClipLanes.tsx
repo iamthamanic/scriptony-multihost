@@ -32,6 +32,7 @@ export interface StructureTimelineClipLanesBaseProps {
     | "triggerUpload"
     | "toggleRecord"
     | "addSfxLane"
+    | "generateBlockReasonForLane"
   >;
   characterLanes?: Pick<
     ReturnType<typeof useCharacterLaneMap>,

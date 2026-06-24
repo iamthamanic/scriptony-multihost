@@ -18,6 +18,7 @@ const VALID_PAGES = [
   "migration",
   "reset-password",
   "api-test",
+  "qa-mve-voice",
   "project-recovery",
 ] as const;
 

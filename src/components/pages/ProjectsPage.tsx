@@ -181,6 +181,13 @@ import {
   type ConceptBlock,
 } from "../../lib/concept-blocks";
 import type { Character } from "../../lib/types";
+import { CharacterVoiceRow } from "../characters/CharacterVoiceRow";
+import { audioStrategy } from "../structure/timeline/strategies/audioStrategy";
+import { useLocalProjectOptional } from "@/hooks/useLocalProject";
+import { useMveVoiceProfiles } from "@/hooks/useMveVoiceProfiles";
+import { canUseCloudSession } from "@/lib/auth/cloud-session";
+import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
+import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 
 const StructureBeatsSection = lazy(() =>
   import("../StructureBeatsSection").then((module) => ({
@@ -2557,6 +2564,11 @@ interface CharacterCardProps {
     },
   ) => void;
   onDelete: (characterId: string) => void;
+  showVoiceSection?: boolean;
+  projectId?: string;
+  projectDir?: string;
+  voiceProfile?: MveVoiceProfile | null;
+  onVoiceChange?: () => void;
 }
 
 function CharacterCard({
@@ -2564,6 +2576,11 @@ function CharacterCard({
   onImageUpload,
   onUpdateDetails,
   onDelete,
+  showVoiceSection,
+  projectId,
+  projectDir,
+  voiceProfile,
+  onVoiceChange,
 }: CharacterCardProps) {
   const characterImageInputRef = useRef<HTMLInputElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -2653,6 +2670,13 @@ function CharacterCard({
             <CardDescription className="text-xs line-clamp-1">
               {character.description}
             </CardDescription>
+            {showVoiceSection && (
+              <p className="text-[10px] text-muted-foreground mt-0.5">
+                {resolveMveTtsVoiceId(voiceProfile)
+                  ? "Charakterstimme zugewiesen"
+                  : "Charakterstimme: noch nicht zugewiesen"}
+              </p>
+            )}
           </div>
 
           {/* Expand Icon */}
@@ -2814,6 +2838,17 @@ function CharacterCard({
               )}
             </div>
           </div>
+
+          {showVoiceSection && projectId && onVoiceChange && (
+            <CharacterVoiceRow
+              projectId={projectId}
+              projectDir={projectDir}
+              characterId={character.id}
+              characterName={character.name}
+              profile={voiceProfile}
+              onVoiceChange={onVoiceChange}
+            />
+          )}
 
           {isEditing ? (
             <div className="space-y-3">
@@ -4089,12 +4124,7 @@ function ProjectDetail({
         toast.error(msg);
       }
     },
-    [
-      project.type,
-      project.id,
-      editedDurationHours,
-      editedDurationMinutes,
-    ],
+    [project.type, project.id, editedDurationHours, editedDurationMinutes],
   );
 
   const handleProjectDurationSecondsHint = useCallback(
@@ -4602,6 +4632,31 @@ function ProjectDetail({
     [],
   );
   const [charactersLoading, setCharactersLoading] = useState(true);
+
+  const localProject = useLocalProjectOptional();
+  const projectDir = localProject?.project?.dirPath;
+  const mveVoices = useMveVoiceProfiles(project.id);
+  const showCharacterVoiceSection = useMemo(
+    () =>
+      isLocalProfile() &&
+      audioStrategy.resolveShowAudioDawLanes(editedType || project.type),
+    [editedType, project.type],
+  );
+  const handleCharacterVoiceChange = useCallback(() => {
+    void mveVoices.invalidate();
+  }, [mveVoices]);
+  const [cloudSession, setCloudSession] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    if (!showCharacterVoiceSection) return;
+    let cancelled = false;
+    void canUseCloudSession().then((ok) => {
+      if (!cancelled) setCloudSession(ok);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [showCharacterVoiceSection]);
 
   const handleCoverVisualStyleChange = (style: CoverVisualStyle) => {
     setCoverVisualStyle(style);
@@ -7704,6 +7759,12 @@ function ProjectDetail({
 
           <CollapsibleContent>
             <ProjectSectionFrame>
+              {showCharacterVoiceSection && cloudSession === false && (
+                <p className="text-xs text-muted-foreground mb-3 rounded border border-dashed border-border px-3 py-2">
+                  Cloud-TTS-Stimmen erfordern Cloud-Login. Kokoro-Stimmen lokal
+                  nutzbar.
+                </p>
+              )}
               <div className="space-y-3">
                 {charactersState.map((character) => (
                   <CharacterCard
@@ -7712,6 +7773,13 @@ function ProjectDetail({
                     onImageUpload={updateCharacterImage}
                     onUpdateDetails={updateCharacterDetails}
                     onDelete={deleteCharacter}
+                    showVoiceSection={showCharacterVoiceSection}
+                    projectId={project.id}
+                    projectDir={projectDir}
+                    voiceProfile={mveVoices.profileByCharacterId.get(
+                      character.id,
+                    )}
+                    onVoiceChange={handleCharacterVoiceChange}
                   />
                 ))}
               </div>

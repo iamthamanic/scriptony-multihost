@@ -29,6 +29,7 @@ import {
   type StructureTimeBlock,
 } from "../lib/scene-audio-lane-link";
 import type { AudioClip } from "../lib/types";
+import { useLocalProjectOptional } from "./useLocalProject";
 
 export interface LinkedLaneAudioContext {
   links: SceneAudioLaneLinkMap;
@@ -64,6 +65,10 @@ export interface UseTimelineAddAudioOptions {
     clip: AudioClip,
     characterId?: string,
   ) => Promise<unknown>;
+  /** MVE: Kokoro/cloud voice id for dialog lane TTS. */
+  getVoiceIdForLane?: (laneIndex: number) => string | undefined;
+  /** MVE: reason Generate is blocked (dialog lanes without voice). */
+  getGenerateBlockReason?: (laneIndex: number) => string | undefined;
 }
 
 export function useTimelineAddAudio({
@@ -76,15 +81,21 @@ export function useTimelineAddAudio({
   allClips = [],
   linkedLaneAudio,
   onClipCommittedMve,
+  getVoiceIdForLane,
+  getGenerateBlockReason,
 }: UseTimelineAddAudioOptions) {
   const queryClient = useQueryClient();
+  const localProject = useLocalProjectOptional();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pendingLaneRef = useRef<{ laneIndex: number; startSec: number } | null>(
     null,
   );
   const [isBusy, setIsBusy] = useState(false);
 
-  const { startTts } = useTtsGeneration({ sceneId: "" });
+  const { startTts } = useTtsGeneration({
+    sceneId: "",
+    projectDir: localProject?.project?.dirPath,
+  });
 
   const applyClipToCache = useCallback(
     (clip: AudioClip | undefined, sceneId: string) => {
@@ -260,6 +271,13 @@ export function useTimelineAddAudio({
   const addGenerated = useCallback(
     async (laneIndex: number, startSec: number) => {
       if (!projectId) return;
+
+      const blockReason = getGenerateBlockReason?.(laneIndex);
+      if (blockReason) {
+        toast.info(blockReason);
+        return;
+      }
+
       const placement = resolveLanePlacement(laneIndex, startSec);
       if (!placement) return;
 
@@ -277,6 +295,18 @@ export function useTimelineAddAudio({
 
       if (!text?.trim()) {
         toast.info("Abgebrochen — kein Text eingegeben.");
+        return;
+      }
+
+      const voiceId = getVoiceIdForLane?.(laneIndex) ?? "";
+      if (
+        getVoiceIdForLane &&
+        (trackType === "dialog" || trackType === "narrator") &&
+        !voiceId.trim()
+      ) {
+        toast.info(
+          "Charakter hat keine Stimme — bitte im Characters-Panel zuweisen.",
+        );
         return;
       }
 
@@ -305,12 +335,14 @@ export function useTimelineAddAudio({
               trackId,
               clipId,
               text: text.trim(),
-              voiceId: "",
+              voiceId: getVoiceIdForLane ? voiceId : "",
             },
             placement.sceneId,
           );
           toast.info(
-            "TTS gestartet — Voice in den Einstellungen zuweisen falls nötig.",
+            getVoiceIdForLane
+              ? "TTS gestartet mit Charakter-Stimme."
+              : "TTS gestartet — Voice in den Einstellungen zuweisen falls nötig.",
           );
         }
       } catch (err) {
@@ -328,6 +360,8 @@ export function useTimelineAddAudio({
       finalizeClipCommit,
       startTts,
       getCharacterIdForLane,
+      getVoiceIdForLane,
+      getGenerateBlockReason,
     ],
   );
 
@@ -403,5 +437,6 @@ export function useTimelineAddAudio({
     triggerUpload,
     toggleRecord,
     addSfxLane,
+    generateBlockReasonForLane: getGenerateBlockReason,
   };
 }
