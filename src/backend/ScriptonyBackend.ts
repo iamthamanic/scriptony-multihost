@@ -294,6 +294,109 @@ export interface StorageRepository {
 
 import type { BlenderService } from "./blender/types";
 
+import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
+import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-direction";
+import type {
+  MveLineStatus,
+  MveLineType,
+  MveVoiceProfileStatus,
+  MveVoiceProfileType,
+  MveConsentStatus,
+} from "@/lib/multi-voice-engine/schema/enums";
+import type {
+  MveVoiceAttributes,
+  MveVoiceProfile,
+  MveVoiceRenderSettings,
+} from "@/lib/multi-voice-engine/schema/voice-profile";
+
+// ── Multi-Voice Engine (local SQLite MVP) ───────────────────────────────────
+
+export interface MveLineCreatePayload {
+  sceneId: string;
+  orderIndex?: number;
+  type?: MveLineType;
+  characterId?: string;
+  text?: string;
+  direction?: MveLineDirection;
+  selectedTakeId?: string;
+  status?: MveLineStatus;
+  audioClipId?: string;
+}
+
+export interface MveLineUpdatePayload {
+  orderIndex?: number;
+  type?: MveLineType;
+  characterId?: string | null;
+  text?: string | null;
+  direction?: MveLineDirection | null;
+  selectedTakeId?: string | null;
+  status?: MveLineStatus;
+  audioClipId?: string | null;
+}
+
+export interface MveVoiceProfileCreatePayload {
+  name: string;
+  userId?: string;
+  characterId?: string;
+  language?: string;
+  engine?: string;
+  type?: MveVoiceProfileType;
+  status?: MveVoiceProfileStatus;
+  baseVoiceId?: string;
+  referenceAudioUrl?: string;
+  description?: string;
+  attributes?: MveVoiceAttributes;
+  defaultSettings?: MveVoiceRenderSettings;
+  consentStatus?: MveConsentStatus;
+  commercialUseAllowed?: boolean;
+  previewText?: string;
+  version?: number;
+}
+
+export interface MveVoiceProfileUpdatePayload {
+  name?: string;
+  characterId?: string | null;
+  language?: string;
+  engine?: string;
+  type?: MveVoiceProfileType;
+  status?: MveVoiceProfileStatus;
+  baseVoiceId?: string | null;
+  referenceAudioUrl?: string | null;
+  description?: string | null;
+  attributes?: MveVoiceAttributes | null;
+  defaultSettings?: MveVoiceRenderSettings | null;
+  consentStatus?: MveConsentStatus;
+  commercialUseAllowed?: boolean;
+  previewText?: string | null;
+  version?: number;
+}
+
+export interface MveRepository {
+  listLines(projectId: string): Promise<MveLine[]>;
+  listLinesByScene(sceneId: string): Promise<MveLine[]>;
+  getLine(id: string): Promise<MveLine | null>;
+  getLineByAudioClipId(clipId: string): Promise<MveLine | null>;
+  createLine(projectId: string, payload: MveLineCreatePayload): Promise<MveLine>;
+  updateLine(id: string, patch: MveLineUpdatePayload): Promise<MveLine>;
+  deleteLine(id: string): Promise<void>;
+
+  listVoiceProfiles(projectId: string): Promise<MveVoiceProfile[]>;
+  getVoiceProfile(id: string): Promise<MveVoiceProfile | null>;
+  getVoiceProfileForCharacter(
+    projectId: string,
+    characterId: string,
+  ): Promise<MveVoiceProfile | null>;
+  createVoiceProfile(
+    projectId: string,
+    payload: MveVoiceProfileCreatePayload,
+  ): Promise<MveVoiceProfile>;
+  updateVoiceProfile(
+    id: string,
+    patch: MveVoiceProfileUpdatePayload,
+  ): Promise<MveVoiceProfile>;
+  deleteVoiceProfile(id: string): Promise<void>;
+}
+
 export type {
 	BlenderService,
 	ExportBlenderProjectInput,
@@ -322,6 +425,7 @@ export interface ScriptonyBackend {
 	readonly storage: StorageRepository;
 	readonly blender: BlenderService;
 	readonly beats: BeatRepository;
+	readonly mve: MveRepository;
 }
 
 export type {

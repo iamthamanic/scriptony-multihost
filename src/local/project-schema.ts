@@ -15,7 +15,7 @@
  * Current schema version. Bumped when tables or columns are added/changed.
  * Migrations run from the current version to SCHEMA_VERSION.
  */
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 4;
 
 /** Table holding schema version metadata inside each local database. */
 export const SCHEMA_META_TABLE = "schema_meta";
@@ -35,9 +35,62 @@ export const TABLE = {
   CHANGE_LOG: "change_log",
   SCHEMA_META: SCHEMA_META_TABLE,
   STORY_BEATS: "story_beats",
+  MVE_LINES: "mve_lines",
+  MVE_VOICE_PROFILES: "mve_voice_profiles",
 } as const;
 
 export type TableName = (typeof TABLE)[keyof typeof TABLE];
+
+// ── MVE tables (schema v4) ───────────────────────────────────────────────────
+
+export const MVE_SCHEMA_STATEMENTS: readonly string[] = [
+  `CREATE TABLE IF NOT EXISTS ${TABLE.MVE_LINES} (
+  id               TEXT PRIMARY KEY,
+  project_id       TEXT NOT NULL,
+  scene_id         TEXT NOT NULL,
+  order_index      INTEGER NOT NULL DEFAULT 0,
+  line_type        TEXT NOT NULL DEFAULT 'dialogue',
+  character_id     TEXT,
+  text             TEXT,
+  direction_json   TEXT,
+  selected_take_id TEXT,
+  status           TEXT NOT NULL DEFAULT 'draft',
+  audio_clip_id    TEXT,
+  created_at       TEXT NOT NULL,
+  updated_at       TEXT NOT NULL,
+  deleted_at       TEXT,
+  FOREIGN KEY (project_id) REFERENCES ${TABLE.PROJECTS}(id) ON DELETE CASCADE
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_mve_lines_project ON ${TABLE.MVE_LINES}(project_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_mve_lines_scene ON ${TABLE.MVE_LINES}(scene_id)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_mve_lines_audio_clip ON ${TABLE.MVE_LINES}(audio_clip_id) WHERE audio_clip_id IS NOT NULL AND deleted_at IS NULL`,
+  `CREATE TABLE IF NOT EXISTS ${TABLE.MVE_VOICE_PROFILES} (
+  id                    TEXT PRIMARY KEY,
+  project_id            TEXT NOT NULL,
+  user_id               TEXT NOT NULL DEFAULT 'local-user',
+  character_id          TEXT,
+  name                  TEXT NOT NULL,
+  language              TEXT NOT NULL DEFAULT 'de',
+  engine                TEXT NOT NULL DEFAULT 'elevenlabs',
+  profile_type          TEXT NOT NULL DEFAULT 'default',
+  status                TEXT NOT NULL DEFAULT 'draft',
+  base_voice_id         TEXT,
+  reference_audio_url   TEXT,
+  description           TEXT,
+  attributes_json       TEXT,
+  default_settings_json TEXT,
+  consent_status        TEXT NOT NULL DEFAULT 'not_required',
+  commercial_use_allowed INTEGER NOT NULL DEFAULT 0,
+  preview_text          TEXT,
+  version               INTEGER NOT NULL DEFAULT 1,
+  created_at            TEXT NOT NULL,
+  updated_at            TEXT NOT NULL,
+  deleted_at            TEXT,
+  FOREIGN KEY (project_id) REFERENCES ${TABLE.PROJECTS}(id) ON DELETE CASCADE
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_mve_voice_profiles_project ON ${TABLE.MVE_VOICE_PROFILES}(project_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_mve_voice_profiles_character ON ${TABLE.MVE_VOICE_PROFILES}(project_id, character_id)`,
+];
 
 // ── DDL (SCHEMA_STATEMENTS is the single source of truth) ─────────────────
 
@@ -228,6 +281,7 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   created_at   TEXT,
   updated_at   TEXT
 )`,
+  ...MVE_SCHEMA_STATEMENTS,
 ];
 
 /**

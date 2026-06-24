@@ -13,6 +13,7 @@ import {
   type ProjectFolderInfo,
   type ProjectManifest,
 } from "@/local";
+import { migrateLocalDb } from "@/local/schema-migrations";
 import { LocalDb } from "./LocalDb";
 import { isDesktopShell } from "@/runtime/detect-runtime";
 
@@ -45,6 +46,7 @@ export class LocalProjectContext {
     }
     const info = await openProjectFolder(dirPath);
     const db = await LocalDb.openFromFile(`${info.dirPath}/${DATABASE_FILENAME}`);
+    await migrateLocalDb(db);
     return new LocalProjectContext(info.dirPath, info.manifest, db);
   }
 
@@ -53,6 +55,7 @@ export class LocalProjectContext {
   ): Promise<LocalProjectContext> {
     const info = await createProjectFolder(options);
     const db = await LocalDb.openFromFile(`${info.dirPath}/${DATABASE_FILENAME}`);
+    await migrateLocalDb(db);
     return new LocalProjectContext(info.dirPath, info.manifest, db);
   }
 

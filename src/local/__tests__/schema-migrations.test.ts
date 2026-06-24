@@ -10,6 +10,7 @@ import { migrateLocalDb } from "../schema-migrations";
 describe("schema-migrations", () => {
   it("migrateLocalDb ensures story_beats exists on fresh in-memory DB", async () => {
     const db = await LocalDb.createInMemory();
+    await migrateLocalDb(db);
     const row = await db.get(
       `SELECT value FROM schema_meta WHERE key = 'version'`,
     );
@@ -20,6 +21,12 @@ describe("schema-migrations", () => {
       [TABLE.STORY_BEATS],
     );
     expect(table?.name).toBe(TABLE.STORY_BEATS);
+
+    const mveLines = await db.get(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
+      [TABLE.MVE_LINES],
+    );
+    expect(mveLines?.name).toBe(TABLE.MVE_LINES);
     await db.close();
   });
 

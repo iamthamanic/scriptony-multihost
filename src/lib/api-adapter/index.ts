@@ -111,3 +111,19 @@ export {
   updateScene,
   deleteScene,
 } from "./timeline-structure-adapter";
+
+export {
+  getMveLines,
+  getMveLinesByScene,
+  getMveLine,
+  getMveLineByAudioClipId,
+  createMveLine,
+  updateMveLine,
+  deleteMveLine,
+  getMveVoiceProfiles,
+  getMveVoiceProfile,
+  getMveVoiceProfileForCharacter,
+  createMveVoiceProfile,
+  updateMveVoiceProfile,
+  deleteMveVoiceProfile,
+} from "./mve-adapter";

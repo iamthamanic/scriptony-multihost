@@ -21,6 +21,7 @@ import {
 	StubScriptRepository,
 	StubWorldbuildingRepository,
 	StubBeatRepository,
+	StubMveRepository,
 } from "./stubs";
 import { HybridAiService, HybridStorageRepository } from "../hybrid";
 
@@ -38,6 +39,7 @@ export class AppwriteBackend implements ScriptonyBackend {
 	readonly ai = new HybridAiService();
 	readonly storage = new HybridStorageRepository();
 	readonly beats = new StubBeatRepository();
+	readonly mve = new StubMveRepository();
 	readonly blender = new AppwriteBlenderService();
 
 	constructor(auth: AuthClient) {
