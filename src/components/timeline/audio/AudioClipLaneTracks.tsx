@@ -11,6 +11,7 @@ import type { AudioClip } from "../../../lib/types";
 import type { useAudioLaneState } from "../../../hooks/useAudioLaneState";
 import type { useTimelineAddAudio } from "../../../hooks/useTimelineAddAudio";
 import type { useCharacterLaneMap } from "../../../hooks/useCharacterLaneMap";
+import type { MveLineClipHandlers } from "./AudioClipLaneContent";
 
 export interface AudioClipLaneHandlers {
   handleTrimEnd: (clipId: string, newEndSec: number) => void;
@@ -57,6 +58,7 @@ export interface AudioClipLaneTracksProps {
     | "reorderCharacters"
     | "isReordering"
   > & { allClips?: AudioClip[] };
+  mveLines?: MveLineClipHandlers;
 }
 
 function laneHeight(expandedLane: number | null, laneIndex: number): number {
@@ -82,6 +84,7 @@ export function AudioClipLaneTracks({
   onExpandedLaneChange,
   addAudio,
   characterLanes,
+  mveLines,
 }: AudioClipLaneTracksProps) {
   const {
     handleTrimEnd,
@@ -164,6 +167,7 @@ export function AudioClipLaneTracks({
             onGenerateTts={handleGenerateTts}
             allClips={allClips}
             characterLanes={characterLanes}
+            mveLines={mveLines}
             className={className}
           />
         );

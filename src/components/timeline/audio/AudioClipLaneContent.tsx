@@ -9,6 +9,17 @@ import { AudioTimelineSegment } from "../../audio/AudioTimelineSegment";
 import type { AudioClip } from "../../../lib/types";
 import type { useAudioLaneState } from "../../../hooks/useAudioLaneState";
 import type { useCharacterLaneMap } from "../../../hooks/useCharacterLaneMap";
+import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
+import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-direction";
+
+export interface MveLineClipHandlers {
+  lineByClipId: Map<string, MveLine>;
+  onSaveText: (lineId: string, text: string) => Promise<void>;
+  onSaveDirection: (
+    lineId: string,
+    direction: MveLineDirection,
+  ) => Promise<void>;
+}
 
 export interface AudioClipLaneContentProps {
   laneIndex: number;
@@ -26,6 +37,7 @@ export interface AudioClipLaneContentProps {
     ReturnType<typeof useCharacterLaneMap>,
     "getCharacterForLane" | "dialogLaneOrder"
   >;
+  mveLines?: MveLineClipHandlers;
   className?: string;
 }
 
@@ -42,6 +54,7 @@ export function AudioClipLaneContent({
   onGenerateTts,
   allClips = [],
   characterLanes,
+  mveLines,
   className,
 }: AudioClipLaneContentProps) {
   const audible = isLaneAudible(laneIndex, laneState.laneStates);
@@ -66,6 +79,9 @@ export function AudioClipLaneContent({
           onGenerateTts={() => onGenerateTts(clip)}
           allClips={allClips}
           onLaneChange={onLaneChange}
+          mveLine={mveLines?.lineByClipId.get(clip.id)}
+          onMveSaveText={mveLines?.onSaveText}
+          onMveSaveDirection={mveLines?.onSaveDirection}
         />
       ))}
     </div>
