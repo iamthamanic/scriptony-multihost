@@ -40,6 +40,7 @@ export interface StructureTimelineClipLanesBaseProps {
     | "reorderCharacters"
     | "isReordering"
   > & { allClips?: AudioClip[] };
+  mveLines?: import("../../../timeline/audio/AudioClipLaneContent").MveLineClipHandlers;
 }
 
 export function StructureTimelineClipLaneLabels({

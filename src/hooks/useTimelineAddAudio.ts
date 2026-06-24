@@ -59,6 +59,11 @@ export interface UseTimelineAddAudioOptions {
   getCharacterIdForLane?: (laneIndex: number) => string | undefined;
   allClips?: AudioClip[];
   linkedLaneAudio?: LinkedLaneAudioContext;
+  /** Create MVE line when a dialog clip is committed (local desktop). */
+  onClipCommittedMve?: (
+    clip: AudioClip,
+    characterId?: string,
+  ) => Promise<unknown>;
 }
 
 export function useTimelineAddAudio({
@@ -70,6 +75,7 @@ export function useTimelineAddAudio({
   getCharacterIdForLane,
   allClips = [],
   linkedLaneAudio,
+  onClipCommittedMve,
 }: UseTimelineAddAudioOptions) {
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -162,6 +168,12 @@ export function useTimelineAddAudio({
       if (!clip?.id) return;
       const endSec = endSecOverride ?? clip.endSec;
       applyClipToCache({ ...clip, endSec }, placement.sceneId);
+      if (onClipCommittedMve) {
+        await onClipCommittedMve(
+          { ...clip, endSec },
+          getCharacterIdForLane?.(clip.laneIndex),
+        );
+      }
       if (
         linkedLaneAudio?.onClipCommitted &&
         Number.isFinite(placement.blockEndSec) &&
@@ -175,7 +187,12 @@ export function useTimelineAddAudio({
         });
       }
     },
-    [applyClipToCache, linkedLaneAudio],
+    [
+      applyClipToCache,
+      linkedLaneAudio,
+      onClipCommittedMve,
+      getCharacterIdForLane,
+    ],
   );
 
   const addFromFile = useCallback(

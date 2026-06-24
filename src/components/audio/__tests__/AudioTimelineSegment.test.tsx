@@ -11,6 +11,11 @@
 
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+
+vi.mock("../AudioTimelineSegmentMveText", () => ({
+  AudioTimelineSegmentMveText: () => null,
+}));
+
 import { AudioTimelineSegment } from "../AudioTimelineSegment";
 import type { AudioClip, AudioTrack } from "../../../lib/types";
 

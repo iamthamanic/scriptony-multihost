@@ -99,6 +99,11 @@ export const queryKeys = {
       ["audio", "sceneAudioLaneLinks", projectId] as const,
   },
 
+  mve: {
+    linesByProject: (projectId: string) =>
+      ["mve", "lines", "project", projectId] as const,
+  },
+
   // Playbook
   playbook: {
     all: ["playbook"] as const,

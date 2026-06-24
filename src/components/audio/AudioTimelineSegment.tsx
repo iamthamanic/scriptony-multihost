@@ -20,6 +20,9 @@ import { formatDurationSec } from "../../lib/audio-utils";
 import { hasOverlap } from "../../lib/audio-lane";
 import { cn } from "../../lib/utils";
 import { ClipLanePopover } from "./ClipLanePopover";
+import { AudioTimelineSegmentMveText } from "./AudioTimelineSegmentMveText";
+import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
+import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-direction";
 
 const TYPE_COLORS: Record<string, string> = {
   dialog: "bg-amber-500 border-amber-600",
@@ -48,6 +51,13 @@ interface AudioTimelineSegmentProps {
   allClips?: AudioClip[];
   /** T32: Callback when user changes a clip's lane assignment. */
   onLaneChange?: (clipId: string, newLaneIndex: number) => void;
+  /** MVE dialog line bound to this clip (local Structure Timeline). */
+  mveLine?: MveLine;
+  onMveSaveText?: (lineId: string, text: string) => Promise<void>;
+  onMveSaveDirection?: (
+    lineId: string,
+    direction: MveLineDirection,
+  ) => Promise<void>;
 }
 
 export function AudioTimelineSegment({
@@ -59,6 +69,9 @@ export function AudioTimelineSegment({
   onGenerateTts,
   allClips,
   onLaneChange,
+  mveLine,
+  onMveSaveText,
+  onMveSaveDirection,
 }: AudioTimelineSegmentProps) {
   // T28: Union-Typ — unterscheide Track (Legacy) vs Clip (neu)
   const isClip = "startSec" in item;
@@ -85,6 +98,13 @@ export function AudioTimelineSegment({
     : ((item as AudioTrack).content ?? "…");
 
   const colorClass = TYPE_COLORS[trackType] || "bg-gray-500 border-gray-600";
+
+  const showMveEditor =
+    isClip &&
+    mveLine &&
+    onMveSaveText &&
+    onMveSaveDirection &&
+    (trackType === "dialog" || trackType === "narrator");
 
   // T32: Overlap detection — red dashed border when clips overlap on the same lane
   const overlapping =
@@ -282,7 +302,16 @@ export function AudioTimelineSegment({
             onLaneChange={onLaneChange}
           />
         )}
-        <span className="truncate font-medium">{content || "…"}</span>
+        {showMveEditor && mveLine ? (
+          <AudioTimelineSegmentMveText
+            line={mveLine}
+            disabled={!isEditable}
+            onSaveText={onMveSaveText!}
+            onSaveDirection={onMveSaveDirection!}
+          />
+        ) : (
+          <span className="truncate font-medium">{content || "…"}</span>
+        )}
         <div className="flex items-center gap-1 shrink-0">
           {/* T31: TTS-Button nur auf geschätzten Clips mit handler.
                Mindestbreite verhindert UI-Überlappung bei schmalen Segmenten. */}

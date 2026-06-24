@@ -3,10 +3,11 @@
  * Location: src/components/structure/timeline/tracks/StructureTimelineAudioLanes.tsx
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { Plus } from "lucide-react";
 import { useProjectClipLanes } from "../../../../hooks/useProjectClipLanes";
 import { useTimelineAddAudio } from "../../../../hooks/useTimelineAddAudio";
+import { useMveLines } from "../../../../hooks/useMveLines";
 import type { LinkedLaneAudioContext } from "../../../../hooks/useTimelineAddAudio";
 import { LANE_UI } from "../../../../lib/audio-lane";
 import { cn } from "../../../../lib/utils";
@@ -30,6 +31,49 @@ export function useStructureTimelineAudioLanes(
 ) {
   const [expandedLane, setExpandedLane] = useState<number | null>(null);
   const lanes = useProjectClipLanes(props.projectId, props.projectType);
+  const mve = useMveLines(props.projectId);
+  const backfilledClipIds = useRef(new Set<string>());
+
+  useEffect(() => {
+    if (!mve.enabled || mve.isLoading) return;
+    void (async () => {
+      for (const clip of lanes.allClips) {
+        if (backfilledClipIds.current.has(clip.id)) continue;
+        const trackType = clip.trackType ?? "dialog";
+        if (trackType !== "dialog" && trackType !== "narrator") continue;
+        if (mve.lineByClipId.has(clip.id)) {
+          backfilledClipIds.current.add(clip.id);
+          continue;
+        }
+        backfilledClipIds.current.add(clip.id);
+        await mve.ensureForClip(
+          clip,
+          clip.content,
+          lanes.characterLanes.characterIdForLane(clip.laneIndex),
+        );
+      }
+    })();
+  }, [
+    lanes.allClips,
+    mve.enabled,
+    mve.isLoading,
+    mve.lineByClipId,
+    mve.ensureForClip,
+    lanes.characterLanes,
+  ]);
+
+  const mveLines = useMemo(
+    () =>
+      mve.enabled
+        ? {
+            lineByClipId: mve.lineByClipId,
+            onSaveText: mve.saveLineText,
+            onSaveDirection: mve.saveLineDirection,
+          }
+        : undefined,
+    [mve],
+  );
+
   const addAudio = useTimelineAddAudio({
     projectId: props.projectId,
     projectType: props.projectType,
@@ -38,6 +82,7 @@ export function useStructureTimelineAudioLanes(
     getCharacterIdForLane: lanes.characterLanes.characterIdForLane,
     allClips: lanes.allClips,
     linkedLaneAudio: props.linkedLaneAudio,
+    onClipCommittedMve: mve.enabled ? mve.ensureForClip : undefined,
   });
 
   const laneProps = {
@@ -67,6 +112,7 @@ export function useStructureTimelineAudioLanes(
       isReordering: lanes.characterLanes.isReordering,
       allClips: lanes.allClips,
     },
+    mveLines,
   };
 
   return { lanes, addAudio, laneProps };
