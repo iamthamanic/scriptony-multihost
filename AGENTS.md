@@ -159,6 +159,15 @@ Checks are configured in the dashboard or `.shimwrappercheckrc` (toggles and ord
 - **Radix UI primitives**: Use Radix for accessible components (dialogs, dropdowns, etc.). Do not rebuild what Radix provides.
 - **Accessibility**: Semantic HTML, keyboard navigation, `aria-label` for icon-only buttons.
 - **Error handling**: Always handle loading/error states in UI. Use sonner for toasts. Never swallow errors silently.
+- **Long-running loads (global, verbindlich):** Any operation that may take **>5 seconds** (Sidecar boot, model download, TTS, large import, cloud sync, etc.) **must** use the global loading progress API — not ad-hoc spinners or local-only panels.
+  - **Provider:** `GlobalLoadingProgressProvider` in `src/App.tsx` (wraps `AppContent`).
+  - **Hook:** `useGlobalLoadingProgress()` from `src/hooks/useGlobalLoadingProgress.tsx`.
+  - **Preferred API:** `runWithProgress({ id, title, initialMessage, initialPercent, run: (report) => … })` — `report({ percent, message, phase? })` updates the overlay.
+  - **Manual tracking:** `startTask` / `reportProgress` / `endTask` when `runWithProgress` does not fit (e.g. streaming multi-step jobs).
+  - **UI rule:** Under **5 s** → local control spinner only (button/row). **After 5 s** → global panel bottom-right (`GlobalLoadingProgressHost`): **title**, **%**, **status text**, progress bar. Multiple concurrent tasks show the newest visible task + count.
+  - **Types/helpers:** `src/lib/loading/global-loading-progress.ts` (`LoadingProgressUpdate`, `GLOBAL_LOADING_DETAIL_DELAY_MS = 5000`).
+  - **Do not** duplicate Kokoro-only panels; domain code (e.g. `src/lib/kokoro/kokoro-loading-progress.ts`) reports phases via `report()` into this global system.
+  - **New features:** If you add a slow load path, wire progress messages that describe the **current step** (not generic „Loading…“).
 
 ### Backend (Appwrite Functions / Node.js / Hono)
 
@@ -193,6 +202,32 @@ If a check runs too long and times out (e.g. AI review or Full Explanation with 
 ## README and docs
 
 When you add features, change behavior, or add new options, update the README and relevant docs so they stay in sync.
+
+- **Living sections:** see [`.cursor/readme-contract.md`](.cursor/readme-contract.md) — feature tables, `## Recent changes`, `docs/GETTING_STARTED.md`, `docs/TEST_COVERAGE_REGISTRY.md`.
+- **Commit/push:** use the `commit-push-safe` skill (step 5b) — README updates belong in the **same commit** as user-facing code.
+- **Gate:** `scripts/check-readme-scope.sh` runs as shim `updateReadme` in `npm run checks`. Bypass only with `SKIP_README_SCOPE_CHECK=1` and a documented reason in the PR.
+
+## Agent harness (ECC-aligned)
+
+| Layer | Tool |
+|-------|------|
+| Epic intake | `@feature-intake` → `.qa/design/` + `.qa/intake/` (draft issues) |
+| Issue runner | `@ecc-runner` + `.qa/queue/` (global: `~/.cursor/skills/ecc-runner/`) |
+| Design (single slice) | `@pingpong-solution` when label `needs-design` |
+| Implementation | `@implement` + `.qa/acceptance/` |
+| Verify | `@verify-ticket` |
+| Ship | `@commit-push-safe` / PR workflow |
+
+**Pipeline (new features):**
+
+```
+@feature-intake  →  (review draft)  →  Issues anlegen  →  @ecc-runner
+```
+
+- Epic designs: `.qa/design/`
+- Issue drafts: `.qa/intake/` (JSON created by `feature-intake create` only after user OK)
+- Runner profile: `.qa/runner-profile.yaml`
+- Legacy markdown tickets in `tickets/` remain archive; **new work → GitHub Issues**
 
 ## Customize below
 

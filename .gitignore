@@ -52,4 +52,9 @@ scriptony_blender_addon.zip
 scriptony_blender_extension.zip
 # Blender build artifacts
 tools/blender/dist/*
+
+# Kokoro Python sidecar virtualenv + cache
+tools/kokoro-server/.venv/
+tools/kokoro-server/__pycache__/
+tools/kokoro-server/**/*.pyc
 eslint-fix.mjs

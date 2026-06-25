@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "repo": null,
+  "activeIssue": null,
+  "featureSlug": null,
+  "phase": "idle",
+  "branch": null,
+  "prUrl": null,
+  "milestoneFilter": null,
+  "paused": false,
+  "runMode": "batch",
+  "queue": [],
+  "completedIssues": [],
+  "retries": {
+    "implement": 0,
+    "verifyTicket": 0,
+    "verifyUi": 0,
+    "review": 0
+  },
+  "maxRetries": {
+    "implement": 3,
+    "verifyTicket": 2,
+    "verifyUi": 2,
+    "review": 2,
+    "sameRootCause": 2
+  },
+  "lastError": null,
+  "lastErrorCount": 0,
+  "issuesProcessedInSession": 0,
+  "updatedAt": null
+}

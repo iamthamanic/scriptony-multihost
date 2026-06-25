@@ -1,0 +1,53 @@
+{
+  "epicSlug": "multi-voice-engine",
+  "designPath": ".qa/design/multi-voice-engine.md",
+  "defaultLabels": [],
+  "issues": [
+    {
+      "title": "MVE: Schema-Modul und Zod-Typen (multi-voice-engine)",
+      "featureSlug": "mve-schema",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": [],
+      "body": "## Intent\nZentrales Domänenmodell für Multi-Voice-Engine als TypeScript/Zod-Modul ohne UI- und TTS-Abhängigkeiten.\n\n## User Journey\n1. Code importiert Typen aus `src/lib/multi-voice-engine/schema`.\n2. Payloads werden gegen Zod validiert.\n3. Fehler sind strukturiert für DE-UI.\n\n## Problem\nPRD definiert Scene, Character, Line, LineDirection, VoiceProfile — ohne zentrales Schema entstehen parallele Strukturen in Timeline und Backend.\n\n## Solution\n- `src/lib/multi-voice-engine/schema/` mit Zod + exported types\n- Optional: `audioClipId` auf Line für Timeline-Binding\n- Keine Imports aus TTS, React, functions\n- Vitest mit PRD-Beispielpayload\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n| Appwrite Functions | no |\n\n## Edge Cases\n- Leere Line ohne characterId\n- Ungültige Emotion/Pace-Enums\n\n## Acceptance\n- [ ] Zod-Schemas für Scene, Character, Line, LineDirection, VoiceProfile (MVP)\n- [ ] Schema unit tests in `npm run test`\n- [ ] Kein TTS/React in schema module\n\n## Design\nEpic: `.qa/design/multi-voice-engine.md`"
+    },
+    {
+      "title": "MVE: Local SQLite-Persistenz (Line ↔ Clip)",
+      "featureSlug": "mve-local-persist",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": ["MVE: Schema-Modul und Zod-Typen (multi-voice-engine)"],
+      "body": "## Intent\nLines, LineDirection und VoiceProfile in LocalBackend/SQLite; Bindung an Audio-Clips auf der Structure Timeline.\n\n## User Journey\n1. User legt Dialog-Clip auf Audio-Dialog-Spur an (`AddAudioTimelineMenu`).\n2. System speichert zugehörige Line (Text, characterId, sceneId).\n3. Nach Neustart bleiben Clip und Line konsistent.\n\n## Problem\nSchema allein reicht nicht; lokale Persistenz und Clip↔Line-Mapping fehlen.\n\n## Solution\n- SQLite migration im `.scriptony`-Projekt\n- Repository CRUD unter `src/backend/local/`\n- `src/lib/api-adapter/` + `dispatchByRuntime`\n- Line ↔ `AudioClip` referenzierbar\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n| Appwrite Functions | no |\n\n## Edge Cases\n- Kein Projekt geöffnet → DE-Fehlermeldung\n- Last-write-wins dokumentieren (MVP)\n\n## Acceptance\n- [ ] CRUD Line + VoiceProfile lokal\n- [ ] Line an Clip/Szene referenzierbar\n- [ ] Kein raw apiFetch in Components\n- [ ] Repository mapper test (happy path)\n\n## Design\nEpic: `.qa/design/multi-voice-engine.md`"
+    },
+    {
+      "title": "MVE: Timeline Dialog-Editor (Text, LineDirection, Dirty)",
+      "featureSlug": "mve-timeline-dialog-editor",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": [
+        "MVE: Schema-Modul und Zod-Typen (multi-voice-engine)",
+        "MVE: Local SQLite-Persistenz (Line ↔ Clip)"
+      ],
+      "body": "## Intent\nPRD Core Editor in der **Structure Timeline**: Dialogtext und Regie am Clip (User-Mockup 2026-06-24).\n\n## User Journey\n1. User öffnet Timeline-Ansicht (`StructureTimelineEditor`).\n2. Audio-Dialog-Clip zeigt editierbaren Dialogtext.\n3. Popover/Inspector: Emotion, Pace, Pause (`LineDirection`).\n4. Änderungen setzen `dirty: true`.\n5. `AddAudioTimelineMenu` (Record/Upload/Generate) bleibt unverändert nutzbar.\n\n## Problem\nKein timeline-nativer Dialog-Editor; PRD verlangt Zeilen + Regie + Dirty in einem Flow.\n\n## Solution\nErweitern (nicht parallel neu bauen):\n- `AudioTimelineSegment.tsx` — Text am Clip\n- `ClipLanePopover.tsx` oder `MveLineInspector.tsx` — LineDirection\n- `StructureTimelineAudioLanes.tsx` / `useTimelineAddAudio` — Line beim Clip-Anlegen\n- **Nicht** in `AudioDropdownView` oder `NativeAudiobookView`\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n\n## Edge Cases\n- Clip ohne Text → Empty state\n- Lane ohne Charakter → Hinweis vor Generate\n- Lange Dialoge → Scroll\n\n## Acceptance\n- [ ] Dialogtext am Timeline-Clip editierbar (local)\n- [ ] LineDirection editierbar + persistiert\n- [ ] Dirty-Flag bei Text/Direction-Änderung\n- [ ] DE loading/empty/error\n- [ ] Snippet frontend checks grün\n- [ ] Kein Audio-Render in diesem Slice\n\n## Design\nEpic: `.qa/design/multi-voice-engine.md`"
+    },
+    {
+      "title": "MVE: Characters-Panel und VoiceProfile-Zuweisung",
+      "featureSlug": "mve-characters-voice-panel",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": [
+        "MVE: Schema-Modul und Zod-Typen (multi-voice-engine)",
+        "MVE: Local SQLite-Persistenz (Line ↔ Clip)"
+      ],
+      "body": "## Intent\nCharakter-Stimmen im **Characters-Panel unter der Timeline** (Mockup): Zuweisung, Preview mit Standard-Satz; Generate nutzt Charakter-Voice.\n\n## User Journey\n1. User sieht Characters unter der Structure Timeline.\n2. Pro Charakter: Stimme zuweisen (`CharacterVoiceSelector` erweitert).\n3. Play spielt Standard-Preview-Satz.\n4. Generate Audio auf Dialog-Spur nutzt VoiceProfile des Lane-Charakters.\n\n## Solution\n- `MveCharactersPanel.tsx` in Timeline-Shell\n- VoiceProfile CRUD lokal; `localAssignVoice` echte Persistenz\n- `canUseCloudSession()` für Cloud-TTS; Kokoro/local sonst\n- MVP 0.1: kein volles Voice-Studio-Modal (→ 0.4)\n\n## Edge Cases\n- Charakter ohne Stimme → Generate disabled + DE-Hinweis\n- Keine Cloud-Session → Cloud-TTS ausgegraut\n\n## Acceptance\n- [ ] Characters-Panel in Timeline-Kontext\n- [ ] VoiceProfile pro Charakter persistiert\n- [ ] Preview-Satz abspielbar (local/stub)\n- [ ] Generate liest Charakter-Voice der Lane\n\n## Design\nEpic: `.qa/design/multi-voice-engine.md`"
+    },
+    {
+      "title": "MVE: Enhance-Script (POST /script/enhance)",
+      "featureSlug": "mve-enhance-script",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["MVE: Schema-Modul und Zod-Typen (multi-voice-engine)"],
+      "body": "## Intent\nRohtext mit Sprecherlabels → strukturierte Characters/Lines (PRD §6.6); Einstieg in Timeline/Szene-Kontext.\n\n## User Journey\n1. User gibt Rohtext ein (Szene-Inspector oder Timeline-Kontext).\n2. Enhance → mit Cloud: valides JSON, Lines auf Dialog-Spuren materialisierbar.\n3. Ohne Cloud: DE-Toast, kein Crash.\n\n## Solution\n- `functions/scriptony-audio-story/routes/script-enhance.ts` — `POST /script/enhance`\n- LLM via `_shared/ai-service`; Zod-Output gegen MVE-Schema\n- `audio-story-adapter` + `dispatchByRuntime`; local stub\n- **Nicht** `scriptony-assistant`\n- Guardrails: keine erfundenen Inhalte (PRD)\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | stub |\n| Cloud session | yes |\n| Appwrite Functions | yes |\n\n## Edge Cases\n- Invalid LLM JSON → Retry/Fehler DE\n- Rate limit → Toast\n\n## Acceptance\n- [ ] Enhance API validiert gegen Schema\n- [ ] UI-Einstieg in Timeline-Kontext (min. Rohtext + Enhance-Button)\n- [ ] Local stub ohne Crash\n- [ ] Functions build check wenn functions/ geändert\n\n## Design\nEpic: `.qa/design/multi-voice-engine.md`"
+    }
+  ]
+}

@@ -24,6 +24,7 @@ import voicesHandler from "./routes/voices";
 import audioProductionHandler from "./routes/audio-production";
 
 import ttsHandler from "./routes/tts";
+import scriptEnhanceHandler from "./routes/script-enhance";
 
 async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   const pathname = getPathname(req);
@@ -46,6 +47,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
           voices: "/voices - Voice Casting & TTS",
           audioProduction: "/audio-production - T08 Orchestration",
           tts: "/tts - TTS Pipeline (T31)",
+          scriptEnhance: "/script/enhance - MVE Enhance Script (T64)",
         },
       }),
     );
@@ -95,6 +97,12 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   // TTS Pipeline (T31)
   if (pathname.startsWith("/tts")) {
     await ttsHandler(req, res);
+    return;
+  }
+
+  // MVE Enhance Script (T64)
+  if (pathname.startsWith("/script")) {
+    await scriptEnhanceHandler(req, res);
     return;
   }
 

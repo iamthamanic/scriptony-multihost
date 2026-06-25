@@ -27,7 +27,10 @@ pub fn run() {
       commands::kokoro::start_kokoro_sidecar,
       commands::kokoro::stop_kokoro_sidecar,
       commands::kokoro::kokoro_health,
+      commands::kokoro::kokoro_server_health,
       commands::kokoro::list_kokoro_voices,
+      commands::kokoro::synthesize_kokoro,
+      commands::kokoro::kokoro_server_status,
     ])
     .setup(|app| {
       if let Ok(Some(root)) = commands::workspace::paths::load_trusted_root(app.handle()) {

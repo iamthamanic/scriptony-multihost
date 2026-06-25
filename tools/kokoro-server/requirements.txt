@@ -1,18 +1,12 @@
-# Core TTS engine (fast ONNX-based TTS for Python >= 3.10, < 3.14)
-# NOTE: kokoro-onnx requires Python <3.14; on newer Python the server runs in
-# placeholder mode (silent WAV generation) so the Tauri sidecar still starts.
-kokoro-onnx>=0.1.0 ; python_version < "3.14"
-onnxruntime>=1.17.0 ; python_version < "3.14"
-espeak-ng-loader>=0.1.0 ; python_version < "3.14"
+# Kokoro TTS (hexgrad/kokoro) — requires Python >=3.10, <=3.12 (not 3.13/3.14)
+# start.sh picks python3.12 / 3.11 / 3.10 automatically.
+kokoro>=0.9.4 ; python_version >= "3.10" and python_version < "3.13"
 
-# Audio I/O (always needed, even in placeholder mode)
+# Audio I/O
 soundfile>=0.12.0
 numpy>=1.24.0
 
-# Fast, modern Python HTTP server (always needed)
+# HTTP server
 fastapi>=0.115.0
 uvicorn[standard]>=0.29.0
 python-multipart>=0.0.9
-
-# Optional: faster ONNX runtime for Apple Silicon (M1/M2/M3/M4)
-# onnxruntime-silicon>=1.17.0 ; platform_system=="Darwin" and platform_machine=="arm64" and python_version < "3.14"

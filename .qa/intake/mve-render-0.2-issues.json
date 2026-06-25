@@ -1,0 +1,71 @@
+{
+  "epicSlug": "mve-render-0.2",
+  "designPath": ".qa/design/mve-render-0.2.md",
+  "defaultLabels": [],
+  "issues": [
+    {
+      "title": "MVE 0.2: Schema AudioJob + Take + Render-Typen",
+      "featureSlug": "mve-02-schema-render",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": [],
+      "body": "## Intent\nZod-Schemas und TypeScript-Typen für AudioJob, Take, RenderLineInput/Output und Job-Snapshots — Grundlage für MVP 0.2 Render-Schicht (PRD §8.8, §12.7, §22.3).\n\n## User Journey\n1. Entwickler importiert Typen aus `src/lib/multi-voice-engine/schema/`.\n2. Render-Services validieren Job-Payloads und Take-Records gegen Zod.\n3. Line-Status (`dirty` → `rendered`) und `selectedTakeId` sind schema-definiert.\n\n## Problem\nMVE-Schema hat Line/VoiceProfile, aber keine Take/AudioJob-Typen; Render-Input aus PRD §12.7 existiert nur im PRD, nicht im Code.\n\n## Solution\n- `schema/audio-job.ts` — `MveAudioJob` (id, lineId, status, scriptSnapshot, engine, takeCount, …)\n- `schema/take.ts` — `MveTake` (PRD §8.8 Felder)\n- `schema/render-line.ts` — `RenderLineInput`, `RenderLineOutput`, `VoiceRenderSettings`\n- Erweiterung `line.ts` falls `selectedTakeId` / status-Enums fehlen\n- Vitest mit PRD-Beispielpayloads\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n| Appwrite Functions | no |\n\n## Edge Cases\n- Job ohne snapshot → Zod reject\n- Take ohne audioUrl bei status=ready → invalid\n- lineId orphan → Repository-Concern (nicht Schema)\n\n## Acceptance\n- [ ] Zod-Schemas exportiert und getestet\n- [ ] Kein React/TTS/Adapter in schema/\n- [ ] Kompatibel mit bestehendem `MveLine` aus #3\n\n## Design\nEpic: `.qa/design/mve-render-0.2.md`\n\n## Blockers\nDepends on #3 (MVE Schema — closed)"
+    },
+    {
+      "title": "MVE 0.2: VoiceEngineAdapter + Registry",
+      "featureSlug": "mve-02-adapter-registry",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": ["MVE 0.2: Schema AudioJob + Take + Render-Typen"],
+      "body": "## Intent\nZentrales Adapter-Interface und Registry — Routing nach `VoiceProfile.engine` statt hardcoded Kokoro (PRD §12.7, §25.1, §25.5).\n\n## User Journey\n1. Render-Service erhält Line + VoiceProfile.\n2. `resolveAdapter(profile.engine)` liefert passenden Adapter.\n3. Unbekannte Engine → klarer DE-Fehler, kein stiller Kokoro-Fallback (konfigurierbarer default nur in Registry-Init).\n\n## Problem\nPreview und TTS rufen Kokoro direkt auf (`local-tts-api.ts`, `useMveVoicePreview`); kein `src/lib/multi-voice-engine/adapters/`.\n\n## Solution\n- `adapters/voice-engine-adapter.ts` — Interface (capabilities + `renderLine`)\n- `adapters/registry.ts` — `registerAdapter`, `resolveAdapter`, `listEngines`\n- Optional `cloneVoice?` / `tuneVoice?` als Typ-Skizze (Implementierung 0.4)\n- Kein DB-Zugriff in Adapters (PRD §25.5)\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | registry hook für cloud adapters später |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- `engine` leer → default `kokoro` nur wenn registriert\n- Adapter wirft → Render-Service mappt zu Take `failed`\n\n## Acceptance\n- [ ] Interface + Registry exportiert\n- [ ] Unit test: resolve unknown engine throws/returns structured error\n- [ ] Keine UI-Imports in adapters/\n\n## Design\nEpic: `.qa/design/mve-render-0.2.md`"
+    },
+    {
+      "title": "MVE 0.2: DummyAdapter (Offline / Tests)",
+      "featureSlug": "mve-02-dummy-adapter",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["MVE 0.2: VoiceEngineAdapter + Registry"],
+      "body": "## Intent\nDummy-Engine für Tests, CI und Offline-Demo ohne Sidecar — PRD MVP 0.2 verlangt explizit Dummy Adapter.\n\n## User Journey\n1. VoiceProfile mit `engine=dummy` oder Dev-Toggle.\n2. Render Line erzeugt kurze Stille oder synthetischen Ton / Platzhalter-WAV.\n3. Takes landen mit gültiger `durationMs` — UI-Flow testbar ohne Kokoro.\n\n## Problem\nOhne Dummy ist jeder Render-Test an Kokoro-Sidecar gebunden.\n\n## Solution\n- `adapters/dummy.adapter.ts` — `engineName: \"dummy\"`, `renderLine` → lokale Platzhalter-Datei unter `.scriptony/assets/takes/`\n- Registry registriert Dummy in dev/test oder immer (feature flag `VITE_MVE_DUMMY_TTS`)\n- capabilities: TTS yes, clone/tune no\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Kein Projekt geöffnet → Fehler wie Kokoro\n- Sehr langer Text → truncate für Dummy (Dokumentation)\n\n## Acceptance\n- [ ] DummyAdapter registriert und `renderLine` liefert WAV-Pfad\n- [ ] Unit test happy path ohne Netzwerk\n- [ ] Snippet checks grün\n\n## Design\nEpic: `.qa/design/mve-render-0.2.md`"
+    },
+    {
+      "title": "MVE 0.2: KokoroAdapter (Refactor local TTS)",
+      "featureSlug": "mve-02-kokoro-adapter",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["MVE 0.2: VoiceEngineAdapter + Registry"],
+      "body": "## Intent\nKokoro als erster echter `VoiceEngineAdapter` — bestehende Sidecar-/Tauri-Logik aus UI/API in Adapter verschieben (PRD MVP 0.2 „ein echter TTS Adapter“).\n\n## User Journey\n1. VoiceProfile `engine=kokoro`, `baseVoiceId=af_…`.\n2. Render/Preview ruft `KokoroAdapter.renderLine()` auf.\n3. Sidecar startet wie heute (`ensureKokoroSidecar`); Output normalisiert als `RenderLineOutput`.\n\n## Problem\nKokoro ist in `local-tts-api.ts`, `LocalAiService`, `useMveVoicePreview`, Tauri `synthesize_kokoro` verstreut — verstößt gegen §25.1.\n\n## Solution\n- `adapters/kokoro.adapter.ts` — wrappt `synthesizeLocal` / Tauri invoke\n- Map `RenderLineInput` → text, voice, speed aus LineDirection + VoiceProfile\n- `local-tts-api.ts` bleibt dünn transport layer oder wird von Adapter konsumiert\n- Preview: `useMveVoicePreview` → `resolveAdapter` statt direkt Kokoro\n- Registry: `registerAdapter(new KokoroAdapter())`\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no (cloud kokoro provider separat in functions/) |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Sidecar nicht ready → strukturierter Fehler + global loading progress\n- Python/kokoro package missing → Fehlermeldung aus /status durchreichen\n\n## Acceptance\n- [ ] Voice preview nutzt KokoroAdapter (kein direkter invoke aus Hook)\n- [ ] Bestehende Kokoro-Preview UX unverändert oder besser\n- [ ] Unit test mit mocked synthesize\n\n## Design\nEpic: `.qa/design/mve-render-0.2.md`\n\n## Blockers\nOptional parallel zu #6 Characters-Panel"
+    },
+    {
+      "title": "MVE 0.2: SQLite AudioJob + Takes Persistenz",
+      "featureSlug": "mve-02-persist-jobs-takes",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": [
+        "MVE 0.2: Schema AudioJob + Take + Render-Typen",
+        "MVE 0.2: VoiceEngineAdapter + Registry"
+      ],
+      "body": "## Intent\nAudioJobs und Takes lokal in SQLite persistieren; Line↔Take↔Job Referenzen (PRD §8.8, MVP 0.2 AudioJob Tabelle).\n\n## User Journey\n1. User startet Render für eine Line.\n2. System legt AudioJob + N Take-Platzhalter an.\n3. Nach Neustart: Takes abspielbar, selected Take bleibt gesetzt.\n\n## Problem\nKeine `mve_audio_jobs` / `mve_takes` Tabellen; Render-Ergebnisse existieren nicht über Session hinaus.\n\n## Solution\n- SQLite-Migration: `mve_audio_jobs`, `mve_takes`\n- `LocalMveRenderRepository` — CRUD Job/Take, `selectTake(lineId, takeId)`\n- `src/lib/api-adapter/mve-render-adapter.ts` + `dispatchByRuntime`\n- Audio-Dateien unter `.scriptony/assets/takes/` (Pattern voice-refs/clips)\n- Schema-Migration bump + `ensureMveTables` erweitern\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | deferred |\n| Appwrite Functions | no |\n\n## Edge Cases\n- Render abgebrochen → Job `failed`, orphan takes cleanup policy dokumentieren\n- Disk v- → DE-Fehler\n- Last-write-wins MVP\n\n## Acceptance\n- [ ] CRUD Job + Take lokal\n- [ ] `selectedTakeId` auf Line persistiert\n- [ ] Repository mapper test\n- [ ] Kein raw apiFetch in Components\n\n## Design\nEpic: `.qa/design/mve-render-0.2.md`\n\n## Blockers\nDepends on #4 (MVE Local SQLite — closed)"
+    },
+    {
+      "title": "MVE 0.2: Render Line Service + Job-Snapshot",
+      "featureSlug": "mve-02-render-line-service",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": [
+        "MVE 0.2: VoiceEngineAdapter + Registry",
+        "MVE 0.2: DummyAdapter (Offline / Tests)",
+        "MVE 0.2: KokoroAdapter (Refactor local TTS)",
+        "MVE 0.2: SQLite AudioJob + Takes Persistenz"
+      ],
+      "body": "## Intent\nOrchestrierung: Line rendern → Job mit **Script-Snapshot** → Adapter → 1–N Takes speichern (PRD §25.2, §22.3).\n\n## User Journey\n1. User klickt **Takes rendern** am Dialog-Clip (dirty Line).\n2. Service freezt Line+Direction+Voice in Job-Snapshot.\n3. Adapter rendert N Takes (default 1–3 MVP).\n4. Line `status=rendered`, Takes `ready`; bei Fehler `failed` + Toast DE.\n\n## Problem\nKein Render-Endpunkt/Service; Generate auf Timeline umgeht Adapter-Schicht.\n\n## Solution\n- `render/render-line.ts` — `renderLineForMveLine(lineId, options)`\n- `render/create-render-job.ts` — Snapshot bauen\n- Optional Cloud: `functions/scriptony-audio-story/routes/render-line.ts` (stub/localNotSupported MVP)\n- `useTimelineAddAudio` Generate → später durch Render-Service ersetzen/verdrahten\n- Global loading progress für >5s Render\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | stub |\n| Appwrite Functions | optional stub route |\n\n## Edge Cases\n- Line ohne VoiceProfile → block + DE-Hinweis\n- Line während Job editiert → Job nutzt Snapshot (nicht live Line)\n- Parallele Jobs same line → queue or reject (document MVP: reject)\n\n## Acceptance\n- [ ] Render erzeugt ≥1 Take pro Line (Dummy oder Kokoro)\n- [ ] Job enthält snapshot JSON\n- [ ] Line dirty cleared / status updated\n- [ ] Unit test mit DummyAdapter\n\n## Design\nEpic: `.qa/design/mve-render-0.2.md`"
+    },
+    {
+      "title": "MVE 0.2: Take Selection + Render UI (Timeline)",
+      "featureSlug": "mve-02-take-ui",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["MVE 0.2: Render Line Service + Job-Snapshot"],
+      "body": "## Intent\nNutzer kann Takes abspielen, auswählen und am Timeline-Clip rendern — PRD §13.3 Line Card / §22.3.\n\n## User Journey\n1. User öffnet Dialog-Clip Inspector/Popover.\n2. **Takes rendern** startet Render-Service.\n3. Take-Liste: Play, Select, Status (processing/ready/failed).\n4. Selected Take verknüpft mit Clip-Audio (Wellenform) wo möglich.\n\n## Problem\nDirty-Flag existiert (#5), aber keine Take-Review-UI; Generate-Button ohne Take-Konzept.\n\n## Solution\n- `MveLineTakePanel.tsx` oder Erweiterung `ClipLanePopover` / `MveLineInspector`\n- Hook `useMveLineRender`, `useMveLineTakes`\n- Timeline: selected take audio auf Clip anzeigen (minimal: Pfad + player)\n- DE loading/empty/error; disabled ohne Voice\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n| Appwrite Functions | via render service |\n\n## Edge Cases\n- Keine Takes → empty state + CTA rendern\n- Take failed → retry button\n- Lange Render → global progress overlay\n\n## Acceptance\n- [ ] User kann Line rendern und Take abspielen\n- [ ] User kann Take auswählen (`selectedTakeId` persistiert)\n- [ ] Snippet frontend checks grün\n- [ ] Verify checklist in `.qa/runs/` ergänzen\n\n## Design\nEpic: `.qa/design/mve-render-0.2.md`\n\n## Blockers\nDepends on #5 (Dialog-Editor — closed)"
+    }
+  ]
+}

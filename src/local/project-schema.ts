@@ -15,7 +15,7 @@
  * Current schema version. Bumped when tables or columns are added/changed.
  * Migrations run from the current version to SCHEMA_VERSION.
  */
-export const SCHEMA_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /** Table holding schema version metadata inside each local database. */
 export const SCHEMA_META_TABLE = "schema_meta";
@@ -37,6 +37,8 @@ export const TABLE = {
   STORY_BEATS: "story_beats",
   MVE_LINES: "mve_lines",
   MVE_VOICE_PROFILES: "mve_voice_profiles",
+  MVE_AUDIO_JOBS: "mve_audio_jobs",
+  MVE_TAKES: "mve_takes",
 } as const;
 
 export type TableName = (typeof TABLE)[keyof typeof TABLE];
@@ -90,6 +92,46 @@ export const MVE_SCHEMA_STATEMENTS: readonly string[] = [
 )`,
   `CREATE INDEX IF NOT EXISTS idx_mve_voice_profiles_project ON ${TABLE.MVE_VOICE_PROFILES}(project_id)`,
   `CREATE INDEX IF NOT EXISTS idx_mve_voice_profiles_character ON ${TABLE.MVE_VOICE_PROFILES}(project_id, character_id)`,
+];
+
+/** Idempotent DDL for schema v5 (MVE render jobs + takes). */
+export const MVE_RENDER_SCHEMA_STATEMENTS: readonly string[] = [
+  `CREATE TABLE IF NOT EXISTS ${TABLE.MVE_AUDIO_JOBS} (
+  id                    TEXT PRIMARY KEY,
+  project_id            TEXT NOT NULL,
+  line_id               TEXT NOT NULL,
+  status                TEXT NOT NULL DEFAULT 'pending',
+  engine                TEXT NOT NULL,
+  take_count            INTEGER NOT NULL DEFAULT 1,
+  script_snapshot_json  TEXT NOT NULL,
+  error_message         TEXT,
+  created_at            TEXT NOT NULL,
+  updated_at            TEXT NOT NULL,
+  deleted_at            TEXT,
+  FOREIGN KEY (project_id) REFERENCES ${TABLE.PROJECTS}(id) ON DELETE CASCADE
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_mve_audio_jobs_project ON ${TABLE.MVE_AUDIO_JOBS}(project_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_mve_audio_jobs_line ON ${TABLE.MVE_AUDIO_JOBS}(line_id)`,
+  `CREATE TABLE IF NOT EXISTS ${TABLE.MVE_TAKES} (
+  id                      TEXT PRIMARY KEY,
+  project_id              TEXT NOT NULL,
+  line_id                 TEXT NOT NULL,
+  job_id                  TEXT NOT NULL,
+  take_index              INTEGER NOT NULL DEFAULT 0,
+  audio_path              TEXT,
+  duration_ms             INTEGER,
+  render_settings_json    TEXT,
+  direction_snapshot_json TEXT,
+  is_selected             INTEGER NOT NULL DEFAULT 0,
+  status                  TEXT NOT NULL DEFAULT 'processing',
+  created_at              TEXT NOT NULL,
+  updated_at              TEXT NOT NULL,
+  deleted_at              TEXT,
+  FOREIGN KEY (project_id) REFERENCES ${TABLE.PROJECTS}(id) ON DELETE CASCADE,
+  FOREIGN KEY (job_id) REFERENCES ${TABLE.MVE_AUDIO_JOBS}(id) ON DELETE CASCADE
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_mve_takes_line ON ${TABLE.MVE_TAKES}(line_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_mve_takes_job ON ${TABLE.MVE_TAKES}(job_id)`,
 ];
 
 // ── DDL (SCHEMA_STATEMENTS is the single source of truth) ─────────────────
@@ -282,6 +324,7 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
   updated_at   TEXT
 )`,
   ...MVE_SCHEMA_STATEMENTS,
+  ...MVE_RENDER_SCHEMA_STATEMENTS,
 ];
 
 /**

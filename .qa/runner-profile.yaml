@@ -1,0 +1,30 @@
+# ECC Runner + feature-intake profile (scriptony-multihost)
+
+issueBackend: github
+
+github:
+  defaultLabels: []
+  milestone: null
+
+stackProfile: scriptony-desktop
+
+locale: de
+
+runtimeAxes:
+  - local-desktop
+  - cloud-session
+  - appwrite-functions
+
+checksSnippet: 'CHECK_MODE=snippet SHIM_CHECKS_ARGS="--frontend" SHIM_CHANGED_FILES="<paths>" npm run checks'
+
+helperSkills:
+  desktop: scriptony-desktop-dev.mdc
+  implement: implement
+  verify: verify-ticket
+
+epicPrdSearch:
+  - docs/multi-voice-engine.md
+  - docs/PRD.md
+  - docs/**/*.md
+
+legacyTicketsDir: tickets/

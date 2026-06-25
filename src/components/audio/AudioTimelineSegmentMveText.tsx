@@ -8,22 +8,31 @@ import { cn } from "@/lib/utils";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-direction";
 import { MveLineInspector } from "@/components/structure/timeline/mve/MveLineInspector";
+import { MveLineTakePanel } from "@/components/structure/timeline/mve/MveLineTakePanel";
 
 export interface AudioTimelineSegmentMveTextProps {
   line: MveLine;
+  projectId: string;
   disabled?: boolean;
   onSaveText: (lineId: string, text: string) => Promise<void>;
   onSaveDirection: (
     lineId: string,
     direction: MveLineDirection,
   ) => Promise<void>;
+  renderBlockReason?: string;
+  onRenderLine?: (lineId: string) => Promise<unknown>;
+  isRendering?: boolean;
 }
 
 export function AudioTimelineSegmentMveText({
   line,
+  projectId,
   disabled,
   onSaveText,
   onSaveDirection,
+  renderBlockReason,
+  onRenderLine,
+  isRendering,
 }: AudioTimelineSegmentMveTextProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(line.text ?? "");
@@ -62,6 +71,14 @@ export function AudioTimelineSegmentMveText({
         direction={line.direction}
         disabled={disabled || saving}
         onSave={(direction) => onSaveDirection(line.id, direction)}
+      />
+      <MveLineTakePanel
+        line={line}
+        projectId={projectId}
+        disabled={disabled || saving}
+        renderBlockReason={renderBlockReason}
+        onRenderLine={onRenderLine}
+        isRendering={isRendering}
       />
       {isDirty && (
         <span

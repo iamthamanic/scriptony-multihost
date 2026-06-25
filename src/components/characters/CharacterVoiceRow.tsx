@@ -33,9 +33,11 @@ export function CharacterVoiceRow({
   const [modalOpen, setModalOpen] = useState(false);
   const onSaved = useCallback(() => onVoiceChange(), [onVoiceChange]);
   const { playPreview, isPlaying } = useMveVoicePreview();
-  const { data: voices = [] } = useLocalVoices({
+  const { data: voicesData } = useLocalVoices({
     enabled: Boolean(projectDir),
+    projectDir,
   });
+  const voices = voicesData?.voices ?? [];
 
   const voiceId = resolveMveTtsVoiceId(profile);
   const selectedVoice = voices.find((v) => v.id === voiceId);
@@ -63,11 +65,12 @@ export function CharacterVoiceRow({
           className="h-7 w-7 shrink-0"
           disabled={!voiceId || isPlaying}
           onClick={() =>
-            void playPreview({
+            playPreview({
               projectDir,
               voiceId,
               characterName,
               previewText,
+              speed: profile?.defaultSettings?.speed,
             })
           }
           aria-label="Charakterstimme abspielen"

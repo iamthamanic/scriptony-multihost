@@ -77,7 +77,6 @@ export function RuntimeProvider({ children }: { children: ReactNode }) {
         setRuntime(base);
       }
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- hydrate once on mount
   }, []);
 
   const applyRuntime = useCallback((next: RuntimeConfig) => {

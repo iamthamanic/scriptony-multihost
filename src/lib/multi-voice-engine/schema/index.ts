@@ -10,3 +10,7 @@ export * from "./character";
 export * from "./voice-profile";
 export * from "./line";
 export * from "./parse";
+export * from "./enhance-script";
+export * from "./render-line";
+export * from "./audio-job";
+export * from "./take";

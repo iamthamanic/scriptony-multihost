@@ -15,4 +15,13 @@ export default defineConfig({
     screenshot: "off",
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
+    ? undefined
+    : {
+        command:
+          "VITE_SCRIPTONY_RUNTIME=local VITE_SCRIPTONY_ALLOW_BROWSER_LOCAL=1 npm run dev:vite",
+        url: baseURL,
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+      },
 });

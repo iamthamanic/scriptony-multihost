@@ -238,6 +238,7 @@ const ROUTE_MAP: Record<string, string> = {
   "/voices": BACKEND_FUNCTIONS.AUDIO_STORY,
   "/mixing": BACKEND_FUNCTIONS.AUDIO_STORY,
   "/audio-clips": BACKEND_FUNCTIONS.AUDIO_STORY,
+  "/script": BACKEND_FUNCTIONS.AUDIO_STORY,
 
   // scriptony-gym
   "/exercises": BACKEND_FUNCTIONS.GYM,

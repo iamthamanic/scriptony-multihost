@@ -104,6 +104,9 @@ export const queryKeys = {
       ["mve", "lines", "project", projectId] as const,
     voiceProfilesByProject: (projectId: string) =>
       ["mve", "voiceProfiles", "project", projectId] as const,
+    takesByLine: (lineId: string) => ["mve", "takes", "line", lineId] as const,
+    jobsByLine: (lineId: string) => ["mve", "jobs", "line", lineId] as const,
+    allTakes: (projectId: string) => ["mve", "takes", "project", projectId] as const,
   },
 
   // Playbook

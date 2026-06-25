@@ -8,6 +8,7 @@ import { LocalDb } from "../LocalDb";
 import { LocalMveRepository } from "../LocalMveRepository";
 import { migrateLocalDb } from "@/local/schema-migrations";
 import { TABLE } from "@/local/project-schema";
+import { createMveLineRenderSnapshot } from "@/lib/multi-voice-engine/render/create-render-snapshot";
 
 describe("LocalMveRepository", () => {
   let db: LocalDb;
@@ -100,5 +101,48 @@ describe("LocalMveRepository", () => {
       [TABLE.MVE_LINES, line.id],
     );
     expect(changes.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("selectTake persists selectedTakeId on line and is_selected on takes", async () => {
+    const line = await repo.createLine(projectId, {
+      sceneId,
+      text: "Dialog.",
+      characterId: "char_hero",
+    });
+    const voice = await repo.createVoiceProfile(projectId, {
+      name: "Heldin",
+      characterId: "char_hero",
+      engine: "kokoro",
+      baseVoiceId: "af_bella",
+    });
+    const job = await repo.createAudioJob(projectId, {
+      lineId: line.id,
+      engine: "dummy",
+      takeCount: 2,
+      scriptSnapshot: createMveLineRenderSnapshot(line, voice),
+    });
+    const takeA = await repo.createTake(projectId, {
+      lineId: line.id,
+      jobId: job.id,
+      takeIndex: 0,
+      status: "ready",
+      audioUrl: "dummy://take-0",
+    });
+    const takeB = await repo.createTake(projectId, {
+      lineId: line.id,
+      jobId: job.id,
+      takeIndex: 1,
+      status: "ready",
+      audioUrl: "/tmp/take-1.wav",
+      isSelected: true,
+    });
+    await repo.selectTake(line.id, takeA.id);
+
+    const takes = await repo.listTakesByLine(line.id);
+    expect(takes.find((t) => t.id === takeA.id)?.isSelected).toBe(true);
+    expect(takes.find((t) => t.id === takeB.id)?.isSelected).toBe(false);
+
+    const updatedLine = await repo.getLine(line.id);
+    expect(updatedLine?.selectedTakeId).toBe(takeA.id);
   });
 });

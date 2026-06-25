@@ -53,11 +53,15 @@ interface AudioTimelineSegmentProps {
   onLaneChange?: (clipId: string, newLaneIndex: number) => void;
   /** MVE dialog line bound to this clip (local Structure Timeline). */
   mveLine?: MveLine;
+  mveProjectId?: string;
   onMveSaveText?: (lineId: string, text: string) => Promise<void>;
   onMveSaveDirection?: (
     lineId: string,
     direction: MveLineDirection,
   ) => Promise<void>;
+  mveRenderBlockReason?: string;
+  onMveRenderLine?: (lineId: string) => Promise<unknown>;
+  mveIsRendering?: boolean;
 }
 
 export function AudioTimelineSegment({
@@ -70,8 +74,12 @@ export function AudioTimelineSegment({
   allClips,
   onLaneChange,
   mveLine,
+  mveProjectId,
   onMveSaveText,
   onMveSaveDirection,
+  mveRenderBlockReason,
+  onMveRenderLine,
+  mveIsRendering,
 }: AudioTimelineSegmentProps) {
   // T28: Union-Typ — unterscheide Track (Legacy) vs Clip (neu)
   const isClip = "startSec" in item;
@@ -305,9 +313,13 @@ export function AudioTimelineSegment({
         {showMveEditor && mveLine ? (
           <AudioTimelineSegmentMveText
             line={mveLine}
+            projectId={mveProjectId ?? ""}
             disabled={!isEditable}
             onSaveText={onMveSaveText!}
             onSaveDirection={onMveSaveDirection!}
+            renderBlockReason={mveRenderBlockReason}
+            onRenderLine={onMveRenderLine}
+            isRendering={mveIsRendering}
           />
         ) : (
           <span className="truncate font-medium">{content || "…"}</span>

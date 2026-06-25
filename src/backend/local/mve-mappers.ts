@@ -6,7 +6,15 @@
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-direction";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
-import { parseMveLine, parseMveVoiceProfile } from "@/lib/multi-voice-engine/schema/parse";
+import type { MveAudioJob } from "@/lib/multi-voice-engine/schema/audio-job";
+import type { MveTake } from "@/lib/multi-voice-engine/schema/take";
+import type { VoiceRenderSettings } from "@/lib/multi-voice-engine/schema/render-line";
+import {
+  parseMveAudioJob,
+  parseMveLine,
+  parseMveTake,
+  parseMveVoiceProfile,
+} from "@/lib/multi-voice-engine/schema/parse";
 
 function parseJson<T>(value: unknown, field: string): T | undefined {
   if (value == null || value === "") return undefined;
@@ -78,6 +86,60 @@ export function mapMveVoiceProfileRow(
   if (!parsed.success) {
     throw new Error(
       `Invalid MVE voice profile row ${candidate.id}: ${parsed.messages.join("; ")}`,
+    );
+  }
+  return parsed.data;
+}
+
+export function mapMveAudioJobRow(row: Record<string, unknown>): MveAudioJob {
+  const candidate = {
+    id: String(row.id ?? ""),
+    projectId: String(row.project_id ?? ""),
+    lineId: String(row.line_id ?? ""),
+    status: row.status ?? "pending",
+    engine: String(row.engine ?? "kokoro"),
+    takeCount: Number(row.take_count ?? 1),
+    scriptSnapshot: parseJson(row.script_snapshot_json, "script_snapshot_json"),
+    errorMessage:
+      row.error_message != null ? String(row.error_message) : undefined,
+    createdAt: String(row.created_at ?? ""),
+    updatedAt: String(row.updated_at ?? ""),
+  };
+  const parsed = parseMveAudioJob(candidate);
+  if (!parsed.success) {
+    throw new Error(
+      `Invalid MVE audio job row ${candidate.id}: ${parsed.messages.join("; ")}`,
+    );
+  }
+  return parsed.data;
+}
+
+export function mapMveTakeRow(row: Record<string, unknown>): MveTake {
+  const direction = parseJson<MveLineDirection>(
+    row.direction_snapshot_json,
+    "direction_snapshot_json",
+  );
+  const candidate = {
+    id: String(row.id ?? ""),
+    lineId: String(row.line_id ?? ""),
+    jobId: String(row.job_id ?? ""),
+    takeIndex: Number(row.take_index ?? 0),
+    audioUrl: row.audio_path ? String(row.audio_path) : undefined,
+    durationMs: row.duration_ms != null ? Number(row.duration_ms) : undefined,
+    renderSettings: parseJson<VoiceRenderSettings>(
+      row.render_settings_json,
+      "render_settings_json",
+    ),
+    directionSnapshot: direction,
+    isSelected: Number(row.is_selected ?? 0) === 1,
+    status: row.status ?? "processing",
+    createdAt: String(row.created_at ?? ""),
+    updatedAt: String(row.updated_at ?? ""),
+  };
+  const parsed = parseMveTake(candidate);
+  if (!parsed.success) {
+    throw new Error(
+      `Invalid MVE take row ${candidate.id}: ${parsed.messages.join("; ")}`,
     );
   }
   return parsed.data;

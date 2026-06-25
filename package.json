@@ -152,6 +152,7 @@
     "functions:build:check": "node scripts/check-appwrite-functions-build.mjs",
     "smoke:user-flows": "node scripts/smoke-user-flows.mjs",
     "smoke:feature-auth-rollout": "node scripts/smoke-feature-auth-rollout.mjs",
+    "smoke:kokoro": "node scripts/smoke-kokoro-render.mjs",
     "test:model-discovery": "vitest run functions/_shared/ai-service/model-discovery.test.ts",
     "appwrite:env:generate": "node scripts/generate-infra-appwrite-env.mjs",
     "addon:zip": "bash tools/blender/scripts/build.sh legacy",
