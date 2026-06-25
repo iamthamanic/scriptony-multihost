@@ -5,7 +5,11 @@
 
 import { useCallback, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getMveLines, updateMveLine } from "@/lib/api-adapter/mve-adapter";
+import {
+  createMveLine,
+  getMveLines,
+  updateMveLine,
+} from "@/lib/api-adapter/mve-adapter";
 import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
 import { ensureMveLineForClip } from "@/lib/mve/ensure-mve-line-for-clip";
 import { queryKeys } from "@/lib/react-query";
@@ -69,6 +73,19 @@ export function useMveLines(projectId: string | undefined) {
     },
   });
 
+  const createLineMutation = useMutation({
+    mutationFn: async (payload: {
+      sceneId: string;
+      characterId: string;
+      text?: string;
+      orderIndex?: number;
+    }) => createMveLine(projectId!, payload),
+    onSuccess: () => void invalidate(),
+    onError: (err: Error) => {
+      toast.error(err.message || "Textblock konnte nicht erstellt werden.");
+    },
+  });
+
   const ensureForClip = useCallback(
     async (clip: AudioClip, text?: string, characterId?: string) => {
       if (!projectId || !enabled) return null;
@@ -98,6 +115,16 @@ export function useMveLines(projectId: string | undefined) {
     [saveDirectionMutation],
   );
 
+  const createLine = useCallback(
+    async (payload: {
+      sceneId: string;
+      characterId: string;
+      text?: string;
+      orderIndex?: number;
+    }) => createLineMutation.mutateAsync(payload),
+    [createLineMutation],
+  );
+
   return {
     lines: linesQuery.data ?? [],
     lineByClipId,
@@ -105,9 +132,13 @@ export function useMveLines(projectId: string | undefined) {
     isError: linesQuery.isError,
     enabled,
     ensureForClip,
+    createLine,
     saveLineText,
     saveLineDirection,
-    isSaving: saveTextMutation.isPending || saveDirectionMutation.isPending,
+    isSaving:
+      saveTextMutation.isPending ||
+      saveDirectionMutation.isPending ||
+      createLineMutation.isPending,
   };
 }
 

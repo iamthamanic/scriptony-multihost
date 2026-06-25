@@ -314,6 +314,10 @@ import type { MveAudioJob } from "@/lib/multi-voice-engine/schema/audio-job";
 import type { MveLineRenderSnapshot } from "@/lib/multi-voice-engine/schema/audio-job";
 import type { MveTake } from "@/lib/multi-voice-engine/schema/take";
 import type { VoiceRenderSettings } from "@/lib/multi-voice-engine/schema/render-line";
+import type {
+  MveLaneLink,
+  MveLaneLinkTargetContainerType,
+} from "@/lib/multi-voice-engine/schema/lane-link";
 
 // ── Multi-Voice Engine (local SQLite MVP) ───────────────────────────────────
 
@@ -338,6 +342,19 @@ export interface MveLineUpdatePayload {
   selectedTakeId?: string | null;
   status?: MveLineStatus;
   audioClipId?: string | null;
+}
+
+export interface MveLaneLinkCreatePayload {
+  characterId: string;
+  targetContainerId: string;
+  targetContainerType?: MveLaneLinkTargetContainerType;
+  enabled?: boolean;
+}
+
+export interface MveLaneLinkUpdatePayload {
+  targetContainerId?: string;
+  targetContainerType?: MveLaneLinkTargetContainerType;
+  enabled?: boolean;
 }
 
 export interface MveVoiceProfileCreatePayload {
@@ -417,6 +434,19 @@ export interface MveRepository {
   createLine(projectId: string, payload: MveLineCreatePayload): Promise<MveLine>;
   updateLine(id: string, patch: MveLineUpdatePayload): Promise<MveLine>;
   deleteLine(id: string): Promise<void>;
+
+  listLaneLinks(projectId: string): Promise<MveLaneLink[]>;
+  getLaneLink(id: string): Promise<MveLaneLink | null>;
+  getLaneLinkForCharacter(
+    projectId: string,
+    characterId: string,
+  ): Promise<MveLaneLink | null>;
+  createLaneLink(
+    projectId: string,
+    payload: MveLaneLinkCreatePayload,
+  ): Promise<MveLaneLink>;
+  updateLaneLink(id: string, patch: MveLaneLinkUpdatePayload): Promise<MveLaneLink>;
+  deleteLaneLink(id: string): Promise<void>;
 
   listVoiceProfiles(projectId: string): Promise<MveVoiceProfile[]>;
   getVoiceProfile(id: string): Promise<MveVoiceProfile | null>;

@@ -1,5 +1,5 @@
 /**
- * LocalMveRepository tests (in-memory SQLite + migration v4).
+ * LocalMveRepository tests (in-memory SQLite + migration v5).
  * Location: src/backend/local/__tests__/LocalMveRepository.test.ts
  */
 
@@ -48,6 +48,18 @@ describe("LocalMveRepository", () => {
 
     const listed = await repo.listLinesByScene(sceneId);
     expect(listed).toHaveLength(1);
+  });
+
+  it("creates a text-first line without an audio clip", async () => {
+    const line = await repo.createLine(projectId, {
+      sceneId,
+      text: "Nur Text.",
+      characterId: "char_hero",
+    });
+
+    expect(line.audioClipId).toBeUndefined();
+    expect(line.text).toBe("Nur Text.");
+    expect(await repo.getLineByAudioClipId(line.id)).toBeNull();
   });
 
   it("updates line text and direction", async () => {
@@ -144,5 +156,99 @@ describe("LocalMveRepository", () => {
 
     const updatedLine = await repo.getLine(line.id);
     expect(updatedLine?.selectedTakeId).toBe(takeA.id);
+  });
+
+  describe("lane links", () => {
+    it("creates a lane link for a character and reads it back", async () => {
+      const link = await repo.createLaneLink(projectId, {
+        characterId: "char_hero",
+        targetContainerId: sceneId,
+        targetContainerType: "scene",
+      });
+
+      expect(link.characterId).toBe("char_hero");
+      expect(link.targetContainerId).toBe(sceneId);
+      expect(link.targetContainerType).toBe("scene");
+      expect(link.enabled).toBe(true);
+
+      const forChar = await repo.getLaneLinkForCharacter(
+        projectId,
+        "char_hero",
+      );
+      expect(forChar?.id).toBe(link.id);
+
+      const all = await repo.listLaneLinks(projectId);
+      expect(all).toHaveLength(1);
+    });
+
+    it("replaces an existing active link for a character", async () => {
+      const first = await repo.createLaneLink(projectId, {
+        characterId: "char_hero",
+        targetContainerId: "scene_old",
+        targetContainerType: "scene",
+      });
+
+      const second = await repo.createLaneLink(projectId, {
+        characterId: "char_hero",
+        targetContainerId: "scene_new",
+        targetContainerType: "shot",
+      });
+
+      expect(second.targetContainerId).toBe("scene_new");
+      expect(second.targetContainerType).toBe("shot");
+
+      const active = await repo.getLaneLinkForCharacter(projectId, "char_hero");
+      expect(active?.id).toBe(second.id);
+
+      const all = await repo.listLaneLinks(projectId);
+      expect(all).toHaveLength(1);
+
+      const firstRow = await db.get(
+        `SELECT deleted_at FROM ${TABLE.MVE_LANE_LINKS} WHERE id = ?`,
+        [first.id],
+      );
+      expect(firstRow?.deleted_at).toBeTruthy();
+    });
+
+    it("updates link target and enabled state", async () => {
+      const link = await repo.createLaneLink(projectId, {
+        characterId: "char_hero",
+        targetContainerId: sceneId,
+      });
+
+      const updated = await repo.updateLaneLink(link.id, {
+        targetContainerId: "scene_2",
+        enabled: false,
+      });
+
+      expect(updated.targetContainerId).toBe("scene_2");
+      expect(updated.enabled).toBe(false);
+    });
+
+    it("soft-deletes a lane link", async () => {
+      const link = await repo.createLaneLink(projectId, {
+        characterId: "char_hero",
+        targetContainerId: sceneId,
+      });
+
+      await repo.deleteLaneLink(link.id);
+      expect(await repo.getLaneLink(link.id)).toBeNull();
+      expect(
+        await repo.getLaneLinkForCharacter(projectId, "char_hero"),
+      ).toBeNull();
+    });
+
+    it("records change_log for lane link operations", async () => {
+      const link = await repo.createLaneLink(projectId, {
+        characterId: "char_hero",
+        targetContainerId: sceneId,
+      });
+
+      const changes = await db.all(
+        `SELECT * FROM change_log WHERE entity_type = ? AND entity_id = ?`,
+        [TABLE.MVE_LANE_LINKS, link.id],
+      );
+      expect(changes.length).toBeGreaterThanOrEqual(1);
+    });
   });
 });

@@ -9,11 +9,13 @@ import { useProjectClipLanes } from "../../../../hooks/useProjectClipLanes";
 import { useTimelineAddAudio } from "../../../../hooks/useTimelineAddAudio";
 import { useMveLines } from "../../../../hooks/useMveLines";
 import { useMveLineRender } from "../../../../hooks/useMveLineRender";
+import { useMveLaneLinks } from "../../../../hooks/useMveLaneLinks";
 import { useMveVoiceProfiles } from "../../../../hooks/useMveVoiceProfiles";
 import type { LinkedLaneAudioContext } from "../../../../hooks/useTimelineAddAudio";
+import type { TimelineSceneRef } from "../../../../lib/timeline-add-audio";
+import type { MveLine } from "../../../../lib/multi-voice-engine/schema/line";
 import { LANE_UI, laneIndexToTrackType } from "../../../../lib/audio-lane";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
-import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import { cn } from "../../../../lib/utils";
 import {
   StructureTimelineClipLaneContent,
@@ -37,6 +39,7 @@ export function useStructureTimelineAudioLanes(
   const lanes = useProjectClipLanes(props.projectId, props.projectType);
   const mve = useMveLines(props.projectId);
   const mveRender = useMveLineRender(props.projectId);
+  const mveLaneLinks = useMveLaneLinks(props.projectId);
   const mveVoices = useMveVoiceProfiles(props.projectId);
   const backfilledClipIds = useRef(new Set<string>());
 
@@ -91,12 +94,25 @@ export function useStructureTimelineAudioLanes(
     [mveVoices],
   );
 
+  const linesByCharacterId = useMemo(() => {
+    if (!mve.enabled) return undefined;
+    const map = new Map<string, MveLine[]>();
+    for (const line of mve.lines) {
+      if (!line.characterId || line.audioClipId) continue;
+      const list = map.get(line.characterId) ?? [];
+      list.push(line);
+      map.set(line.characterId, list);
+    }
+    return map;
+  }, [mve.enabled, mve.lines]);
+
   const mveLines = useMemo(
     () =>
       mve.enabled && props.projectId
         ? {
             projectId: props.projectId,
             lineByClipId: mve.lineByClipId,
+            linesByCharacterId,
             onSaveText: mve.saveLineText,
             onSaveDirection: mve.saveLineDirection,
             getRenderBlockReason: getMveRenderBlockReason,
@@ -105,7 +121,11 @@ export function useStructureTimelineAudioLanes(
           }
         : undefined,
     [
-      mve,
+      mve.enabled,
+      mve.lineByClipId,
+      mve.saveLineText,
+      mve.saveLineDirection,
+      linesByCharacterId,
       props.projectId,
       mveRender.renderLine,
       mveRender.renderingLineId,
@@ -160,10 +180,44 @@ export function useStructureTimelineAudioLanes(
     onClipCommittedMve: mve.enabled ? mve.ensureForClip : undefined,
   });
 
+  const handleAddMveTextBlock = useCallback(
+    async (payload: {
+      laneIndex: number;
+      characterId: string;
+      sceneId: string;
+      startSec: number;
+    }) => {
+      if (!mve.enabled) return;
+      const orderIndex = lanes.scenes.findIndex(
+        (s: TimelineSceneRef) => s.id === payload.sceneId,
+      );
+      await mve.createLine({
+        sceneId: payload.sceneId,
+        characterId: payload.characterId,
+        text: "",
+        orderIndex: Math.max(orderIndex, 0),
+      });
+    },
+    [mve, lanes.scenes],
+  );
+
+  const linkedSceneIdForLane = useCallback(
+    (laneIndex: number) => {
+      if (!mveLaneLinks.enabled) return undefined;
+      const characterId = lanes.characterLanes.characterIdForLane(laneIndex);
+      if (!characterId) return undefined;
+      return mveLaneLinks.links.find(
+        (link) => link.characterId === characterId && link.enabled,
+      )?.targetContainerId;
+    },
+    [mveLaneLinks, lanes.characterLanes],
+  );
+
   const laneProps = {
     pxPerSec: props.pxPerSec,
     viewStartSec: props.viewStartSec,
     totalWidthPx: props.totalWidthPx,
+    scenes: lanes.scenes,
     laneGroups: lanes.laneGroups,
     sortedLaneIndices: lanes.sortedLaneIndices,
     allClips: lanes.allClips,
@@ -183,12 +237,15 @@ export function useStructureTimelineAudioLanes(
     },
     characterLanes: {
       getCharacterForLane: lanes.characterLanes.getCharacterForLane,
+      characterIdForLane: lanes.characterLanes.characterIdForLane,
       dialogLaneOrder: lanes.characterLanes.dialogLaneOrder,
       reorderCharacters: lanes.characterLanes.reorderCharacters,
       isReordering: lanes.characterLanes.isReordering,
       allClips: lanes.allClips,
     },
     mveLines,
+    onAddMveTextBlock: mve.enabled ? handleAddMveTextBlock : undefined,
+    linkedSceneIdForLane,
   };
 
   return { lanes, addAudio, laneProps };

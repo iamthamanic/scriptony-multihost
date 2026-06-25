@@ -169,6 +169,24 @@ class NotReadyMveRepository extends StubMveRepository {
   override async deleteLine(): Promise<never> {
     return notReady();
   }
+  override async listLaneLinks(): Promise<never> {
+    return notReady();
+  }
+  override async getLaneLink(): Promise<never> {
+    return notReady();
+  }
+  override async getLaneLinkForCharacter(): Promise<never> {
+    return notReady();
+  }
+  override async createLaneLink(): Promise<never> {
+    return notReady();
+  }
+  override async updateLaneLink(): Promise<never> {
+    return notReady();
+  }
+  override async deleteLaneLink(): Promise<never> {
+    return notReady();
+  }
   override async listVoiceProfiles(): Promise<never> {
     return notReady();
   }
