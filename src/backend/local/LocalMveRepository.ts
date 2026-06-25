@@ -1,11 +1,13 @@
 /**
- * LocalMveRepository — facade over line, voice profile, render SQLite repos.
+ * LocalMveRepository — facade over line + lane link + voice profile + render SQLite repos.
  * Location: src/backend/local/LocalMveRepository.ts
  */
 
 import type {
   MveAudioJobCreatePayload,
   MveAudioJobUpdatePayload,
+  MveLaneLinkCreatePayload,
+  MveLaneLinkUpdatePayload,
   MveLineCreatePayload,
   MveLineUpdatePayload,
   MveRepository,
@@ -16,6 +18,7 @@ import type {
 } from "../ScriptonyBackend";
 import type { LocalDb } from "./LocalDb";
 import type { MveAudioJob } from "@/lib/multi-voice-engine/schema/audio-job";
+import type { MveLaneLink } from "@/lib/multi-voice-engine/schema/lane-link";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveTake } from "@/lib/multi-voice-engine/schema/take";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
@@ -24,12 +27,14 @@ import {
   ensureMveTables,
 } from "@/local/schema-migrations";
 import { LocalMveAudioJobRepository } from "./LocalMveAudioJobRepository";
+import { LocalMveLaneLinkRepository } from "./LocalMveLaneLinkRepository";
 import { LocalMveLineRepository } from "./LocalMveLineRepository";
 import { LocalMveTakeRepository } from "./LocalMveTakeRepository";
 import { LocalMveVoiceProfileRepository } from "./LocalMveVoiceProfileRepository";
 
 export class LocalMveRepository implements MveRepository {
   private readonly lines: LocalMveLineRepository;
+  private readonly laneLinks: LocalMveLaneLinkRepository;
   private readonly voiceProfiles: LocalMveVoiceProfileRepository;
   private readonly audioJobs: LocalMveAudioJobRepository;
   private readonly takes: LocalMveTakeRepository;
@@ -37,6 +42,7 @@ export class LocalMveRepository implements MveRepository {
 
   constructor(db: LocalDb) {
     this.lines = new LocalMveLineRepository(db);
+    this.laneLinks = new LocalMveLaneLinkRepository(db);
     this.voiceProfiles = new LocalMveVoiceProfileRepository(db);
     this.audioJobs = new LocalMveAudioJobRepository(db);
     this.takes = new LocalMveTakeRepository(db);
@@ -79,6 +85,39 @@ export class LocalMveRepository implements MveRepository {
 
   deleteLine(id: string): Promise<void> {
     return this.ready(() => this.lines.delete(id));
+  }
+
+  listLaneLinks(projectId: string): Promise<MveLaneLink[]> {
+    return this.laneLinks.listByProject(projectId);
+  }
+
+  getLaneLink(id: string): Promise<MveLaneLink | null> {
+    return this.laneLinks.get(id);
+  }
+
+  getLaneLinkForCharacter(
+    projectId: string,
+    characterId: string,
+  ): Promise<MveLaneLink | null> {
+    return this.laneLinks.getForCharacter(projectId, characterId);
+  }
+
+  createLaneLink(
+    projectId: string,
+    payload: MveLaneLinkCreatePayload,
+  ): Promise<MveLaneLink> {
+    return this.laneLinks.create(projectId, payload);
+  }
+
+  updateLaneLink(
+    id: string,
+    patch: MveLaneLinkUpdatePayload,
+  ): Promise<MveLaneLink> {
+    return this.laneLinks.update(id, patch);
+  }
+
+  deleteLaneLink(id: string): Promise<void> {
+    return this.laneLinks.delete(id);
   }
 
   listVoiceProfiles(projectId: string): Promise<MveVoiceProfile[]> {

@@ -11,6 +11,7 @@ import type { AudioClip } from "../../../lib/types";
 import type { useAudioLaneState } from "../../../hooks/useAudioLaneState";
 import type { useTimelineAddAudio } from "../../../hooks/useTimelineAddAudio";
 import type { useCharacterLaneMap } from "../../../hooks/useCharacterLaneMap";
+import type { TimelineSceneRef } from "../../../lib/timeline-add-audio";
 import type { MveLineClipHandlers } from "./AudioClipLaneContent";
 
 export interface AudioClipLaneHandlers {
@@ -30,6 +31,7 @@ export interface AudioClipLaneTracksProps {
   pxPerSec: number;
   viewStartSec?: number;
   totalWidthPx: number;
+  scenes?: TimelineSceneRef[];
   laneGroups: Record<number, AudioClip[]>;
   sortedLaneIndices: number[];
   allClips?: AudioClip[];
@@ -55,11 +57,19 @@ export interface AudioClipLaneTracksProps {
   characterLanes?: Pick<
     ReturnType<typeof useCharacterLaneMap>,
     | "getCharacterForLane"
+    | "characterIdForLane"
     | "dialogLaneOrder"
     | "reorderCharacters"
     | "isReordering"
   > & { allClips?: AudioClip[] };
   mveLines?: MveLineClipHandlers;
+  onAddMveTextBlock?: (payload: {
+    laneIndex: number;
+    characterId: string;
+    sceneId: string;
+    startSec: number;
+  }) => Promise<void> | void;
+  linkedSceneIdForLane?: (laneIndex: number) => string | undefined;
 }
 
 function laneHeight(expandedLane: number | null, laneIndex: number): number {
@@ -72,6 +82,7 @@ export function AudioClipLaneTracks({
   pxPerSec,
   viewStartSec = 0,
   totalWidthPx,
+  scenes = [],
   laneGroups,
   sortedLaneIndices,
   allClips = [],
@@ -86,6 +97,8 @@ export function AudioClipLaneTracks({
   addAudio,
   characterLanes,
   mveLines,
+  onAddMveTextBlock,
+  linkedSceneIdForLane,
 }: AudioClipLaneTracksProps) {
   const {
     handleTrimEnd,
@@ -133,6 +146,7 @@ export function AudioClipLaneTracks({
               locked={locked}
               character={character}
               addAudio={addAudio}
+              scenes={scenes}
               currentTimeSec={currentTimeSec}
               onExpandedLaneChange={onExpandedLaneChange}
               onMuteChange={laneState.setMute}
@@ -147,6 +161,8 @@ export function AudioClipLaneTracks({
                   : undefined
               }
               onDeleteLane={handleDeleteLane}
+              onAddMveTextBlock={onAddMveTextBlock}
+              linkedSceneId={linkedSceneIdForLane?.(laneIndex)}
               allClips={allClips}
               className={className}
             />
@@ -159,6 +175,7 @@ export function AudioClipLaneTracks({
             laneIndex={laneIndex}
             height={height}
             totalWidthPx={totalWidthPx}
+            scenes={scenes}
             clips={clips}
             pxPerSec={pxPerSec}
             viewStartSec={viewStartSec}

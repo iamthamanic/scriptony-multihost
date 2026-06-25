@@ -4,11 +4,14 @@
  */
 
 import type {
+  MveLaneLinkCreatePayload,
+  MveLaneLinkUpdatePayload,
   MveLineCreatePayload,
   MveLineUpdatePayload,
   MveVoiceProfileCreatePayload,
   MveVoiceProfileUpdatePayload,
 } from "@/backend/ScriptonyBackend";
+import type { MveLaneLink } from "@/lib/multi-voice-engine/schema/lane-link";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 import { requireLocalBackend } from "./runtime-dispatch";
@@ -101,4 +104,40 @@ export async function localDeleteMveVoiceProfile(
 ): Promise<void> {
   const backend = requireLocalBackend();
   await backend.mve.deleteVoiceProfile(profileId);
+}
+
+export async function localListMveLaneLinks(
+  projectId: string,
+): Promise<MveLaneLink[]> {
+  const backend = requireLocalBackend(projectId);
+  return backend.mve.listLaneLinks(projectId);
+}
+
+export async function localGetMveLaneLinkForCharacter(
+  projectId: string,
+  characterId: string,
+): Promise<MveLaneLink | null> {
+  const backend = requireLocalBackend(projectId);
+  return backend.mve.getLaneLinkForCharacter(projectId, characterId);
+}
+
+export async function localCreateMveLaneLink(
+  projectId: string,
+  payload: MveLaneLinkCreatePayload,
+): Promise<MveLaneLink> {
+  const backend = requireLocalBackend(projectId);
+  return backend.mve.createLaneLink(projectId, payload);
+}
+
+export async function localUpdateMveLaneLink(
+  linkId: string,
+  patch: MveLaneLinkUpdatePayload,
+): Promise<MveLaneLink> {
+  const backend = requireLocalBackend();
+  return backend.mve.updateLaneLink(linkId, patch);
+}
+
+export async function localDeleteMveLaneLink(linkId: string): Promise<void> {
+  const backend = requireLocalBackend();
+  await backend.mve.deleteLaneLink(linkId);
 }

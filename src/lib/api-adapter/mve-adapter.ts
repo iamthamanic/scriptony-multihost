@@ -4,26 +4,34 @@
  */
 
 import type {
+  MveLaneLinkCreatePayload,
+  MveLaneLinkUpdatePayload,
   MveLineCreatePayload,
   MveLineUpdatePayload,
   MveVoiceProfileCreatePayload,
   MveVoiceProfileUpdatePayload,
 } from "@/backend/ScriptonyBackend";
+import type { MveLaneLink } from "@/lib/multi-voice-engine/schema/lane-link";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 import { dispatchByRuntime, localNotSupported } from "./runtime-dispatch";
 import {
+  localCreateMveLaneLink,
   localCreateMveLine,
   localCreateMveVoiceProfile,
+  localDeleteMveLaneLink,
   localDeleteMveLine,
   localDeleteMveVoiceProfile,
+  localGetMveLaneLinkForCharacter,
   localGetMveLine,
   localGetMveLineByAudioClipId,
   localGetMveVoiceProfile,
   localGetMveVoiceProfileForCharacter,
+  localListMveLaneLinks,
   localListMveLines,
   localListMveLinesByScene,
   localListMveVoiceProfiles,
+  localUpdateMveLaneLink,
   localUpdateMveLine,
   localUpdateMveVoiceProfile,
 } from "./mve-local";
@@ -140,5 +148,49 @@ export function deleteMveVoiceProfile(profileId: string): Promise<void> {
   return dispatchByRuntime(
     () => localNotSupported(MVE_CLOUD_MSG),
     () => localDeleteMveVoiceProfile(profileId),
+  );
+}
+
+export function getMveLaneLinks(projectId: string): Promise<MveLaneLink[]> {
+  return dispatchByRuntime(
+    () => localNotSupported(MVE_CLOUD_MSG),
+    () => localListMveLaneLinks(projectId),
+  );
+}
+
+export function getMveLaneLinkForCharacter(
+  projectId: string,
+  characterId: string,
+): Promise<MveLaneLink | null> {
+  return dispatchByRuntime(
+    () => localNotSupported(MVE_CLOUD_MSG),
+    () => localGetMveLaneLinkForCharacter(projectId, characterId),
+  );
+}
+
+export function createMveLaneLink(
+  projectId: string,
+  payload: MveLaneLinkCreatePayload,
+): Promise<MveLaneLink> {
+  return dispatchByRuntime(
+    () => localNotSupported(MVE_CLOUD_MSG),
+    () => localCreateMveLaneLink(projectId, payload),
+  );
+}
+
+export function updateMveLaneLink(
+  linkId: string,
+  patch: MveLaneLinkUpdatePayload,
+): Promise<MveLaneLink> {
+  return dispatchByRuntime(
+    () => localNotSupported(MVE_CLOUD_MSG),
+    () => localUpdateMveLaneLink(linkId, patch),
+  );
+}
+
+export function deleteMveLaneLink(linkId: string): Promise<void> {
+  return dispatchByRuntime(
+    () => localNotSupported(MVE_CLOUD_MSG),
+    () => localDeleteMveLaneLink(linkId),
   );
 }
