@@ -30,6 +30,9 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Install Appwrite function dependencies
+        run: cd functions && bun install
+
       - name: Run ESLint
         run: bun run lint || true
         continue-on-error: true
