@@ -45,6 +45,10 @@ jobs:
         continue-on-error: true
 
       - name: Build
+        env:
+          # Dummy base URL so Vite production build can resolve function routes
+          # without real Appwrite secrets. Runtime still uses actual env/config.
+          VITE_BACKEND_API_BASE_URL: https://localhost
         run: bun run build
 
   deploy-prod:
