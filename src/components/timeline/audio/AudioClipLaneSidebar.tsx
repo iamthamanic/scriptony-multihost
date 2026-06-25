@@ -8,8 +8,10 @@ import { getLaneType, LANE_UI } from "../../../lib/audio-lane";
 import { isCharacterDialogLane } from "../../../lib/character-lane-map";
 import { TrackHeader } from "../../audio/track-header/TrackHeader";
 import { AddAudioTimelineMenu } from "./AddAudioTimelineMenu";
+import { AddMveTextBlockButton } from "./AddMveTextBlockButton";
 import type { AudioClip, Character } from "../../../lib/types";
 import type { AudioClipLaneTracksProps } from "./AudioClipLaneTracks";
+import type { TimelineSceneRef } from "../../../lib/timeline-add-audio";
 
 function laneHeight(expandedLane: number | null, laneIndex: number): number {
   return expandedLane === laneIndex
@@ -48,6 +50,7 @@ export interface AudioClipLaneSidebarProps {
   locked: boolean;
   character?: Character;
   addAudio?: AudioClipLaneTracksProps["addAudio"];
+  scenes?: TimelineSceneRef[];
   currentTimeSec: number;
   onExpandedLaneChange?: (laneIndex: number | null) => void;
   onMuteChange: (laneIndex: number, mute: boolean) => void;
@@ -62,6 +65,9 @@ export interface AudioClipLaneSidebarProps {
   onFxChainEnabledChange: (laneIndex: number, enabled: boolean) => void;
   onRecordToggle?: (laneIndex: number) => void;
   onDeleteLane?: (laneIndex: number) => void;
+  onAddMveTextBlock?: AudioClipLaneTracksProps["onAddMveTextBlock"];
+  /** Resolved lane-link target scene id for this character lane. */
+  linkedSceneId?: string;
   allClips?: AudioClip[];
   className?: string;
 }
@@ -74,6 +80,7 @@ export function AudioClipLaneSidebar({
   locked,
   character,
   addAudio,
+  scenes,
   currentTimeSec,
   onExpandedLaneChange,
   onMuteChange,
@@ -84,11 +91,34 @@ export function AudioClipLaneSidebar({
   onFxChainEnabledChange,
   onRecordToggle,
   onDeleteLane,
+  onAddMveTextBlock,
+  linkedSceneId,
   allClips,
   className,
 }: AudioClipLaneSidebarProps) {
   const laneType = getLaneType(laneIndex);
   const height = laneHeight(expandedLane, laneIndex);
+  const isDialog = isCharacterDialogLane(laneIndex);
+
+  const headerAddon = isDialog ? (
+    <AddMveTextBlockButton
+      laneIndex={laneIndex}
+      character={character}
+      disabled={(addAudio?.isBusy ?? false) || locked || !onAddMveTextBlock}
+      scenes={scenes}
+      linkedSceneId={linkedSceneId}
+      onAddTextBlock={({ characterId, sceneId }) =>
+        onAddMveTextBlock?.({
+          laneIndex,
+          characterId,
+          sceneId,
+          startSec: currentTimeSec,
+        })
+      }
+    />
+  ) : addAudio ? (
+    renderAddAudioMenu(addAudio, laneIndex, currentTimeSec, locked)
+  ) : undefined;
 
   return (
     <div
@@ -119,11 +149,7 @@ export function AudioClipLaneSidebar({
         onRecordToggle={onRecordToggle}
         isRecording={addAudio?.recordingLane === laneIndex}
         onDeleteLane={onDeleteLane}
-        headerAddon={
-          addAudio
-            ? renderAddAudioMenu(addAudio, laneIndex, currentTimeSec, locked)
-            : undefined
-        }
+        headerAddon={headerAddon}
         className="rounded-none"
       />
     </div>
