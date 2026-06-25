@@ -48,6 +48,6 @@ Roadmap: MVE Epic — MVP 0.1 Characters/Voice.
 
 ## Implementation Notes
 
-- Neu: `CharacterVoiceRow`, `VoiceProfileEditorModal`, `VoiceProfileEditorForm`, `VoiceProfileFutureSections`, `useSaveVoiceProfile`
-- QA: `MveVoiceUiPreviewPage`, `mve-6b-voice-ui.spec.ts`, Playwright bootstrap
-- Entfernt: `CharacterVoiceSection` (Inline-Formular)
+- Phase 1 verify: Unit tests für assign/resolve/preview; Playwright QA harness `#qa-mve-voice`
+- Enhance (#7): `apply-enhance-script.test.ts`, sichtbarer Leer-Text-Hinweis im Panel
+- Voice preview nutzt ab 0.2 `VoiceEngineAdapter` (Kokoro) statt direktem `synthesizeLocal` im Hook-Pfad

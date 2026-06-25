@@ -1,0 +1,37 @@
+[
+  {
+    "num": "17",
+    "title": "MVE 0.2: Schema AudioJob + Take + Render-Typen",
+    "url": "https://github.com/iamthamanic/scriptony-multihost/issues/17"
+  },
+  {
+    "num": "18",
+    "title": "MVE 0.2: VoiceEngineAdapter + Registry",
+    "url": "https://github.com/iamthamanic/scriptony-multihost/issues/18"
+  },
+  {
+    "num": "19",
+    "title": "MVE 0.2: DummyAdapter (Offline / Tests)",
+    "url": "https://github.com/iamthamanic/scriptony-multihost/issues/19"
+  },
+  {
+    "num": "20",
+    "title": "MVE 0.2: KokoroAdapter (Refactor local TTS)",
+    "url": "https://github.com/iamthamanic/scriptony-multihost/issues/20"
+  },
+  {
+    "num": "21",
+    "title": "MVE 0.2: SQLite AudioJob + Takes Persistenz",
+    "url": "https://github.com/iamthamanic/scriptony-multihost/issues/21"
+  },
+  {
+    "num": "22",
+    "title": "MVE 0.2: Render Line Service + Job-Snapshot",
+    "url": "https://github.com/iamthamanic/scriptony-multihost/issues/22"
+  },
+  {
+    "num": "23",
+    "title": "MVE 0.2: Take Selection + Render UI (Timeline)",
+    "url": "https://github.com/iamthamanic/scriptony-multihost/issues/23"
+  }
+]

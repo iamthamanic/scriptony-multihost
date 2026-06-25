@@ -302,12 +302,18 @@ import type {
   MveVoiceProfileStatus,
   MveVoiceProfileType,
   MveConsentStatus,
+  MveAudioJobStatus,
+  MveTakeStatus,
 } from "@/lib/multi-voice-engine/schema/enums";
 import type {
   MveVoiceAttributes,
   MveVoiceProfile,
   MveVoiceRenderSettings,
 } from "@/lib/multi-voice-engine/schema/voice-profile";
+import type { MveAudioJob } from "@/lib/multi-voice-engine/schema/audio-job";
+import type { MveLineRenderSnapshot } from "@/lib/multi-voice-engine/schema/audio-job";
+import type { MveTake } from "@/lib/multi-voice-engine/schema/take";
+import type { VoiceRenderSettings } from "@/lib/multi-voice-engine/schema/render-line";
 
 // ── Multi-Voice Engine (local SQLite MVP) ───────────────────────────────────
 
@@ -371,6 +377,38 @@ export interface MveVoiceProfileUpdatePayload {
   version?: number;
 }
 
+export interface MveAudioJobCreatePayload {
+  lineId: string;
+  engine: string;
+  takeCount?: number;
+  scriptSnapshot: MveLineRenderSnapshot;
+  status?: MveAudioJobStatus;
+}
+
+export interface MveAudioJobUpdatePayload {
+  status?: MveAudioJobStatus;
+  errorMessage?: string | null;
+}
+
+export interface MveTakeCreatePayload {
+  lineId: string;
+  jobId: string;
+  takeIndex: number;
+  audioUrl?: string;
+  durationMs?: number;
+  renderSettings?: VoiceRenderSettings;
+  directionSnapshot?: MveLineDirection;
+  isSelected?: boolean;
+  status?: MveTakeStatus;
+}
+
+export interface MveTakeUpdatePayload {
+  audioUrl?: string | null;
+  durationMs?: number | null;
+  isSelected?: boolean;
+  status?: MveTakeStatus;
+}
+
 export interface MveRepository {
   listLines(projectId: string): Promise<MveLine[]>;
   listLinesByScene(sceneId: string): Promise<MveLine[]>;
@@ -395,6 +433,24 @@ export interface MveRepository {
     patch: MveVoiceProfileUpdatePayload,
   ): Promise<MveVoiceProfile>;
   deleteVoiceProfile(id: string): Promise<void>;
+
+  listAudioJobsByLine(lineId: string): Promise<MveAudioJob[]>;
+  getAudioJob(id: string): Promise<MveAudioJob | null>;
+  createAudioJob(
+    projectId: string,
+    payload: MveAudioJobCreatePayload,
+  ): Promise<MveAudioJob>;
+  updateAudioJob(
+    id: string,
+    patch: MveAudioJobUpdatePayload,
+  ): Promise<MveAudioJob>;
+
+  listTakesByLine(lineId: string): Promise<MveTake[]>;
+  listTakesByJob(jobId: string): Promise<MveTake[]>;
+  getTake(id: string): Promise<MveTake | null>;
+  createTake(projectId: string, payload: MveTakeCreatePayload): Promise<MveTake>;
+  updateTake(id: string, patch: MveTakeUpdatePayload): Promise<MveTake>;
+  selectTake(lineId: string, takeId: string): Promise<MveTake>;
 }
 
 export type {

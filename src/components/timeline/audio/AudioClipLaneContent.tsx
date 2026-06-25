@@ -13,12 +13,16 @@ import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-direction";
 
 export interface MveLineClipHandlers {
+  projectId: string;
   lineByClipId: Map<string, MveLine>;
   onSaveText: (lineId: string, text: string) => Promise<void>;
   onSaveDirection: (
     lineId: string,
     direction: MveLineDirection,
   ) => Promise<void>;
+  getRenderBlockReason?: (line: MveLine) => string | undefined;
+  onRenderLine?: (lineId: string) => Promise<unknown>;
+  isRenderingLineId?: string | null;
 }
 
 export interface AudioClipLaneContentProps {
@@ -80,8 +84,21 @@ export function AudioClipLaneContent({
           allClips={allClips}
           onLaneChange={onLaneChange}
           mveLine={mveLines?.lineByClipId.get(clip.id)}
+          mveProjectId={mveLines?.projectId}
           onMveSaveText={mveLines?.onSaveText}
           onMveSaveDirection={mveLines?.onSaveDirection}
+          mveRenderBlockReason={(() => {
+            const line = mveLines?.lineByClipId.get(clip.id);
+            return line && mveLines?.getRenderBlockReason
+              ? mveLines.getRenderBlockReason(line)
+              : undefined;
+          })()}
+          onMveRenderLine={mveLines?.onRenderLine}
+          mveIsRendering={
+            mveLines?.isRenderingLineId != null &&
+            mveLines.lineByClipId.get(clip.id)?.id ===
+              mveLines.isRenderingLineId
+          }
         />
       ))}
     </div>

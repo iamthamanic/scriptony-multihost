@@ -1,24 +1,24 @@
 /**
  * CharacterVoiceSelector — Kokoro-Stimme für MVE VoiceProfile (Characters-Panel).
  *
- * Zeigt lokale Kokoro-Stimmen; persistiert Zuweisung in mve_voice_profiles.
+ * Select statt Popover: sichtbar über Dialog-Modals (z-index 11000).
  * Location: src/components/audio/CharacterVoiceSelector.tsx
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback } from "react";
 import { Loader2, Mic } from "lucide-react";
 import { toast } from "sonner";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { useAssignMveVoice } from "../../hooks/useAssignMveVoice";
 import { useLocalVoices } from "../../hooks/useLocalVoices";
-import { ensureKokoroSidecar } from "../../lib/api/local-tts-api";
 import { resolveMveTtsVoiceId } from "../../lib/mve/resolve-tts-voice-id";
 import { isDesktopShell } from "../../runtime/detect-runtime";
-import { cn } from "../../lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 
 interface CharacterVoiceSelectorProps {
@@ -48,53 +48,45 @@ export function CharacterVoiceSelector({
   showLabel = true,
   label = "Charakterstimme (Kokoro lokal)",
 }: CharacterVoiceSelectorProps) {
-  const [open, setOpen] = useState(false);
-  const isStartingRef = useRef(false);
   const { assignVoice, isSaving } = useAssignMveVoice(onAssigned);
 
-  const ensureSidecar = useCallback(async () => {
-    if (!isDesktopShell() || !projectDir) return;
-    if (isStartingRef.current) return;
-    isStartingRef.current = true;
-    try {
-      await ensureKokoroSidecar(projectDir);
-    } catch (err) {
-      console.warn("[CharacterVoiceSelector] Kokoro sidecar:", err);
-      toast.error("Kokoro-Server konnte nicht gestartet werden.");
-    } finally {
-      isStartingRef.current = false;
-    }
-  }, [projectDir]);
+  const { data, isLoading, isFetching, error, refetch } = useLocalVoices({
+    enabled: Boolean(projectDir),
+    projectDir,
+  });
 
-  useEffect(() => {
-    if (isDesktopShell() && projectDir) {
-      void ensureSidecar();
-    }
-  }, [projectDir, ensureSidecar]);
-
-  const {
-    data: voices = [],
-    isLoading,
-    error,
-  } = useLocalVoices({ enabled: Boolean(projectDir) });
+  const voices = data?.voices ?? [];
+  const sidecarReady = data?.sidecarReady ?? false;
+  const kokoroReady = data?.kokoroReady ?? false;
+  const kokoroError = data?.kokoroError;
+  const usedCatalogFallback = data?.usedCatalogFallback ?? false;
 
   const selectedVoiceId = resolveMveTtsVoiceId(profile);
-  const selectedVoice = voices.find((v) => v.id === selectedVoiceId);
 
-  const handleSelect = async (voiceId: string) => {
-    setOpen(false);
-    const assigned = await assignVoice({
+  const handleSelect = useCallback(
+    async (voiceId: string) => {
+      const assigned = await assignVoice({
+        projectId,
+        characterId,
+        characterName,
+        voiceId,
+        previewText,
+        existingProfile: profile,
+      });
+      if (assigned) {
+        onAssignedProfile?.(assigned);
+      }
+    },
+    [
+      assignVoice,
       projectId,
       characterId,
       characterName,
-      voiceId,
       previewText,
-      existingProfile: profile,
-    });
-    if (assigned) {
-      onAssignedProfile?.(assigned);
-    }
-  };
+      profile,
+      onAssignedProfile,
+    ],
+  );
 
   if (!isDesktopShell()) {
     return (
@@ -104,6 +96,17 @@ export function CharacterVoiceSelector({
     );
   }
 
+  if (!projectDir) {
+    return (
+      <p className="text-muted-foreground text-xs italic">
+        Lokales .scriptony-Projekt öffnen, um Kokoro-Stimmen zu laden.
+      </p>
+    );
+  }
+
+  const selectDisabled = disabled || isLoading || isSaving;
+  const busy = isLoading || isFetching || isSaving;
+
   return (
     <div className="space-y-1">
       {showLabel && (
@@ -111,78 +114,74 @@ export function CharacterVoiceSelector({
           {label}
         </label>
       )}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <button
-            type="button"
-            onClick={() => void ensureSidecar()}
-            disabled={disabled || isLoading || isSaving}
-            aria-haspopup="listbox"
-            aria-expanded={open}
-            className={cn(
-              "flex w-full items-center justify-between gap-2 rounded-md border border-border",
-              "bg-background px-2 py-1.5 text-xs text-foreground",
-              "hover:bg-muted/30 focus:outline-none focus:ring-1 focus:ring-ring",
-              "disabled:opacity-50 disabled:cursor-not-allowed",
-            )}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              {isLoading || isSaving ? (
-                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
-              ) : (
-                <Mic className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              )}
-              <span className="truncate">
-                {selectedVoice
-                  ? `${selectedVoice.name} (${selectedVoice.lang})`
-                  : "Stimme auswählen…"}
-              </span>
-            </div>
-          </button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-[var(--radix-popover-trigger-width)] p-0"
-          align="start"
-          role="listbox"
-          aria-label="Kokoro-Stimmen"
+      <Select
+        value={selectedVoiceId || undefined}
+        onValueChange={(value) => {
+          if (!value || value === "__empty__") return;
+          void handleSelect(value);
+        }}
+        disabled={selectDisabled}
+        onOpenChange={(open) => {
+          if (open) void refetch();
+        }}
+      >
+        <SelectTrigger
+          className="h-9 w-full text-xs"
+          aria-label="Kokoro-Stimme auswählen"
+          data-testid="character-voice-select-trigger"
         >
-          <div className="max-h-48 overflow-auto py-1">
-            {voices.map((voice) => (
-              <button
-                key={voice.id}
-                type="button"
-                role="option"
-                aria-selected={selectedVoiceId === voice.id}
-                onClick={() => void handleSelect(voice.id)}
-                className={cn(
-                  "flex w-full items-center gap-2 px-2 py-1.5 text-left text-xs",
-                  "hover:bg-muted/50 focus:bg-muted/50 focus:outline-none",
-                  selectedVoiceId === voice.id && "bg-primary/10 text-primary",
-                )}
-              >
-                <Mic className="h-3 w-3 shrink-0 text-muted-foreground" />
-                <div className="flex flex-col min-w-0">
-                  <span className="font-medium truncate">{voice.name}</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {voice.lang} — {voice.gender}
-                  </span>
-                </div>
-              </button>
-            ))}
-            {voices.length === 0 && !isLoading && (
-              <p className="px-2 py-2 text-[10px] text-muted-foreground">
-                Keine Stimmen gefunden.
-              </p>
+          <div className="flex items-center gap-2 min-w-0">
+            {busy ? (
+              <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
+            ) : (
+              <Mic className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             )}
+            <SelectValue placeholder="Stimme auswählen…" />
           </div>
-        </PopoverContent>
-      </Popover>
+        </SelectTrigger>
+        <SelectContent data-testid="character-voice-select-content">
+          {voices.length === 0 && !busy ? (
+            <SelectItem value="__empty__" disabled>
+              Keine Stimmen geladen
+            </SelectItem>
+          ) : (
+            voices.map((voice) => (
+              <SelectItem key={voice.id} value={voice.id}>
+                {voice.name} ({voice.lang}, {voice.gender})
+              </SelectItem>
+            ))
+          )}
+        </SelectContent>
+      </Select>
 
-      {error && (
+      {kokoroError ? (
+        <p className="text-[10px] text-destructive">{kokoroError}</p>
+      ) : null}
+
+      {error ? (
         <p className="text-[10px] text-destructive">
           {error.message || "Stimmen konnten nicht geladen werden."}
         </p>
-      )}
+      ) : null}
+
+      {!error && busy && voices.length === 0 ? (
+        <p className="text-[10px] text-muted-foreground">
+          Kokoro-Server wird gestartet (beim ersten Mal ggf. Python-Setup)…
+        </p>
+      ) : null}
+
+      {!error && voices.length > 0 ? (
+        <p className="text-[10px] text-muted-foreground">
+          {voices.length} Stimmen
+          {kokoroReady
+            ? " — TTS bereit"
+            : sidecarReady
+              ? " — Sidecar läuft, Modell wird geladen…"
+              : usedCatalogFallback
+                ? " — Vorschau startet Sidecar automatisch"
+                : ""}
+        </p>
+      ) : null}
     </div>
   );
 }

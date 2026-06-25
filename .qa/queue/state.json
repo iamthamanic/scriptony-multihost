@@ -1,0 +1,45 @@
+{
+  "version": 2,
+  "repo": "iamthamanic/scriptony-multihost",
+  "activeIssue": 6,
+  "featureSlug": "mve-characters-voice-panel",
+  "phase": "implement",
+  "branch": "issue/6-mve-characters-voice-panel",
+  "prUrl": "https://github.com/iamthamanic/scriptony-multihost/pull/10",
+  "milestoneFilter": null,
+  "paused": false,
+  "runMode": "batch",
+  "queue": [
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    11
+  ],
+  "completedIssues": [
+    3,
+    4,
+    5
+  ],
+  "retries": {
+    "implement": 0,
+    "verifyTicket": 0,
+    "verifyUi": 0,
+    "review": 0
+  },
+  "maxRetries": {
+    "implement": 3,
+    "verifyTicket": 2,
+    "verifyUi": 2,
+    "review": 2,
+    "sameRootCause": 2
+  },
+  "lastError": null,
+  "lastErrorCount": 0,
+  "issuesProcessedInSession": 1,
+  "updatedAt": "2026-06-25T11:57:45.000Z"
+}

@@ -205,6 +205,36 @@ export class StubMveRepository implements MveRepository {
 	async deleteVoiceProfile(): Promise<never> {
 		throw new Error("MVE voice profiles are only available in local desktop projects.");
 	}
+	async listAudioJobsByLine(): Promise<never> {
+		throw new Error("MVE render jobs are only available in local desktop projects.");
+	}
+	async getAudioJob(): Promise<never> {
+		throw new Error("MVE render jobs are only available in local desktop projects.");
+	}
+	async createAudioJob(): Promise<never> {
+		throw new Error("MVE render jobs are only available in local desktop projects.");
+	}
+	async updateAudioJob(): Promise<never> {
+		throw new Error("MVE render jobs are only available in local desktop projects.");
+	}
+	async listTakesByLine(): Promise<never> {
+		throw new Error("MVE takes are only available in local desktop projects.");
+	}
+	async listTakesByJob(): Promise<never> {
+		throw new Error("MVE takes are only available in local desktop projects.");
+	}
+	async getTake(): Promise<never> {
+		throw new Error("MVE takes are only available in local desktop projects.");
+	}
+	async createTake(): Promise<never> {
+		throw new Error("MVE takes are only available in local desktop projects.");
+	}
+	async updateTake(): Promise<never> {
+		throw new Error("MVE takes are only available in local desktop projects.");
+	}
+	async selectTake(): Promise<never> {
+		throw new Error("MVE takes are only available in local desktop projects.");
+	}
 }
 
 export class StubStorageRepository implements StorageRepository {

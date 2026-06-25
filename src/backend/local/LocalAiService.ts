@@ -185,6 +185,7 @@ export class LocalAiService implements AiService {
    * List available voices from local Kokoro server.
    */
   async listVoices() {
-    return listLocalVoices();
+    const result = await listLocalVoices(this.projectDir ?? undefined);
+    return result.voices;
   }
 }

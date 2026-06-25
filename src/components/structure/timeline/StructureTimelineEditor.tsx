@@ -68,6 +68,7 @@ import {
 import { RichTextEditorModal } from "../../shared/RichTextEditorModal";
 import { StructureTimelinePreviewPanel } from "./StructureTimelinePreviewPanel";
 import { StructureTimelineToolbar } from "./StructureTimelineToolbar";
+import { MveEnhanceScriptPanel } from "./mve/MveEnhanceScriptPanel";
 import { StructureTimelineRuler } from "./StructureTimelineRuler";
 import { StructureTimelinePlayheadOverlay } from "./StructureTimelinePlayheadOverlay";
 import { StructureTimelineFilmProductionTracks } from "./StructureTimelineFilmProductionTracks";
@@ -5281,6 +5282,17 @@ export function StructureTimelineEditor({
         onToggle={handleTransportToggle}
         onStop={handleTransportStop}
       />
+
+      {isAudioProject && projectId ? (
+        <MveEnhanceScriptPanel
+          projectId={projectId}
+          sceneId={activePreviewSceneId}
+          sceneTitle={
+            (activePreviewScene as { title?: string } | null)?.title ??
+            sceneBlocks.find((s) => s.id === activePreviewSceneId)?.title
+          }
+        />
+      ) : null}
 
       {/* Timeline: structure tracks + audio DAW rows (same scroll, Hörspiel) */}
       <div className="flex flex-1 min-h-0 overflow-hidden">

@@ -114,11 +114,12 @@ export function VoiceProfileEditorModal({
           onDescriptionChange={setDescription}
           onSpeedChange={setSpeed}
           onPlayPreview={() =>
-            void playPreview({
+            playPreview({
               projectDir,
               voiceId,
               characterName,
               previewText,
+              speed,
             })
           }
           onVoiceAssignedProfile={handleVoiceAssigned}

@@ -11,6 +11,7 @@ import {
   SCHEMA_VERSION,
   TABLE,
   MVE_SCHEMA_STATEMENTS,
+  MVE_RENDER_SCHEMA_STATEMENTS,
 } from "./project-schema";
 
 /** Idempotent DDL for schema v2 (story_beats). */
@@ -70,6 +71,41 @@ export const MIGRATION_V3_LANE_REMAP: readonly {
 /** Idempotent DDL for schema v4 (multi-voice-engine). */
 export const MIGRATION_V4_STATEMENTS = MVE_SCHEMA_STATEMENTS;
 
+/** Idempotent DDL for schema v5 (MVE render). */
+export const MIGRATION_V5_STATEMENTS = MVE_RENDER_SCHEMA_STATEMENTS;
+
+async function tableExists(db: LocalDb, tableName: string): Promise<boolean> {
+  const row = await db.get(
+    `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
+    [tableName],
+  );
+  return row?.name === tableName;
+}
+
+/**
+ * Repair DBs that were stamped schema v4 before MVE DDL shipped.
+ * Safe to run on every open — statements are CREATE IF NOT EXISTS.
+ */
+export async function ensureMveTables(db: LocalDb): Promise<void> {
+  const hasLines = await tableExists(db, TABLE.MVE_LINES);
+  const hasProfiles = await tableExists(db, TABLE.MVE_VOICE_PROFILES);
+  if (hasLines && hasProfiles) return;
+
+  for (const stmt of MIGRATION_V4_STATEMENTS) {
+    await db.run(stmt);
+  }
+}
+
+export async function ensureMveRenderTables(db: LocalDb): Promise<void> {
+  const hasJobs = await tableExists(db, TABLE.MVE_AUDIO_JOBS);
+  const hasTakes = await tableExists(db, TABLE.MVE_TAKES);
+  if (hasJobs && hasTakes) return;
+
+  for (const stmt of MIGRATION_V5_STATEMENTS) {
+    await db.run(stmt);
+  }
+}
+
 /** Apply pending migrations up to SCHEMA_VERSION. */
 export async function migrateLocalDb(db: LocalDb): Promise<void> {
   let version = await readSchemaVersion(db);
@@ -102,6 +138,18 @@ export async function migrateLocalDb(db: LocalDb): Promise<void> {
     version = 4;
     await setSchemaVersion(db, version);
   }
+
+  await ensureMveTables(db);
+
+  if (version < 5) {
+    for (const stmt of MIGRATION_V5_STATEMENTS) {
+      await db.run(stmt);
+    }
+    version = 5;
+    await setSchemaVersion(db, version);
+  }
+
+  await ensureMveRenderTables(db);
 
   if (version < SCHEMA_VERSION) {
     await setSchemaVersion(db, SCHEMA_VERSION);

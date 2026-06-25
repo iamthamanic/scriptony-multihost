@@ -41,4 +41,27 @@ describe("schema-migrations", () => {
     expect(beatsTable?.name).toBe(TABLE.STORY_BEATS);
     await db.close();
   });
+
+  it("repairs v4 stamp when mve tables are missing", async () => {
+    const db = await LocalDb.createInMemory();
+    await db.run(`DROP TABLE IF EXISTS ${TABLE.MVE_LINES}`);
+    await db.run(`DROP TABLE IF EXISTS ${TABLE.MVE_VOICE_PROFILES}`);
+    await db.run(
+      `INSERT OR REPLACE INTO schema_meta (key, value) VALUES ('version', '4')`,
+    );
+
+    await migrateLocalDb(db);
+
+    const mveLines = await db.get(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
+      [TABLE.MVE_LINES],
+    );
+    const mveProfiles = await db.get(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
+      [TABLE.MVE_VOICE_PROFILES],
+    );
+    expect(mveLines?.name).toBe(TABLE.MVE_LINES);
+    expect(mveProfiles?.name).toBe(TABLE.MVE_VOICE_PROFILES);
+    await db.close();
+  });
 });

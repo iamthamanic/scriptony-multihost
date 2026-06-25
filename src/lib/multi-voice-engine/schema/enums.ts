@@ -110,3 +110,14 @@ export type MveEnergy = z.infer<typeof MveEnergySchema>;
 
 export const MveEmphasisSchema = z.enum(["none", "light", "medium", "strong"]);
 export type MveEmphasis = z.infer<typeof MveEmphasisSchema>;
+
+export const MveAudioJobStatusSchema = z.enum([
+  "pending",
+  "processing",
+  "completed",
+  "failed",
+]);
+export type MveAudioJobStatus = z.infer<typeof MveAudioJobStatusSchema>;
+
+export const MveTakeStatusSchema = z.enum(["processing", "ready", "failed"]);
+export type MveTakeStatus = z.infer<typeof MveTakeStatusSchema>;

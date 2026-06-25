@@ -8,10 +8,12 @@ import { Plus } from "lucide-react";
 import { useProjectClipLanes } from "../../../../hooks/useProjectClipLanes";
 import { useTimelineAddAudio } from "../../../../hooks/useTimelineAddAudio";
 import { useMveLines } from "../../../../hooks/useMveLines";
+import { useMveLineRender } from "../../../../hooks/useMveLineRender";
 import { useMveVoiceProfiles } from "../../../../hooks/useMveVoiceProfiles";
 import type { LinkedLaneAudioContext } from "../../../../hooks/useTimelineAddAudio";
 import { LANE_UI, laneIndexToTrackType } from "../../../../lib/audio-lane";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
+import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import { cn } from "../../../../lib/utils";
 import {
   StructureTimelineClipLaneContent,
@@ -34,6 +36,7 @@ export function useStructureTimelineAudioLanes(
   const [expandedLane, setExpandedLane] = useState<number | null>(null);
   const lanes = useProjectClipLanes(props.projectId, props.projectType);
   const mve = useMveLines(props.projectId);
+  const mveRender = useMveLineRender(props.projectId);
   const mveVoices = useMveVoiceProfiles(props.projectId);
   const backfilledClipIds = useRef(new Set<string>());
 
@@ -49,11 +52,16 @@ export function useStructureTimelineAudioLanes(
           continue;
         }
         backfilledClipIds.current.add(clip.id);
-        await mve.ensureForClip(
-          clip,
-          clip.content,
-          lanes.characterLanes.characterIdForLane(clip.laneIndex),
-        );
+        try {
+          await mve.ensureForClip(
+            clip,
+            clip.content,
+            lanes.characterLanes.characterIdForLane(clip.laneIndex),
+          );
+        } catch (err) {
+          backfilledClipIds.current.delete(clip.id);
+          console.warn("[MVE] Clip line backfill failed:", clip.id, err);
+        }
       }
     })();
   }, [
@@ -65,16 +73,44 @@ export function useStructureTimelineAudioLanes(
     lanes.characterLanes,
   ]);
 
+  const getMveRenderBlockReason = useCallback(
+    (line: MveLine) => {
+      if (!line.text?.trim()) {
+        return "Bitte zuerst Dialogtext eingeben.";
+      }
+      if (!mveVoices.enabled) return undefined;
+      if (!line.characterId) {
+        return "Kein Charakter zugeordnet.";
+      }
+      const profile = mveVoices.profileByCharacterId.get(line.characterId);
+      if (!resolveMveTtsVoiceId(profile)) {
+        return "Charakter hat keine Stimme — im Characters-Panel zuweisen.";
+      }
+      return undefined;
+    },
+    [mveVoices],
+  );
+
   const mveLines = useMemo(
     () =>
-      mve.enabled
+      mve.enabled && props.projectId
         ? {
+            projectId: props.projectId,
             lineByClipId: mve.lineByClipId,
             onSaveText: mve.saveLineText,
             onSaveDirection: mve.saveLineDirection,
+            getRenderBlockReason: getMveRenderBlockReason,
+            onRenderLine: mveRender.renderLine,
+            isRenderingLineId: mveRender.renderingLineId,
           }
         : undefined,
-    [mve],
+    [
+      mve,
+      props.projectId,
+      mveRender.renderLine,
+      mveRender.renderingLineId,
+      getMveRenderBlockReason,
+    ],
   );
 
   const getVoiceIdForLane = useCallback(

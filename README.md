@@ -359,6 +359,14 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 
 ---
 
+## Recent changes
+
+<!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
+
+- **2026-06-16** — Ticket gate: scoped `SHIM_CHANGED_FILES`, Fallow, Codex fallback, `TEST_COVERAGE_REGISTRY` (process/docs)
+
+---
+
 ## Lizenz
 
 Scriptony ist Open Source unter der [MIT License](LICENSE).

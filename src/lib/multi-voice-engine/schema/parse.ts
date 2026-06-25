@@ -12,6 +12,10 @@ import type { MveScene } from "./scene";
 import { MveSceneSchema } from "./scene";
 import type { MveVoiceProfile } from "./voice-profile";
 import { MveVoiceProfileSchema } from "./voice-profile";
+import type { MveAudioJob } from "./audio-job";
+import { MveAudioJobSchema } from "./audio-job";
+import type { MveTake } from "./take";
+import { MveTakeSchema } from "./take";
 
 export type MveParseResult<T> =
   | { success: true; data: T }
@@ -57,4 +61,12 @@ export function parseMveVoiceProfile(
   input: unknown,
 ): MveParseResult<MveVoiceProfile> {
   return parseWith(MveVoiceProfileSchema, input);
+}
+
+export function parseMveAudioJob(input: unknown): MveParseResult<MveAudioJob> {
+  return parseWith(MveAudioJobSchema, input);
+}
+
+export function parseMveTake(input: unknown): MveParseResult<MveTake> {
+  return parseWith(MveTakeSchema, input);
 }

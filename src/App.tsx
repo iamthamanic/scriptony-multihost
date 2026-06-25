@@ -7,6 +7,7 @@ import { LocalProjectProvider } from "./hooks/useLocalProject";
 import { AuthProvider } from "./hooks/useAuth";
 import { CloudLoginProvider } from "./hooks/useCloudSession";
 import { TranslationProvider } from "./hooks/useTranslation";
+import { GlobalLoadingProgressProvider } from "./hooks/useGlobalLoadingProgress";
 import { queryClient } from "./lib/react-query";
 import { STORAGE_KEYS } from "./lib/config";
 import scriptonyLogo from "./assets/scriptony-logo.png";
@@ -69,7 +70,9 @@ export default function App() {
             <AuthProvider>
               <CloudLoginProvider>
                 <QueryClientProvider client={queryClient}>
-                  <AppContent />
+                  <GlobalLoadingProgressProvider>
+                    <AppContent />
+                  </GlobalLoadingProgressProvider>
                 </QueryClientProvider>
               </CloudLoginProvider>
             </AuthProvider>

@@ -93,6 +93,11 @@ const MveVoiceUiPreviewPage = lazy(() =>
     default: module.MveVoiceUiPreviewPage,
   })),
 );
+const MveTakeUiPreviewPage = lazy(() =>
+  import("../components/qa/MveTakeUiPreviewPage").then((module) => ({
+    default: module.MveTakeUiPreviewPage,
+  })),
+);
 const ScriptonyAssistant = lazy(() =>
   import("../components/assistant/ScriptonyAssistant").then((module) => ({
     default: module.ScriptonyAssistant,
@@ -217,6 +222,12 @@ export function AppContent() {
       case "qa-mve-voice":
         return import.meta.env.DEV ? (
           <MveVoiceUiPreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-mve-take-ui":
+        return import.meta.env.DEV ? (
+          <MveTakeUiPreviewPage />
         ) : (
           <HomePage onNavigate={onNavigate} />
         );
