@@ -11,11 +11,13 @@ import type { useAudioLaneState } from "../../../../hooks/useAudioLaneState";
 import type { useTimelineAddAudio } from "../../../../hooks/useTimelineAddAudio";
 import type { useCharacterLaneMap } from "../../../../hooks/useCharacterLaneMap";
 import type { AudioClip } from "../../../../lib/types";
+import type { TimelineSceneRef } from "../../../../lib/timeline-add-audio";
 
 export interface StructureTimelineClipLanesBaseProps {
   pxPerSec: number;
   viewStartSec: number;
   totalWidthPx: number;
+  scenes?: TimelineSceneRef[];
   laneGroups: Record<number, AudioClip[]>;
   sortedLaneIndices: number[];
   allClips?: AudioClip[];
@@ -37,11 +39,18 @@ export interface StructureTimelineClipLanesBaseProps {
   characterLanes?: Pick<
     ReturnType<typeof useCharacterLaneMap>,
     | "getCharacterForLane"
+    | "characterIdForLane"
     | "dialogLaneOrder"
     | "reorderCharacters"
     | "isReordering"
   > & { allClips?: AudioClip[] };
   mveLines?: import("../../../timeline/audio/AudioClipLaneContent").MveLineClipHandlers;
+  onAddMveTextBlock?: (payload: {
+    laneIndex: number;
+    characterId: string;
+    sceneId: string;
+    startSec: number;
+  }) => Promise<void> | void;
 }
 
 export function StructureTimelineClipLaneLabels({

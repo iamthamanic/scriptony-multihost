@@ -187,6 +187,24 @@ export class StubMveRepository implements MveRepository {
 	async deleteLine(): Promise<never> {
 		throw new Error("MVE lines are only available in local desktop projects.");
 	}
+	async listLaneLinks(): Promise<never> {
+		throw new Error("MVE lane links are only available in local desktop projects.");
+	}
+	async getLaneLink(): Promise<never> {
+		throw new Error("MVE lane links are only available in local desktop projects.");
+	}
+	async getLaneLinkForCharacter(): Promise<never> {
+		throw new Error("MVE lane links are only available in local desktop projects.");
+	}
+	async createLaneLink(): Promise<never> {
+		throw new Error("MVE lane links are only available in local desktop projects.");
+	}
+	async updateLaneLink(): Promise<never> {
+		throw new Error("MVE lane links are only available in local desktop projects.");
+	}
+	async deleteLaneLink(): Promise<never> {
+		throw new Error("MVE lane links are only available in local desktop projects.");
+	}
 	async listVoiceProfiles(): Promise<never> {
 		throw new Error("MVE voice profiles are only available in local desktop projects.");
 	}

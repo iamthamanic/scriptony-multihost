@@ -102,6 +102,17 @@ export const queryKeys = {
   mve: {
     linesByProject: (projectId: string) =>
       ["mve", "lines", "project", projectId] as const,
+    laneLinksByProject: (projectId: string) =>
+      ["mve", "laneLinks", "project", projectId] as const,
+    laneLinkByCharacter: (projectId: string, characterId: string) =>
+      [
+        "mve",
+        "laneLinks",
+        "project",
+        projectId,
+        "character",
+        characterId,
+      ] as const,
     voiceProfilesByProject: (projectId: string) =>
       ["mve", "voiceProfiles", "project", projectId] as const,
     takesByLine: (lineId: string) => ["mve", "takes", "line", lineId] as const,

@@ -20,6 +20,7 @@ const VALID_PAGES = [
   "api-test",
   "qa-mve-voice",
   "qa-mve-take-ui",
+  "qa-mve-text-block-lane",
   "project-recovery",
 ] as const;
 

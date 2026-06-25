@@ -98,6 +98,11 @@ const MveTakeUiPreviewPage = lazy(() =>
     default: module.MveTakeUiPreviewPage,
   })),
 );
+const MveTextBlockLanePreviewPage = lazy(() =>
+  import("../components/qa/MveTextBlockLanePreviewPage").then((module) => ({
+    default: module.MveTextBlockLanePreviewPage,
+  })),
+);
 const ScriptonyAssistant = lazy(() =>
   import("../components/assistant/ScriptonyAssistant").then((module) => ({
     default: module.ScriptonyAssistant,
@@ -228,6 +233,12 @@ export function AppContent() {
       case "qa-mve-take-ui":
         return import.meta.env.DEV ? (
           <MveTakeUiPreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-mve-text-block-lane":
+        return import.meta.env.DEV ? (
+          <MveTextBlockLanePreviewPage />
         ) : (
           <HomePage onNavigate={onNavigate} />
         );

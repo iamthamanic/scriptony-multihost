@@ -39,6 +39,7 @@ export const TABLE = {
   MVE_VOICE_PROFILES: "mve_voice_profiles",
   MVE_AUDIO_JOBS: "mve_audio_jobs",
   MVE_TAKES: "mve_takes",
+  MVE_LANE_LINKS: "mve_lane_links",
 } as const;
 
 export type TableName = (typeof TABLE)[keyof typeof TABLE];
@@ -92,6 +93,20 @@ export const MVE_SCHEMA_STATEMENTS: readonly string[] = [
 )`,
   `CREATE INDEX IF NOT EXISTS idx_mve_voice_profiles_project ON ${TABLE.MVE_VOICE_PROFILES}(project_id)`,
   `CREATE INDEX IF NOT EXISTS idx_mve_voice_profiles_character ON ${TABLE.MVE_VOICE_PROFILES}(project_id, character_id)`,
+  `CREATE TABLE IF NOT EXISTS ${TABLE.MVE_LANE_LINKS} (
+  id                    TEXT PRIMARY KEY,
+  project_id            TEXT NOT NULL,
+  character_id          TEXT NOT NULL,
+  target_container_id   TEXT NOT NULL,
+  target_container_type TEXT NOT NULL DEFAULT 'scene',
+  enabled               INTEGER NOT NULL DEFAULT 1,
+  created_at            TEXT NOT NULL,
+  updated_at            TEXT NOT NULL,
+  deleted_at            TEXT,
+  FOREIGN KEY (project_id) REFERENCES ${TABLE.PROJECTS}(id) ON DELETE CASCADE
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_mve_lane_links_project ON ${TABLE.MVE_LANE_LINKS}(project_id)`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS idx_mve_lane_links_character ON ${TABLE.MVE_LANE_LINKS}(project_id, character_id) WHERE deleted_at IS NULL`,
 ];
 
 /** Idempotent DDL for schema v5 (MVE render jobs + takes). */
