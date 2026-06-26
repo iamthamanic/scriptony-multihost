@@ -15,6 +15,7 @@ import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { AudioTimelineMveTextBlock } from "../AudioTimelineMveTextBlock";
+import { GlobalLoadingProgressProvider } from "@/hooks/useGlobalLoadingProgress";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 
 beforeEach(() => {
@@ -41,7 +42,9 @@ function wrapper({ children }: { children: React.ReactNode }) {
     defaultOptions: { queries: { retry: false } },
   });
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <GlobalLoadingProgressProvider>{children}</GlobalLoadingProgressProvider>
+    </QueryClientProvider>
   );
 }
 

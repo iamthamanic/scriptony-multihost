@@ -106,6 +106,18 @@ export function useStructureTimelineAudioLanes(
     return map;
   }, [mve.enabled, mve.lines]);
 
+  const linkedSceneIdForLane = useCallback(
+    (laneIndex: number) => {
+      if (!mveLaneLinks.enabled) return undefined;
+      const characterId = lanes.characterLanes.characterIdForLane(laneIndex);
+      if (!characterId) return undefined;
+      return mveLaneLinks.links.find(
+        (link) => link.characterId === characterId && link.enabled,
+      )?.targetContainerId;
+    },
+    [mveLaneLinks, lanes.characterLanes],
+  );
+
   const mveLines = useMemo(
     () =>
       mve.enabled && props.projectId
@@ -115,6 +127,8 @@ export function useStructureTimelineAudioLanes(
             linesByCharacterId,
             onSaveText: mve.saveLineText,
             onSaveDirection: mve.saveLineDirection,
+            onBindAudioClip: mve.bindAudioClip,
+            linkedSceneIdForLane,
             getRenderBlockReason: getMveRenderBlockReason,
             onRenderLine: mveRender.renderLine,
             isRenderingLineId: mveRender.renderingLineId,
@@ -125,11 +139,13 @@ export function useStructureTimelineAudioLanes(
       mve.lineByClipId,
       mve.saveLineText,
       mve.saveLineDirection,
+      mve.bindAudioClip,
       linesByCharacterId,
       props.projectId,
       mveRender.renderLine,
       mveRender.renderingLineId,
       getMveRenderBlockReason,
+      linkedSceneIdForLane,
     ],
   );
 
@@ -199,18 +215,6 @@ export function useStructureTimelineAudioLanes(
       });
     },
     [mve, lanes.scenes],
-  );
-
-  const linkedSceneIdForLane = useCallback(
-    (laneIndex: number) => {
-      if (!mveLaneLinks.enabled) return undefined;
-      const characterId = lanes.characterLanes.characterIdForLane(laneIndex);
-      if (!characterId) return undefined;
-      return mveLaneLinks.links.find(
-        (link) => link.characterId === characterId && link.enabled,
-      )?.targetContainerId;
-    },
-    [mveLaneLinks, lanes.characterLanes],
   );
 
   const laneProps = {
