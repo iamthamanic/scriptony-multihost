@@ -5,23 +5,23 @@
   "issues": [
     {
       "title": "T25 — Text-Block Data Model + Lane Link Persistence",
-      "labels": ["enhancement", "P0", "agent-ready"],
-      "body": "Intent: SQLite schema and repository changes so character dialog lanes can store a linked scene/shot and MVE Lines can exist without an audio clip.\n\nAcceptance:\n- [ ] Migration adds link table/column\n- [ ] Unit test: lane link CRUD\n- [ ] Unit test: create MVE line without audioClipId\n\nRuntime: local-desktop only.\n\nDesign: .qa/design/text-first-audio-workflow.md"
+      "labels": ["enhancement", "P0", "agent-done"],
+      "body": "Intent: SQLite schema and repository changes so character dialog lanes can store a linked scene/shot and MVE Lines can exist without an audio clip.\n\nAcceptance:\n- [x] Migration adds mve_lane_links table\n- [x] Unit test: lane link CRUD\n- [x] Unit test: create MVE line without audioClipId\n\nRuntime: local-desktop only.\n\nDesign: .qa/design/text-first-audio-workflow.md"
     },
     {
       "title": "T26 — Lane Header: Plus Button → Text hinzufügen",
-      "labels": ["enhancement", "P0", "agent-ready"],
-      "body": "Intent: The plus button in character dialog lanes creates a new text block instead of audio. SFX/Music/Atmo lanes keep existing Add Audio flow.\n\nAcceptance:\n- [ ] Plus button on dialog lanes shows \"Text hinzufügen\"\n- [ ] Inline text block appears in the lane\n- [ ] SFX/Music/Atmo unchanged\n- [ ] E2E screenshot in QA harness\n\nDepends on: #ISSUE_T25\nRuntime: local-desktop only."
+      "labels": ["enhancement", "P0", "agent-done"],
+      "body": "Intent: The plus button in character dialog lanes creates a new text block instead of audio. SFX/Music/Atmo lanes keep existing Add Audio flow.\n\nAcceptance:\n- [x] Plus button on dialog lanes shows \"Text hinzufügen\"\n- [x] Inline text block appears in the lane\n- [x] SFX/Music/Atmo unchanged\n- [x] E2E screenshot in QA harness\n\nDepends on: #ISSUE_T25\nRuntime: local-desktop only."
     },
     {
       "title": "T27 — Inline Text Editor with Enhance + Tags",
-      "labels": ["enhancement", "P0", "agent-ready"],
-      "body": "Intent: Text block editor supports `--tag` highlighting, a tag dropdown with drag-and-drop insertion, and inline enhance suggestions that can be confirmed or rejected.\n\nAcceptance:\n- [ ] `--*` tags highlighted in purple\n- [ ] Tag dropdown + drag-drop works\n- [ ] Enhance suggestions confirmable/rejectable\n- [ ] E2E screenshot\n\nDepends on: #ISSUE_T26\nRuntime: local-desktop only."
+      "labels": ["enhancement", "P0", "needs-design"],
+      "body": "Intent: Text block editor supports `--tag` highlighting, a tag helper toolbar, and inline enhance suggestions that can be confirmed or rejected.\n\nAcceptance:\n- [ ] `--*` tags highlighted in purple\n- [ ] Tag helper toolbar available\n- [ ] Enhance suggestions confirmable/rejectable\n- [ ] Text changes persisted\n- [ ] E2E screenshot\n\nDepends on: #ISSUE_T26\nRuntime: local-desktop only."
     },
     {
       "title": "T28 — Audio Derivation in Text Block (Generate/Upload/Record)",
       "labels": ["enhancement", "P0", "agent-ready"],
-      "body": "Intent: Text block has a permanent menu with Generate Audio, Upload Audio, Record Audio. Audio becomes a child of the linked scene; Generate opens a take selection modal after MVE render.\n\nAcceptance:\n- [ ] Generate opens take modal after render\n- [ ] Upload creates audio clip\n- [ ] Record creates audio clip\n- [ ] Scene selection modal shown when no scene linked\n- [ ] E2E screenshot + smoke test\n\nDepends on: #ISSUE_T27\nRuntime: local-desktop only."
+      "body": "Intent: Text block has a permanent menu with Generate Audio, Upload Audio, Record Audio. Audio becomes a child of the linked scene; Generate auto-selects the first successful take via the existing MVE render flow.\n\nAcceptance:\n- [ ] Generate starts MVE render for the text block\n- [ ] After generate, block appears as audio clip\n- [ ] Upload creates audio clip bound to the text block\n- [ ] Record creates audio clip bound to the text block\n- [ ] Scene selection modal shown when no lane link or user overrides\n- [ ] E2E screenshot + smoke test\n\nDepends on: #ISSUE_T27\nRuntime: local-desktop only."
     },
     {
       "title": "T29 — Ripple: Extend Scene + Parents for Longer Audio",
@@ -39,9 +39,9 @@
       "body": "Intent: A configurable metronome count-in (3 clicks) plays before every recording. Settings (BPM, time signature) via a button in the timeline view.\n\nAcceptance:\n- [ ] 3-click count-in before recording\n- [ ] Settings modal for BPM/time signature\n- [ ] Unit test for scheduling logic\n- [ ] E2E screenshot\n\nDepends on: #ISSUE_T28\nRuntime: local-desktop only."
     },
     {
-      "title": "T32 — Drag \u0026 Drop Text Block Between Scenes",
+      "title": "T32 — Drag & Drop Text Block Between Scenes",
       "labels": ["enhancement", "P2", "agent-ready"],
-      "body": "Intent: Users can drag a text block to another scene. If audio exists, it follows.\n\nAcceptance:\n- [ ] Text block drag \u0026 drop between scenes\n- [ ] Audio clip follows\n- [ ] E2E screenshot\n\nDepends on: #ISSUE_T26\nRuntime: local-desktop only."
+      "body": "Intent: Users can drag a text block to another scene. If audio exists, it follows.\n\nAcceptance:\n- [ ] Text block drag & drop between scenes\n- [ ] Audio clip follows\n- [ ] E2E screenshot\n\nDepends on: #ISSUE_T26\nRuntime: local-desktop only."
     }
   ]
 }

@@ -89,16 +89,18 @@ Wie im Goal beschrieben. Plus-Button → Text-Block. Lane-Settingsbox bekommt Li
 - `src/components/timeline/audio/AddAudioTimelineMenu.tsx` — Umbau zu „Text hinzufügen“ + neues Dropdown für Generate/Upload/Record am Text-Block.
 - `src/components/audio/AudioTimelineSegmentMveText.tsx` — Inline-Text-Editor erweitern um Enhance-Dropdown + Tags + Audio-Ableitungs-Menü.
 - `src/components/structure/timeline/mve/MveTextBlockAudioMenu.tsx` (new) — Dropdown Generate/Upload/Record innerhalb des Text-Blocks.
-- `src/components/structure/timeline/mve/MveTakeSelectionModal.tsx` (new) — Modal nach MVE-Render mit Take-Liste, Play, Übernehmen.
-- `src/components/timeline/audio/AudioClipLaneSidebar.tsx` / `TrackHeader.tsx` / `TrackTransportToggles.tsx` — Link-Icon neben Delete.
-- `src/components/structure/timeline/modals/SceneLinkModal.tsx` (new) — Act/Sequence/Scene(/Shot)-Auswahl.
+- `src/components/structure/timeline/mve/MveTextBlockEditor.tsx` (new) — Inline-Text-Editor im Text-Block mit Tag-Highlighter + Enhance-Popover.
+- `src/components/structure/timeline/mve/MveTextBlockAudioMenu.tsx` (new) — Dropdown Generate/Upload/Record innerhalb des Text-Blocks.
+- `src/components/structure/timeline/mve/MveLineTakePanel.tsx` — bestehendes Take-Popover wird als sekundäre UI wiederverwendet (kein neues Modal im MVP).
+- `src/components/timeline/audio/AudioClipLaneSidebar.tsx` / `TrackHeader.tsx` / `TrackTransportToggles.tsx` — Link-Icon neben Delete (P1-Slice T30).
+- `src/components/structure/timeline/modals/SceneLinkModal.tsx` (new) — Act/Sequence/Scene(/Shot)-Auswahl, nur wenn kein Lane-Link gesetzt oder Nutzer wechselt.
 - `src/hooks/useMveTextBlock.ts` (new) — CRUD für Textblöcke ohne AudioClip.
 - `src/hooks/useAudioLaneLink.ts` (new) — Lane-Link lesen/schreiben.
 - `src/hooks/useTimelineAddAudio.ts` — `addGenerated`, `triggerUpload`, `toggleRecord` akzeptieren optionalen Textblock/Parent-Scene-Kontext.
-- `src/lib/mve/render-text-block.ts` (new) — Text-Block → MVE Render → Take-Auswahl-Modal.
-- `src/lib/structure/extend-scene-for-audio.ts` (new) — Szene + Parents per Ripple verlängern.
-- `src/hooks/useAudioRecording.ts` — Metronom-Count-in (3 Klicks) vor Recording starten.
-- `src/components/structure/timeline/modals/MetronomeSettingsModal.tsx` (new) — BPM/Takt einstellbar.
+- `src/lib/mve/render-text-block.ts` (new) — Text-Block → MVE Render; wählt ersten erfolgreichen Take automatisch aus.
+- `src/lib/structure/extend-scene-for-audio.ts` (new, P1) — Szene + Parents per Ripple verlängern.
+- `src/hooks/useAudioRecording.ts` — Recording ohne Metronom im MVP; Count-in folgt in T31.
+- `src/components/structure/timeline/modals/MetronomeSettingsModal.tsx` (new, P1) — BPM/Takt einstellbar.
 
 ### Neue Dependencies
 
