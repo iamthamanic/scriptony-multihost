@@ -2,7 +2,8 @@
  * TrackTransportToggles — Mute / Solo / Record for track header row.
  */
 
-import { Trash2, Volume2, VolumeX } from "lucide-react";
+import { Link2, Trash2, Volume2, VolumeX } from "lucide-react";
+import { cn } from "../../../lib/utils";
 import type { LaneState } from "../../../lib/audio-lane";
 import { TransportToggle } from "./TransportToggle";
 
@@ -15,6 +16,9 @@ export interface TrackTransportTogglesProps {
   onRecordToggle?: (laneIndex: number) => void;
   isRecording?: boolean;
   onDeleteLane?: (laneIndex: number) => void;
+  onLinkClick?: (laneIndex: number) => void;
+  linkActive?: boolean;
+  linkWarning?: boolean;
   className?: string;
 }
 
@@ -27,10 +31,27 @@ export function TrackTransportToggles({
   onRecordToggle,
   isRecording,
   onDeleteLane,
+  onLinkClick,
+  linkActive,
+  linkWarning,
   className,
 }: TrackTransportTogglesProps) {
   return (
     <div className={className ?? "flex flex-row items-center gap-0.5 shrink-0"}>
+      {onLinkClick ? (
+        <TransportToggle
+          icon={<Link2 className="size-3" aria-hidden />}
+          active={linkActive}
+          activeClassName="bg-primary/25 text-primary border-primary/50"
+          onClick={() => onLinkClick(laneIndex)}
+          ariaLabel={`Szene verknüpfen: ${label}`}
+          className={cn(
+            linkWarning &&
+              "text-amber-600 border-amber-500/50 hover:bg-amber-500/15",
+          )}
+          testId="mve-lane-link-button"
+        />
+      ) : null}
       {onDeleteLane ? (
         <TransportToggle
           icon={<Trash2 className="size-3" aria-hidden />}

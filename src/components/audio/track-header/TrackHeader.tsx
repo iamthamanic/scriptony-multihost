@@ -45,6 +45,10 @@ export interface TrackHeaderProps {
   onRecordToggle?: (laneIndex: number) => void;
   isRecording?: boolean;
   onDeleteLane?: (laneIndex: number) => void;
+  onLinkClick?: (laneIndex: number) => void;
+  linkActive?: boolean;
+  linkWarning?: boolean;
+  laneLinkLabel?: string;
   headerAddon?: ReactNode;
   className?: string;
 }
@@ -67,6 +71,10 @@ export function TrackHeader({
   onRecordToggle,
   isRecording,
   onDeleteLane,
+  onLinkClick,
+  linkActive,
+  linkWarning,
+  laneLinkLabel,
   headerAddon,
   className,
 }: TrackHeaderProps) {
@@ -160,12 +168,21 @@ export function TrackHeader({
             onRecordToggle={onRecordToggle}
             isRecording={isRecording}
             onDeleteLane={onDeleteLane}
+            onLinkClick={onLinkClick}
+            linkActive={linkActive}
+            linkWarning={linkWarning}
           />
           {headerAddon}
         </div>
       </div>
 
-      {character ? <TrackCharacterRow character={character} /> : null}
+      {character ? (
+        <TrackCharacterRow
+          character={character}
+          laneLinkLabel={laneLinkLabel}
+          laneLinkOrphan={linkWarning}
+        />
+      ) : null}
 
       <TrackMixGrid
         label={character?.name ?? label}
