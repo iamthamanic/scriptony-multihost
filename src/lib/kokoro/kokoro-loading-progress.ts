@@ -8,7 +8,8 @@ import { isDesktopShell } from "@/runtime/detect-runtime";
 
 import type { LoadingProgressReporter } from "@/lib/loading/global-loading-progress";
 
-export type KokoroLoadProgress = import("@/lib/loading/global-loading-progress").LoadingProgressUpdate;
+export type KokoroLoadProgress =
+  import("@/lib/loading/global-loading-progress").LoadingProgressUpdate;
 export type KokoroProgressReporter = LoadingProgressReporter;
 
 export { GLOBAL_LOADING_DETAIL_DELAY_MS as KOKORO_LOADING_DETAIL_DELAY_MS } from "@/lib/loading/global-loading-progress";
@@ -112,7 +113,9 @@ async function pollUntilModelReady(
       report?.(statusToProgress(status));
       if (status.kokoroReady) return;
       if (status.phase === "error") {
-        throw new Error(status.message || "Kokoro-Modell konnte nicht geladen werden.");
+        throw new Error(
+          status.message || "Kokoro-Modell konnte nicht geladen werden.",
+        );
       }
     }
     await sleep(POLL_MS);

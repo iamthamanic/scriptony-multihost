@@ -244,75 +244,75 @@ export function useStructureTrimSession(
       activeSessionRef.current = null;
       dragStartTreeRef.current = null;
 
-    if (!result || !session) {
-      resetStructurePreviewStyles(
-        options.getContainers(),
-        previewTouchedIdsRef.current,
-      );
-      previewTouchedIdsRef.current = new Set();
-      finishTrimSession();
-      return;
-    }
+      if (!result || !session) {
+        resetStructurePreviewStyles(
+          options.getContainers(),
+          previewTouchedIdsRef.current,
+        );
+        previewTouchedIdsRef.current = new Set();
+        finishTrimSession();
+        return;
+      }
 
-    if (result.blocked || result.changedIds.size === 0) {
-      resetStructurePreviewStyles(
-        options.getContainers(),
-        previewTouchedIdsRef.current,
-      );
+      if (result.blocked || result.changedIds.size === 0) {
+        resetStructurePreviewStyles(
+          options.getContainers(),
+          previewTouchedIdsRef.current,
+        );
+        latestPreviewResultRef.current = null;
+        previewTouchedIdsRef.current = new Set();
+        finishTrimSession();
+        if (result.blocked) {
+          const reason = result.blockReason;
+          const sessionKind = session.kind;
+          logStructureTrimBlock({
+            itemId: session.itemId,
+            kind: sessionKind,
+            side: session.side,
+            operation: session.operation,
+            blockReason: reason,
+            invariantErrors: result.invariantErrors,
+          });
+          if (reason === "locked" || reason === "locked_ripple") {
+            toast.error("Trim blockiert — gesperrtes Element im Ripple-Pfad.");
+          } else if (reason === "would_violate_invariant") {
+            const codes = (result.invariantErrors ?? [])
+              .map((e) => e.code)
+              .join(", ");
+            toast.error(
+              codes
+                ? `Trim nicht möglich — ${codes}`
+                : "Trim nicht möglich — würde Timeline-Regeln verletzen.",
+            );
+          } else {
+            toast.error("Trim blockiert.");
+          }
+        }
+        return;
+      }
+
+      const patches = diffTreeToPatches(result.before, result.next);
+
+      try {
+        await options.onCommit({
+          before: result.before,
+          next: result.next,
+          patches,
+        });
+        resetStructurePreviewStyles(options.getContainers(), result.changedIds);
+      } catch (err) {
+        console.error("structure trim persist failed", err);
+        toast.error("Struktur-Trim konnte nicht gespeichert werden.");
+        options.onRevert(result.before);
+        resetStructurePreviewStyles(
+          options.getContainers(),
+          previewTouchedIdsRef.current,
+        );
+      }
+
       latestPreviewResultRef.current = null;
       previewTouchedIdsRef.current = new Set();
       finishTrimSession();
-      if (result.blocked) {
-        const reason = result.blockReason;
-        const sessionKind = session.kind;
-        logStructureTrimBlock({
-          itemId: session.itemId,
-          kind: sessionKind,
-          side: session.side,
-          operation: session.operation,
-          blockReason: reason,
-          invariantErrors: result.invariantErrors,
-        });
-        if (reason === "locked" || reason === "locked_ripple") {
-          toast.error("Trim blockiert — gesperrtes Element im Ripple-Pfad.");
-        } else if (reason === "would_violate_invariant") {
-          const codes = (result.invariantErrors ?? [])
-            .map((e) => e.code)
-            .join(", ");
-          toast.error(
-            codes
-              ? `Trim nicht möglich — ${codes}`
-              : "Trim nicht möglich — würde Timeline-Regeln verletzen.",
-          );
-        } else {
-          toast.error("Trim blockiert.");
-        }
-      }
-      return;
-    }
-
-    const patches = diffTreeToPatches(result.before, result.next);
-
-    try {
-      await options.onCommit({
-        before: result.before,
-        next: result.next,
-        patches,
-      });
-      resetStructurePreviewStyles(options.getContainers(), result.changedIds);
-    } catch (err) {
-      console.error("structure trim persist failed", err);
-      toast.error("Struktur-Trim konnte nicht gespeichert werden.");
-      options.onRevert(result.before);
-      resetStructurePreviewStyles(
-        options.getContainers(),
-        previewTouchedIdsRef.current,
-      );
-    }
-
-    latestPreviewResultRef.current = null;
-    previewTouchedIdsRef.current = new Set();
-    finishTrimSession();
     },
     [options, finishTrimSession, computeTrimAtClientX],
   );

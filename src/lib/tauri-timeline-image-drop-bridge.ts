@@ -34,7 +34,9 @@ function mimeForExtension(ext: string | undefined): string {
   }
 }
 
-export async function fileFromTauriDropPath(path: string): Promise<File | null> {
+export async function fileFromTauriDropPath(
+  path: string,
+): Promise<File | null> {
   if (!isImagePath(path)) return null;
   const fileName = path.split(/[/\\]/).pop() ?? "image.jpg";
   const ext = fileName.split(".").pop()?.toLowerCase();

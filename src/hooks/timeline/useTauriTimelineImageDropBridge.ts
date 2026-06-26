@@ -75,7 +75,11 @@ export function useTauriTimelineImageDropBridge(
               resolveTimelineImageDropTarget(x / scale, y / scale);
             if (!target) return;
 
-            if (target.kind === "shot-clip" && target.nodeId && onShotImageFileDrop) {
+            if (
+              target.kind === "shot-clip" &&
+              target.nodeId &&
+              onShotImageFileDrop
+            ) {
               onShotImageFileDrop(target.nodeId, file);
               return;
             }
@@ -92,7 +96,11 @@ export function useTauriTimelineImageDropBridge(
             }
 
             if (target.kind === "lane") {
-              if (target.lane === "scene" && isAudioProject && onEmptySceneLaneDrop) {
+              if (
+                target.lane === "scene" &&
+                isAudioProject &&
+                onEmptySceneLaneDrop
+              ) {
                 onEmptySceneLaneDrop(file, target.clientX);
                 return;
               }

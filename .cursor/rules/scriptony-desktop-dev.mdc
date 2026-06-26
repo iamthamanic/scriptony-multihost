@@ -32,10 +32,11 @@ npm run dev:desktop
 ## Checks
 
 ```bash
-CHECK_MODE=snippet SHIM_CHECKS_ARGS="--frontend" SHIM_CHANGED_FILES="..." npm run checks
+@ecc-check
+# or: npm run verify -- --frontend
 ```
 
-Skip function deploy and `verify:test-env` unless the ticket is cloud/hybrid/backend.
+Legacy shim (deploy/release): `npm run checks`. Skip function deploy and `verify:test-env` unless cloud/hybrid/backend.
 
 ## Cloud / Appwrite
 

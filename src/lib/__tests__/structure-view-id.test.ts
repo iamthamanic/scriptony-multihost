@@ -16,9 +16,7 @@ describe("structure-view-id persistence", () => {
   });
 
   it("defaults to dropdown when nothing stored", () => {
-    expect(readPersistedStructureView(projectId)).toBe(
-      DEFAULT_STRUCTURE_VIEW,
-    );
+    expect(readPersistedStructureView(projectId)).toBe(DEFAULT_STRUCTURE_VIEW);
   });
 
   it("round-trips timeline view via sessionStorage", () => {

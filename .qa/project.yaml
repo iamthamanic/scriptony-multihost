@@ -6,8 +6,9 @@ appRoot: .
 devCommand: npm run dev:desktop
 devUrl: http://localhost:3000
 
-checksCommand: npm run checks
-checksSnippet: 'CHECK_MODE=snippet SHIM_CHECKS_ARGS="--frontend" SHIM_CHANGED_FILES="<paths>" npm run checks'
+# ECC default gate (@ecc-check, @verify-ticket) — no shim AI review
+checksCommand: npm run verify
+checksSnippet: 'npm run verify -- --frontend'
 
 e2eCommand: npm run test:e2e
 

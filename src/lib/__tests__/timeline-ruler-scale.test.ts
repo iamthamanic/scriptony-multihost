@@ -36,7 +36,9 @@ describe("timeline-ruler-scale", () => {
 
     expect(majorStepSec).toBe(2);
     expect(minorStepSec).toBe(1);
-    expect(majorTicks.map((t) => t.sec)).toEqual([0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30]);
+    expect(majorTicks.map((t) => t.sec)).toEqual([
+      0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30,
+    ]);
     expect(minorTicks.every((t) => t.sec % majorStepSec !== 0)).toBe(true);
     expect(minorTicks.some((t) => t.sec === 1)).toBe(true);
   });

@@ -86,7 +86,10 @@ export async function resolveLocalProjectAssetPath(
 ): Promise<string> {
   if (!urlOrRelativePath) return "";
 
-  if (isRemoteOrBlobUrl(urlOrRelativePath) || isTauriAssetUrl(urlOrRelativePath)) {
+  if (
+    isRemoteOrBlobUrl(urlOrRelativePath) ||
+    isTauriAssetUrl(urlOrRelativePath)
+  ) {
     return urlOrRelativePath;
   }
 
@@ -106,10 +109,7 @@ export async function resolveLocalProjectAssetPath(
   }
 
   const local = backend as LocalBackend;
-  const abs = resolveSafeProjectPath(
-    local.localProject.dirPath,
-    relativePath,
-  );
+  const abs = resolveSafeProjectPath(local.localProject.dirPath, relativePath);
   if (!abs) return "";
 
   try {

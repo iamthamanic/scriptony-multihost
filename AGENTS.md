@@ -43,10 +43,14 @@ npm run dev:desktop
 ### Checks (desktop / frontend tickets)
 
 ```bash
-CHECK_MODE=snippet SHIM_CHECKS_ARGS="--frontend" SHIM_CHANGED_FILES="src/...,src-tauri/..." npm run checks
+@ecc-check
+# or manually:
+npm run verify -- --frontend
 ```
 
-Add `src-tauri/` to `SHIM_CHANGED_FILES` when Rust or `tauri.conf.json` / capabilities change. Skip `--backend` and function deploy unless the ticket edits `functions/`.
+Legacy shim (Appwrite deploy / release only): `CHECK_MODE=snippet SHIM_CHECKS_ARGS="--frontend" SHIM_CHANGED_FILES="src/...,src-tauri/..." npm run checks`
+
+Add `src-tauri/` to changed scope when Rust or `tauri.conf.json` / capabilities change. Skip `--backend` and function deploy unless the ticket edits `functions/`.
 
 ### When cloud/Appwrite still applies
 
@@ -56,12 +60,28 @@ Add `src-tauri/` to `SHIM_CHANGED_FILES` when Rust or `tauri.conf.json` / capabi
 
 ## Mandatory workflow (do not bypass)
 
-- **Run checks before push or deploy.** Do not call the real Appwrite deploy or push without going through the checked workflow.
-- **Run checks until there are no errors and no warnings.** If any check fails or reports warnings, fix the issues and re-run the checks. Repeat until every check passes with zero errors and zero warnings. Do not push or deploy until all checks are green.
-- **If any check fails, fix the reported issues and re-run.** Do not bypass the shim or hooks. Single source of checks: `scripts/run-checks.sh`.
-- **Prefer `npm run checks`** (if defined) or run the same steps as the shim. For push: `git push` runs pre-push checks automatically when hooks are installed.
+- **Run `@ecc-check` (or `npm run verify`) before commit/push** for normal desktop/frontend tickets. Code review gate: `@review-ticket` ACCEPT — not shim AI review.
+- **Run checks until there are no errors and no warnings.** Fix and re-run until green. Do not push or deploy until gates pass.
+- **Ship:** `@commit-push-safe` (push only) or `@commit-pr-safe` (push + PR). Never push to main.
+- **Legacy shim** (`npm run checks`): Appwrite deploy, release, or when explicitly required — still via `scripts/run-checks.sh` (AI review disabled in `.shimwrappercheckrc`).
+- Pre-push hook runs `npm run verify` (see `.husky/pre-push`).
 
-## Shim usage (shimwrappercheck)
+## ECC quality gate (`@ecc-check`)
+
+Global skill: `~/.cursor/skills/ecc-check/SKILL.md`
+
+| Phase | Tool |
+|-------|------|
+| Deterministic | `npm run verify` (`.qa/project.yaml` → `checksCommand`) |
+| Acceptance | `@verify-ticket` |
+| Code review | `@review-ticket` (+ Bugbot/Security when needed) |
+| Agent config | `npx ecc-agentshield scan --path .cursor` |
+| UI | `@verify-ui` when UI changed |
+| Ship | `@commit-pr-safe` or `@commit-push-safe` |
+
+**Do not** require Shim `VERDICT: ACCEPT` / Ollama AI review for ticket completion.
+
+## Shim usage (legacy — deploy & optional full gate)
 
 - **Appwrite deploy**: Use `npx shimwrappercheck run --cli appwrite -- functions deploy <name>` or `npm run checks` first, then deploy.
 - **Git push**: Use `npx git push` or `npm run git:checked -- push` so checks run before push. The pre-push hook runs `scripts/run-checks.sh` when installed.
@@ -88,9 +108,16 @@ Checks are configured in the dashboard or `.shimwrappercheckrc` (toggles and ord
 - **Functions build** (`SHIM_RUN_FUNCTIONS_BUILD=1`): Builds changed Appwrite Functions with esbuild in snippet mode and all known Appwrite Functions in full/refactor mode. This is a build-only check; it must not deploy.
 - **No Deno default checks**: `SHIM_RUN_DENO_FMT=0`, `SHIM_RUN_DENO_LINT=0`, and `SHIM_RUN_DENO_AUDIT=0` because this repo's Appwrite Functions are bundled for the Appwrite Node runtime.
 
-### Required Shim Commands
+### Required commands (ECC default)
 
-- **Normal ticket / changed-code gate**: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks`
+- **Desktop / frontend ticket:** `@ecc-check` or `npm run verify -- --frontend`
+- **Backend / functions ticket:** `npm run verify -- --backend`
+- **Full verify:** `npm run verify`
+- **Ship:** `@commit-pr-safe` (PR) or `@commit-push-safe` (push only)
+
+### Legacy shim commands (deploy / release)
+
+- **Normal ticket (legacy):** `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks`
 - **Dirty worktree ticket scope**: If unrelated user changes exist, set `SHIM_CHANGED_FILES` to the current ticket's files, for example `SHIM_CHANGED_FILES="scripts/run-checks.sh,AGENTS.md" CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks`.
 - **Backend-only ticket**: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --backend`
 - **Frontend-only ticket**: `CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks -- --frontend`
@@ -98,7 +125,7 @@ Checks are configured in the dashboard or `.shimwrappercheckrc` (toggles and ord
 - **Large refactor checkpoint**: `CHECK_MODE=full SHIM_CHECKS_ARGS="" npm run checks -- --refactor`
 - **Release/deploy gate**: Run `SHIM_RUN_NPM_AUDIT=1 CHECK_MODE=full SHIM_CHECKS_ARGS="" npm run checks -- --refactor`, then the relevant Appwrite verify/smoke scripts before any real deploy.
 - **Dependency-change gate**: If `package.json`, package lockfiles, or dependency tooling changed, also run `SHIM_RUN_NPM_AUDIT=1 CHECK_MODE=snippet SHIM_CHECKS_ARGS="" npm run checks` or document why a known pre-existing vulnerability is out of scope.
-- **AI review**: Must stay enabled for ticket completion. Do not pass `--no-ai-review` and do not set `SKIP_AI_REVIEW=1` unless a human explicitly approves an exception.
+- **AI review (legacy shim):** Disabled (`SHIM_RUN_AI_REVIEW=0`). Use `@review-ticket` instead. Do not pass `--no-ai-review` to shim unless running legacy full gate; never use Shim AI review as ticket completion gate.
 - **AI review diff when changes are already committed**: `scripts/ai-code-review.sh` first reviews unstaged and staged hunks for scoped paths. If that diff is empty (clean tree) but you still need a binding Codex/Ollama review, set a base commit-ish so the review compares **current tree vs base** for those paths: `SHIM_AI_REVIEW_BASE_REF=main` or `HEAD~1`, `origin/main`, etc. Example (snippet scope + committed ticket files):  
   `SHIM_AI_REVIEW_BASE_REF=main CHECK_MODE=snippet SHIM_CHANGED_FILES="src/foo.ts,docs/bar.md" SHIM_CHECKS_ARGS="" npm run checks`  
   Alias: `AI_REVIEW_BASE_REF` (same meaning). Invalid `SHIM_AI_REVIEW_BASE_REF` fails the check (fix the ref and rerun).
@@ -211,12 +238,13 @@ When you add features, change behavior, or add new options, update the README an
 
 | Layer | Tool |
 |-------|------|
+| Quality gate | `@ecc-check` → `npm run verify` + `@review-ticket` + AgentShield |
 | Epic intake | `@feature-intake` → `.qa/design/` + `.qa/intake/` (draft issues) |
 | Issue runner | `@ecc-runner` + `.qa/queue/` (global: `~/.cursor/skills/ecc-runner/`) |
 | Design (single slice) | `@pingpong-solution` when label `needs-design` |
 | Implementation | `@implement` + `.qa/acceptance/` |
 | Verify | `@verify-ticket` |
-| Ship | `@commit-push-safe` / PR workflow |
+| Ship | `@commit-push-safe` / `@commit-pr-safe` |
 
 **Pipeline (new features):**
 

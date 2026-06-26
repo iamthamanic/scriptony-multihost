@@ -126,7 +126,6 @@ export function BeatTrack({
             </div>
           );
         })}
-
     </div>
   );
 }
