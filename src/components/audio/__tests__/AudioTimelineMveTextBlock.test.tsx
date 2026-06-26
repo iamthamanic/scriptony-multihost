@@ -3,19 +3,28 @@
  */
 
 /**
- * Tests for AudioTimelineMveTextBlock (T26).
+ * Tests for AudioTimelineMveTextBlock (T27).
  * - renders line text or placeholder
  * - applies aria-label for screen readers
- * - calls onClick when activated
+ * - opens inline editor on click
+ * - calls onSaveText after editing
  */
 
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { AudioTimelineMveTextBlock } from "../AudioTimelineMveTextBlock";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 
-afterEach(() => cleanup());
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+  cleanup();
+});
 
 const baseLine: MveLine = {
   id: "line-1",
@@ -26,6 +35,15 @@ const baseLine: MveLine = {
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
 };
+
+function wrapper({ children }: { children: React.ReactNode }) {
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+  return (
+    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+  );
+}
 
 describe("AudioTimelineMveTextBlock", () => {
   it("renders line text", () => {
@@ -38,6 +56,7 @@ describe("AudioTimelineMveTextBlock", () => {
         sceneStartSec={0}
         sceneEndSec={3}
       />,
+      { wrapper },
     );
     expect(screen.getByText("Hallo Welt")).toBeTruthy();
   });
@@ -51,6 +70,7 @@ describe("AudioTimelineMveTextBlock", () => {
         sceneStartSec={0}
         sceneEndSec={3}
       />,
+      { wrapper },
     );
     expect(screen.getByText("Text hinzufügen…")).toBeTruthy();
   });
@@ -65,6 +85,7 @@ describe("AudioTimelineMveTextBlock", () => {
         sceneStartSec={0}
         sceneEndSec={3}
       />,
+      { wrapper },
     );
     expect(
       screen.getByLabelText("Textblock: Dialog", { selector: "[role=button]" }),
@@ -83,8 +104,51 @@ describe("AudioTimelineMveTextBlock", () => {
         sceneEndSec={3}
         onClick={onClick}
       />,
+      { wrapper },
     );
     fireEvent.click(screen.getByText("Click me"));
     expect(onClick).toHaveBeenCalledWith("line-1");
+  });
+
+  it("opens inline editor when clicked", () => {
+    const line: MveLine = { ...baseLine, text: "Click me" };
+    render(
+      <AudioTimelineMveTextBlock
+        line={line}
+        pxPerSec={20}
+        viewStartSec={0}
+        sceneStartSec={0}
+        sceneEndSec={3}
+        projectId="proj-1"
+        onSaveText={vi.fn().mockResolvedValue(undefined)}
+      />,
+      { wrapper },
+    );
+    fireEvent.click(screen.getByText("Click me"));
+    expect(screen.getByTestId("mve-text-block-editor")).toBeTruthy();
+  });
+
+  it("calls onSaveText after textarea change", async () => {
+    const onSaveText = vi.fn().mockResolvedValue(undefined);
+    const line: MveLine = { ...baseLine, text: "Old" };
+    render(
+      <AudioTimelineMveTextBlock
+        line={line}
+        pxPerSec={20}
+        viewStartSec={0}
+        sceneStartSec={0}
+        sceneEndSec={3}
+        projectId="proj-1"
+        onSaveText={onSaveText}
+      />,
+      { wrapper },
+    );
+    fireEvent.click(screen.getByText("Old"));
+    const textarea = screen.getByTestId(
+      "mve-text-block-textarea",
+    ) as HTMLTextAreaElement;
+    fireEvent.change(textarea, { target: { value: "New text" } });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(onSaveText).toHaveBeenCalledWith("line-1", "New text");
   });
 });

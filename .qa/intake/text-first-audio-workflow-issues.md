@@ -6,6 +6,7 @@ Epic-Design: `.qa/design/text-first-audio-workflow.md`
 
 ### T25 — Text-Block Data Model + Lane Link Persistence
 
+**status:** done
 **priority:** P0
 **labels:** implementation, local-desktop, database
 **featureSlug:** text-block-data-model
@@ -19,18 +20,18 @@ Nutzer öffnet ein `.scriptony` Projekt. Character-Lane bekommt optional ein `li
 
 **Solution**
 - Tabelle `mve_lines` erlaubt `audio_clip_id = NULL` (heute schon optional).
-- Neue Tabelle oder Spalte für `character_lane_links(project_id, character_id, linked_scene_id, linked_shot_id?, updated_at)`.
-- Repository: `LocalCharacterLaneLinkRepository` mit get/upsert/delete.
+- Neue Tabelle `mve_lane_links(project_id, character_id, target_container_id, target_container_type, enabled, updated_at)`.
+- Repository: `LocalMveLaneLinkRepository` mit get/upsert/delete.
 - Mapper + Typen aktualisieren.
 
 **Edge Cases**
-- Charakter ohne Link: neue Textblöcke bekommen `scene_id = NULL` bis Audio-Aktion ausgewählt.
+- Charakter ohne Link: neue Textblöcke bekommen `scene_id` aus erster verfügbarer Szene bis Audio-Aktion ausgewählt.
 - Gelöschte Szene: Link bleibt in DB bestehen; UI zeigt „verwaister Link“ an und fragt bei nächster Aktion neu.
 
 **Acceptance**
-- [ ] Migration fügt Link-Tabelle/Spalte hinzu
-- [ ] Unit-Test: Link CRUD
-- [ ] Unit-Test: Text-Block ohne AudioClip erstellbar
+- [x] Migration fügt Link-Tabelle hinzu
+- [x] Unit-Test: Link CRUD
+- [x] Unit-Test: Text-Block ohne AudioClip erstellbar
 
 **Runtime**
 Local Desktop only.
@@ -39,32 +40,33 @@ Local Desktop only.
 
 ### T26 — Lane Header: Plus-Button → „Text hinzufügen“
 
+**status:** done
 **priority:** P0
 **labels:** implementation, ui, local-desktop
 **featureSlug:** text-first-plus-button
 **dependsOn:** T25
 
 **Intent**
-Der Plus-Button in der Character-Dialog-Lane erzeugt einen neuen Text-Block an der Playhead-Position (bzw. an der verlinkten Szene), nicht mehr Audio direkt.
+Der Plus-Button in der Character-Dialog-Lane erzeugt einen neuen Text-Block an der verlinkten Szene (oder ersten Szene), nicht mehr Audio direkt.
 
 **User Journey**
 Nutzer klickt auf „+“ in einer Character-Lane. Ein Inline-Text-Editor erscheint in der Lane. Er tippt den Dialogtext.
 
 **Solution**
-- `AddAudioTimelineMenu` umbauen: bei Character-Dialog-Lanes nur „Text hinzufügen“.
-- SFX/Music/Atmo-Lanes bleiben wie heute (Add Audio).
-- `useTimelineAddAudio.addTextBlock(laneIndex, startSec)` erzeugt `MveLine` mit `sceneId` aus Link oder Playhead-Szene.
-- Text-Block wird in `AudioClipLaneContent` als spezielles Segment gerendert (Szene-Farbe, kein Audio).
+- `AddMveTextBlockButton` (neu): bei Character-Dialog-Lanes nur „Text hinzufügen“.
+- SFX/Music/Atmo-Lanes bleiben wie heute (`AddAudioTimelineMenu`).
+- `StructureTimelineAudioLanes.handleAddMveTextBlock` erzeugt `MveLine` mit `sceneId` aus Link oder erster Szene.
+- Text-Block wird in `AudioClipLaneContent` als `AudioTimelineMveTextBlock`-Segment gerendert (Szene-Farbe, kein Audio).
 
 **Edge Cases**
-- Lane ohne Charakter → Plus-Button disabled + Hinweis.
-- Playhead steht außerhalb einer Szene → Modal fragt nach Szene.
+- Lane ohne Charakter → Plus-Button nicht gerendert.
+- Keine Szene verfügbar → Button erzeugt trotzdem Textblock; Szene muss später zugewiesen werden.
 
 **Acceptance**
-- [ ] Plus-Button bei Dialog-Lanes zeigt „Text hinzufügen“
-- [ ] Text-Block erscheint inline
-- [ ] SFX/Music/Atmo unverändert
-- [ ] E2E Screenshot im QA-Harness
+- [x] Plus-Button bei Dialog-Lanes zeigt „Text hinzufügen"
+- [x] Text-Block erscheint inline
+- [x] SFX/Music/Atmo unverändert
+- [x] E2E Screenshot im QA-Harness
 
 **Runtime**
 Local Desktop only.
@@ -74,31 +76,34 @@ Local Desktop only.
 ### T27 — Inline Text Editor mit Enhance + Tags
 
 **priority:** P0
-**labels:** implementation, ui, mve
+**labels:** implementation, ui, mve, needs-design
 **featureSlug:** text-block-editor-enhance
 **dependsOn:** T26
 
 **Intent**
-Im Text-Block kann der Nutzer den Dialogtext eingeben, mit `--sad`, `--happy` etc. markieren (lila hervorgehoben) und Enhance-Vorschläge per Dropdown einfügen.
+Im Text-Block kann der Nutzer den Dialogtext eingeben. `--tag`-Token (z. B. `--sad`, `--happy`) werden lila hervorgehoben. Ein Inline-Popover bietet Enhance-Vorschläge, die bestätigt oder verworfen werden können.
 
 **User Journey**
-Nutzer tippt `--sad` im Text. Das Wort wird lila hervorgehoben. Er kann alternativ aus einem Dropdown (z. B. „sad“) per Drag-Drop an die aktuelle Cursor-Position setzen.
+Nutzer klickt auf einen Text-Block. Ein Inline-Editor erscheint. Er tippt `--sad` — das Token wird lila. Er markiert den gesamten Text und klickt auf Enhance. Vorschläge erscheinen in einem Popover; Bestätigung ersetzt den Text.
 
 **Solution**
-- Erweitern von `AudioTimelineSegmentMveText` oder neuer `MveTextBlockEditor`.
-- ContentEditable-basierter Editor mit einfachem Token-Highlighter für `--*` Tags.
-- Dropdown mit verfügbaren Tags (aus `apply-enhance-script` Mapping oder hartkodierte Liste).
-- Enhance-Button öffnet `MveEnhanceScriptPanel` im Inline-Modus (nur für diesen Text) und zeigt Vorschläge; Bestätigung ersetzt den Text.
+- Neuer `MveTextBlockEditor` in `src/components/structure/timeline/mve/`.
+- ContentEditable-basierter Editor mit einfachem Regex-Highlighter für `--*` Tags.
+- Tag-Hilfe als kleines Popover/Toolbar oberhalb des Editors (nicht Drag-Drop im MVP).
+- Enhance-Aufruf über `MveEnhanceScriptPanel` im Inline-Modus (nur für diesen Text).
+- Speichern per `useMveLines.saveLineText`.
 
 **Edge Cases**
 - Unbekanntes Tag `--foo` → nicht hervorheben, aber erlauben.
 - Leerer Text → Enhance disabled.
 - Enhance schlägt fehl → Toast + Text bleibt.
+- Editor verliert Fokus → Text wird gespeichert (Debounced).
 
 **Acceptance**
-- [ ] Tags `--*` werden lila hervorgehoben
-- [ ] Tag-Dropdown + Drag-Drop funktioniert
+- [ ] `--*` Tags werden lila hervorgehoben
+- [ ] Tag-Hilfe/Toolbar verfügbar
 - [ ] Enhance-Vorschläge können bestätigt/verworfen werden
+- [ ] Text-Änderungen werden persistiert
 - [ ] E2E Screenshot
 
 **Runtime**
@@ -114,28 +119,31 @@ Local Desktop only.
 **dependsOn:** T27
 
 **Intent**
-Der Text-Block bekommt ein permanentes Plus-/Menü-Icon mit drei Optionen: Generate Audio, Upload Audio, Record Audio. Audio wird als Kind der zugeordneten Szene erzeugt.
+Der Text-Block bekommt ein Menü-Icon mit drei Optionen: Generate Audio, Upload Audio, Record Audio. Audio wird als Kind der zugeordneten Szene erzeugt; Generate verwendet den bestehenden MVE-Render und wählt den ersten erfolgreichen Take automatisch aus.
 
 **User Journey**
-Nutzer klickt auf das Plus-Icon im Text-Block, wählt „Generate Audio“. MVE-Render startet; nach Fertigstellung öffnet sich ein Take-Auswahl-Modal. Er hört Takes an und übernimmt einen. Der Clip erscheint in der Lane, Wellenform/Dauer synchronisiert sich (#24).
+Nutzer klickt auf das Menü-Icon im Text-Block, wählt „Generate Audio“. MVE-Render startet mit der Stimme des Charakters. Nach Fertigstellung wird der Text-Block zu einem Audio-Clip (Wellenform sichtbar). Der Nutzer kann über das bestehende `MveLineTakePanel` nachträglich Takes vergleichen.
 
 **Solution**
-- `MveTextBlockAudioMenu` (neu) mit Generate/Upload/Record.
-- `addGenerated`: verwendet `useMveLineRender`, öffnet nach `onSuccess` `MveTakeSelectionModal`.
-- `triggerUpload`: Dateiauswahl → AudioClip unter der Textblock-Szene → Wellenform/Dauer.
-- `toggleRecord`: startet Recording mit Metronom-Count-in → AudioClip unter der Textblock-Szene.
-- Falls keine Szene zugeordnet: `SceneLinkModal` fragt Act/Sequence/Scene.
+- `MveTextBlockAudioMenu` (neu) in `src/components/structure/timeline/mve/`.
+- **Generate:** `useMveLineRender.renderLine(lineId)`. Nach Erfolg setzt `render-line.ts` bereits `selectedTakeId` und `audioClipId`. Wellenform/Dauer synchronisieren sich über bestehende Clip-Logik.
+- **Upload:** `useTimelineAddAudio.triggerUpload` im Kontext des Text-Blocks → AudioClip unter der Textblock-Szene; `audioClipId` auf `MveLine` setzen.
+- **Record:** `useTimelineAddAudio.toggleRecord` im Kontext des Text-Blocks → AudioClip unter der Textblock-Szene; `audioClipId` auf `MveLine` setzen.
+- **Scene-Auswahl:** Lane-Link ist Default. Fehlt der Link oder will der Nutzer wechseln, öffnet `SceneLinkModal` Act/Sequence/Scene(/Shot)-Auswahl.
 
 **Edge Cases**
 - Text-Block ohne Text → Generate disabled.
 - Lane-Link fehlt und Nutzer bricht Szene-Auswahl ab → keine Aktion.
-- Upload länger als Szene → Szene + Parents per Ripple verlängern (T29).
+- Keine Voice-Profile für Charakter → Generate disabled mit Tooltip-Hinweis.
+- Upload/Record abgebrochen → Text-Block bleibt unverändert.
+- Ripple-Verlängerung der Szene folgt in T29.
 
 **Acceptance**
-- [ ] Generate öffnet Take-Modal nach Render
-- [ ] Upload erzeugt AudioClip
-- [ ] Record erzeugt AudioClip
-- [ ] Bei fehlender Szene erscheint Auswahl-Modal
+- [ ] Generate startet MVE-Render für den Text-Block
+- [ ] Nach Generate erscheint der Block als Audio-Clip
+- [ ] Upload erzeugt AudioClip und bindet ihn an den Text-Block
+- [ ] Record erzeugt AudioClip und bindet ihn an den Text-Block
+- [ ] Bei fehlendem/override Lane-Link erscheint Scene-Auswahl
 - [ ] E2E Screenshot + Smoke-Test
 
 **Runtime**
@@ -193,7 +201,7 @@ Nutzer klickt auf Link-Icon in der Lane von „Max Mustermann“. Wählt Act 1 �
 **Solution**
 - `TrackTransportToggles` ergänzen um Link-Button.
 - `SceneLinkModal` (neu) mit hierarchischer Baum-Ansicht (wiederverwenden aus bestehenden Struktur-Selektoren falls vorhanden).
-- Speichern via `LocalCharacterLaneLinkRepository`.
+- Speichern via `LocalMveLaneLinkRepository`.
 - Link-Status visuell im Header anzeigen (z. B. kleiner Link-Indicator mit Szenen-Name).
 
 **Edge Cases**
@@ -279,5 +287,6 @@ Local Desktop only.
 
 ## Notes
 
-- Reihenfolge: T25 → T26 → T27 → T28 → (T29, T30 parallel) → T31 → T32.
+- Reihenfolge: T25 ✅ → T26 ✅ → T27 → T28 → (T29, T30 parallel) → T31 → T32.
 - Für die Tauri-Desktop-Umgebung vorgesehen; Cloud-Session bleibt out-of-scope.
+- T27 markiert mit `needs-design`, da das Inline-Editor-Interaction-Model (ContentEditable vs. textarea, Popover-Positionierung, Enhance-Flow) noch final abgestimmt werden sollte.

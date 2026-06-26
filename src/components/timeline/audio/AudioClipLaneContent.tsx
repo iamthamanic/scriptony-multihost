@@ -115,7 +115,6 @@ export function AudioClipLaneContent({
         />
       ))}
       {textOnlyLines.map((line) => {
-        const scene = scenes.find((s) => s.id === line.sceneId);
         // Fallback placement until scene timing is plumbed (Issue T28).
         const startSec = FALLBACK_TEXT_BLOCK_START_SEC;
         const endSec = startSec + FALLBACK_TEXT_BLOCK_DURATION_SEC;
@@ -127,6 +126,8 @@ export function AudioClipLaneContent({
             viewStartSec={viewStartSec}
             sceneStartSec={startSec}
             sceneEndSec={endSec}
+            projectId={mveLines?.projectId}
+            onSaveText={mveLines?.onSaveText}
           />
         );
       })}
