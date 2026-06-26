@@ -122,7 +122,9 @@ export function applyStructureDimOverlay(structureStackEl: HTMLElement): void {
 const DROP_ZONE_MIN_WIDTH_PX = 12;
 
 /** Bright white insertion slot — junction band or full reparent column. */
-export function applyStructureDropZone(input: StructureDropZonePreviewInput): void {
+export function applyStructureDropZone(
+  input: StructureDropZonePreviewInput,
+): void {
   const { structureStackEl, startFrame, endFrame, viewStartFrame, pxPerFrame } =
     input;
   ensureStackPositioning(structureStackEl);
@@ -163,12 +165,7 @@ export function clearStructureDropZonesForLanes(
   }
 }
 
-const STRUCTURE_LANE_KINDS: ItemKind[] = [
-  "act",
-  "sequence",
-  "scene",
-  "shot",
-];
+const STRUCTURE_LANE_KINDS: ItemKind[] = ["act", "sequence", "scene", "shot"];
 
 export function clearStructureMoveOverlays(
   structureStackEl: HTMLElement | null | undefined,

@@ -106,7 +106,6 @@ export function SequenceTrack({
           </div>
         );
       })}
-
     </div>
   );
 }

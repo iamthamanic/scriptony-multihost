@@ -107,7 +107,6 @@ export function ActTrack({
           </div>
         );
       })}
-
     </div>
   );
 }

@@ -1,4 +1,4 @@
-# CI: lint/typecheck/tests/build + validate Appwrite compose merge.
+# CI: npm run verify (ECC gate — format, lint, typecheck, test, build, functions).
 # Deploy: SSH to VPS — git pull + Appwrite stack (root docker-compose + infra/appwrite/.env).
 #   Runs only when repo variable VPS_DEPLOY_ENABLED == 'true' (see docs/GITHUB_ACTIONS_DEPLOY.md).
 # Optional: build static frontend and rsync (repo vars — see docs/GITHUB_ACTIONS_DEPLOY.md).
@@ -22,34 +22,24 @@ jobs:
       - name: Validate Docker Compose (Appwrite include merge)
         run: docker compose --env-file infra/appwrite/.env.example config --quiet
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: "20"
+          cache: npm
 
       - name: Install dependencies
-        run: bun install
+        run: npm ci
 
       - name: Install Appwrite function dependencies
-        run: cd functions && bun install
+        run: npm ci --prefix functions
 
-      - name: Run ESLint
-        run: bun run lint || true
-        continue-on-error: true
-
-      - name: Run TypeScript check
-        run: bun run typecheck
-
-      - name: Run tests
-        run: bun run test -- --passWithNoTests || true
-        continue-on-error: true
-
-      - name: Build
+      - name: Run ECC verify gate
         env:
           # Dummy base URL so Vite production build can resolve function routes
           # without real Appwrite secrets. Runtime still uses actual env/config.
           VITE_BACKEND_API_BASE_URL: https://localhost
-        run: bun run build
+        run: npm run verify
 
   deploy-prod:
     needs: ci

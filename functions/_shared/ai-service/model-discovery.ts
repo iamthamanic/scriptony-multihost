@@ -430,7 +430,7 @@ export async function discoverModels(
   }
   const registryFeature = featureKeyToRegistryFeature(featureKey);
 
-  let raw: ModelInfo[] = [];
+  let raw!: ModelInfo[];
 
   switch (providerId) {
     case "openai": {

@@ -31,6 +31,8 @@ Overrides the global default in `commit-push-safe/readme-contract.md`.
 - **2026-06-16** — Hybrid project sync v1 (style profiles only) (`feature/T93-sync`)
 ```
 
-## Shim gate
+## Verify gate
 
-`scripts/check-readme-scope.sh` runs via `npm run checks` (`updateReadme`). Bypass only with `SKIP_README_SCOPE_CHECK=1` and documented reason in PR.
+`npm run verify` runs format/lint/typecheck/test/build (+ README scope). Pre-push hook uses verify, not shim AI review.
+
+Legacy: `npm run checks` (`updateReadme` via shim). Bypass README scope only with `SKIP_README_SCOPE_CHECK=1` and documented reason in PR.

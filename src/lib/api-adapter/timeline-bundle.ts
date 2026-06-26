@@ -20,9 +20,7 @@ import {
   enrichBookTimelineData,
 } from "../timeline-map";
 import { dispatchByRuntime, requireLocalBackend } from "./runtime-dispatch";
-import {
-  normalizeSceneImageStoragePath,
-} from "@/lib/local-asset-display-url";
+import { normalizeSceneImageStoragePath } from "@/lib/local-asset-display-url";
 import type { Scene } from "../types";
 
 const LOCAL_TEMPLATE_ID = "film";
@@ -120,8 +118,8 @@ async function loadLocalProjectTimelineBundle(
     .map((n) => {
       const imageUrl =
         typeof n.metadata?.imageUrl === "string"
-          ? normalizeSceneImageStoragePath(n.metadata.imageUrl) ??
-            n.metadata.imageUrl
+          ? (normalizeSceneImageStoragePath(n.metadata.imageUrl) ??
+            n.metadata.imageUrl)
           : undefined;
       return {
         id: n.id,

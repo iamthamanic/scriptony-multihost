@@ -44,8 +44,8 @@ describe("local-asset-display-url", () => {
     expect(normalizeSceneImageStoragePath("assets/images/a.webp")).toBe(
       "assets/images/a.webp",
     );
-    expect(
-      normalizeSceneImageStoragePath("https://cdn.example/a.png"),
-    ).toBe("https://cdn.example/a.png");
+    expect(normalizeSceneImageStoragePath("https://cdn.example/a.png")).toBe(
+      "https://cdn.example/a.png",
+    );
   });
 });

@@ -277,8 +277,13 @@ npm run typecheck        # TypeScript (tsc --noEmit)
 npm run format:check     # Prettier
 npm run test             # Vitest
 
-# Full Gate (muß grün sein)
-npm run checks           # Lint + TypeCheck + Format + Test + Vite-Build + AI-Review
+# ECC quality gate (Standard vor Commit/PR)
+@ecc-check                # verify + review-ticket + AgentShield (Skill)
+npm run verify           # Deterministisch: Format + Lint + TS + Test + Build (+ Functions)
+npm run verify:frontend  # Nur Frontend/Desktop
+
+# Legacy full gate (Appwrite deploy / Release)
+npm run checks           # Shim: inkl. optionaler Legacy-Checks (ohne AI Review)
 
 # Appwrite local
 npm run docker:appwrite:up     # Starten
@@ -321,7 +326,7 @@ npm run smoke:user-flows
 | **Functions** | Hono, Zod, node-appwrite, esbuild (→ `index.js`)                              |
 | **Database**  | MariaDB 10.11 (Appwrite Databases) + Redis 7.2.4 (Caching)                    |
 | **AI**        | OpenAI, Anthropic, Google, DeepSeek, OpenRouter, Ollama, ElevenLabs           |
-| **DevOps**    | Docker Compose, Vitest, shimwrappercheck (mit AI Review)                      |
+| **DevOps**    | Docker Compose, Vitest, `@ecc-check` / `npm run verify`, ECC AgentShield      |
 
 ---
 
@@ -363,6 +368,7 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 
 <!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
 
+- **2026-06-26** — ECC: `@ecc-check`, `@commit-pr-safe`, `npm run verify`; GitHub CI nutzt verify (hart); pre-push ohne Shim AI Review
 - **2026-06-16** — Ticket gate: scoped `SHIM_CHANGED_FILES`, Fallow, Codex fallback, `TEST_COVERAGE_REGISTRY` (process/docs)
 
 ---

@@ -497,6 +497,7 @@ async function triggerAudioStoryCallback(
     }
     throw new Error(
       `Callback execution result could not be verified: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`,
+      { cause: parseErr },
     );
   }
 }

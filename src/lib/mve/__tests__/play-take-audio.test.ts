@@ -16,7 +16,9 @@ import { playMveTakeAudio } from "@/lib/mve/play-take-audio";
 
 describe("playMveTakeAudio", () => {
   it("rejects dummy:// placeholder takes", async () => {
-    await expect(playMveTakeAudio("dummy://take-0")).rejects.toThrow(/Dummy-Take/);
+    await expect(playMveTakeAudio("dummy://take-0")).rejects.toThrow(
+      /Dummy-Take/,
+    );
   });
 
   it("rejects empty audio path", async () => {

@@ -126,8 +126,7 @@ async function localUploadShotImage(
     throw new Error("Bild konnte nicht im Projekt gespeichert werden");
   }
 
-  const normalized =
-    normalizeSceneImageStoragePath(storedPath) ?? storedPath;
+  const normalized = normalizeSceneImageStoragePath(storedPath) ?? storedPath;
 
   await localUpdateShot(shotId, {
     imageUrl: normalized,

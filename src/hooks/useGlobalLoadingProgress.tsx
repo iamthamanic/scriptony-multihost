@@ -101,7 +101,10 @@ export function GlobalLoadingProgressProvider({
   );
 
   const startTask = useCallback(
-    (id: string, options: { title: string; initial?: LoadingProgressUpdate }) => {
+    (
+      id: string,
+      options: { title: string; initial?: LoadingProgressUpdate },
+    ) => {
       lastProgressRef.current.set(
         id,
         options.initial ?? { percent: 3, message: "Wird geladen…" },

@@ -7,11 +7,13 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { applyEnhanceScriptResult } from "../apply-enhance-script";
 
 vi.mock("@/lib/api-adapter/characters-adapter", () => ({
-  createCharacter: vi.fn(async (_projectId: string, payload: { name: string }) => ({
-    id: `char_${payload.name.toLowerCase()}`,
-    name: payload.name,
-    projectId: "proj_1",
-  })),
+  createCharacter: vi.fn(
+    async (_projectId: string, payload: { name: string }) => ({
+      id: `char_${payload.name.toLowerCase()}`,
+      name: payload.name,
+      projectId: "proj_1",
+    }),
+  ),
 }));
 
 vi.mock("@/lib/api-adapter/mve-adapter", () => ({

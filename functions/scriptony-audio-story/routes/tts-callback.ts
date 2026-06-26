@@ -142,12 +142,15 @@ export async function ttsCallback(
       });
       return;
     }
-    let result: Record<string, unknown> = {};
-    try {
-      result = job.result_json ? JSON.parse(job.result_json) : {};
-    } catch {
-      result = {};
-    }
+    const result = (() => {
+      try {
+        return job.result_json
+          ? (JSON.parse(job.result_json) as Record<string, unknown>)
+          : {};
+      } catch {
+        return {};
+      }
+    })();
     const isReplayValid =
       result.audioFileId === audioFileId &&
       payload.trackId === trackId &&

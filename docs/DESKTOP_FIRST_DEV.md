@@ -107,12 +107,14 @@ Configured in `src-tauri/tauri.conf.json`. Before scanning, code should call `re
 ## Checks (desktop tickets)
 
 ```bash
-CHECK_MODE=snippet SHIM_CHECKS_ARGS="--frontend" \
-SHIM_CHANGED_FILES="src/foo.ts,src-tauri/tauri.conf.json" \
-npm run checks
+@ecc-check
+# or manually:
+npm run verify -- --frontend
 ```
 
-Include `src-tauri/` when changing Rust, capabilities, or `tauri.conf.json`.
+Include backend verify when changing `functions/`: `npm run verify -- --backend`.
+
+Legacy full gate (Appwrite deploy): `npm run checks`. Include `src-tauri/` in scope when changing Rust, capabilities, or `tauri.conf.json`.
 
 ---
 

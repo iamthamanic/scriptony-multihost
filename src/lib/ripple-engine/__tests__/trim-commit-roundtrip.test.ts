@@ -49,7 +49,10 @@ describe("trim commit roundtrip (snap-back regression)", () => {
 
     const committed = treeToTimelineData(grow.next, journeyTimelineData());
     // Legacy cache without VET layout ruler — reproduces production snap-back.
-    const legacyCommitted = { ...committed, layoutProjectDurationSec: undefined };
+    const legacyCommitted = {
+      ...committed,
+      layoutProjectDurationSec: undefined,
+    };
     const rebuilt = buildTimelineTree({
       timelineData: legacyCommitted,
       projectDurationSec: ORIGINAL_PROJECT_SEC,

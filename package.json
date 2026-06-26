@@ -211,6 +211,9 @@
     "checks": "bash scripts/run-checks.sh",
     "checks:frontend": "bash scripts/run-checks.sh --frontend",
     "checks:backend": "bash scripts/run-checks.sh --backend",
+    "verify": "bash scripts/run-verify.sh",
+    "verify:frontend": "bash scripts/run-verify.sh --frontend --no-backend",
+    "verify:backend": "bash scripts/run-verify.sh --backend --no-frontend",
     "test:e2e": "playwright test",
     "prepare": "node -e \"if(!process.env.CI&&!process.env.GITHUB_ACTIONS){require('child_process').execSync('npx husky',{stdio:'inherit'})}\""
   }
