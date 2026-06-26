@@ -73,6 +73,24 @@ export function useMveLines(projectId: string | undefined) {
     },
   });
 
+  const bindAudioClipMutation = useMutation({
+    mutationFn: async ({
+      lineId,
+      audioClipId,
+    }: {
+      lineId: string;
+      audioClipId: string | null;
+    }) =>
+      updateMveLine(lineId, {
+        audioClipId,
+        status: "dirty",
+      }),
+    onSuccess: () => void invalidate(),
+    onError: (err: Error) => {
+      toast.error(err.message || "Audio-Clip konnte nicht verknüpft werden.");
+    },
+  });
+
   const createLineMutation = useMutation({
     mutationFn: async (payload: {
       sceneId: string;
@@ -115,6 +133,13 @@ export function useMveLines(projectId: string | undefined) {
     [saveDirectionMutation],
   );
 
+  const bindAudioClip = useCallback(
+    async (lineId: string, audioClipId: string | null) => {
+      await bindAudioClipMutation.mutateAsync({ lineId, audioClipId });
+    },
+    [bindAudioClipMutation],
+  );
+
   const createLine = useCallback(
     async (payload: {
       sceneId: string;
@@ -135,9 +160,11 @@ export function useMveLines(projectId: string | undefined) {
     createLine,
     saveLineText,
     saveLineDirection,
+    bindAudioClip,
     isSaving:
       saveTextMutation.isPending ||
       saveDirectionMutation.isPending ||
+      bindAudioClipMutation.isPending ||
       createLineMutation.isPending,
   };
 }

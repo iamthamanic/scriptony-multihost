@@ -12,15 +12,23 @@ import { HighlightedTextarea } from "../../../shared/HighlightedTextarea";
 import { MveTagDropdown } from "./MveTagDropdown";
 import { MveTagPalette } from "./MveTagPalette";
 import { MveEnhanceSuggestions } from "./MveEnhanceSuggestions";
+import { MveTextBlockAudioMenu } from "./MveTextBlockAudioMenu";
 import { useMveTextBlockEditor } from "../../../../hooks/useMveTextBlockEditor";
 import { getMveTagPattern } from "../../../../lib/mve/tags";
 import type { MveEnhanceLineDraft } from "../../../../lib/multi-voice-engine/schema/enhance-script";
+import type {
+  MveTextBlockAudioState,
+  MveSceneOption,
+} from "../../../../hooks/useMveTextBlockAudio";
 
 export interface MveTextBlockEditorProps {
   initialText: string;
   onSave: (text: string) => Promise<void>;
   onEnhance: (rawText: string) => Promise<MveEnhanceLineDraft[] | null>;
   onClose: () => void;
+  audioMenu?: MveTextBlockAudioState;
+  scenes?: MveSceneOption[];
+  sceneId?: string;
   className?: string;
 }
 
@@ -29,9 +37,13 @@ export function MveTextBlockEditor({
   onSave,
   onEnhance,
   onClose,
+  audioMenu,
+  scenes = [],
+  sceneId,
   className,
 }: MveTextBlockEditorProps) {
   const editor = useMveTextBlockEditor({ initialText, onSave, onEnhance });
+  const hasScene = Boolean(audioMenu?.selectedSceneId ?? sceneId);
 
   return (
     <div
@@ -43,7 +55,7 @@ export function MveTextBlockEditor({
       onDragOver={editor.handleDragOver}
       data-testid="mve-text-block-editor"
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <MveTagDropdown
           onInsert={editor.insertTag}
           disabled={editor.isEnhancing}
@@ -63,6 +75,23 @@ export function MveTextBlockEditor({
           )}
           Enhance
         </Button>
+        {audioMenu ? (
+          <MveTextBlockAudioMenu
+            isGenerating={audioMenu.isGenerating}
+            isRecording={audioMenu.isRecording}
+            isUploading={audioMenu.isUploading}
+            disabled={editor.isEnhancing}
+            hasScene={hasScene}
+            onGenerate={() => void audioMenu.generate()}
+            onUploadFile={(file) => void audioMenu.uploadFile(file)}
+            onToggleRecord={
+              audioMenu.isRecording
+                ? audioMenu.stopRecord
+                : audioMenu.startRecord
+            }
+            onRequestScene={() => audioMenu.requestSceneForAction("generate")}
+          />
+        ) : null}
         <Button
           type="button"
           size="sm"

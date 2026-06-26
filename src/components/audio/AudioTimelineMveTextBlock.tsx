@@ -12,7 +12,10 @@ import { useMemo, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import { MveTextBlockEditor } from "../structure/timeline/mve/MveTextBlockEditor";
+import { MveSceneSelectDialog } from "../structure/timeline/mve/MveSceneSelectDialog";
 import { useMveLineEnhance } from "@/hooks/useMveLineEnhance";
+import { useMveTextBlockAudio } from "@/hooks/useMveTextBlockAudio";
+import type { MveSceneOption } from "@/hooks/useMveTextBlockAudio";
 
 export interface AudioTimelineMveTextBlockProps {
   line: MveLine;
@@ -21,7 +24,11 @@ export interface AudioTimelineMveTextBlockProps {
   sceneStartSec: number;
   sceneEndSec: number;
   projectId?: string;
+  sceneId?: string;
+  characterId?: string;
+  scenes?: MveSceneOption[];
   onSaveText?: (lineId: string, text: string) => Promise<void>;
+  onBindAudioClip?: (lineId: string, clipId: string | null) => Promise<void>;
   onClick?: (lineId: string) => void;
 }
 
@@ -32,12 +39,25 @@ export function AudioTimelineMveTextBlock({
   sceneStartSec,
   sceneEndSec,
   projectId,
+  sceneId,
+  characterId,
+  scenes = [],
   onSaveText,
+  onBindAudioClip,
   onClick,
 }: AudioTimelineMveTextBlockProps) {
   const widthSec = Math.max(sceneEndSec - sceneStartSec, 1);
   const [isEditing, setIsEditing] = useState(false);
   const { enhance } = useMveLineEnhance(projectId);
+  const audioMenu = useMveTextBlockAudio({
+    projectId,
+    lineId: line.id,
+    characterId,
+    sceneId,
+    scenes,
+    text: line.text ?? "",
+    onBindAudioClip,
+  });
 
   const style = useMemo(
     () => ({
@@ -115,6 +135,9 @@ export function AudioTimelineMveTextBlock({
             onSave={handleSave}
             onEnhance={handleEnhance}
             onClose={() => setIsEditing(false)}
+            audioMenu={audioMenu}
+            scenes={scenes}
+            sceneId={sceneId}
           />
         </div>
       ) : (
@@ -128,6 +151,23 @@ export function AudioTimelineMveTextBlock({
           {displayText}
         </span>
       )}
+      <MveSceneSelectDialog
+        open={audioMenu.pendingAction !== null}
+        title={
+          audioMenu.pendingAction === "generate"
+            ? "Szene für Generate auswählen"
+            : audioMenu.pendingAction === "record"
+              ? "Szene für Aufnahme auswählen"
+              : "Szene für Upload auswählen"
+        }
+        scenes={scenes}
+        selectedId={audioMenu.selectedSceneId}
+        onSelect={audioMenu.setSelectedSceneId}
+        onConfirm={() => {
+          audioMenu.confirmSceneSelection();
+        }}
+        onCancel={audioMenu.cancelSceneSelection}
+      />
     </div>
   );
 }

@@ -27,6 +27,8 @@ export interface MveLineClipHandlers {
     lineId: string,
     direction: MveLineDirection,
   ) => Promise<void>;
+  onBindAudioClip?: (lineId: string, clipId: string | null) => Promise<void>;
+  linkedSceneIdForLane?: (laneIndex: number) => string | undefined;
   getRenderBlockReason?: (line: MveLine) => string | undefined;
   onRenderLine?: (lineId: string) => Promise<unknown>;
   isRenderingLineId?: string | null;
@@ -127,7 +129,16 @@ export function AudioClipLaneContent({
             sceneStartSec={startSec}
             sceneEndSec={endSec}
             projectId={mveLines?.projectId}
+            sceneId={
+              mveLines?.linkedSceneIdForLane?.(laneIndex) ?? scenes[0]?.id
+            }
+            characterId={characterId}
+            scenes={scenes.map((s) => ({
+              id: s.id,
+              name: "name" in s ? String(s.name) : s.id,
+            }))}
             onSaveText={mveLines?.onSaveText}
+            onBindAudioClip={mveLines?.onBindAudioClip}
           />
         );
       })}
