@@ -38,6 +38,8 @@ if (typeof runtimeGlobals.TransformStream === "undefined") {
 }
 
 if (typeof runtimeGlobals.fetch !== "function") {
+  // undici CJS require — Appwrite Node bundle has no native fetch on older runtimes
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- polyfill bootstrap
   const undici = require("undici") as typeof import("undici");
   runtimeGlobals.fetch = undici.fetch;
   runtimeGlobals.Headers = runtimeGlobals.Headers || undici.Headers;
