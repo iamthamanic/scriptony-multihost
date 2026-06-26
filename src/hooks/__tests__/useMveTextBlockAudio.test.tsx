@@ -14,6 +14,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useMveTextBlockAudio } from "../useMveTextBlockAudio";
 import { GlobalLoadingProgressProvider } from "../useGlobalLoadingProgress";
 
+vi.mock("@/runtime", () => ({
+  useRuntime: () => ({
+    profile: "local" as const,
+    isDesktop: true,
+    isBrowser: false,
+    isMobile: false,
+  }),
+}));
+
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
 });

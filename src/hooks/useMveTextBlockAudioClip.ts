@@ -8,6 +8,7 @@
 import { useCallback } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useRuntime } from "@/runtime";
 import { createAudioTrack } from "@/lib/api-adapter/audio-story-adapter";
 import { updateClip } from "@/lib/api-adapter/clips-adapter";
 import { persistClipAudioFile } from "@/lib/local-project-audio";
@@ -16,6 +17,7 @@ import { queryKeys } from "@/lib/react-query";
 import { estimateDurationSec } from "@/lib/audio-utils";
 import { requireLocalBackend } from "@/lib/api-adapter/runtime-dispatch";
 import { syncClipWithSelectedTake } from "@/lib/mve/sync-clip-with-selected-take";
+import { extendSceneForAudio } from "@/lib/structure/extend-scene-for-audio";
 import type { AudioClip } from "@/lib/types";
 
 export interface UseMveTextBlockAudioClipOptions {
@@ -45,6 +47,7 @@ export function useMveTextBlockAudioClip({
   onBindAudioClip,
 }: UseMveTextBlockAudioClipOptions): UseMveTextBlockAudioClipResult {
   const queryClient = useQueryClient();
+  const runtime = useRuntime();
 
   const ensureBackend = useCallback(() => {
     if (!projectId) {
@@ -78,6 +81,29 @@ export function useMveTextBlockAudioClip({
     return clip;
   }, [enabled, characterId, ensureBackend, effectiveSceneId, text]);
 
+  const extendSceneIfNeeded = useCallback(
+    async (clip: AudioClip) => {
+      if (runtime.profile !== "local") return;
+      if (!projectId || !effectiveSceneId || !clip.id) return;
+
+      const { extended } = await extendSceneForAudio({
+        projectId,
+        sceneId: effectiveSceneId,
+        clipId: clip.id,
+        clipEndSec: clip.endSec,
+      });
+      if (extended) {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.timeline.byProject(projectId),
+        });
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.timeline.audioByProject(projectId),
+        });
+      }
+    },
+    [runtime.profile, projectId, effectiveSceneId, queryClient],
+  );
+
   const cacheAndBind = useCallback(
     async (clip: AudioClip) => {
       if (!enabled) throw new Error("Audio-Bindung nicht aktiviert.");
@@ -92,8 +118,22 @@ export function useMveTextBlockAudioClip({
         throw new Error("Audio-Bindung nicht aktiviert.");
       }
       await onBindAudioClip(lineId, clip.id);
+      try {
+        await extendSceneIfNeeded(clip);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn("[MVE] Szene-Verlängerung fehlgeschlagen:", err);
+        toast.warning(`Szene konnte nicht verlängert werden: ${msg}`);
+      }
     },
-    [enabled, lineId, projectId, queryClient, onBindAudioClip],
+    [
+      enabled,
+      lineId,
+      projectId,
+      queryClient,
+      onBindAudioClip,
+      extendSceneIfNeeded,
+    ],
   );
 
   const syncClipIfProject = useCallback(async () => {
