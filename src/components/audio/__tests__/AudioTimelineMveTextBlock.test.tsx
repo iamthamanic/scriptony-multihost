@@ -18,6 +18,15 @@ import { AudioTimelineMveTextBlock } from "../AudioTimelineMveTextBlock";
 import { GlobalLoadingProgressProvider } from "@/hooks/useGlobalLoadingProgress";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 
+vi.mock("@/runtime", () => ({
+  useRuntime: () => ({
+    profile: "local" as const,
+    isDesktop: true,
+    isBrowser: false,
+    isMobile: false,
+  }),
+}));
+
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true });
 });
