@@ -5574,6 +5574,7 @@ export function StructureTimelineEditor({
             <StructureTimelineAudioLaneLabels
               laneProps={timelineAudio.laneProps}
               addAudio={timelineAudio.addAudio}
+              metronome={timelineAudio.metronome}
               isLoading={timelineAudio.lanes.isLoading}
             />
           )}

@@ -14,6 +14,7 @@ import type { useCharacterLaneMap } from "../../../hooks/useCharacterLaneMap";
 import type { TimelineSceneRef } from "../../../lib/timeline-add-audio";
 import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
 import type { MveLineClipHandlers } from "./AudioClipLaneContent";
+import type { MveLaneLinkControlProps } from "./AudioClipLaneSidebar";
 
 export interface AudioClipLaneHandlers {
   handleTrimEnd: (clipId: string, newEndSec: number) => void;
@@ -50,6 +51,7 @@ export interface AudioClipLaneTracksProps {
     ReturnType<typeof useTimelineAddAudio>,
     | "isBusy"
     | "recordingLane"
+    | "countInLane"
     | "addGenerated"
     | "triggerUpload"
     | "toggleRecord"
@@ -72,6 +74,18 @@ export interface AudioClipLaneTracksProps {
     startSec: number;
   }) => Promise<void> | void;
   linkedSceneIdForLane?: (laneIndex: number) => string | undefined;
+  getMveLaneLinkForLane?: (
+    laneIndex: number,
+  ) =>
+    | Omit<
+        MveLaneLinkControlProps,
+        "enabled" | "acts" | "sequences" | "structureScenes" | "isMutating"
+      >
+    | undefined;
+  mveLaneLinkBase?: Pick<
+    MveLaneLinkControlProps,
+    "enabled" | "acts" | "sequences" | "structureScenes" | "isMutating"
+  >;
 }
 
 function laneHeight(expandedLane: number | null, laneIndex: number): number {
@@ -102,6 +116,8 @@ export function AudioClipLaneTracks({
   mveLines,
   onAddMveTextBlock,
   linkedSceneIdForLane,
+  getMveLaneLinkForLane,
+  mveLaneLinkBase,
 }: AudioClipLaneTracksProps) {
   const {
     handleTrimEnd,
@@ -166,6 +182,14 @@ export function AudioClipLaneTracks({
               onDeleteLane={handleDeleteLane}
               onAddMveTextBlock={onAddMveTextBlock}
               linkedSceneId={linkedSceneIdForLane?.(laneIndex)}
+              mveLaneLink={
+                mveLaneLinkBase?.enabled && getMveLaneLinkForLane
+                  ? {
+                      ...mveLaneLinkBase,
+                      ...getMveLaneLinkForLane(laneIndex),
+                    }
+                  : undefined
+              }
               allClips={allClips}
               className={className}
             />

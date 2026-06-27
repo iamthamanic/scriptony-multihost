@@ -18,17 +18,25 @@ import { useMveLines } from "../../../../hooks/useMveLines";
 import { useMveLineRender } from "../../../../hooks/useMveLineRender";
 import { useMveLaneLinks } from "../../../../hooks/useMveLaneLinks";
 import { useMveVoiceProfiles } from "../../../../hooks/useMveVoiceProfiles";
+import { useMetronomeSettings } from "../../../../hooks/useMetronomeSettings";
 import type { LinkedLaneAudioContext } from "../../../../hooks/useTimelineAddAudio";
 import type { TimelineSceneRef } from "../../../../lib/timeline-add-audio";
 import type { MveLine } from "../../../../lib/multi-voice-engine/schema/line";
 import { LANE_UI, laneIndexToTrackType } from "../../../../lib/audio-lane";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
 import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
+import {
+  buildStructurePickerTree,
+  findSceneLabelInTree,
+  isSceneInTree,
+} from "@/lib/mve/structure-picker-tree";
 import { cn } from "../../../../lib/utils";
 import {
   StructureTimelineClipLaneContent,
   StructureTimelineClipLaneLabels,
 } from "./StructureTimelineClipLanes";
+import { MetronomeSettingsButton } from "../modals/MetronomeSettingsButton";
+import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
 
 export interface StructureTimelineAudioLanesProps {
   projectId: string;
@@ -50,6 +58,7 @@ export function useStructureTimelineAudioLanes(
   const mveRender = useMveLineRender(props.projectId);
   const mveLaneLinks = useMveLaneLinks(props.projectId);
   const mveVoices = useMveVoiceProfiles(props.projectId);
+  const metronome = useMetronomeSettings(props.projectId);
   const backfilledClipIds = useRef(new Set<string>());
 
   useEffect(() => {
@@ -137,6 +146,80 @@ export function useStructureTimelineAudioLanes(
     [mve, sceneBlocks],
   );
 
+  const structurePickerTree = useMemo(
+    () => buildStructurePickerTree(lanes.acts, lanes.sequences, lanes.scenes),
+    [lanes.acts, lanes.sequences, lanes.scenes],
+  );
+
+  const getMveLaneLinkForLane = useCallback(
+    (laneIndex: number) => {
+      if (!mveLaneLinks.enabled) return undefined;
+      const characterId = lanes.characterLanes.characterIdForLane(laneIndex);
+      if (!characterId) return undefined;
+
+      const existing = mveLaneLinks.links.find(
+        (link) => link.characterId === characterId,
+      );
+      const linkedSceneId = existing?.enabled
+        ? existing.targetContainerId
+        : undefined;
+      const laneLinkLabel = linkedSceneId
+        ? (findSceneLabelInTree(structurePickerTree, linkedSceneId) ??
+          "Szene nicht gefunden")
+        : undefined;
+      const laneLinkOrphan = linkedSceneId
+        ? !isSceneInTree(structurePickerTree, linkedSceneId)
+        : false;
+
+      return {
+        linkedSceneId,
+        laneLinkLabel,
+        laneLinkOrphan,
+        onSaveLink: async (sceneId: string) => {
+          if (existing) {
+            await mveLaneLinks.updateLink(existing.id, {
+              targetContainerId: sceneId,
+              targetContainerType: "scene",
+              enabled: true,
+            });
+          } else {
+            await mveLaneLinks.createLink({
+              characterId,
+              targetContainerId: sceneId,
+              targetContainerType: "scene",
+            });
+          }
+        },
+        onRemoveLink: existing
+          ? async () => {
+              await mveLaneLinks.deleteLink(existing.id);
+            }
+          : undefined,
+      };
+    },
+    [mveLaneLinks, lanes.characterLanes, structurePickerTree],
+  );
+
+  const mveLaneLinkBase = useMemo(
+    () =>
+      mveLaneLinks.enabled
+        ? {
+            enabled: true as const,
+            acts: lanes.acts,
+            sequences: lanes.sequences,
+            structureScenes: lanes.scenes,
+            isMutating: mveLaneLinks.isMutating,
+          }
+        : undefined,
+    [
+      mveLaneLinks.enabled,
+      mveLaneLinks.isMutating,
+      lanes.acts,
+      lanes.sequences,
+      lanes.scenes,
+    ],
+  );
+
   const mveLines = useMemo(
     () =>
       mve.enabled && props.projectId
@@ -215,6 +298,7 @@ export function useStructureTimelineAudioLanes(
     allClips: lanes.allClips,
     linkedLaneAudio: props.linkedLaneAudio,
     onClipCommittedMve: mve.enabled ? mve.ensureForClip : undefined,
+    metronomeConfig: isLocalProfile() ? metronome.config : null,
   });
 
   const handleAddMveTextBlock = useCallback(
@@ -255,6 +339,7 @@ export function useStructureTimelineAudioLanes(
     addAudio: {
       isBusy: addAudio.isBusy,
       recordingLane: addAudio.recordingLane,
+      countInLane: addAudio.countInLane,
       addGenerated: addAudio.addGenerated,
       triggerUpload: addAudio.triggerUpload,
       toggleRecord: addAudio.toggleRecord,
@@ -272,19 +357,23 @@ export function useStructureTimelineAudioLanes(
     mveLines,
     onAddMveTextBlock: mve.enabled ? handleAddMveTextBlock : undefined,
     linkedSceneIdForLane,
+    getMveLaneLinkForLane,
+    mveLaneLinkBase,
   };
 
-  return { lanes, addAudio, laneProps };
+  return { lanes, addAudio, laneProps, metronome };
 }
 
 /** Left column: mixer headers (below Scene label row). */
 export function StructureTimelineAudioLaneLabels({
   laneProps,
   addAudio,
+  metronome,
   isLoading,
 }: {
   laneProps: ReturnType<typeof useStructureTimelineAudioLanes>["laneProps"];
   addAudio: ReturnType<typeof useStructureTimelineAudioLanes>["addAudio"];
+  metronome?: ReturnType<typeof useStructureTimelineAudioLanes>["metronome"];
   isLoading: boolean;
 }) {
   if (isLoading) {
@@ -305,12 +394,18 @@ export function StructureTimelineAudioLaneLabels({
         onChange={addAudio.onFileInputChange}
       />
       <div
-        className="border-b border-border px-2 py-1 flex items-center bg-card/80"
+        className="border-b border-border px-2 py-1 flex items-center justify-between gap-2 bg-card/80"
         style={{ minHeight: "1.75rem" }}
       >
         <span className="text-[9px] font-semibold text-foreground">
           Audio-Spuren
         </span>
+        {metronome && isLocalProfile() ? (
+          <MetronomeSettingsButton
+            config={metronome.config}
+            onSave={metronome.setConfig}
+          />
+        ) : null}
       </div>
       <StructureTimelineClipLaneLabels {...laneProps} fullWidthSidebar />
       <div className="border-t border-border px-2 py-2 bg-card/80">
@@ -359,7 +454,8 @@ export function StructureTimelineAudioLaneScrollRows({
 export function StructureTimelineAudioLanesStack(
   props: StructureTimelineAudioLanesProps,
 ) {
-  const { lanes, addAudio, laneProps } = useStructureTimelineAudioLanes(props);
+  const { lanes, addAudio, laneProps, metronome } =
+    useStructureTimelineAudioLanes(props);
 
   return (
     <div className={cn("flex shrink-0", LANE_UI.mixerWidthClass)}>
@@ -367,6 +463,7 @@ export function StructureTimelineAudioLanesStack(
         <StructureTimelineAudioLaneLabels
           laneProps={laneProps}
           addAudio={addAudio}
+          metronome={metronome}
           isLoading={lanes.isLoading}
         />
       </div>

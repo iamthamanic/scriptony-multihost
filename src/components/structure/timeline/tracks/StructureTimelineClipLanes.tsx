@@ -10,9 +10,10 @@ import {
 import type { useAudioLaneState } from "../../../../hooks/useAudioLaneState";
 import type { useTimelineAddAudio } from "../../../../hooks/useTimelineAddAudio";
 import type { useCharacterLaneMap } from "../../../../hooks/useCharacterLaneMap";
-import type { AudioClip } from "../../../../lib/types";
+import type { Act, AudioClip, Scene, Sequence } from "../../../../lib/types";
 import type { TimelineSceneRef } from "../../../../lib/timeline-add-audio";
 import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
+import type { MveLaneLinkControlProps } from "../../../timeline/audio/AudioClipLaneSidebar";
 
 export interface StructureTimelineClipLanesBaseProps {
   pxPerSec: number;
@@ -20,6 +21,9 @@ export interface StructureTimelineClipLanesBaseProps {
   totalWidthPx: number;
   scenes?: TimelineSceneRef[];
   sceneBlocks?: SceneTimeBlock[];
+  acts?: Act[];
+  sequences?: Sequence[];
+  structureScenes?: Scene[];
   laneGroups: Record<number, AudioClip[]>;
   sortedLaneIndices: number[];
   allClips?: AudioClip[];
@@ -32,6 +36,7 @@ export interface StructureTimelineClipLanesBaseProps {
     ReturnType<typeof useTimelineAddAudio>,
     | "isBusy"
     | "recordingLane"
+    | "countInLane"
     | "addGenerated"
     | "triggerUpload"
     | "toggleRecord"
@@ -53,6 +58,19 @@ export interface StructureTimelineClipLanesBaseProps {
     sceneId: string;
     startSec: number;
   }) => Promise<void> | void;
+  linkedSceneIdForLane?: (laneIndex: number) => string | undefined;
+  getMveLaneLinkForLane?: (
+    laneIndex: number,
+  ) =>
+    | Omit<
+        MveLaneLinkControlProps,
+        "enabled" | "acts" | "sequences" | "structureScenes" | "isMutating"
+      >
+    | undefined;
+  mveLaneLinkBase?: Pick<
+    MveLaneLinkControlProps,
+    "enabled" | "acts" | "sequences" | "structureScenes" | "isMutating"
+  >;
 }
 
 export function StructureTimelineClipLaneLabels({

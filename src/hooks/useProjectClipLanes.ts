@@ -246,6 +246,8 @@ export function useProjectClipLanes(
   return {
     isLoading:
       queryEnabled && (isLoading || characterLanes.isLoading || isDeletingLane),
+    acts: data?.acts ?? [],
+    sequences: data?.sequences ?? [],
     scenes: data?.scenes ?? [],
     allClips,
     laneGroups,

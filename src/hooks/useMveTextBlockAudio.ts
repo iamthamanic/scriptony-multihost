@@ -11,6 +11,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useMveLineRender } from "./useMveLineRender";
 import { useAudioRecording } from "./useAudioRecording";
+import { useMetronomeSettings } from "./useMetronomeSettings";
 import {
   useMveSceneSelection,
   type MveAudioAction,
@@ -65,6 +66,7 @@ export function useMveTextBlockAudio({
   const [isUploading, setIsUploading] = useState(false);
   const sceneSelection = useMveSceneSelection({ initialSceneId: sceneId });
   const effectiveSceneId = sceneSelection.selectedSceneId ?? sceneId ?? null;
+  const metronome = useMetronomeSettings(projectId);
 
   const { createClipShell, cacheAndBind, syncClipIfProject, uploadAudioBlob } =
     useMveTextBlockAudioClip({
@@ -77,18 +79,20 @@ export function useMveTextBlockAudio({
       onBindAudioClip,
     });
 
-  const { recordingLane, startRecording, stopRecording } = useAudioRecording({
-    onRecordComplete: async (file) => {
-      try {
-        await uploadAudioBlob(file);
-        toast.success("Aufnahme gespeichert und verknüpft.");
-      } catch (err) {
-        const msg =
-          err instanceof Error ? err.message : "Aufnahme fehlgeschlagen.";
-        toast.error(msg);
-      }
-    },
-  });
+  const { recordingLane, countInLane, startRecording, stopRecording } =
+    useAudioRecording({
+      metronomeConfig: metronome.config,
+      onRecordComplete: async (file) => {
+        try {
+          await uploadAudioBlob(file);
+          toast.success("Aufnahme gespeichert und verknüpft.");
+        } catch (err) {
+          const msg =
+            err instanceof Error ? err.message : "Aufnahme fehlgeschlagen.";
+          toast.error(msg);
+        }
+      },
+    });
 
   const { uploadFile } = useMveTextBlockUploadRecord({
     enabled,
@@ -183,7 +187,7 @@ export function useMveTextBlockAudio({
 
   return {
     isGenerating,
-    isRecording: recordingLane !== null,
+    isRecording: recordingLane !== null || countInLane !== null,
     isUploading,
     pendingAction: sceneSelection.pendingAction,
     selectedSceneId: sceneSelection.selectedSceneId,
