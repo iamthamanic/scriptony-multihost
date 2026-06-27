@@ -36,4 +36,15 @@ describe("resolveMveTtsVoiceId", () => {
       resolveMveTtsVoiceId({ ...baseProfile, baseVoiceId: "  " }),
     ).toBeUndefined();
   });
+
+  it("resolves tuned profile via source chain", () => {
+    const source = { ...baseProfile, baseVoiceId: "af_bella" };
+    const tuned = {
+      ...baseProfile,
+      type: "tuned" as const,
+      baseVoiceId: source.id,
+    };
+    expect(resolveMveTtsVoiceId(tuned, source)).toBe("af_bella");
+    expect(resolveMveTtsVoiceId(tuned)).toBeUndefined();
+  });
 });

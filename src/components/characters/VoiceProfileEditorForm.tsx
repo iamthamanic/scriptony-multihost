@@ -14,6 +14,7 @@ import { mveDefaultPreviewForCharacter } from "@/lib/mve/default-preview-text";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 import type { MveVoiceConsent } from "@/lib/multi-voice-engine/schema/voice-consent";
 import { VoiceProfileFutureSections } from "./VoiceProfileFutureSections";
+import type { VoiceTuneSubmitOptions } from "./VoiceStudioTuneSection";
 
 export interface VoiceProfileEditorFormProps {
   projectId: string;
@@ -31,6 +32,8 @@ export interface VoiceProfileEditorFormProps {
   generateHint?: string;
   cloneBusy?: boolean;
   cloneDisabled?: boolean;
+  tuneBusy?: boolean;
+  tuneDisabled?: boolean;
   latestConsent?: MveVoiceConsent | null;
   onPreviewTextChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
@@ -43,6 +46,7 @@ export interface VoiceProfileEditorFormProps {
     options: { consentConfirmed: boolean; commercialUseAllowed: boolean },
   ) => void;
   onCloneRevoke?: () => void;
+  onTuneSubmit?: (options: VoiceTuneSubmitOptions) => void;
 }
 
 export function VoiceProfileEditorForm({
@@ -61,6 +65,8 @@ export function VoiceProfileEditorForm({
   generateHint,
   cloneBusy,
   cloneDisabled,
+  tuneBusy,
+  tuneDisabled,
   latestConsent,
   onPreviewTextChange,
   onDescriptionChange,
@@ -70,6 +76,7 @@ export function VoiceProfileEditorForm({
   onSuggestFromDescription,
   onCloneSubmit,
   onCloneRevoke,
+  onTuneSubmit,
 }: VoiceProfileEditorFormProps) {
   return (
     <div className="space-y-4 py-1">
@@ -155,9 +162,12 @@ export function VoiceProfileEditorForm({
         generateHint={generateHint}
         cloneBusy={cloneBusy}
         cloneDisabled={cloneDisabled}
+        tuneBusy={tuneBusy}
+        tuneDisabled={tuneDisabled}
         onSuggestFromDescription={onSuggestFromDescription}
         onCloneSubmit={onCloneSubmit}
         onCloneRevoke={onCloneRevoke}
+        onTuneSubmit={onTuneSubmit}
       />
     </div>
   );

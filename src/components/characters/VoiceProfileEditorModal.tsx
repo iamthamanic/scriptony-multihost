@@ -19,9 +19,11 @@ import { useMveVoicePreview } from "@/hooks/useMveVoicePreview";
 import { useSaveVoiceProfile } from "@/hooks/useSaveVoiceProfile";
 import { useLocalVoices } from "@/hooks/useLocalVoices";
 import { generateVoiceFromDescription } from "@/lib/mve/casting/generate-voice-from-description";
+import { createTunedVoiceProfile } from "@/lib/mve/tune/create-tuned-voice-profile";
 import {
   createMveVoiceProfile,
   getLatestVerifiedMveVoiceConsent,
+  getMveVoiceProfile,
 } from "@/lib/api-adapter/mve-adapter";
 import {
   revokeVoiceCloneConsent,
@@ -34,6 +36,7 @@ import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 import type { MveVoiceConsent } from "@/lib/multi-voice-engine/schema/voice-consent";
 import { VoiceProfileEditorForm } from "./VoiceProfileEditorForm";
+import type { VoiceTuneSubmitOptions } from "./VoiceStudioTuneSection";
 
 export interface VoiceProfileEditorModalProps {
   open: boolean;
@@ -67,9 +70,12 @@ export function VoiceProfileEditorModal({
   const [generateHint, setGenerateHint] = useState<string | undefined>();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCloneBusy, setIsCloneBusy] = useState(false);
+  const [isTuneBusy, setIsTuneBusy] = useState(false);
   const [latestConsent, setLatestConsent] = useState<MveVoiceConsent | null>(
     null,
   );
+  const [tuneSourceProfile, setTuneSourceProfile] =
+    useState<MveVoiceProfile | null>(null);
 
   const localVoices = useLocalVoices({
     projectDir,
@@ -90,6 +96,7 @@ export function VoiceProfileEditorModal({
     setSpeed(profile?.defaultSettings?.speed ?? 1);
     setGenerateHint(undefined);
     setLatestConsent(null);
+    setTuneSourceProfile(null);
   }, [open, profile, characterName]);
 
   useEffect(() => {
@@ -102,7 +109,21 @@ export function VoiceProfileEditorModal({
     );
   }, [open, activeProfile?.id]);
 
-  const voiceId = resolveMveTtsVoiceId(activeProfile);
+  useEffect(() => {
+    if (
+      !open ||
+      activeProfile?.type !== "tuned" ||
+      !activeProfile.baseVoiceId
+    ) {
+      setTuneSourceProfile(null);
+      return;
+    }
+    void getMveVoiceProfile(activeProfile.baseVoiceId).then(
+      setTuneSourceProfile,
+    );
+  }, [open, activeProfile?.type, activeProfile?.baseVoiceId]);
+
+  const voiceId = resolveMveTtsVoiceId(activeProfile, tuneSourceProfile);
 
   const handleVoiceAssigned = useCallback(
     (assigned: MveVoiceProfile) => {
@@ -259,6 +280,45 @@ export function VoiceProfileEditorModal({
     }
   }, [activeProfile?.id, projectId, refreshSaved]);
 
+  const handleTuneSubmit = useCallback(
+    async (options: VoiceTuneSubmitOptions) => {
+      if (!isLocalProfile()) {
+        toast.error("Voice Tune ist nur lokal verfügbar.");
+        return;
+      }
+      if (!activeProfile?.id || activeProfile.type === "tuned") {
+        toast.error("Bitte zuerst eine Basis-Stimme wählen oder erzeugen.");
+        return;
+      }
+      setIsTuneBusy(true);
+      try {
+        const tuned = await createTunedVoiceProfile({
+          projectId,
+          baseProfile: activeProfile,
+          tuneDescription: options.tuneDescription,
+          overrides: {
+            pitch: options.pitch,
+            pace: options.pace,
+            energy: options.energy,
+            speed: options.speed,
+          },
+        });
+        setActiveProfile(tuned);
+        setSpeed(tuned.defaultSettings?.speed ?? options.speed);
+        setDescription(tuned.description ?? "");
+        refreshSaved();
+        toast.success("Getunte Stimme erstellt — Original unverändert.");
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Tune fehlgeschlagen.",
+        );
+      } finally {
+        setIsTuneBusy(false);
+      }
+    },
+    [activeProfile, projectId, refreshSaved],
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -286,6 +346,8 @@ export function VoiceProfileEditorModal({
           generateHint={generateHint}
           cloneBusy={isCloneBusy}
           cloneDisabled={!isLocalProfile()}
+          tuneBusy={isTuneBusy}
+          tuneDisabled={!isLocalProfile()}
           latestConsent={latestConsent}
           onPreviewTextChange={setPreviewText}
           onDescriptionChange={setDescription}
@@ -305,6 +367,7 @@ export function VoiceProfileEditorModal({
             void handleCloneSubmit(file, options)
           }
           onCloneRevoke={() => void handleCloneRevoke()}
+          onTuneSubmit={(options) => void handleTuneSubmit(options)}
         />
 
         <DialogFooter className="gap-2 sm:gap-0">
