@@ -25,11 +25,15 @@ export interface VoiceProfileEditorFormProps {
   speed: number;
   voiceId?: string;
   isPlaying: boolean;
+  generateBusy?: boolean;
+  generateDisabled?: boolean;
+  generateHint?: string;
   onPreviewTextChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onSpeedChange: (value: number) => void;
   onPlayPreview: () => void;
   onVoiceAssignedProfile: (profile: MveVoiceProfile) => void;
+  onSuggestFromDescription?: () => void;
 }
 
 export function VoiceProfileEditorForm({
@@ -43,11 +47,15 @@ export function VoiceProfileEditorForm({
   speed,
   voiceId,
   isPlaying,
+  generateBusy,
+  generateDisabled,
+  generateHint,
   onPreviewTextChange,
   onDescriptionChange,
   onSpeedChange,
   onPlayPreview,
   onVoiceAssignedProfile,
+  onSuggestFromDescription,
 }: VoiceProfileEditorFormProps) {
   return (
     <div className="space-y-4 py-1">
@@ -124,7 +132,13 @@ export function VoiceProfileEditorForm({
         />
       </div>
 
-      <VoiceProfileFutureSections />
+      <VoiceProfileFutureSections
+        description={description}
+        generateBusy={generateBusy}
+        generateDisabled={generateDisabled}
+        generateHint={generateHint}
+        onSuggestFromDescription={onSuggestFromDescription}
+      />
     </div>
   );
 }
