@@ -12,12 +12,14 @@ import type { useTimelineAddAudio } from "../../../../hooks/useTimelineAddAudio"
 import type { useCharacterLaneMap } from "../../../../hooks/useCharacterLaneMap";
 import type { AudioClip } from "../../../../lib/types";
 import type { TimelineSceneRef } from "../../../../lib/timeline-add-audio";
+import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
 
 export interface StructureTimelineClipLanesBaseProps {
   pxPerSec: number;
   viewStartSec: number;
   totalWidthPx: number;
   scenes?: TimelineSceneRef[];
+  sceneBlocks?: SceneTimeBlock[];
   laneGroups: Record<number, AudioClip[]>;
   sortedLaneIndices: number[];
   allClips?: AudioClip[];

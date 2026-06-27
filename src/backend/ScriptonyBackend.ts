@@ -156,6 +156,7 @@ export interface TimelineRepository {
 
 export interface AudioClipUpdatePayload {
 	laneIndex?: number;
+	sceneId?: string;
 	characterId?: string;
 	fxPresetId?: string;
 	fxSlots?: (string | null)[];
@@ -334,6 +335,7 @@ export interface MveLineCreatePayload {
 }
 
 export interface MveLineUpdatePayload {
+  sceneId?: string;
   orderIndex?: number;
   type?: MveLineType;
   characterId?: string | null;

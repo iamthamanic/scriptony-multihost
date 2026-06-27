@@ -3,7 +3,14 @@
  * Location: src/components/structure/timeline/tracks/StructureTimelineAudioLanes.tsx
  */
 
-import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+  useCallback,
+  type RefObject,
+} from "react";
 import { Plus } from "lucide-react";
 import { useProjectClipLanes } from "../../../../hooks/useProjectClipLanes";
 import { useTimelineAddAudio } from "../../../../hooks/useTimelineAddAudio";
@@ -16,6 +23,7 @@ import type { TimelineSceneRef } from "../../../../lib/timeline-add-audio";
 import type { MveLine } from "../../../../lib/multi-voice-engine/schema/line";
 import { LANE_UI, laneIndexToTrackType } from "../../../../lib/audio-lane";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
+import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
 import { cn } from "../../../../lib/utils";
 import {
   StructureTimelineClipLaneContent,
@@ -30,6 +38,7 @@ export interface StructureTimelineAudioLanesProps {
   totalWidthPx: number;
   currentTimeSec: number;
   linkedLaneAudio?: LinkedLaneAudioContext;
+  sceneBlocksRef?: RefObject<SceneTimeBlock[]>;
 }
 
 export function useStructureTimelineAudioLanes(
@@ -118,6 +127,16 @@ export function useStructureTimelineAudioLanes(
     [mveLaneLinks, lanes.characterLanes],
   );
 
+  const sceneBlocks = props.sceneBlocksRef?.current ?? [];
+
+  const handleMoveLineToScene = useCallback(
+    async (lineId: string, targetSceneId: string) => {
+      if (!mve.enabled || sceneBlocks.length === 0) return;
+      await mve.moveLineToScene(lineId, targetSceneId, sceneBlocks);
+    },
+    [mve, sceneBlocks],
+  );
+
   const mveLines = useMemo(
     () =>
       mve.enabled && props.projectId
@@ -128,6 +147,7 @@ export function useStructureTimelineAudioLanes(
             onSaveText: mve.saveLineText,
             onSaveDirection: mve.saveLineDirection,
             onBindAudioClip: mve.bindAudioClip,
+            onMoveLineToScene: handleMoveLineToScene,
             linkedSceneIdForLane,
             getRenderBlockReason: getMveRenderBlockReason,
             onRenderLine: mveRender.renderLine,
@@ -140,6 +160,7 @@ export function useStructureTimelineAudioLanes(
       mve.saveLineText,
       mve.saveLineDirection,
       mve.bindAudioClip,
+      handleMoveLineToScene,
       linesByCharacterId,
       props.projectId,
       mveRender.renderLine,
@@ -222,6 +243,7 @@ export function useStructureTimelineAudioLanes(
     viewStartSec: props.viewStartSec,
     totalWidthPx: props.totalWidthPx,
     scenes: lanes.scenes,
+    sceneBlocks,
     laneGroups: lanes.laneGroups,
     sortedLaneIndices: lanes.sortedLaneIndices,
     allClips: lanes.allClips,

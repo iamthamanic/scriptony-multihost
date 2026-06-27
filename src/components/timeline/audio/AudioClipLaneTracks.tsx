@@ -12,6 +12,7 @@ import type { useAudioLaneState } from "../../../hooks/useAudioLaneState";
 import type { useTimelineAddAudio } from "../../../hooks/useTimelineAddAudio";
 import type { useCharacterLaneMap } from "../../../hooks/useCharacterLaneMap";
 import type { TimelineSceneRef } from "../../../lib/timeline-add-audio";
+import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
 import type { MveLineClipHandlers } from "./AudioClipLaneContent";
 
 export interface AudioClipLaneHandlers {
@@ -32,6 +33,7 @@ export interface AudioClipLaneTracksProps {
   viewStartSec?: number;
   totalWidthPx: number;
   scenes?: TimelineSceneRef[];
+  sceneBlocks?: SceneTimeBlock[];
   laneGroups: Record<number, AudioClip[]>;
   sortedLaneIndices: number[];
   allClips?: AudioClip[];
@@ -83,6 +85,7 @@ export function AudioClipLaneTracks({
   viewStartSec = 0,
   totalWidthPx,
   scenes = [],
+  sceneBlocks = [],
   laneGroups,
   sortedLaneIndices,
   allClips = [],
@@ -176,6 +179,7 @@ export function AudioClipLaneTracks({
             height={height}
             totalWidthPx={totalWidthPx}
             scenes={scenes}
+            sceneBlocks={sceneBlocks}
             clips={clips}
             pxPerSec={pxPerSec}
             viewStartSec={viewStartSec}

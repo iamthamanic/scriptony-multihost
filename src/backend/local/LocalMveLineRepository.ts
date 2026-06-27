@@ -110,6 +110,10 @@ export class LocalMveLineRepository {
     const values: BindParams = [];
     const setParts: string[] = [];
 
+    if (patch.sceneId !== undefined) {
+      setParts.push("scene_id = ?");
+      values.push(patch.sceneId);
+    }
     if (patch.orderIndex !== undefined) {
       setParts.push("order_index = ?");
       values.push(patch.orderIndex);

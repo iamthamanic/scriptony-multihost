@@ -17,6 +17,8 @@ import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-dire
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { AudioClip } from "@/lib/types";
 import { toast } from "sonner";
+import { moveTextBlockToScene } from "@/lib/mve/move-text-block-to-scene";
+import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
 
 export function useMveLines(projectId: string | undefined) {
   const queryClient = useQueryClient();
@@ -150,6 +152,51 @@ export function useMveLines(projectId: string | undefined) {
     [createLineMutation],
   );
 
+  const moveLineToSceneMutation = useMutation({
+    mutationFn: async ({
+      lineId,
+      targetSceneId,
+      sceneBlocks,
+    }: {
+      lineId: string;
+      targetSceneId: string;
+      sceneBlocks: SceneTimeBlock[];
+    }) =>
+      moveTextBlockToScene({
+        projectId: projectId!,
+        lineId,
+        targetSceneId,
+        sceneBlocks,
+      }),
+    onSuccess: async () => {
+      await invalidate();
+      if (projectId) {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.timeline.audioByProject(projectId),
+        });
+      }
+      toast.success("Textblock in neue Szene verschoben.");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Textblock konnte nicht verschoben werden.");
+    },
+  });
+
+  const moveLineToScene = useCallback(
+    async (
+      lineId: string,
+      targetSceneId: string,
+      sceneBlocks: SceneTimeBlock[],
+    ) => {
+      await moveLineToSceneMutation.mutateAsync({
+        lineId,
+        targetSceneId,
+        sceneBlocks,
+      });
+    },
+    [moveLineToSceneMutation],
+  );
+
   return {
     lines: linesQuery.data ?? [],
     lineByClipId,
@@ -161,11 +208,13 @@ export function useMveLines(projectId: string | undefined) {
     saveLineText,
     saveLineDirection,
     bindAudioClip,
+    moveLineToScene,
     isSaving:
       saveTextMutation.isPending ||
       saveDirectionMutation.isPending ||
       bindAudioClipMutation.isPending ||
-      createLineMutation.isPending,
+      createLineMutation.isPending ||
+      moveLineToSceneMutation.isPending,
   };
 }
 

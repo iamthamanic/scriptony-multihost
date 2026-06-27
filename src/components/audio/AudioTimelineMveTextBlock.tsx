@@ -10,6 +10,7 @@
 
 import { useMemo, useState, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { MVE_LINE_DRAG_MIME } from "@/hooks/useMveTextBlockLaneDrop";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import { MveTextBlockEditor } from "../structure/timeline/mve/MveTextBlockEditor";
 import { MveSceneSelectDialog } from "../structure/timeline/mve/MveSceneSelectDialog";
@@ -30,6 +31,7 @@ export interface AudioTimelineMveTextBlockProps {
   onSaveText?: (lineId: string, text: string) => Promise<void>;
   onBindAudioClip?: (lineId: string, clipId: string | null) => Promise<void>;
   onClick?: (lineId: string) => void;
+  draggable?: boolean;
 }
 
 export function AudioTimelineMveTextBlock({
@@ -45,6 +47,7 @@ export function AudioTimelineMveTextBlock({
   onSaveText,
   onBindAudioClip,
   onClick,
+  draggable: draggableProp,
 }: AudioTimelineMveTextBlockProps) {
   const widthSec = Math.max(sceneEndSec - sceneStartSec, 1);
   const [isEditing, setIsEditing] = useState(false);
@@ -69,6 +72,16 @@ export function AudioTimelineMveTextBlock({
 
   const displayText = line.text?.trim() || "Text hinzufügen…";
   const canEdit = Boolean(projectId && onSaveText);
+  const canDrag = Boolean(draggableProp && !isEditing);
+
+  const handleDragStart = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      if (!canDrag) return;
+      e.dataTransfer.setData(MVE_LINE_DRAG_MIME, line.id);
+      e.dataTransfer.effectAllowed = "move";
+    },
+    [canDrag, line.id],
+  );
 
   const handleSave = useCallback(
     async (text: string) => {
@@ -100,14 +113,17 @@ export function AudioTimelineMveTextBlock({
 
   return (
     <div
-      role={isEditing ? "none" : "button"}
+      role={isEditing ? "none" : canDrag ? "button" : "button"}
       tabIndex={isEditing ? -1 : 0}
+      draggable={canDrag}
+      onDragStart={handleDragStart}
       aria-label={isEditing ? undefined : `Textblock: ${displayText}`}
       className={cn(
         "absolute top-0.5 bottom-0.5 rounded border border-primary/40",
         "bg-primary/20 hover:bg-primary/30 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         "flex items-start px-1 overflow-hidden",
         canEdit ? "cursor-pointer" : "cursor-default",
+        canDrag && "cursor-grab active:cursor-grabbing",
         line.status === "dirty" && "ring-1 ring-warning/50",
       )}
       style={style}
@@ -121,6 +137,7 @@ export function AudioTimelineMveTextBlock({
       }}
       onKeyDown={handleKeyDown}
       data-testid="audio-timeline-mve-text-block"
+      data-mve-line-id={line.id}
     >
       {isEditing ? (
         <div

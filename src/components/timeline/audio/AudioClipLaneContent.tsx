@@ -6,17 +6,15 @@
 import { cn } from "../../../lib/utils";
 import { isLaneAudible } from "../../../lib/audio-lane";
 import { AudioTimelineSegment } from "../../audio/AudioTimelineSegment";
-import { AudioTimelineMveTextBlock } from "../../audio/AudioTimelineMveTextBlock";
 import type { AudioClip } from "../../../lib/types";
 import type { useAudioLaneState } from "../../../hooks/useAudioLaneState";
 import type { useCharacterLaneMap } from "../../../hooks/useCharacterLaneMap";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-direction";
 import type { TimelineSceneRef } from "../../../lib/timeline-add-audio";
-
-// Placeholder until scene timing is plumbed through the timeline (Issue T28).
-const FALLBACK_TEXT_BLOCK_START_SEC = 0;
-const FALLBACK_TEXT_BLOCK_DURATION_SEC = 3;
+import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
+import { useMveTextBlockLaneDrop } from "@/hooks/useMveTextBlockLaneDrop";
+import { MveTextBlockLaneItems } from "./MveTextBlockLaneItems";
 
 export interface MveLineClipHandlers {
   projectId: string;
@@ -28,6 +26,7 @@ export interface MveLineClipHandlers {
     direction: MveLineDirection,
   ) => Promise<void>;
   onBindAudioClip?: (lineId: string, clipId: string | null) => Promise<void>;
+  onMoveLineToScene?: (lineId: string, targetSceneId: string) => Promise<void>;
   linkedSceneIdForLane?: (laneIndex: number) => string | undefined;
   getRenderBlockReason?: (line: MveLine) => string | undefined;
   onRenderLine?: (lineId: string) => Promise<unknown>;
@@ -39,6 +38,7 @@ export interface AudioClipLaneContentProps {
   height: number;
   totalWidthPx: number;
   scenes?: TimelineSceneRef[];
+  sceneBlocks?: SceneTimeBlock[];
   clips: AudioClip[];
   pxPerSec: number;
   viewStartSec: number;
@@ -60,6 +60,7 @@ export function AudioClipLaneContent({
   height,
   totalWidthPx,
   scenes = [],
+  sceneBlocks = [],
   clips,
   pxPerSec,
   viewStartSec,
@@ -77,16 +78,48 @@ export function AudioClipLaneContent({
   const textOnlyLines = characterId
     ? (mveLines?.linesByCharacterId?.get(characterId) ?? [])
     : [];
+  const locked = laneState.getLaneState(laneIndex)?.locked ?? false;
+
+  const { dragOverSceneId, onDragOver, onDragLeave, onDrop } =
+    useMveTextBlockLaneDrop({
+      enabled: Boolean(mveLines?.onMoveLineToScene) && !locked,
+      sceneBlocks,
+      viewStartSec,
+      pxPerSec,
+      onMoveLineToScene: mveLines?.onMoveLineToScene,
+    });
+
+  const sceneOptions = scenes.map((s) => ({
+    id: s.id,
+    name: "name" in s ? String(s.name) : s.id,
+  }));
 
   return (
     <div
       className={cn(
         "relative border-b border-border bg-muted/10 shrink-0",
         !audible && "opacity-30",
+        dragOverSceneId && "ring-1 ring-inset ring-primary/40",
         className,
       )}
       style={{ height: `${height}px`, width: `${totalWidthPx}px` }}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      data-testid={`audio-lane-content-${laneIndex}`}
     >
+      {sceneBlocks.map((block) =>
+        dragOverSceneId === block.id ? (
+          <div
+            key={`drop-hint-${block.id}`}
+            className="pointer-events-none absolute top-0 bottom-0 bg-primary/10 border-x border-primary/30"
+            style={{
+              left: `${(block.startSec - viewStartSec) * pxPerSec}px`,
+              width: `${(block.endSec - block.startSec) * pxPerSec}px`,
+            }}
+          />
+        ) : null,
+      )}
       {clips.map((clip) => (
         <AudioTimelineSegment
           key={clip.id}
@@ -94,7 +127,7 @@ export function AudioClipLaneContent({
           pxPerSec={pxPerSec}
           viewStartSec={viewStartSec}
           onTrimEnd={onTrimEnd}
-          isEditable={!(laneState.getLaneState(laneIndex)?.locked ?? false)}
+          isEditable={!locked}
           onGenerateTts={() => onGenerateTts(clip)}
           allClips={allClips}
           onLaneChange={onLaneChange}
@@ -116,32 +149,16 @@ export function AudioClipLaneContent({
           }
         />
       ))}
-      {textOnlyLines.map((line) => {
-        // Fallback placement until scene timing is plumbed (Issue T28).
-        const startSec = FALLBACK_TEXT_BLOCK_START_SEC;
-        const endSec = startSec + FALLBACK_TEXT_BLOCK_DURATION_SEC;
-        return (
-          <AudioTimelineMveTextBlock
-            key={`text-block-${line.id}`}
-            line={line}
-            pxPerSec={pxPerSec}
-            viewStartSec={viewStartSec}
-            sceneStartSec={startSec}
-            sceneEndSec={endSec}
-            projectId={mveLines?.projectId}
-            sceneId={
-              mveLines?.linkedSceneIdForLane?.(laneIndex) ?? scenes[0]?.id
-            }
-            characterId={characterId}
-            scenes={scenes.map((s) => ({
-              id: s.id,
-              name: "name" in s ? String(s.name) : s.id,
-            }))}
-            onSaveText={mveLines?.onSaveText}
-            onBindAudioClip={mveLines?.onBindAudioClip}
-          />
-        );
-      })}
+      <MveTextBlockLaneItems
+        lines={textOnlyLines}
+        pxPerSec={pxPerSec}
+        viewStartSec={viewStartSec}
+        sceneBlocks={sceneBlocks}
+        characterId={characterId}
+        sceneOptions={sceneOptions}
+        mveLines={mveLines}
+        draggable={Boolean(mveLines?.onMoveLineToScene) && !locked}
+      />
     </div>
   );
 }
