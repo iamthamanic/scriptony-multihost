@@ -13,6 +13,7 @@ export interface TransportToggleProps {
   className?: string;
   onClick: () => void;
   ariaLabel: string;
+  testId?: string;
 }
 
 export function TransportToggle({
@@ -23,11 +24,13 @@ export function TransportToggle({
   className,
   onClick,
   ariaLabel,
+  testId,
 }: TransportToggleProps) {
   return (
     <button
       type="button"
       onClick={onClick}
+      data-testid={testId}
       className={cn(
         "h-5 w-5 shrink-0 text-[9px] font-bold rounded border border-border/80",
         "inline-flex items-center justify-center transition-colors",

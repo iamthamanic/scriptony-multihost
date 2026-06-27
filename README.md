@@ -369,6 +369,7 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 <!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
 
 - **2026-06-26** — T31: Metronom-Count-in vor Audio-Aufnahme (BPM/Takt einstellbar, local desktop)
+- **2026-06-26** — T30: Lane-Link-Icon + hierarchischer Act/Sequence/Scene-Modal für MVE-Dialog-Spuren (local desktop)
 - **2026-06-26** — T29: Szene verlängert sich per Ripple, wenn MVE-Textblock-Audio länger als die Szene ist (local desktop)
 - **2026-06-26** — ECC: `@ecc-check`, `@commit-pr-safe`, `npm run verify`; GitHub CI nutzt verify (hart); pre-push ohne Shim AI Review
 - **2026-06-16** — Ticket gate: scoped `SHIM_CHANGED_FILES`, Fallow, Codex fallback, `TEST_COVERAGE_REGISTRY` (process/docs)
