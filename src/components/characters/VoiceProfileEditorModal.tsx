@@ -25,6 +25,7 @@ import {
   getLatestVerifiedMveVoiceConsent,
   getMveVoiceProfile,
 } from "@/lib/api-adapter/mve-adapter";
+import { requestVoiceClone } from "@/lib/mve/clone/request-voice-clone";
 import {
   revokeVoiceCloneConsent,
   submitVoiceCloneConsent,
@@ -70,6 +71,7 @@ export function VoiceProfileEditorModal({
   const [generateHint, setGenerateHint] = useState<string | undefined>();
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCloneBusy, setIsCloneBusy] = useState(false);
+  const [isCloneStartBusy, setIsCloneStartBusy] = useState(false);
   const [isTuneBusy, setIsTuneBusy] = useState(false);
   const [latestConsent, setLatestConsent] = useState<MveVoiceConsent | null>(
     null,
@@ -280,6 +282,28 @@ export function VoiceProfileEditorModal({
     }
   }, [activeProfile?.id, projectId, refreshSaved]);
 
+  const handleCloneStart = useCallback(async () => {
+    if (!isLocalProfile()) {
+      toast.error("Voice Clone ist nur lokal verfügbar.");
+      return;
+    }
+    if (!activeProfile?.id) return;
+    setIsCloneStartBusy(true);
+    try {
+      const result = await requestVoiceClone({
+        projectId,
+        voiceProfileId: activeProfile.id,
+      });
+      setActiveProfile(result.profile);
+      refreshSaved();
+      toast.success("Stimme geklont (Stub) — Vorschau abspielbar.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Clone fehlgeschlagen.");
+    } finally {
+      setIsCloneStartBusy(false);
+    }
+  }, [activeProfile?.id, projectId, refreshSaved]);
+
   const handleTuneSubmit = useCallback(
     async (options: VoiceTuneSubmitOptions) => {
       if (!isLocalProfile()) {
@@ -345,6 +369,7 @@ export function VoiceProfileEditorModal({
           generateDisabled={localVoices.isLoading}
           generateHint={generateHint}
           cloneBusy={isCloneBusy}
+          cloneStartBusy={isCloneStartBusy}
           cloneDisabled={!isLocalProfile()}
           tuneBusy={isTuneBusy}
           tuneDisabled={!isLocalProfile()}
@@ -367,6 +392,7 @@ export function VoiceProfileEditorModal({
             void handleCloneSubmit(file, options)
           }
           onCloneRevoke={() => void handleCloneRevoke()}
+          onCloneStart={() => void handleCloneStart()}
           onTuneSubmit={(options) => void handleTuneSubmit(options)}
         />
 

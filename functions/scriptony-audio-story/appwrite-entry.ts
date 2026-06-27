@@ -21,6 +21,7 @@ import scenesHandler from "./routes/scenes";
 import sessionsHandler from "./routes/sessions";
 import tracksHandler from "./routes/tracks";
 import voicesHandler from "./routes/voices";
+import voicesCloneHandler from "./routes/voices-clone";
 import audioProductionHandler from "./routes/audio-production";
 
 import ttsHandler from "./routes/tts";
@@ -45,6 +46,7 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
           clips: "/audio-clips - Audio Clip Management (Ist-Ebene)",
           scenesReorder: "/scenes/reorder — Scene order (timeline_nodes)",
           voices: "/voices - Voice Casting & TTS",
+          voicesClone: "/voices/clone - MVE Voice Clone Request (0.4)",
           audioProduction: "/audio-production - T08 Orchestration",
           tts: "/tts - TTS Pipeline (T31)",
           scriptEnhance: "/script/enhance - MVE Enhance Script (T64)",
@@ -83,6 +85,11 @@ async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
   }
 
   // Voices routes
+  if (pathname.startsWith("/voices/clone")) {
+    await voicesCloneHandler(req, res);
+    return;
+  }
+
   if (pathname.startsWith("/voices")) {
     await voicesHandler(req, res);
     return;

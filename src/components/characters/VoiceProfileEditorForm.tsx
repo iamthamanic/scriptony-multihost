@@ -32,6 +32,7 @@ export interface VoiceProfileEditorFormProps {
   generateHint?: string;
   cloneBusy?: boolean;
   cloneDisabled?: boolean;
+  cloneStartBusy?: boolean;
   tuneBusy?: boolean;
   tuneDisabled?: boolean;
   latestConsent?: MveVoiceConsent | null;
@@ -46,6 +47,7 @@ export interface VoiceProfileEditorFormProps {
     options: { consentConfirmed: boolean; commercialUseAllowed: boolean },
   ) => void;
   onCloneRevoke?: () => void;
+  onCloneStart?: () => void;
   onTuneSubmit?: (options: VoiceTuneSubmitOptions) => void;
 }
 
@@ -65,6 +67,7 @@ export function VoiceProfileEditorForm({
   generateHint,
   cloneBusy,
   cloneDisabled,
+  cloneStartBusy,
   tuneBusy,
   tuneDisabled,
   latestConsent,
@@ -76,6 +79,7 @@ export function VoiceProfileEditorForm({
   onSuggestFromDescription,
   onCloneSubmit,
   onCloneRevoke,
+  onCloneStart,
   onTuneSubmit,
 }: VoiceProfileEditorFormProps) {
   return (
@@ -162,11 +166,13 @@ export function VoiceProfileEditorForm({
         generateHint={generateHint}
         cloneBusy={cloneBusy}
         cloneDisabled={cloneDisabled}
+        cloneStartBusy={cloneStartBusy}
         tuneBusy={tuneBusy}
         tuneDisabled={tuneDisabled}
         onSuggestFromDescription={onSuggestFromDescription}
         onCloneSubmit={onCloneSubmit}
         onCloneRevoke={onCloneRevoke}
+        onCloneStart={onCloneStart}
         onTuneSubmit={onTuneSubmit}
       />
     </div>
