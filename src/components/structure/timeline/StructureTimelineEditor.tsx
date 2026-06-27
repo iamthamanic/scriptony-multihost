@@ -2875,6 +2875,7 @@ export function StructureTimelineEditor({
     totalWidthPx,
     currentTimeSec: currentTime,
     linkedLaneAudio,
+    sceneBlocksRef,
   });
   const hasVisibleAudioLanes =
     timelineAudio.laneProps.sortedLaneIndices.length > 0;

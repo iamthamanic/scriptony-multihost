@@ -126,6 +126,10 @@ export class LocalAudioRepository implements AudioRepository {
 		const values: BindParams = [];
 		const setParts: string[] = [];
 
+		if (patch.sceneId !== undefined) {
+			setParts.push("scene_id = ?");
+			values.push(patch.sceneId);
+		}
 		if (patch.laneIndex !== undefined) {
 			setParts.push("lane_index = ?");
 			values.push(patch.laneIndex);

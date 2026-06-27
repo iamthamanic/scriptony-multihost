@@ -12,6 +12,7 @@ import type { useTimelineAddAudio } from "../../../../hooks/useTimelineAddAudio"
 import type { useCharacterLaneMap } from "../../../../hooks/useCharacterLaneMap";
 import type { Act, AudioClip, Scene, Sequence } from "../../../../lib/types";
 import type { TimelineSceneRef } from "../../../../lib/timeline-add-audio";
+import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
 import type { MveLaneLinkControlProps } from "../../../timeline/audio/AudioClipLaneSidebar";
 
 export interface StructureTimelineClipLanesBaseProps {
@@ -19,6 +20,7 @@ export interface StructureTimelineClipLanesBaseProps {
   viewStartSec: number;
   totalWidthPx: number;
   scenes?: TimelineSceneRef[];
+  sceneBlocks?: SceneTimeBlock[];
   acts?: Act[];
   sequences?: Sequence[];
   structureScenes?: Scene[];

@@ -10,6 +10,7 @@ export type AudioClipUpdatePayload = Partial<
   Pick<
     AudioClip,
     | "laneIndex"
+    | "sceneId"
     | "fxPresetId"
     | "startSec"
     | "endSec"
