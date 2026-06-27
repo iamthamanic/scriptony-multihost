@@ -46,7 +46,7 @@ export function buildCloneVoiceInput(
     referenceAudioUrl: profile.referenceAudioUrl,
     sourceAudioHash: consent.sourceAudioHash,
     consentId: consent.id,
-    commercialUseAllowed: profile.commercialUseAllowed,
+    commercialUseAllowed: consent.commercialUseAllowed,
   });
 }
 
@@ -73,16 +73,16 @@ export async function requestVoiceClone(
     params.name,
   );
 
-  await updateMveVoiceProfile(params.voiceProfileId, {
-    status: "processing",
-    type: "cloned",
-  });
-
   const request = await createMveVoiceRequest(params.projectId, {
     operationType: "clone",
     voiceProfileId: params.voiceProfileId,
     status: "processing",
     inputJson: JSON.stringify(cloneInput),
+  });
+
+  await updateMveVoiceProfile(params.voiceProfileId, {
+    status: "processing",
+    type: "cloned",
   });
 
   try {

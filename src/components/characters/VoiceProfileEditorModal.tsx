@@ -288,16 +288,22 @@ export function VoiceProfileEditorModal({
       return;
     }
     if (!activeProfile?.id) return;
+    const profileId = activeProfile.id;
     setIsCloneStartBusy(true);
+    setActiveProfile((prev) =>
+      prev ? { ...prev, status: "processing" } : prev,
+    );
     try {
       const result = await requestVoiceClone({
         projectId,
-        voiceProfileId: activeProfile.id,
+        voiceProfileId: profileId,
       });
       setActiveProfile(result.profile);
       refreshSaved();
       toast.success("Stimme geklont (Stub) — Vorschau abspielbar.");
     } catch (err) {
+      const refreshed = await getMveVoiceProfile(profileId);
+      if (refreshed) setActiveProfile(refreshed);
       toast.error(err instanceof Error ? err.message : "Clone fehlgeschlagen.");
     } finally {
       setIsCloneStartBusy(false);

@@ -75,7 +75,10 @@ export function VoiceStudioCloneSection({
               size="sm"
               className="w-full"
               disabled={
-                disabled || isStartBusy || profile?.status === "processing"
+                disabled ||
+                isBusy ||
+                isStartBusy ||
+                profile?.status === "processing"
               }
               onClick={onStartClone}
             >

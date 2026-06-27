@@ -51,6 +51,15 @@ describe("buildCloneVoiceInput", () => {
     expect(input.referenceAudioUrl).toBe("assets/voice-refs/ref.wav");
     expect(input.commercialUseAllowed).toBe(true);
   });
+
+  it("uses commercialUseAllowed from consent, not profile", () => {
+    const input = buildCloneVoiceInput(
+      "proj_1",
+      { ...profile, commercialUseAllowed: false },
+      { ...consent, commercialUseAllowed: true },
+    );
+    expect(input.commercialUseAllowed).toBe(true);
+  });
 });
 
 describe("clone request guards", () => {

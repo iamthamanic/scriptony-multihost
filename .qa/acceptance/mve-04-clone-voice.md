@@ -18,6 +18,7 @@ Voice Clone als Request-Flow nach verified Consent + Referenz-Upload (PRD MVP 0.
 - [x] Ohne Consent → DE-Fehler / 403 cloud
 - [x] Kein Clone-Provider → local stub ohne Crash
 - [x] Re-Clone bump `version` auf Profil
+- [x] Fehlerpfad: Request-Row vor `processing`; Profil bei Fehler `failed`
 
 ## Regression
 
