@@ -24,6 +24,7 @@ export interface VoiceProfileFutureSectionsProps {
   generateHint?: string;
   cloneBusy?: boolean;
   cloneDisabled?: boolean;
+  cloneStartBusy?: boolean;
   tuneBusy?: boolean;
   tuneDisabled?: boolean;
   onSuggestFromDescription?: () => void;
@@ -32,6 +33,7 @@ export interface VoiceProfileFutureSectionsProps {
     options: { consentConfirmed: boolean; commercialUseAllowed: boolean },
   ) => void;
   onCloneRevoke?: () => void;
+  onCloneStart?: () => void;
   onTuneSubmit?: (options: VoiceTuneSubmitOptions) => void;
 }
 
@@ -44,11 +46,13 @@ export function VoiceProfileFutureSections({
   generateHint,
   cloneBusy = false,
   cloneDisabled,
+  cloneStartBusy = false,
   tuneBusy = false,
   tuneDisabled,
   onSuggestFromDescription,
   onCloneSubmit,
   onCloneRevoke,
+  onCloneStart,
   onTuneSubmit,
 }: VoiceProfileFutureSectionsProps) {
   const tuneBaseProfile = profile?.type === "tuned" ? null : profile;
@@ -70,6 +74,8 @@ export function VoiceProfileFutureSections({
         disabled={cloneDisabled}
         onSubmit={(file, options) => onCloneSubmit?.(file, options)}
         onRevoke={onCloneRevoke}
+        onStartClone={onCloneStart}
+        isStartBusy={cloneStartBusy}
       />
 
       <VoiceStudioTuneSection

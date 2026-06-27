@@ -4,7 +4,7 @@
  */
 
 import { useRef, useState } from "react";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Sparkles, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { VoiceStudioConsentForm } from "./VoiceStudioConsentForm";
 import {
@@ -27,6 +27,8 @@ export interface VoiceStudioCloneSectionProps {
     },
   ) => void;
   onRevoke?: () => void;
+  onStartClone?: () => void;
+  isStartBusy?: boolean;
 }
 
 export function VoiceStudioCloneSection({
@@ -36,6 +38,8 @@ export function VoiceStudioCloneSection({
   disabled,
   onSubmit,
   onRevoke,
+  onStartClone,
+  isStartBusy = false,
 }: VoiceStudioCloneSectionProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -53,9 +57,45 @@ export function VoiceStudioCloneSection({
       </p>
 
       {cloneReady ? (
-        <p className="text-[11px] text-green-600 dark:text-green-500">
-          Consent verifiziert — Clone-Request kann gestartet werden (#14).
-        </p>
+        <>
+          <p className="text-[11px] text-green-600 dark:text-green-500">
+            Consent verifiziert — Clone kann gestartet werden.
+          </p>
+          {profile?.status === "processing" ? (
+            <p className="text-[11px] text-muted-foreground">Clone läuft…</p>
+          ) : null}
+          {profile?.status === "failed" ? (
+            <p className="text-[11px] text-destructive">
+              Clone fehlgeschlagen — erneut versuchen.
+            </p>
+          ) : null}
+          {onStartClone ? (
+            <Button
+              type="button"
+              size="sm"
+              className="w-full"
+              disabled={
+                disabled ||
+                isBusy ||
+                isStartBusy ||
+                profile?.status === "processing"
+              }
+              onClick={onStartClone}
+            >
+              {isStartBusy || profile?.status === "processing" ? (
+                <>
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  Klon wird vorbereitet…
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-3.5 w-3.5" />
+                  Klonen starten
+                </>
+              )}
+            </Button>
+          ) : null}
+        </>
       ) : blockReason ? (
         <p className="text-[11px] text-muted-foreground">{blockReason}</p>
       ) : null}

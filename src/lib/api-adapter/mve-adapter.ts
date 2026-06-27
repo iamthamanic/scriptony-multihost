@@ -11,11 +11,14 @@ import type {
   MveVoiceProfileCreatePayload,
   MveVoiceProfileUpdatePayload,
   MveVoiceConsentCreatePayload,
+  MveVoiceRequestCreatePayload,
+  MveVoiceRequestUpdatePayload,
 } from "@/backend/ScriptonyBackend";
 import type { MveLaneLink } from "@/lib/multi-voice-engine/schema/lane-link";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 import type { MveVoiceConsent } from "@/lib/multi-voice-engine/schema/voice-consent";
+import type { MveVoiceRequest } from "@/lib/multi-voice-engine/schema/voice-operations";
 import { dispatchByRuntime, localNotSupported } from "./runtime-dispatch";
 import {
   localCreateMveLaneLink,
@@ -38,6 +41,8 @@ import {
   localGetMveVoiceConsent,
   localGetLatestVerifiedMveVoiceConsent,
   localCreateMveVoiceConsent,
+  localCreateMveVoiceRequest,
+  localUpdateMveVoiceRequest,
   localUpdateMveLaneLink,
   localUpdateMveLine,
   localUpdateMveVoiceProfile,
@@ -245,5 +250,25 @@ export function createMveVoiceConsent(
   return dispatchByRuntime(
     () => localNotSupported(MVE_CLOUD_MSG),
     () => localCreateMveVoiceConsent(projectId, payload),
+  );
+}
+
+export function createMveVoiceRequest(
+  projectId: string,
+  payload: MveVoiceRequestCreatePayload,
+): Promise<MveVoiceRequest> {
+  return dispatchByRuntime(
+    () => localNotSupported(MVE_CLOUD_MSG),
+    () => localCreateMveVoiceRequest(projectId, payload),
+  );
+}
+
+export function updateMveVoiceRequest(
+  requestId: string,
+  patch: MveVoiceRequestUpdatePayload,
+): Promise<MveVoiceRequest> {
+  return dispatchByRuntime(
+    () => localNotSupported(MVE_CLOUD_MSG),
+    () => localUpdateMveVoiceRequest(requestId, patch),
   );
 }
