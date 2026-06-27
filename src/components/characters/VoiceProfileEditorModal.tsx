@@ -19,10 +19,20 @@ import { useMveVoicePreview } from "@/hooks/useMveVoicePreview";
 import { useSaveVoiceProfile } from "@/hooks/useSaveVoiceProfile";
 import { useLocalVoices } from "@/hooks/useLocalVoices";
 import { generateVoiceFromDescription } from "@/lib/mve/casting/generate-voice-from-description";
+import {
+  createMveVoiceProfile,
+  getLatestVerifiedMveVoiceConsent,
+} from "@/lib/api-adapter/mve-adapter";
+import {
+  revokeVoiceCloneConsent,
+  submitVoiceCloneConsent,
+} from "@/lib/mve/safety/submit-voice-clone-consent";
+import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
 import { KOKORO_VOICE_CATALOG } from "@/lib/api/kokoro-voice-catalog";
 import { mveDefaultPreviewForCharacter } from "@/lib/mve/default-preview-text";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
+import type { MveVoiceConsent } from "@/lib/multi-voice-engine/schema/voice-consent";
 import { VoiceProfileEditorForm } from "./VoiceProfileEditorForm";
 
 export interface VoiceProfileEditorModalProps {
@@ -56,6 +66,10 @@ export function VoiceProfileEditorModal({
   const [speed, setSpeed] = useState(profile?.defaultSettings?.speed ?? 1);
   const [generateHint, setGenerateHint] = useState<string | undefined>();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isCloneBusy, setIsCloneBusy] = useState(false);
+  const [latestConsent, setLatestConsent] = useState<MveVoiceConsent | null>(
+    null,
+  );
 
   const localVoices = useLocalVoices({
     projectDir,
@@ -75,7 +89,18 @@ export function VoiceProfileEditorModal({
     setDescription(profile?.description ?? "");
     setSpeed(profile?.defaultSettings?.speed ?? 1);
     setGenerateHint(undefined);
+    setLatestConsent(null);
   }, [open, profile, characterName]);
+
+  useEffect(() => {
+    if (!open || !activeProfile?.id) {
+      setLatestConsent(null);
+      return;
+    }
+    void getLatestVerifiedMveVoiceConsent(activeProfile.id).then(
+      setLatestConsent,
+    );
+  }, [open, activeProfile?.id]);
 
   const voiceId = resolveMveTtsVoiceId(activeProfile);
 
@@ -153,6 +178,87 @@ export function VoiceProfileEditorModal({
     refreshSaved,
   ]);
 
+  const ensureProfileForClone =
+    useCallback(async (): Promise<MveVoiceProfile> => {
+      if (activeProfile?.id) return activeProfile;
+      const created = await createMveVoiceProfile(projectId, {
+        name: `${characterName.trim() || "Charakter"} — Stimme`,
+        characterId,
+        engine: "kokoro",
+        language: "de",
+        status: "draft",
+        consentStatus: "pending",
+        previewText,
+      });
+      setActiveProfile(created);
+      refreshSaved();
+      return created;
+    }, [
+      activeProfile,
+      characterId,
+      characterName,
+      previewText,
+      projectId,
+      refreshSaved,
+    ]);
+
+  const handleCloneSubmit = useCallback(
+    async (
+      file: File,
+      options: { consentConfirmed: boolean; commercialUseAllowed: boolean },
+    ) => {
+      if (!isLocalProfile()) {
+        toast.error("Voice Clone Consent ist nur lokal verfügbar.");
+        return;
+      }
+      setIsCloneBusy(true);
+      try {
+        const voiceProfile = await ensureProfileForClone();
+        const result = await submitVoiceCloneConsent({
+          projectId,
+          voiceProfileId: voiceProfile.id,
+          file,
+          consentConfirmed: options.consentConfirmed,
+          commercialUseAllowed: options.commercialUseAllowed,
+        });
+        setActiveProfile(result.profile);
+        setLatestConsent(result.consent);
+        refreshSaved();
+        toast.success("Consent gespeichert — Clone kann vorbereitet werden.");
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Consent konnte nicht gespeichert werden.",
+        );
+      } finally {
+        setIsCloneBusy(false);
+      }
+    },
+    [ensureProfileForClone, projectId, refreshSaved],
+  );
+
+  const handleCloneRevoke = useCallback(async () => {
+    if (!activeProfile?.id) return;
+    setIsCloneBusy(true);
+    try {
+      const updated = await revokeVoiceCloneConsent(
+        projectId,
+        activeProfile.id,
+      );
+      setActiveProfile(updated);
+      setLatestConsent(null);
+      refreshSaved();
+      toast.success("Consent widerrufen — Stimme gesperrt.");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Widerruf fehlgeschlagen.",
+      );
+    } finally {
+      setIsCloneBusy(false);
+    }
+  }, [activeProfile?.id, projectId, refreshSaved]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -178,6 +284,9 @@ export function VoiceProfileEditorModal({
           generateBusy={isGenerating}
           generateDisabled={localVoices.isLoading}
           generateHint={generateHint}
+          cloneBusy={isCloneBusy}
+          cloneDisabled={!isLocalProfile()}
+          latestConsent={latestConsent}
           onPreviewTextChange={setPreviewText}
           onDescriptionChange={setDescription}
           onSpeedChange={setSpeed}
@@ -192,6 +301,10 @@ export function VoiceProfileEditorModal({
           }
           onVoiceAssignedProfile={handleVoiceAssigned}
           onSuggestFromDescription={() => void handleSuggestFromDescription()}
+          onCloneSubmit={(file, options) =>
+            void handleCloneSubmit(file, options)
+          }
+          onCloneRevoke={() => void handleCloneRevoke()}
         />
 
         <DialogFooter className="gap-2 sm:gap-0">

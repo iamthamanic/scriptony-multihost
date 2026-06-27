@@ -368,6 +368,7 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 
 <!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
 
+- **2026-06-27** — MVE 0.4 (#13): Voice-Clone Consent + Referenz-Audio-Upload (`assets/voice-refs/`, local desktop)
 - **2026-06-27** — MVE 0.4 (#12): Stimme aus Beschreibung via Kokoro-Attribut-Matching im Voice-Modal (local desktop)
 - **2026-06-27** — MVE 0.4 (#11): VoiceConsent + Voice-Operation Zod-Schemas, SQLite v6, Consent-Reads via mve-adapter (local desktop)
 - **2026-06-26** — T32: MVE-Textblock per Drag & Drop zwischen Szenen verschieben (Audio folgt, local desktop)

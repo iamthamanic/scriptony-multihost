@@ -12,6 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { mveDefaultPreviewForCharacter } from "@/lib/mve/default-preview-text";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
+import type { MveVoiceConsent } from "@/lib/multi-voice-engine/schema/voice-consent";
 import { VoiceProfileFutureSections } from "./VoiceProfileFutureSections";
 
 export interface VoiceProfileEditorFormProps {
@@ -28,12 +29,20 @@ export interface VoiceProfileEditorFormProps {
   generateBusy?: boolean;
   generateDisabled?: boolean;
   generateHint?: string;
+  cloneBusy?: boolean;
+  cloneDisabled?: boolean;
+  latestConsent?: MveVoiceConsent | null;
   onPreviewTextChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onSpeedChange: (value: number) => void;
   onPlayPreview: () => void;
   onVoiceAssignedProfile: (profile: MveVoiceProfile) => void;
   onSuggestFromDescription?: () => void;
+  onCloneSubmit?: (
+    file: File,
+    options: { consentConfirmed: boolean; commercialUseAllowed: boolean },
+  ) => void;
+  onCloneRevoke?: () => void;
 }
 
 export function VoiceProfileEditorForm({
@@ -50,12 +59,17 @@ export function VoiceProfileEditorForm({
   generateBusy,
   generateDisabled,
   generateHint,
+  cloneBusy,
+  cloneDisabled,
+  latestConsent,
   onPreviewTextChange,
   onDescriptionChange,
   onSpeedChange,
   onPlayPreview,
   onVoiceAssignedProfile,
   onSuggestFromDescription,
+  onCloneSubmit,
+  onCloneRevoke,
 }: VoiceProfileEditorFormProps) {
   return (
     <div className="space-y-4 py-1">
@@ -134,10 +148,16 @@ export function VoiceProfileEditorForm({
 
       <VoiceProfileFutureSections
         description={description}
+        profile={profile}
+        latestConsent={latestConsent}
         generateBusy={generateBusy}
         generateDisabled={generateDisabled}
         generateHint={generateHint}
+        cloneBusy={cloneBusy}
+        cloneDisabled={cloneDisabled}
         onSuggestFromDescription={onSuggestFromDescription}
+        onCloneSubmit={onCloneSubmit}
+        onCloneRevoke={onCloneRevoke}
       />
     </div>
   );
