@@ -19,11 +19,15 @@ import { useMveVoicePreview } from "@/hooks/useMveVoicePreview";
 import { useSaveVoiceProfile } from "@/hooks/useSaveVoiceProfile";
 import { useLocalVoices } from "@/hooks/useLocalVoices";
 import { generateVoiceFromDescription } from "@/lib/mve/casting/generate-voice-from-description";
+import { createTunedVoiceProfile } from "@/lib/mve/tune/create-tuned-voice-profile";
+import { getMveVoiceProfile } from "@/lib/api-adapter/mve-adapter";
+import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
 import { KOKORO_VOICE_CATALOG } from "@/lib/api/kokoro-voice-catalog";
 import { mveDefaultPreviewForCharacter } from "@/lib/mve/default-preview-text";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 import { VoiceProfileEditorForm } from "./VoiceProfileEditorForm";
+import type { VoiceTuneSubmitOptions } from "./VoiceStudioTuneSection";
 
 export interface VoiceProfileEditorModalProps {
   open: boolean;
@@ -56,6 +60,9 @@ export function VoiceProfileEditorModal({
   const [speed, setSpeed] = useState(profile?.defaultSettings?.speed ?? 1);
   const [generateHint, setGenerateHint] = useState<string | undefined>();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isTuneBusy, setIsTuneBusy] = useState(false);
+  const [tuneSourceProfile, setTuneSourceProfile] =
+    useState<MveVoiceProfile | null>(null);
 
   const localVoices = useLocalVoices({
     projectDir,
@@ -75,9 +82,24 @@ export function VoiceProfileEditorModal({
     setDescription(profile?.description ?? "");
     setSpeed(profile?.defaultSettings?.speed ?? 1);
     setGenerateHint(undefined);
+    setTuneSourceProfile(null);
   }, [open, profile, characterName]);
 
-  const voiceId = resolveMveTtsVoiceId(activeProfile);
+  useEffect(() => {
+    if (
+      !open ||
+      activeProfile?.type !== "tuned" ||
+      !activeProfile.baseVoiceId
+    ) {
+      setTuneSourceProfile(null);
+      return;
+    }
+    void getMveVoiceProfile(activeProfile.baseVoiceId).then(
+      setTuneSourceProfile,
+    );
+  }, [open, activeProfile?.type, activeProfile?.baseVoiceId]);
+
+  const voiceId = resolveMveTtsVoiceId(activeProfile, tuneSourceProfile);
 
   const handleVoiceAssigned = useCallback(
     (assigned: MveVoiceProfile) => {
@@ -153,6 +175,45 @@ export function VoiceProfileEditorModal({
     refreshSaved,
   ]);
 
+  const handleTuneSubmit = useCallback(
+    async (options: VoiceTuneSubmitOptions) => {
+      if (!isLocalProfile()) {
+        toast.error("Voice Tune ist nur lokal verfügbar.");
+        return;
+      }
+      if (!activeProfile?.id || activeProfile.type === "tuned") {
+        toast.error("Bitte zuerst eine Basis-Stimme wählen oder erzeugen.");
+        return;
+      }
+      setIsTuneBusy(true);
+      try {
+        const tuned = await createTunedVoiceProfile({
+          projectId,
+          baseProfile: activeProfile,
+          tuneDescription: options.tuneDescription,
+          overrides: {
+            pitch: options.pitch,
+            pace: options.pace,
+            energy: options.energy,
+            speed: options.speed,
+          },
+        });
+        setActiveProfile(tuned);
+        setSpeed(tuned.defaultSettings?.speed ?? options.speed);
+        setDescription(tuned.description ?? "");
+        refreshSaved();
+        toast.success("Getunte Stimme erstellt — Original unverändert.");
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Tune fehlgeschlagen.",
+        );
+      } finally {
+        setIsTuneBusy(false);
+      }
+    },
+    [activeProfile, projectId, refreshSaved],
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -178,6 +239,8 @@ export function VoiceProfileEditorModal({
           generateBusy={isGenerating}
           generateDisabled={localVoices.isLoading}
           generateHint={generateHint}
+          tuneBusy={isTuneBusy}
+          tuneDisabled={!isLocalProfile()}
           onPreviewTextChange={setPreviewText}
           onDescriptionChange={setDescription}
           onSpeedChange={setSpeed}
@@ -192,6 +255,7 @@ export function VoiceProfileEditorModal({
           }
           onVoiceAssignedProfile={handleVoiceAssigned}
           onSuggestFromDescription={() => void handleSuggestFromDescription()}
+          onTuneSubmit={(options) => void handleTuneSubmit(options)}
         />
 
         <DialogFooter className="gap-2 sm:gap-0">

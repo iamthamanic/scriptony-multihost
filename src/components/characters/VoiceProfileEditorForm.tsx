@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { mveDefaultPreviewForCharacter } from "@/lib/mve/default-preview-text";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 import { VoiceProfileFutureSections } from "./VoiceProfileFutureSections";
+import type { VoiceTuneSubmitOptions } from "./VoiceStudioTuneSection";
 
 export interface VoiceProfileEditorFormProps {
   projectId: string;
@@ -28,12 +29,15 @@ export interface VoiceProfileEditorFormProps {
   generateBusy?: boolean;
   generateDisabled?: boolean;
   generateHint?: string;
+  tuneBusy?: boolean;
+  tuneDisabled?: boolean;
   onPreviewTextChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onSpeedChange: (value: number) => void;
   onPlayPreview: () => void;
   onVoiceAssignedProfile: (profile: MveVoiceProfile) => void;
   onSuggestFromDescription?: () => void;
+  onTuneSubmit?: (options: VoiceTuneSubmitOptions) => void;
 }
 
 export function VoiceProfileEditorForm({
@@ -50,12 +54,15 @@ export function VoiceProfileEditorForm({
   generateBusy,
   generateDisabled,
   generateHint,
+  tuneBusy,
+  tuneDisabled,
   onPreviewTextChange,
   onDescriptionChange,
   onSpeedChange,
   onPlayPreview,
   onVoiceAssignedProfile,
   onSuggestFromDescription,
+  onTuneSubmit,
 }: VoiceProfileEditorFormProps) {
   return (
     <div className="space-y-4 py-1">
@@ -134,10 +141,14 @@ export function VoiceProfileEditorForm({
 
       <VoiceProfileFutureSections
         description={description}
+        tuneBaseProfile={profile?.type === "tuned" ? null : profile}
         generateBusy={generateBusy}
         generateDisabled={generateDisabled}
         generateHint={generateHint}
+        tuneBusy={tuneBusy}
+        tuneDisabled={tuneDisabled}
         onSuggestFromDescription={onSuggestFromDescription}
+        onTuneSubmit={onTuneSubmit}
       />
     </div>
   );

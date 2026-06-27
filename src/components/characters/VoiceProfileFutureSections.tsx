@@ -5,27 +5,36 @@
 
 import { Lock } from "lucide-react";
 import { VoiceStudioGenerateSection } from "./VoiceStudioGenerateSection";
+import {
+  VoiceStudioTuneSection,
+  type VoiceTuneSubmitOptions,
+} from "./VoiceStudioTuneSection";
+import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 
-const LOCKED_ITEMS = [
-  "Stimme klonen",
-  "Stimme tunen",
-  "Performance Reference",
-] as const;
+const LOCKED_ITEMS = ["Stimme klonen", "Performance Reference"] as const;
 
 export interface VoiceProfileFutureSectionsProps {
   description: string;
+  tuneBaseProfile?: MveVoiceProfile | null;
   generateBusy?: boolean;
   generateDisabled?: boolean;
   generateHint?: string;
+  tuneBusy?: boolean;
+  tuneDisabled?: boolean;
   onSuggestFromDescription?: () => void;
+  onTuneSubmit?: (options: VoiceTuneSubmitOptions) => void;
 }
 
 export function VoiceProfileFutureSections({
   description,
+  tuneBaseProfile,
   generateBusy = false,
   generateDisabled,
   generateHint,
+  tuneBusy = false,
+  tuneDisabled,
   onSuggestFromDescription,
+  onTuneSubmit,
 }: VoiceProfileFutureSectionsProps) {
   return (
     <div className="space-y-2">
@@ -35,6 +44,13 @@ export function VoiceProfileFutureSections({
         disabled={generateDisabled}
         hint={generateHint}
         onSuggest={() => onSuggestFromDescription?.()}
+      />
+
+      <VoiceStudioTuneSection
+        baseProfile={tuneBaseProfile}
+        isBusy={tuneBusy}
+        disabled={tuneDisabled}
+        onSubmit={(options) => onTuneSubmit?.(options)}
       />
 
       <div className="space-y-2 rounded-lg border border-dashed border-border bg-muted/10 p-3">
