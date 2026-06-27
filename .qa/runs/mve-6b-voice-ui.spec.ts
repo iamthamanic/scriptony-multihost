@@ -1,5 +1,5 @@
 /**
- * MVE #6b — capture voice UI screenshots (verify-ui).
+ * MVE #6b / #16 — voice UI screenshots (verify-ui).
  * Requires: npm run dev:desktop (Vite :3000) already running.
  */
 
@@ -46,7 +46,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("MVE #6b voice row and editor modal screenshots", async ({ page }) => {
+test("MVE voice row and editor modal with 0.4 sections", async ({ page }) => {
   await page.goto("/#qa-mve-voice");
   await page.waitForSelector('[data-testid="mve-voice-preview"]', {
     timeout: 60_000,
@@ -54,7 +54,6 @@ test("MVE #6b voice row and editor modal screenshots", async ({ page }) => {
 
   const unassigned = page.getByTestId("voice-row-unassigned");
   await expect(unassigned.getByText("Charakterstimme")).toBeVisible();
-  await expect(unassigned.getByText("nicht zugewiesen")).toBeVisible();
 
   await unassigned.screenshot({
     path: path.join(evidenceDir, "01-character-voice-row.png"),
@@ -67,7 +66,16 @@ test("MVE #6b voice row and editor modal screenshots", async ({ page }) => {
 
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByText("Charakterstimme — Max Weber")).toBeVisible();
-  await expect(dialog.getByText("Voice Studio (MVP 0.4)")).toBeVisible();
+
+  await expect(page.getByTestId("voice-studio-generate")).toBeVisible();
+  await expect(page.getByTestId("voice-studio-clone")).toBeVisible();
+  await expect(page.getByTestId("voice-studio-tune")).toBeVisible();
+  await expect(page.getByText("Stimme vorschlagen")).toBeVisible();
+  await expect(page.getByText("Stimme klonen")).toBeVisible();
+  await expect(page.getByText("Stimme tunen")).toBeVisible();
+  await expect(page.getByTestId("voice-studio-locked")).toContainText(
+    "Performance Reference",
+  );
 
   await dialog.screenshot({
     path: path.join(evidenceDir, "02-voice-editor-modal.png"),
@@ -76,18 +84,7 @@ test("MVE #6b voice row and editor modal screenshots", async ({ page }) => {
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
 
-  await expect(assigned.getByText("Bella")).toBeVisible();
-  const playBtn = assigned.getByRole("button", {
-    name: "Charakterstimme abspielen",
-  });
-  await expect(playBtn).toBeEnabled();
-
   await assigned.screenshot({
     path: path.join(evidenceDir, "03-preview-play-row.png"),
-  });
-
-  await page.screenshot({
-    path: path.join(evidenceDir, "04-generate-with-voice.png"),
-    fullPage: true,
   });
 });

@@ -24,7 +24,10 @@ export function VoiceStudioGenerateSection({
   const canSuggest = !disabled && description.trim().length > 0 && !isBusy;
 
   return (
-    <div className="space-y-2 rounded-lg border border-border bg-muted/10 p-3">
+    <div
+      className="space-y-2 rounded-lg border border-border bg-muted/10 p-3"
+      data-testid="voice-studio-generate"
+    >
       <p className="text-xs font-semibold text-foreground">
         Stimme aus Beschreibung
       </p>

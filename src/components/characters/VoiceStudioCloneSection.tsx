@@ -50,7 +50,10 @@ export function VoiceStudioCloneSection({
   const blockReason = voiceCloneBlockedReason(profile, latestConsent);
 
   return (
-    <div className="space-y-2 rounded-lg border border-border bg-muted/10 p-3">
+    <div
+      className="space-y-2 rounded-lg border border-border bg-muted/10 p-3"
+      data-testid="voice-studio-clone"
+    >
       <p className="text-xs font-semibold text-foreground">Stimme klonen</p>
       <p className="text-[11px] text-muted-foreground leading-snug">
         Referenz-Audio (WAV/MP3, 30 s–5 min) hochladen und Consent bestätigen.
