@@ -16,6 +16,11 @@ import type { TimelineSceneRef } from "../../../../lib/timeline-add-audio";
 import type { MveLine } from "../../../../lib/multi-voice-engine/schema/line";
 import { LANE_UI, laneIndexToTrackType } from "../../../../lib/audio-lane";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
+import {
+  buildStructurePickerTree,
+  findSceneLabelInTree,
+  isSceneInTree,
+} from "@/lib/mve/structure-picker-tree";
 import { cn } from "../../../../lib/utils";
 import {
   StructureTimelineClipLaneContent,
@@ -116,6 +121,80 @@ export function useStructureTimelineAudioLanes(
       )?.targetContainerId;
     },
     [mveLaneLinks, lanes.characterLanes],
+  );
+
+  const structurePickerTree = useMemo(
+    () => buildStructurePickerTree(lanes.acts, lanes.sequences, lanes.scenes),
+    [lanes.acts, lanes.sequences, lanes.scenes],
+  );
+
+  const getMveLaneLinkForLane = useCallback(
+    (laneIndex: number) => {
+      if (!mveLaneLinks.enabled) return undefined;
+      const characterId = lanes.characterLanes.characterIdForLane(laneIndex);
+      if (!characterId) return undefined;
+
+      const existing = mveLaneLinks.links.find(
+        (link) => link.characterId === characterId,
+      );
+      const linkedSceneId = existing?.enabled
+        ? existing.targetContainerId
+        : undefined;
+      const laneLinkLabel = linkedSceneId
+        ? (findSceneLabelInTree(structurePickerTree, linkedSceneId) ??
+          "Szene nicht gefunden")
+        : undefined;
+      const laneLinkOrphan = linkedSceneId
+        ? !isSceneInTree(structurePickerTree, linkedSceneId)
+        : false;
+
+      return {
+        linkedSceneId,
+        laneLinkLabel,
+        laneLinkOrphan,
+        onSaveLink: async (sceneId: string) => {
+          if (existing) {
+            await mveLaneLinks.updateLink(existing.id, {
+              targetContainerId: sceneId,
+              targetContainerType: "scene",
+              enabled: true,
+            });
+          } else {
+            await mveLaneLinks.createLink({
+              characterId,
+              targetContainerId: sceneId,
+              targetContainerType: "scene",
+            });
+          }
+        },
+        onRemoveLink: existing
+          ? async () => {
+              await mveLaneLinks.deleteLink(existing.id);
+            }
+          : undefined,
+      };
+    },
+    [mveLaneLinks, lanes.characterLanes, structurePickerTree],
+  );
+
+  const mveLaneLinkBase = useMemo(
+    () =>
+      mveLaneLinks.enabled
+        ? {
+            enabled: true as const,
+            acts: lanes.acts,
+            sequences: lanes.sequences,
+            structureScenes: lanes.scenes,
+            isMutating: mveLaneLinks.isMutating,
+          }
+        : undefined,
+    [
+      mveLaneLinks.enabled,
+      mveLaneLinks.isMutating,
+      lanes.acts,
+      lanes.sequences,
+      lanes.scenes,
+    ],
   );
 
   const mveLines = useMemo(
@@ -250,6 +329,8 @@ export function useStructureTimelineAudioLanes(
     mveLines,
     onAddMveTextBlock: mve.enabled ? handleAddMveTextBlock : undefined,
     linkedSceneIdForLane,
+    getMveLaneLinkForLane,
+    mveLaneLinkBase,
   };
 
   return { lanes, addAudio, laneProps };
