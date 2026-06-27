@@ -85,9 +85,12 @@ export function VoiceProfileFutureSections({
         onSubmit={(options) => onTuneSubmit?.(options)}
       />
 
-      <div className="space-y-2 rounded-lg border border-dashed border-border bg-muted/10 p-3">
+      <div
+        className="space-y-2 rounded-lg border border-dashed border-border bg-muted/10 p-3"
+        data-testid="voice-studio-locked"
+      >
         <p className="text-xs font-semibold text-muted-foreground">
-          Voice Studio (demnächst)
+          Demnächst (MVP 0.5)
         </p>
         <ul className="space-y-1.5">
           {LOCKED_ITEMS.map((label) => (

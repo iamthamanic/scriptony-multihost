@@ -368,6 +368,7 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 
 <!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
 
+- **2026-06-27** — MVE 0.4 (#16): Voice Studio UI — Generate/Clone/Tune aktiv im Charakterstimme-Modal
 - **2026-06-27** — MVE 0.4 (#14): Voice Clone Request — lifecycle + local stub + `/voices/clone` route
 - **2026-06-27** — MVE 0.4 (#15): Voice Tune — non-destructives Preset-Profil (`type=tuned`, local desktop)
 - **2026-06-27** — MVE 0.4 (#13): Voice-Clone Consent + Referenz-Audio-Upload (`assets/voice-refs/`, local desktop)
