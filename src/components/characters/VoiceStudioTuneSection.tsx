@@ -63,7 +63,10 @@ export function VoiceStudioTuneSection({
     !disabled && !blockedReason && !isBusy && Boolean(baseProfile?.id);
 
   return (
-    <div className="space-y-3 rounded-lg border border-border bg-muted/10 p-3">
+    <div
+      className="space-y-3 rounded-lg border border-border bg-muted/10 p-3"
+      data-testid="voice-studio-tune"
+    >
       <p className="text-xs font-semibold text-foreground">Stimme tunen</p>
       <p className="text-[11px] text-muted-foreground leading-snug">
         Erzeugt ein neues VoiceProfile — die Basis-Stimme bleibt unverändert.
