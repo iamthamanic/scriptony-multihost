@@ -100,6 +100,7 @@ export function MveTextBlockLanePreviewPage() {
             addAudio={{
               isBusy: false,
               recordingLane: null,
+              countInLane: null,
               addGenerated: async () => undefined,
               triggerUpload: async () => undefined,
               toggleRecord: async () => undefined,

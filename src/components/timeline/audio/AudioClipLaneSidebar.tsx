@@ -31,7 +31,10 @@ function renderAddAudioMenu(
       laneIndex={laneIndex}
       startSec={startSec}
       disabled={addAudio.isBusy || locked}
-      isRecording={addAudio.recordingLane === laneIndex}
+      isRecording={
+        addAudio.recordingLane === laneIndex ||
+        addAudio.countInLane === laneIndex
+      }
       onRecord={addAudio.toggleRecord}
       onUpload={addAudio.triggerUpload}
       onGenerate={addAudio.addGenerated}
@@ -147,7 +150,10 @@ export function AudioClipLaneSidebar({
         onFxSlotChange={onFxSlotChange}
         onFxChainEnabledChange={onFxChainEnabledChange}
         onRecordToggle={onRecordToggle}
-        isRecording={addAudio?.recordingLane === laneIndex}
+        isRecording={
+          addAudio?.recordingLane === laneIndex ||
+          addAudio?.countInLane === laneIndex
+        }
         onDeleteLane={onDeleteLane}
         headerAddon={headerAddon}
         className="rounded-none"

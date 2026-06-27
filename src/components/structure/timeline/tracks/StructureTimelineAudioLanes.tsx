@@ -11,6 +11,7 @@ import { useMveLines } from "../../../../hooks/useMveLines";
 import { useMveLineRender } from "../../../../hooks/useMveLineRender";
 import { useMveLaneLinks } from "../../../../hooks/useMveLaneLinks";
 import { useMveVoiceProfiles } from "../../../../hooks/useMveVoiceProfiles";
+import { useMetronomeSettings } from "../../../../hooks/useMetronomeSettings";
 import type { LinkedLaneAudioContext } from "../../../../hooks/useTimelineAddAudio";
 import type { TimelineSceneRef } from "../../../../lib/timeline-add-audio";
 import type { MveLine } from "../../../../lib/multi-voice-engine/schema/line";
@@ -21,6 +22,8 @@ import {
   StructureTimelineClipLaneContent,
   StructureTimelineClipLaneLabels,
 } from "./StructureTimelineClipLanes";
+import { MetronomeSettingsButton } from "../modals/MetronomeSettingsButton";
+import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
 
 export interface StructureTimelineAudioLanesProps {
   projectId: string;
@@ -41,6 +44,7 @@ export function useStructureTimelineAudioLanes(
   const mveRender = useMveLineRender(props.projectId);
   const mveLaneLinks = useMveLaneLinks(props.projectId);
   const mveVoices = useMveVoiceProfiles(props.projectId);
+  const metronome = useMetronomeSettings(props.projectId);
   const backfilledClipIds = useRef(new Set<string>());
 
   useEffect(() => {
@@ -194,6 +198,7 @@ export function useStructureTimelineAudioLanes(
     allClips: lanes.allClips,
     linkedLaneAudio: props.linkedLaneAudio,
     onClipCommittedMve: mve.enabled ? mve.ensureForClip : undefined,
+    metronomeConfig: isLocalProfile() ? metronome.config : null,
   });
 
   const handleAddMveTextBlock = useCallback(
@@ -233,6 +238,7 @@ export function useStructureTimelineAudioLanes(
     addAudio: {
       isBusy: addAudio.isBusy,
       recordingLane: addAudio.recordingLane,
+      countInLane: addAudio.countInLane,
       addGenerated: addAudio.addGenerated,
       triggerUpload: addAudio.triggerUpload,
       toggleRecord: addAudio.toggleRecord,
@@ -252,17 +258,19 @@ export function useStructureTimelineAudioLanes(
     linkedSceneIdForLane,
   };
 
-  return { lanes, addAudio, laneProps };
+  return { lanes, addAudio, laneProps, metronome };
 }
 
 /** Left column: mixer headers (below Scene label row). */
 export function StructureTimelineAudioLaneLabels({
   laneProps,
   addAudio,
+  metronome,
   isLoading,
 }: {
   laneProps: ReturnType<typeof useStructureTimelineAudioLanes>["laneProps"];
   addAudio: ReturnType<typeof useStructureTimelineAudioLanes>["addAudio"];
+  metronome?: ReturnType<typeof useStructureTimelineAudioLanes>["metronome"];
   isLoading: boolean;
 }) {
   if (isLoading) {
@@ -283,12 +291,18 @@ export function StructureTimelineAudioLaneLabels({
         onChange={addAudio.onFileInputChange}
       />
       <div
-        className="border-b border-border px-2 py-1 flex items-center bg-card/80"
+        className="border-b border-border px-2 py-1 flex items-center justify-between gap-2 bg-card/80"
         style={{ minHeight: "1.75rem" }}
       >
         <span className="text-[9px] font-semibold text-foreground">
           Audio-Spuren
         </span>
+        {metronome && isLocalProfile() ? (
+          <MetronomeSettingsButton
+            config={metronome.config}
+            onSave={metronome.setConfig}
+          />
+        ) : null}
       </div>
       <StructureTimelineClipLaneLabels {...laneProps} fullWidthSidebar />
       <div className="border-t border-border px-2 py-2 bg-card/80">
@@ -337,7 +351,8 @@ export function StructureTimelineAudioLaneScrollRows({
 export function StructureTimelineAudioLanesStack(
   props: StructureTimelineAudioLanesProps,
 ) {
-  const { lanes, addAudio, laneProps } = useStructureTimelineAudioLanes(props);
+  const { lanes, addAudio, laneProps, metronome } =
+    useStructureTimelineAudioLanes(props);
 
   return (
     <div className={cn("flex shrink-0", LANE_UI.mixerWidthClass)}>
@@ -345,6 +360,7 @@ export function StructureTimelineAudioLanesStack(
         <StructureTimelineAudioLaneLabels
           laneProps={laneProps}
           addAudio={addAudio}
+          metronome={metronome}
           isLoading={lanes.isLoading}
         />
       </div>
