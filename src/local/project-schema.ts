@@ -15,7 +15,7 @@
  * Current schema version. Bumped when tables or columns are added/changed.
  * Migrations run from the current version to SCHEMA_VERSION.
  */
-export const SCHEMA_VERSION = 5;
+export const SCHEMA_VERSION = 6;
 
 /** Table holding schema version metadata inside each local database. */
 export const SCHEMA_META_TABLE = "schema_meta";
@@ -40,6 +40,8 @@ export const TABLE = {
   MVE_AUDIO_JOBS: "mve_audio_jobs",
   MVE_TAKES: "mve_takes",
   MVE_LANE_LINKS: "mve_lane_links",
+  MVE_VOICE_CONSENTS: "mve_voice_consents",
+  MVE_VOICE_REQUESTS: "mve_voice_requests",
 } as const;
 
 export type TableName = (typeof TABLE)[keyof typeof TABLE];
@@ -107,6 +109,42 @@ export const MVE_SCHEMA_STATEMENTS: readonly string[] = [
 )`,
   `CREATE INDEX IF NOT EXISTS idx_mve_lane_links_project ON ${TABLE.MVE_LANE_LINKS}(project_id)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS idx_mve_lane_links_character ON ${TABLE.MVE_LANE_LINKS}(project_id, character_id) WHERE deleted_at IS NULL`,
+];
+
+/** Idempotent DDL for schema v6 (MVE voice studio: consent + requests). */
+export const MVE_VOICE_STUDIO_SCHEMA_STATEMENTS: readonly string[] = [
+  `CREATE TABLE IF NOT EXISTS ${TABLE.MVE_VOICE_CONSENTS} (
+  id                      TEXT PRIMARY KEY,
+  project_id              TEXT NOT NULL,
+  voice_id                TEXT NOT NULL,
+  user_id                 TEXT NOT NULL DEFAULT 'local-user',
+  consent_text_version    TEXT NOT NULL,
+  consent_confirmed_at    TEXT NOT NULL,
+  source_audio_hash       TEXT,
+  commercial_use_allowed  INTEGER NOT NULL DEFAULT 0,
+  consent_status          TEXT NOT NULL DEFAULT 'verified',
+  created_at              TEXT NOT NULL,
+  updated_at              TEXT NOT NULL,
+  deleted_at              TEXT,
+  FOREIGN KEY (project_id) REFERENCES ${TABLE.PROJECTS}(id) ON DELETE CASCADE
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_mve_voice_consents_project ON ${TABLE.MVE_VOICE_CONSENTS}(project_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_mve_voice_consents_voice ON ${TABLE.MVE_VOICE_CONSENTS}(voice_id)`,
+  `CREATE TABLE IF NOT EXISTS ${TABLE.MVE_VOICE_REQUESTS} (
+  id                TEXT PRIMARY KEY,
+  project_id        TEXT NOT NULL,
+  voice_profile_id  TEXT,
+  operation_type    TEXT NOT NULL,
+  status            TEXT NOT NULL DEFAULT 'pending',
+  input_json        TEXT NOT NULL,
+  error_message     TEXT,
+  created_at        TEXT NOT NULL,
+  updated_at        TEXT NOT NULL,
+  deleted_at        TEXT,
+  FOREIGN KEY (project_id) REFERENCES ${TABLE.PROJECTS}(id) ON DELETE CASCADE
+)`,
+  `CREATE INDEX IF NOT EXISTS idx_mve_voice_requests_project ON ${TABLE.MVE_VOICE_REQUESTS}(project_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_mve_voice_requests_voice ON ${TABLE.MVE_VOICE_REQUESTS}(voice_profile_id)`,
 ];
 
 /** Idempotent DDL for schema v5 (MVE render jobs + takes). */
@@ -340,6 +378,7 @@ export const SCHEMA_STATEMENTS: readonly string[] = [
 )`,
   ...MVE_SCHEMA_STATEMENTS,
   ...MVE_RENDER_SCHEMA_STATEMENTS,
+  ...MVE_VOICE_STUDIO_SCHEMA_STATEMENTS,
 ];
 
 /**

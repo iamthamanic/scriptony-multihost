@@ -126,4 +126,9 @@ export {
   createMveVoiceProfile,
   updateMveVoiceProfile,
   deleteMveVoiceProfile,
+  getMveVoiceConsents,
+  getMveVoiceConsentsByVoice,
+  getMveVoiceConsent,
+  getLatestVerifiedMveVoiceConsent,
+  createMveVoiceConsent,
 } from "./mve-adapter";

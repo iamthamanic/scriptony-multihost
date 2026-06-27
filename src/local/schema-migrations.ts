@@ -12,6 +12,7 @@ import {
   TABLE,
   MVE_SCHEMA_STATEMENTS,
   MVE_RENDER_SCHEMA_STATEMENTS,
+  MVE_VOICE_STUDIO_SCHEMA_STATEMENTS,
 } from "./project-schema";
 
 /** Idempotent DDL for schema v2 (story_beats). */
@@ -74,6 +75,9 @@ export const MIGRATION_V4_STATEMENTS = MVE_SCHEMA_STATEMENTS;
 /** Idempotent DDL for schema v5 (MVE render). */
 export const MIGRATION_V5_STATEMENTS = MVE_RENDER_SCHEMA_STATEMENTS;
 
+/** Idempotent DDL for schema v6 (MVE voice studio). */
+export const MIGRATION_V6_STATEMENTS = MVE_VOICE_STUDIO_SCHEMA_STATEMENTS;
+
 async function tableExists(db: LocalDb, tableName: string): Promise<boolean> {
   const row = await db.get(
     `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
@@ -102,6 +106,16 @@ export async function ensureMveRenderTables(db: LocalDb): Promise<void> {
   if (hasJobs && hasTakes) return;
 
   for (const stmt of MIGRATION_V5_STATEMENTS) {
+    await db.run(stmt);
+  }
+}
+
+export async function ensureMveVoiceStudioTables(db: LocalDb): Promise<void> {
+  const hasConsents = await tableExists(db, TABLE.MVE_VOICE_CONSENTS);
+  const hasRequests = await tableExists(db, TABLE.MVE_VOICE_REQUESTS);
+  if (hasConsents && hasRequests) return;
+
+  for (const stmt of MIGRATION_V6_STATEMENTS) {
     await db.run(stmt);
   }
 }
@@ -150,6 +164,16 @@ export async function migrateLocalDb(db: LocalDb): Promise<void> {
   }
 
   await ensureMveRenderTables(db);
+
+  if (version < 6) {
+    for (const stmt of MIGRATION_V6_STATEMENTS) {
+      await db.run(stmt);
+    }
+    version = 6;
+    await setSchemaVersion(db, version);
+  }
+
+  await ensureMveVoiceStudioTables(db);
 
   if (version < SCHEMA_VERSION) {
     await setSchemaVersion(db, SCHEMA_VERSION);

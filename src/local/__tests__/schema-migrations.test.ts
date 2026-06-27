@@ -64,4 +64,21 @@ describe("schema-migrations", () => {
     expect(mveProfiles?.name).toBe(TABLE.MVE_VOICE_PROFILES);
     await db.close();
   });
+
+  it("migrateLocalDb creates MVE voice studio tables at v6", async () => {
+    const db = await LocalDb.createInMemory();
+    await migrateLocalDb(db);
+
+    const consents = await db.get(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
+      [TABLE.MVE_VOICE_CONSENTS],
+    );
+    const requests = await db.get(
+      `SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`,
+      [TABLE.MVE_VOICE_REQUESTS],
+    );
+    expect(consents?.name).toBe(TABLE.MVE_VOICE_CONSENTS);
+    expect(requests?.name).toBe(TABLE.MVE_VOICE_REQUESTS);
+    await db.close();
+  });
 });

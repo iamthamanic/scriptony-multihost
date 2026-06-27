@@ -319,6 +319,15 @@ import type {
   MveLaneLink,
   MveLaneLinkTargetContainerType,
 } from "@/lib/multi-voice-engine/schema/lane-link";
+import type {
+  MveVoiceConsent,
+  MveVoiceConsentRecordStatus,
+} from "@/lib/multi-voice-engine/schema/voice-consent";
+import type {
+  MveVoiceOperationType,
+  MveVoiceRequest,
+  MveVoiceRequestStatus,
+} from "@/lib/multi-voice-engine/schema/voice-operations";
 
 // ── Multi-Voice Engine (local SQLite MVP) ───────────────────────────────────
 
@@ -428,6 +437,36 @@ export interface MveTakeUpdatePayload {
   status?: MveTakeStatus;
 }
 
+export interface MveVoiceConsentCreatePayload {
+  voiceId: string;
+  userId?: string;
+  consentTextVersion: string;
+  consentConfirmedAt?: string;
+  sourceAudioHash?: string;
+  commercialUseAllowed?: boolean;
+  status?: MveVoiceConsentRecordStatus;
+}
+
+export interface MveVoiceConsentUpdatePayload {
+  sourceAudioHash?: string | null;
+  commercialUseAllowed?: boolean;
+  status?: MveVoiceConsentRecordStatus;
+}
+
+export interface MveVoiceRequestCreatePayload {
+  operationType: MveVoiceOperationType;
+  inputJson: string;
+  voiceProfileId?: string;
+  status?: MveVoiceRequestStatus;
+  errorMessage?: string;
+}
+
+export interface MveVoiceRequestUpdatePayload {
+  voiceProfileId?: string | null;
+  status?: MveVoiceRequestStatus;
+  errorMessage?: string | null;
+}
+
 export interface MveRepository {
   listLines(projectId: string): Promise<MveLine[]>;
   listLinesByScene(sceneId: string): Promise<MveLine[]>;
@@ -483,6 +522,32 @@ export interface MveRepository {
   createTake(projectId: string, payload: MveTakeCreatePayload): Promise<MveTake>;
   updateTake(id: string, patch: MveTakeUpdatePayload): Promise<MveTake>;
   selectTake(lineId: string, takeId: string): Promise<MveTake>;
+
+  listVoiceConsents(projectId: string): Promise<MveVoiceConsent[]>;
+  listVoiceConsentsByVoice(voiceId: string): Promise<MveVoiceConsent[]>;
+  getVoiceConsent(id: string): Promise<MveVoiceConsent | null>;
+  getLatestVerifiedVoiceConsent(voiceId: string): Promise<MveVoiceConsent | null>;
+  createVoiceConsent(
+    projectId: string,
+    payload: MveVoiceConsentCreatePayload,
+  ): Promise<MveVoiceConsent>;
+  updateVoiceConsent(
+    id: string,
+    patch: MveVoiceConsentUpdatePayload,
+  ): Promise<MveVoiceConsent>;
+  deleteVoiceConsent(id: string): Promise<void>;
+
+  listVoiceRequests(projectId: string): Promise<MveVoiceRequest[]>;
+  getVoiceRequest(id: string): Promise<MveVoiceRequest | null>;
+  createVoiceRequest(
+    projectId: string,
+    payload: MveVoiceRequestCreatePayload,
+  ): Promise<MveVoiceRequest>;
+  updateVoiceRequest(
+    id: string,
+    patch: MveVoiceRequestUpdatePayload,
+  ): Promise<MveVoiceRequest>;
+  deleteVoiceRequest(id: string): Promise<void>;
 }
 
 export type {

@@ -253,6 +253,42 @@ export class StubMveRepository implements MveRepository {
 	async selectTake(): Promise<never> {
 		throw new Error("MVE takes are only available in local desktop projects.");
 	}
+	async listVoiceConsents(): Promise<never> {
+		throw new Error("MVE voice consents are only available in local desktop projects.");
+	}
+	async listVoiceConsentsByVoice(): Promise<never> {
+		throw new Error("MVE voice consents are only available in local desktop projects.");
+	}
+	async getVoiceConsent(): Promise<never> {
+		throw new Error("MVE voice consents are only available in local desktop projects.");
+	}
+	async getLatestVerifiedVoiceConsent(): Promise<never> {
+		throw new Error("MVE voice consents are only available in local desktop projects.");
+	}
+	async createVoiceConsent(): Promise<never> {
+		throw new Error("MVE voice consents are only available in local desktop projects.");
+	}
+	async updateVoiceConsent(): Promise<never> {
+		throw new Error("MVE voice consents are only available in local desktop projects.");
+	}
+	async deleteVoiceConsent(): Promise<never> {
+		throw new Error("MVE voice consents are only available in local desktop projects.");
+	}
+	async listVoiceRequests(): Promise<never> {
+		throw new Error("MVE voice requests are only available in local desktop projects.");
+	}
+	async getVoiceRequest(): Promise<never> {
+		throw new Error("MVE voice requests are only available in local desktop projects.");
+	}
+	async createVoiceRequest(): Promise<never> {
+		throw new Error("MVE voice requests are only available in local desktop projects.");
+	}
+	async updateVoiceRequest(): Promise<never> {
+		throw new Error("MVE voice requests are only available in local desktop projects.");
+	}
+	async deleteVoiceRequest(): Promise<never> {
+		throw new Error("MVE voice requests are only available in local desktop projects.");
+	}
 }
 
 export class StubStorageRepository implements StorageRepository {

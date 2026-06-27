@@ -43,6 +43,10 @@ const CHANGE_LOG_TABLES = new Set<string>([
 	TABLE.MVE_LINES,
 	TABLE.MVE_VOICE_PROFILES,
 	TABLE.MVE_LANE_LINKS,
+	TABLE.MVE_AUDIO_JOBS,
+	TABLE.MVE_TAKES,
+	TABLE.MVE_VOICE_CONSENTS,
+	TABLE.MVE_VOICE_REQUESTS,
 ]);
 
 /** Assert that a table name is in the allowlist. Throws on unknown names. */

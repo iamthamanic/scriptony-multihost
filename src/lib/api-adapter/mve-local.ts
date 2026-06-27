@@ -10,10 +10,12 @@ import type {
   MveLineUpdatePayload,
   MveVoiceProfileCreatePayload,
   MveVoiceProfileUpdatePayload,
+  MveVoiceConsentCreatePayload,
 } from "@/backend/ScriptonyBackend";
 import type { MveLaneLink } from "@/lib/multi-voice-engine/schema/lane-link";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
+import type { MveVoiceConsent } from "@/lib/multi-voice-engine/schema/voice-consent";
 import { requireLocalBackend } from "./runtime-dispatch";
 
 export async function localListMveLines(projectId: string): Promise<MveLine[]> {
@@ -140,4 +142,40 @@ export async function localUpdateMveLaneLink(
 export async function localDeleteMveLaneLink(linkId: string): Promise<void> {
   const backend = requireLocalBackend();
   await backend.mve.deleteLaneLink(linkId);
+}
+
+export async function localListMveVoiceConsents(
+  projectId: string,
+): Promise<MveVoiceConsent[]> {
+  const backend = requireLocalBackend(projectId);
+  return backend.mve.listVoiceConsents(projectId);
+}
+
+export async function localListMveVoiceConsentsByVoice(
+  voiceId: string,
+): Promise<MveVoiceConsent[]> {
+  const backend = requireLocalBackend();
+  return backend.mve.listVoiceConsentsByVoice(voiceId);
+}
+
+export async function localGetMveVoiceConsent(
+  consentId: string,
+): Promise<MveVoiceConsent | null> {
+  const backend = requireLocalBackend();
+  return backend.mve.getVoiceConsent(consentId);
+}
+
+export async function localGetLatestVerifiedMveVoiceConsent(
+  voiceId: string,
+): Promise<MveVoiceConsent | null> {
+  const backend = requireLocalBackend();
+  return backend.mve.getLatestVerifiedVoiceConsent(voiceId);
+}
+
+export async function localCreateMveVoiceConsent(
+  projectId: string,
+  payload: MveVoiceConsentCreatePayload,
+): Promise<MveVoiceConsent> {
+  const backend = requireLocalBackend(projectId);
+  return backend.mve.createVoiceConsent(projectId, payload);
 }

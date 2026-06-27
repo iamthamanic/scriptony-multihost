@@ -14,3 +14,5 @@ export * from "./enhance-script";
 export * from "./render-line";
 export * from "./audio-job";
 export * from "./take";
+export * from "./voice-consent";
+export * from "./voice-operations";
