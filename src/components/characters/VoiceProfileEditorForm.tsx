@@ -12,6 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { mveDefaultPreviewForCharacter } from "@/lib/mve/default-preview-text";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
+import type { MveVoiceConsent } from "@/lib/multi-voice-engine/schema/voice-consent";
 import { VoiceProfileFutureSections } from "./VoiceProfileFutureSections";
 import type { VoiceTuneSubmitOptions } from "./VoiceStudioTuneSection";
 
@@ -29,14 +30,22 @@ export interface VoiceProfileEditorFormProps {
   generateBusy?: boolean;
   generateDisabled?: boolean;
   generateHint?: string;
+  cloneBusy?: boolean;
+  cloneDisabled?: boolean;
   tuneBusy?: boolean;
   tuneDisabled?: boolean;
+  latestConsent?: MveVoiceConsent | null;
   onPreviewTextChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
   onSpeedChange: (value: number) => void;
   onPlayPreview: () => void;
   onVoiceAssignedProfile: (profile: MveVoiceProfile) => void;
   onSuggestFromDescription?: () => void;
+  onCloneSubmit?: (
+    file: File,
+    options: { consentConfirmed: boolean; commercialUseAllowed: boolean },
+  ) => void;
+  onCloneRevoke?: () => void;
   onTuneSubmit?: (options: VoiceTuneSubmitOptions) => void;
 }
 
@@ -54,14 +63,19 @@ export function VoiceProfileEditorForm({
   generateBusy,
   generateDisabled,
   generateHint,
+  cloneBusy,
+  cloneDisabled,
   tuneBusy,
   tuneDisabled,
+  latestConsent,
   onPreviewTextChange,
   onDescriptionChange,
   onSpeedChange,
   onPlayPreview,
   onVoiceAssignedProfile,
   onSuggestFromDescription,
+  onCloneSubmit,
+  onCloneRevoke,
   onTuneSubmit,
 }: VoiceProfileEditorFormProps) {
   return (
@@ -141,13 +155,18 @@ export function VoiceProfileEditorForm({
 
       <VoiceProfileFutureSections
         description={description}
-        tuneBaseProfile={profile?.type === "tuned" ? null : profile}
+        profile={profile}
+        latestConsent={latestConsent}
         generateBusy={generateBusy}
         generateDisabled={generateDisabled}
         generateHint={generateHint}
+        cloneBusy={cloneBusy}
+        cloneDisabled={cloneDisabled}
         tuneBusy={tuneBusy}
         tuneDisabled={tuneDisabled}
         onSuggestFromDescription={onSuggestFromDescription}
+        onCloneSubmit={onCloneSubmit}
+        onCloneRevoke={onCloneRevoke}
         onTuneSubmit={onTuneSubmit}
       />
     </div>

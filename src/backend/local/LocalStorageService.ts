@@ -2,7 +2,13 @@
  * LocalStorageService — copy files into .scriptony/assets/ (T39).
  */
 
-export type LocalAssetFolderType = "image" | "audio" | "video" | "document" | "other";
+export type LocalAssetFolderType =
+  | "image"
+  | "audio"
+  | "video"
+  | "document"
+  | "other"
+  | "voice_ref";
 
 export interface CopiedAssetFile {
   relativePath: string;
@@ -18,6 +24,7 @@ const TYPE_TO_SUBDIR: Record<LocalAssetFolderType, string> = {
   video: "assets/video",
   document: "assets/documents",
   other: "assets/documents",
+  voice_ref: "assets/voice-refs",
 };
 
 function sanitizeFilename(name: string): string {

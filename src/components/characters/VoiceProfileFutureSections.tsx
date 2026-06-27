@@ -1,41 +1,58 @@
 /**
- * Remaining locked Voice Studio 0.4 placeholders (clone, tune, perf ref).
+ * Remaining Voice Studio 0.4 sections (generate, clone, tune, perf ref).
  * Location: src/components/characters/VoiceProfileFutureSections.tsx
  */
 
 import { Lock } from "lucide-react";
 import { VoiceStudioGenerateSection } from "./VoiceStudioGenerateSection";
+import { VoiceStudioCloneSection } from "./VoiceStudioCloneSection";
 import {
   VoiceStudioTuneSection,
   type VoiceTuneSubmitOptions,
 } from "./VoiceStudioTuneSection";
+import type { MveVoiceConsent } from "@/lib/multi-voice-engine/schema/voice-consent";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 
-const LOCKED_ITEMS = ["Stimme klonen", "Performance Reference"] as const;
+const LOCKED_ITEMS = ["Performance Reference"] as const;
 
 export interface VoiceProfileFutureSectionsProps {
   description: string;
-  tuneBaseProfile?: MveVoiceProfile | null;
+  profile?: MveVoiceProfile | null;
+  latestConsent?: MveVoiceConsent | null;
   generateBusy?: boolean;
   generateDisabled?: boolean;
   generateHint?: string;
+  cloneBusy?: boolean;
+  cloneDisabled?: boolean;
   tuneBusy?: boolean;
   tuneDisabled?: boolean;
   onSuggestFromDescription?: () => void;
+  onCloneSubmit?: (
+    file: File,
+    options: { consentConfirmed: boolean; commercialUseAllowed: boolean },
+  ) => void;
+  onCloneRevoke?: () => void;
   onTuneSubmit?: (options: VoiceTuneSubmitOptions) => void;
 }
 
 export function VoiceProfileFutureSections({
   description,
-  tuneBaseProfile,
+  profile,
+  latestConsent,
   generateBusy = false,
   generateDisabled,
   generateHint,
+  cloneBusy = false,
+  cloneDisabled,
   tuneBusy = false,
   tuneDisabled,
   onSuggestFromDescription,
+  onCloneSubmit,
+  onCloneRevoke,
   onTuneSubmit,
 }: VoiceProfileFutureSectionsProps) {
+  const tuneBaseProfile = profile?.type === "tuned" ? null : profile;
+
   return (
     <div className="space-y-2">
       <VoiceStudioGenerateSection
@@ -44,6 +61,15 @@ export function VoiceProfileFutureSections({
         disabled={generateDisabled}
         hint={generateHint}
         onSuggest={() => onSuggestFromDescription?.()}
+      />
+
+      <VoiceStudioCloneSection
+        profile={profile}
+        latestConsent={latestConsent}
+        isBusy={cloneBusy}
+        disabled={cloneDisabled}
+        onSubmit={(file, options) => onCloneSubmit?.(file, options)}
+        onRevoke={onCloneRevoke}
       />
 
       <VoiceStudioTuneSection
