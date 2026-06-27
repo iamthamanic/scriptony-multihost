@@ -10,10 +10,12 @@ import type {
   MveLineUpdatePayload,
   MveVoiceProfileCreatePayload,
   MveVoiceProfileUpdatePayload,
+  MveVoiceConsentCreatePayload,
 } from "@/backend/ScriptonyBackend";
 import type { MveLaneLink } from "@/lib/multi-voice-engine/schema/lane-link";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
+import type { MveVoiceConsent } from "@/lib/multi-voice-engine/schema/voice-consent";
 import { dispatchByRuntime, localNotSupported } from "./runtime-dispatch";
 import {
   localCreateMveLaneLink,
@@ -31,6 +33,11 @@ import {
   localListMveLines,
   localListMveLinesByScene,
   localListMveVoiceProfiles,
+  localListMveVoiceConsents,
+  localListMveVoiceConsentsByVoice,
+  localGetMveVoiceConsent,
+  localGetLatestVerifiedMveVoiceConsent,
+  localCreateMveVoiceConsent,
   localUpdateMveLaneLink,
   localUpdateMveLine,
   localUpdateMveVoiceProfile,
@@ -192,5 +199,51 @@ export function deleteMveLaneLink(linkId: string): Promise<void> {
   return dispatchByRuntime(
     () => localNotSupported(MVE_CLOUD_MSG),
     () => localDeleteMveLaneLink(linkId),
+  );
+}
+
+export function getMveVoiceConsents(
+  projectId: string,
+): Promise<MveVoiceConsent[]> {
+  return dispatchByRuntime(
+    () => localNotSupported(MVE_CLOUD_MSG),
+    () => localListMveVoiceConsents(projectId),
+  );
+}
+
+export function getMveVoiceConsentsByVoice(
+  voiceId: string,
+): Promise<MveVoiceConsent[]> {
+  return dispatchByRuntime(
+    () => localNotSupported(MVE_CLOUD_MSG),
+    () => localListMveVoiceConsentsByVoice(voiceId),
+  );
+}
+
+export function getMveVoiceConsent(
+  consentId: string,
+): Promise<MveVoiceConsent | null> {
+  return dispatchByRuntime(
+    () => localNotSupported(MVE_CLOUD_MSG),
+    () => localGetMveVoiceConsent(consentId),
+  );
+}
+
+export function getLatestVerifiedMveVoiceConsent(
+  voiceId: string,
+): Promise<MveVoiceConsent | null> {
+  return dispatchByRuntime(
+    () => localNotSupported(MVE_CLOUD_MSG),
+    () => localGetLatestVerifiedMveVoiceConsent(voiceId),
+  );
+}
+
+export function createMveVoiceConsent(
+  projectId: string,
+  payload: MveVoiceConsentCreatePayload,
+): Promise<MveVoiceConsent> {
+  return dispatchByRuntime(
+    () => localNotSupported(MVE_CLOUD_MSG),
+    () => localCreateMveVoiceConsent(projectId, payload),
   );
 }

@@ -368,6 +368,7 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 
 <!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
 
+- **2026-06-27** — MVE 0.4 (#11): VoiceConsent + Voice-Operation Zod-Schemas, SQLite v6, Consent-Reads via mve-adapter (local desktop)
 - **2026-06-26** — T32: MVE-Textblock per Drag & Drop zwischen Szenen verschieben (Audio folgt, local desktop)
 - **2026-06-26** — T31: Metronom-Count-in vor Audio-Aufnahme (BPM/Takt einstellbar, local desktop)
 - **2026-06-26** — T30: Lane-Link-Icon + hierarchischer Act/Sequence/Scene-Modal für MVE-Dialog-Spuren (local desktop)

@@ -15,6 +15,10 @@ import type {
   MveTakeUpdatePayload,
   MveVoiceProfileCreatePayload,
   MveVoiceProfileUpdatePayload,
+  MveVoiceConsentCreatePayload,
+  MveVoiceConsentUpdatePayload,
+  MveVoiceRequestCreatePayload,
+  MveVoiceRequestUpdatePayload,
 } from "../ScriptonyBackend";
 import type { LocalDb } from "./LocalDb";
 import type { MveAudioJob } from "@/lib/multi-voice-engine/schema/audio-job";
@@ -22,20 +26,27 @@ import type { MveLaneLink } from "@/lib/multi-voice-engine/schema/lane-link";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveTake } from "@/lib/multi-voice-engine/schema/take";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
+import type { MveVoiceConsent } from "@/lib/multi-voice-engine/schema/voice-consent";
+import type { MveVoiceRequest } from "@/lib/multi-voice-engine/schema/voice-operations";
 import {
   ensureMveRenderTables,
   ensureMveTables,
+  ensureMveVoiceStudioTables,
 } from "@/local/schema-migrations";
 import { LocalMveAudioJobRepository } from "./LocalMveAudioJobRepository";
 import { LocalMveLaneLinkRepository } from "./LocalMveLaneLinkRepository";
 import { LocalMveLineRepository } from "./LocalMveLineRepository";
 import { LocalMveTakeRepository } from "./LocalMveTakeRepository";
 import { LocalMveVoiceProfileRepository } from "./LocalMveVoiceProfileRepository";
+import { LocalMveVoiceConsentRepository } from "./LocalMveVoiceConsentRepository";
+import { LocalMveVoiceRequestRepository } from "./LocalMveVoiceRequestRepository";
 
 export class LocalMveRepository implements MveRepository {
   private readonly lines: LocalMveLineRepository;
   private readonly laneLinks: LocalMveLaneLinkRepository;
   private readonly voiceProfiles: LocalMveVoiceProfileRepository;
+  private readonly voiceConsents: LocalMveVoiceConsentRepository;
+  private readonly voiceRequests: LocalMveVoiceRequestRepository;
   private readonly audioJobs: LocalMveAudioJobRepository;
   private readonly takes: LocalMveTakeRepository;
   private readonly schemaReady: Promise<void>;
@@ -44,11 +55,14 @@ export class LocalMveRepository implements MveRepository {
     this.lines = new LocalMveLineRepository(db);
     this.laneLinks = new LocalMveLaneLinkRepository(db);
     this.voiceProfiles = new LocalMveVoiceProfileRepository(db);
+    this.voiceConsents = new LocalMveVoiceConsentRepository(db);
+    this.voiceRequests = new LocalMveVoiceRequestRepository(db);
     this.audioJobs = new LocalMveAudioJobRepository(db);
     this.takes = new LocalMveTakeRepository(db);
     this.schemaReady = Promise.all([
       ensureMveTables(db),
       ensureMveRenderTables(db),
+      ensureMveVoiceStudioTables(db),
     ]).then(() => undefined);
   }
 
@@ -202,5 +216,67 @@ export class LocalMveRepository implements MveRepository {
 
   selectTake(lineId: string, takeId: string): Promise<MveTake> {
     return this.ready(() => this.takes.selectTake(lineId, takeId));
+  }
+
+  listVoiceConsents(projectId: string): Promise<MveVoiceConsent[]> {
+    return this.ready(() => this.voiceConsents.listByProject(projectId));
+  }
+
+  listVoiceConsentsByVoice(voiceId: string): Promise<MveVoiceConsent[]> {
+    return this.ready(() => this.voiceConsents.listByVoice(voiceId));
+  }
+
+  getVoiceConsent(id: string): Promise<MveVoiceConsent | null> {
+    return this.ready(() => this.voiceConsents.get(id));
+  }
+
+  getLatestVerifiedVoiceConsent(
+    voiceId: string,
+  ): Promise<MveVoiceConsent | null> {
+    return this.ready(() => this.voiceConsents.getLatestVerifiedForVoice(voiceId));
+  }
+
+  createVoiceConsent(
+    projectId: string,
+    payload: MveVoiceConsentCreatePayload,
+  ): Promise<MveVoiceConsent> {
+    return this.ready(() => this.voiceConsents.create(projectId, payload));
+  }
+
+  updateVoiceConsent(
+    id: string,
+    patch: MveVoiceConsentUpdatePayload,
+  ): Promise<MveVoiceConsent> {
+    return this.ready(() => this.voiceConsents.update(id, patch));
+  }
+
+  deleteVoiceConsent(id: string): Promise<void> {
+    return this.ready(() => this.voiceConsents.delete(id));
+  }
+
+  listVoiceRequests(projectId: string): Promise<MveVoiceRequest[]> {
+    return this.ready(() => this.voiceRequests.listByProject(projectId));
+  }
+
+  getVoiceRequest(id: string): Promise<MveVoiceRequest | null> {
+    return this.ready(() => this.voiceRequests.get(id));
+  }
+
+  createVoiceRequest(
+    projectId: string,
+    payload: MveVoiceRequestCreatePayload,
+  ): Promise<MveVoiceRequest> {
+    return this.ready(() => this.voiceRequests.create(projectId, payload));
+  }
+
+  updateVoiceRequest(
+    id: string,
+    patch: MveVoiceRequestUpdatePayload,
+  ): Promise<MveVoiceRequest> {
+    return this.ready(() => this.voiceRequests.update(id, patch));
+  }
+
+  deleteVoiceRequest(id: string): Promise<void> {
+    return this.ready(() => this.voiceRequests.delete(id));
   }
 }

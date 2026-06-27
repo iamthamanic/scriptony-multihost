@@ -251,4 +251,107 @@ describe("LocalMveRepository", () => {
       expect(changes.length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  describe("voice consents", () => {
+    const hash =
+      "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
+
+    it("creates and reads voice consent records", async () => {
+      const profile = await repo.createVoiceProfile(projectId, {
+        name: "Klon",
+        characterId: "char_hero",
+        type: "cloned",
+        consentStatus: "pending",
+      });
+
+      const consent = await repo.createVoiceConsent(projectId, {
+        voiceId: profile.id,
+        consentTextVersion: "2026-06-01",
+        sourceAudioHash: hash,
+        commercialUseAllowed: true,
+      });
+
+      expect(consent.voiceId).toBe(profile.id);
+      expect(consent.status).toBe("verified");
+
+      const listed = await repo.listVoiceConsents(projectId);
+      expect(listed).toHaveLength(1);
+
+      const byVoice = await repo.listVoiceConsentsByVoice(profile.id);
+      expect(byVoice[0]?.id).toBe(consent.id);
+
+      const latest = await repo.getLatestVerifiedVoiceConsent(profile.id);
+      expect(latest?.id).toBe(consent.id);
+    });
+
+    it("returns newest verified consent when multiple exist", async () => {
+      const profile = await repo.createVoiceProfile(projectId, {
+        name: "Klon 2",
+        type: "cloned",
+      });
+
+      await repo.createVoiceConsent(projectId, {
+        voiceId: profile.id,
+        consentTextVersion: "2026-06-01",
+        consentConfirmedAt: "2026-06-01T00:00:00.000Z",
+      });
+
+      const newer = await repo.createVoiceConsent(projectId, {
+        voiceId: profile.id,
+        consentTextVersion: "2026-06-02",
+        consentConfirmedAt: "2026-06-24T12:00:00.000Z",
+      });
+
+      await repo.createVoiceConsent(projectId, {
+        voiceId: profile.id,
+        consentTextVersion: "2026-06-03",
+        status: "rejected",
+        consentConfirmedAt: "2026-06-25T00:00:00.000Z",
+      });
+
+      const latest = await repo.getLatestVerifiedVoiceConsent(profile.id);
+      expect(latest?.id).toBe(newer.id);
+    });
+
+    it("updates consent status and soft-deletes", async () => {
+      const profile = await repo.createVoiceProfile(projectId, {
+        name: "Blocked",
+        type: "cloned",
+        status: "blocked",
+        consentStatus: "blocked",
+      });
+
+      const consent = await repo.createVoiceConsent(projectId, {
+        voiceId: profile.id,
+        consentTextVersion: "2026-06-01",
+        status: "verified",
+      });
+
+      const rejected = await repo.updateVoiceConsent(consent.id, {
+        status: "blocked",
+      });
+      expect(rejected.status).toBe("blocked");
+
+      await repo.deleteVoiceConsent(consent.id);
+      expect(await repo.getVoiceConsent(consent.id)).toBeNull();
+    });
+
+    it("records change_log for voice consent create", async () => {
+      const profile = await repo.createVoiceProfile(projectId, {
+        name: "Log consent",
+        type: "cloned",
+      });
+
+      const consent = await repo.createVoiceConsent(projectId, {
+        voiceId: profile.id,
+        consentTextVersion: "2026-06-01",
+      });
+
+      const changes = await db.all(
+        `SELECT * FROM change_log WHERE entity_type = ? AND entity_id = ?`,
+        [TABLE.MVE_VOICE_CONSENTS, consent.id],
+      );
+      expect(changes.length).toBeGreaterThanOrEqual(1);
+    });
+  });
 });
