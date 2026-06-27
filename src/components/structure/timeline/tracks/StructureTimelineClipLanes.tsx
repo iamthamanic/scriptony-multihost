@@ -34,6 +34,7 @@ export interface StructureTimelineClipLanesBaseProps {
     ReturnType<typeof useTimelineAddAudio>,
     | "isBusy"
     | "recordingLane"
+    | "countInLane"
     | "addGenerated"
     | "triggerUpload"
     | "toggleRecord"

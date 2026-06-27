@@ -29,6 +29,7 @@ import {
   type StructureTimeBlock,
 } from "../lib/scene-audio-lane-link";
 import type { AudioClip } from "../lib/types";
+import type { MetronomeConfig } from "../lib/audio/metronome-config";
 import { useLocalProjectOptional } from "./useLocalProject";
 
 export interface LinkedLaneAudioContext {
@@ -69,6 +70,7 @@ export interface UseTimelineAddAudioOptions {
   getVoiceIdForLane?: (laneIndex: number) => string | undefined;
   /** MVE: reason Generate is blocked (dialog lanes without voice). */
   getGenerateBlockReason?: (laneIndex: number) => string | undefined;
+  metronomeConfig?: MetronomeConfig | null;
 }
 
 export function useTimelineAddAudio({
@@ -83,6 +85,7 @@ export function useTimelineAddAudio({
   onClipCommittedMve,
   getVoiceIdForLane,
   getGenerateBlockReason,
+  metronomeConfig,
 }: UseTimelineAddAudioOptions) {
   const queryClient = useQueryClient();
   const localProject = useLocalProjectOptional();
@@ -382,7 +385,8 @@ export function useTimelineAddAudio({
     [addFromFile],
   );
 
-  const { recordingLane, toggleRecord } = useAudioRecording({
+  const { recordingLane, countInLane, toggleRecord } = useAudioRecording({
+    metronomeConfig,
     onRecordComplete: (file, laneIndex, startSec) =>
       void addFromFile(file, laneIndex, startSec),
   });
@@ -431,6 +435,7 @@ export function useTimelineAddAudio({
   return {
     isBusy,
     recordingLane,
+    countInLane,
     fileInputRef,
     onFileInputChange,
     addGenerated,

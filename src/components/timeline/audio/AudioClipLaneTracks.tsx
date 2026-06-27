@@ -49,6 +49,7 @@ export interface AudioClipLaneTracksProps {
     ReturnType<typeof useTimelineAddAudio>,
     | "isBusy"
     | "recordingLane"
+    | "countInLane"
     | "addGenerated"
     | "triggerUpload"
     | "toggleRecord"
