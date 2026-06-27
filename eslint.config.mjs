@@ -127,6 +127,7 @@ export default [
       "@typescript-eslint/no-unused-vars": "off",
       "no-console": "off",
       "no-undef": "off",
+      "no-useless-assignment": "off",
     },
   },
 ];

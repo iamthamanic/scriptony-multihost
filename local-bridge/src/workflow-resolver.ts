@@ -226,7 +226,7 @@ export function resolveWorkflow(
     cfg: Number(repairConfig.cfg) || DEFAULTS.cfg,
     sampler: String(repairConfig.sampler ?? DEFAULTS.sampler),
     scheduler: String(repairConfig.scheduler ?? DEFAULTS.scheduler),
-    denoise: Number(repairConfig.denoise) ?? DEFAULTS.denoise,
+    denoise: Number(repairConfig.denoise) || DEFAULTS.denoise,
     seed: Number(repairConfig.seed) || DEFAULTS.seed(),
     positive_prompt: style?.positivePrompt || String(repairConfig.positivePrompt ?? DEFAULTS.positive_prompt),
     negative_prompt: style?.negativePrompt || String(repairConfig.negativePrompt ?? DEFAULTS.negative_prompt),
