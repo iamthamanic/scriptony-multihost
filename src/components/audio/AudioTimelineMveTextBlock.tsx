@@ -1,35 +1,41 @@
 /**
- * AudioTimelineMveTextBlock — visual placeholder for an MVE line without audio.
- *
- * Renders as a scene-like colored block inside the audio dialog lane. It shows
- * the line text (or a placeholder) and can later be extended with inline editing,
- * tag highlighting, and an audio-generation menu (Issue T27).
+ * AudioTimelineMveTextBlock — positioned wrapper for inline MveDialogClipHost.
  *
  * Location: src/components/audio/AudioTimelineMveTextBlock.tsx
  */
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { resolveMveDialogClipWidthPx } from "@/lib/mve/mve-dialog-clip-layout";
 import { MVE_LINE_DRAG_MIME } from "@/hooks/useMveTextBlockLaneDrop";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
-import { MveTextBlockEditor } from "../structure/timeline/mve/MveTextBlockEditor";
-import { MveSceneSelectDialog } from "../structure/timeline/mve/MveSceneSelectDialog";
-import { useMveLineEnhance } from "@/hooks/useMveLineEnhance";
-import { useMveTextBlockAudio } from "@/hooks/useMveTextBlockAudio";
+import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-direction";
+import { MveDialogClipHost } from "../structure/timeline/mve/MveDialogClipHost";
+import type { MveStructurePickerRefs } from "../structure/timeline/mve/MveStructureScenePickerModal";
 import type { MveSceneOption } from "@/hooks/useMveTextBlockAudio";
+import type { Character } from "@/lib/types";
 
 export interface AudioTimelineMveTextBlockProps {
   line: MveLine;
   pxPerSec: number;
   viewStartSec: number;
-  sceneStartSec: number;
-  sceneEndSec: number;
+  startSec: number;
+  endSec: number;
   projectId?: string;
+  projectType?: string;
   sceneId?: string;
-  characterId?: string;
+  sceneLabel?: string;
+  character?: Character;
   scenes?: MveSceneOption[];
+  structurePicker?: MveStructurePickerRefs;
   onSaveText?: (lineId: string, text: string) => Promise<void>;
+  onSaveDirection?: (
+    lineId: string,
+    direction: MveLineDirection,
+  ) => Promise<void>;
   onBindAudioClip?: (lineId: string, clipId: string | null) => Promise<void>;
+  onDeleteLine?: (lineId: string) => Promise<void>;
+  sceneBlock?: { startSec: number; endSec: number };
   onClick?: (lineId: string) => void;
   draggable?: boolean;
 }
@@ -38,41 +44,40 @@ export function AudioTimelineMveTextBlock({
   line,
   pxPerSec,
   viewStartSec,
-  sceneStartSec,
-  sceneEndSec,
+  startSec,
+  endSec,
   projectId,
+  projectType,
   sceneId,
-  characterId,
+  sceneLabel,
+  character,
   scenes = [],
+  structurePicker,
   onSaveText,
+  onSaveDirection,
   onBindAudioClip,
+  onDeleteLine,
+  sceneBlock,
   onClick,
   draggable: draggableProp,
 }: AudioTimelineMveTextBlockProps) {
-  const widthSec = Math.max(sceneEndSec - sceneStartSec, 1);
-  const [isEditing, setIsEditing] = useState(false);
-  const { enhance } = useMveLineEnhance(projectId);
-  const audioMenu = useMveTextBlockAudio({
-    projectId,
-    lineId: line.id,
-    characterId,
-    sceneId,
-    scenes,
-    text: line.text ?? "",
-    onBindAudioClip,
-  });
+  const clipWidthPx = resolveMveDialogClipWidthPx(
+    startSec,
+    endSec,
+    pxPerSec,
+    sceneBlock,
+  );
 
   const style = useMemo(
     () => ({
-      left: `${(sceneStartSec - viewStartSec) * pxPerSec}px`,
-      width: `${widthSec * pxPerSec}px`,
+      left: `${(startSec - viewStartSec) * pxPerSec}px`,
+      width: `${clipWidthPx}px`,
     }),
-    [sceneStartSec, viewStartSec, pxPerSec, widthSec],
+    [startSec, viewStartSec, pxPerSec, clipWidthPx],
   );
 
-  const displayText = line.text?.trim() || "Text hinzufügen…";
   const canEdit = Boolean(projectId && onSaveText);
-  const canDrag = Boolean(draggableProp && !isEditing);
+  const canDrag = Boolean(draggableProp);
 
   const handleDragStart = useCallback(
     (e: React.DragEvent<HTMLDivElement>) => {
@@ -83,107 +88,37 @@ export function AudioTimelineMveTextBlock({
     [canDrag, line.id],
   );
 
-  const handleSave = useCallback(
-    async (text: string) => {
-      if (!onSaveText) {
-        throw new Error("Kein Speicher-Handler für diesen Textblock.");
-      }
-      await onSaveText(line.id, text);
-    },
-    [line.id, onSaveText],
-  );
-
-  const handleEnhance = useCallback(
-    async (rawText: string) => {
-      return enhance(rawText);
-    },
-    [enhance],
-  );
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (isEditing) return;
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      if (canEdit) {
-        setIsEditing(true);
-      }
-      onClick?.(line.id);
-    }
-  };
+  if (!canEdit || !projectId || !onSaveText) {
+    return null;
+  }
 
   return (
     <div
-      role={isEditing ? "none" : canDrag ? "button" : "button"}
-      tabIndex={isEditing ? -1 : 0}
       draggable={canDrag}
       onDragStart={handleDragStart}
-      aria-label={isEditing ? undefined : `Textblock: ${displayText}`}
       className={cn(
-        "absolute top-0.5 bottom-0.5 rounded border border-primary/40",
-        "bg-primary/20 hover:bg-primary/30 focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-        "flex items-start px-1 overflow-hidden",
-        canEdit ? "cursor-pointer" : "cursor-default",
+        "absolute inset-y-0 overflow-hidden rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         canDrag && "cursor-grab active:cursor-grabbing",
-        line.status === "dirty" && "ring-1 ring-warning/50",
       )}
       style={style}
-      onClick={() => {
-        if (!isEditing) {
-          if (canEdit) {
-            setIsEditing(true);
-          }
-          onClick?.(line.id);
-        }
-      }}
-      onKeyDown={handleKeyDown}
+      onClick={() => onClick?.(line.id)}
       data-testid="audio-timeline-mve-text-block"
       data-mve-line-id={line.id}
     >
-      {isEditing ? (
-        <div
-          role="application"
-          aria-label="Textblock bearbeiten"
-          className="w-full z-20 py-0.5"
-          onClick={(e) => e.stopPropagation()}
-          data-testid="mve-text-block-inline-editor"
-        >
-          <MveTextBlockEditor
-            initialText={line.text ?? ""}
-            onSave={handleSave}
-            onEnhance={handleEnhance}
-            onClose={() => setIsEditing(false)}
-            audioMenu={audioMenu}
-            scenes={scenes}
-            sceneId={sceneId}
-          />
-        </div>
-      ) : (
-        <span
-          className={cn(
-            "truncate text-[10px] font-medium text-foreground",
-            !line.text?.trim() && "italic opacity-70",
-          )}
-          title={displayText}
-        >
-          {displayText}
-        </span>
-      )}
-      <MveSceneSelectDialog
-        open={audioMenu.pendingAction !== null}
-        title={
-          audioMenu.pendingAction === "generate"
-            ? "Szene für Generate auswählen"
-            : audioMenu.pendingAction === "record"
-              ? "Szene für Aufnahme auswählen"
-              : "Szene für Upload auswählen"
-        }
+      <MveDialogClipHost
+        line={line}
+        clipWidthPx={clipWidthPx}
+        projectId={projectId}
+        projectType={projectType}
+        sceneId={sceneId}
+        sceneLabel={sceneLabel}
+        character={character}
         scenes={scenes}
-        selectedId={audioMenu.selectedSceneId}
-        onSelect={audioMenu.setSelectedSceneId}
-        onConfirm={() => {
-          audioMenu.confirmSceneSelection();
-        }}
-        onCancel={audioMenu.cancelSceneSelection}
+        structurePicker={structurePicker}
+        onSaveText={onSaveText}
+        onSaveDirection={onSaveDirection}
+        onBindAudioClip={onBindAudioClip}
+        onDeleteLine={onDeleteLine}
       />
     </div>
   );

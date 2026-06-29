@@ -68,7 +68,6 @@ import {
 import { RichTextEditorModal } from "../../shared/RichTextEditorModal";
 import { StructureTimelinePreviewPanel } from "./StructureTimelinePreviewPanel";
 import { StructureTimelineToolbar } from "./StructureTimelineToolbar";
-import { MveEnhanceScriptPanel } from "./mve/MveEnhanceScriptPanel";
 import { StructureTimelineRuler } from "./StructureTimelineRuler";
 import { StructureTimelinePlayheadOverlay } from "./StructureTimelinePlayheadOverlay";
 import { StructureTimelineFilmProductionTracks } from "./StructureTimelineFilmProductionTracks";
@@ -342,7 +341,7 @@ export function StructureTimelineEditor({
 
   // 🎯 SCROLL / VIEWPORT REFS (zoom via useTimelineZoom after duration resolved)
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const trackLabelsRef = useRef<HTMLDivElement | null>(null);
+  const verticalScrollRef = useRef<HTMLDivElement | null>(null);
   const viewStartSecRef = useRef<number>(0);
   const [playheadSyncGeneration, setPlayheadSyncGeneration] = useState(0);
   const onPlayheadTickRef = useRef<(t: number) => void>(() => {});
@@ -753,7 +752,6 @@ export function StructureTimelineEditor({
 
   const timelineZoom = useTimelineZoom({
     scrollRef,
-    trackLabelsRef,
     viewStartSecRef,
     pxPerSecRef,
     totalDurationSec,
@@ -784,7 +782,6 @@ export function StructureTimelineEditor({
   const transport = useTimelineTransport({
     durationSec: totalDurationSec,
     scrollRef,
-    trackLabelsRef,
     viewStartSec,
     pxPerSec,
     viewStartSecRef,
@@ -2870,6 +2867,7 @@ export function StructureTimelineEditor({
   const timelineAudio = useStructureTimelineAudioLanes({
     projectId,
     projectType,
+    readingSpeedWpm,
     pxPerSec,
     viewStartSec,
     totalWidthPx,
@@ -5284,355 +5282,108 @@ export function StructureTimelineEditor({
         onStop={handleTransportStop}
       />
 
-      {isAudioProject && projectId ? (
-        <MveEnhanceScriptPanel
-          projectId={projectId}
-          sceneId={activePreviewSceneId}
-          sceneTitle={
-            (activePreviewScene as { title?: string } | null)?.title ??
-            sceneBlocks.find((s) => s.id === activePreviewSceneId)?.title
-          }
-        />
-      ) : null}
-
-      {/* Timeline: structure tracks + audio DAW rows (same scroll, Hörspiel) */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
-        {/* Track Labels - Sticky Left */}
-        <div
-          ref={trackLabelsRef}
-          className={cn(
-            "flex-shrink-0 bg-card border-r border-border overflow-hidden",
-            showAudioDawLanes
-              ? "w-[248px] min-w-[248px] max-w-[248px]"
-              : "w-24 min-w-[5.5rem]",
-          )}
-        >
-          <div className="h-12 border-b border-border px-2 flex items-center bg-card">
-            <span className="text-[9px] text-foreground font-medium">Zeit</span>
-          </div>
+      {/* Timeline: labels + lanes share one vertical scroll (FL Studio / CapCut) */}
+      <div
+        ref={verticalScrollRef}
+        className="flex flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-primary scrollbar-track-muted"
+      >
+        <div className="flex min-h-min w-full">
+          {/* Track Labels */}
           <div
-            className="border-b border-border px-2 flex items-center justify-between bg-card relative"
-            style={{ height: `${trackHeights.beat}px` }}
+            className={cn(
+              "flex-shrink-0 bg-card border-r border-border overflow-x-hidden",
+              showAudioDawLanes
+                ? "w-[248px] min-w-[248px] max-w-[248px]"
+                : "w-24 min-w-[5.5rem]",
+            )}
           >
-            <span className="text-[9px] text-foreground font-medium">Beat</span>
-            <div className="flex items-center gap-0.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setBeatAutosnapEnabled(!beatAutosnapEnabled)}
-                className={cn(
-                  "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
-                  beatAutosnapEnabled
-                    ? "opacity-100 text-primary"
-                    : "opacity-35 text-muted-foreground",
-                )}
-                title={
-                  beatAutosnapEnabled
-                    ? "Autosnap: an (Snapping am Beat-Trim)"
-                    : "Autosnap: aus"
-                }
-              >
-                <Crosshair className="size-3.5" strokeWidth={2.25} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setBeatMagnetEnabled(!beatMagnetEnabled)}
-                className={cn(
-                  "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
-                  beatMagnetEnabled
-                    ? "opacity-100 text-primary"
-                    : "opacity-35 text-muted-foreground",
-                )}
-                title={
-                  beatMagnetEnabled
-                    ? "Magnet: alle Kanten (Beats + Playhead). Aus = nur Playhead, wenn Autosnap an"
-                    : "Magnet: aus (nur Playhead-Snap bei Autosnap)"
-                }
-              >
-                <Magnet className="size-3.5" strokeWidth={2.25} />
-              </button>
+            <div className="h-12 border-b border-border px-2 flex items-center bg-card">
+              <span className="text-[9px] text-foreground font-medium">
+                Zeit
+              </span>
             </div>
             <div
-              className={cn(
-                "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
-                resizingTrack === "beat"
-                  ? "border-b-4 border-primary"
-                  : "hover:border-b-4 hover:border-primary",
-              )}
-              onMouseDown={(e) => handleResizeStart("beat", e)}
-            />
-          </div>
-          <div
-            className="border-b border-border px-1 flex items-center justify-between gap-0.5 bg-card relative"
-            style={{ height: `${trackHeights.act}px` }}
-          >
-            <span className="text-[9px] text-foreground font-medium truncate min-w-0">
-              {strategy.actTrackLabel}
-            </span>
-            <div className="flex items-center gap-0.5 shrink-0">
-              <TimelineTrackAddButton
-                onClick={() => openAddDialogForKind("act")}
-                title={`${labelByKind.act} hinzufügen`}
-              />
-              {showFilmClipMagnets && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setTrackAutosnap((t) => ({ ...t, act: !t.act }))
-                    }
-                    className={cn(
-                      "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
-                      trackAutosnap.act
-                        ? "text-primary opacity-100"
-                        : "text-muted-foreground opacity-40",
-                    )}
-                    title={
-                      trackAutosnap.act
-                        ? "Act: Autosnap an"
-                        : "Act: Autosnap aus"
-                    }
-                  >
-                    <Crosshair className="size-3.5" strokeWidth={2.25} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setClipMagnets((m) => ({ ...m, act: !m.act }))
-                    }
-                    className={cn(
-                      "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
-                      clipMagnets.act
-                        ? "text-primary opacity-100"
-                        : "text-muted-foreground opacity-40",
-                    )}
-                    title={
-                      clipMagnets.act
-                        ? "Act: Magnet (alle Kanten)"
-                        : "Act: nur Playhead, wenn Autosnap an"
-                    }
-                  >
-                    <Magnet className="size-3.5" strokeWidth={2.25} />
-                  </button>
-                </>
-              )}
-            </div>
-            <div
-              className={cn(
-                "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
-                resizingTrack === "act"
-                  ? "border-b-4 border-primary"
-                  : "hover:border-b-4 hover:border-primary",
-              )}
-              onMouseDown={(e) => handleResizeStart("act", e)}
-            />
-          </div>
-          <div
-            className="border-b border-border px-1 flex items-center justify-between gap-0.5 bg-card relative"
-            style={{ height: `${trackHeights.sequence}px` }}
-          >
-            <span className="text-[9px] text-foreground font-medium truncate min-w-0">
-              {strategy.sequenceTrackLabel}
-            </span>
-            <div className="flex items-center gap-0.5 shrink-0">
-              <TimelineTrackAddButton
-                onClick={() => openAddDialogForKind("sequence")}
-                title={`${labelByKind.sequence} hinzufügen`}
-              />
-              {showFilmClipMagnets && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setTrackAutosnap((t) => ({ ...t, sequence: !t.sequence }))
-                    }
-                    className={cn(
-                      "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
-                      trackAutosnap.sequence
-                        ? "text-primary opacity-100"
-                        : "text-muted-foreground opacity-40",
-                    )}
-                    title={
-                      trackAutosnap.sequence
-                        ? "Seq.: Autosnap an"
-                        : "Seq.: Autosnap aus"
-                    }
-                  >
-                    <Crosshair className="size-3.5" strokeWidth={2.25} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setClipMagnets((m) => ({ ...m, sequence: !m.sequence }))
-                    }
-                    className={cn(
-                      "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
-                      clipMagnets.sequence
-                        ? "text-primary opacity-100"
-                        : "text-muted-foreground opacity-40",
-                    )}
-                    title={
-                      clipMagnets.sequence
-                        ? "Seq.: Magnet (alle Kanten)"
-                        : "Seq.: nur Playhead"
-                    }
-                  >
-                    <Magnet className="size-3.5" strokeWidth={2.25} />
-                  </button>
-                </>
-              )}
-            </div>
-            <div
-              className={cn(
-                "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
-                resizingTrack === "sequence"
-                  ? "border-b-4 border-primary"
-                  : "hover:border-b-4 hover:border-primary",
-              )}
-              onMouseDown={(e) => handleResizeStart("sequence", e)}
-            />
-          </div>
-          <div
-            className="border-b border-border px-1.5 flex items-center justify-between gap-1 bg-card relative"
-            style={{ height: `${trackHeights.scene}px` }}
-          >
-            <span className="text-[9px] text-foreground font-medium truncate min-w-0 shrink">
-              {strategy.sceneTrackLabel}
-            </span>
-            <div className="flex items-center gap-1 shrink-0 min-w-0">
-              {sidebarSceneAudioLink ? (
-                <TimelineStructureAudioLinkChip
-                  shortLabel={sidebarSceneAudioLink.short}
-                  fullLabel={sidebarSceneAudioLink.full}
-                  variant="scene"
-                  size="sidebar"
-                  onClick={() =>
-                    openNodeEditWithAudioLinkFocus(
-                      "scene",
-                      sidebarSceneAudioLink.nodeId,
-                    )
+              className="border-b border-border px-2 flex items-center justify-between bg-card relative"
+              style={{ height: `${trackHeights.beat}px` }}
+            >
+              <span className="text-[9px] text-foreground font-medium">
+                Beat
+              </span>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setBeatAutosnapEnabled(!beatAutosnapEnabled)}
+                  className={cn(
+                    "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
+                    beatAutosnapEnabled
+                      ? "opacity-100 text-primary"
+                      : "opacity-35 text-muted-foreground",
+                  )}
+                  title={
+                    beatAutosnapEnabled
+                      ? "Autosnap: an (Snapping am Beat-Trim)"
+                      : "Autosnap: aus"
                   }
-                />
-              ) : null}
-              <TimelineTrackAddButton
-                onClick={() => openAddDialogForKind("scene")}
-                title={`${labelByKind.scene} hinzufügen`}
+                >
+                  <Crosshair className="size-3.5" strokeWidth={2.25} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBeatMagnetEnabled(!beatMagnetEnabled)}
+                  className={cn(
+                    "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
+                    beatMagnetEnabled
+                      ? "opacity-100 text-primary"
+                      : "opacity-35 text-muted-foreground",
+                  )}
+                  title={
+                    beatMagnetEnabled
+                      ? "Magnet: alle Kanten (Beats + Playhead). Aus = nur Playhead, wenn Autosnap an"
+                      : "Magnet: aus (nur Playhead-Snap bei Autosnap)"
+                  }
+                >
+                  <Magnet className="size-3.5" strokeWidth={2.25} />
+                </button>
+              </div>
+              <div
+                className={cn(
+                  "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
+                  resizingTrack === "beat"
+                    ? "border-b-4 border-primary"
+                    : "hover:border-b-4 hover:border-primary",
+                )}
+                onMouseDown={(e) => handleResizeStart("beat", e)}
               />
-              {showFilmClipMagnets && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setTrackAutosnap((t) => ({ ...t, scene: !t.scene }))
-                    }
-                    className={cn(
-                      "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
-                      trackAutosnap.scene
-                        ? "text-primary opacity-100"
-                        : "text-muted-foreground opacity-40",
-                    )}
-                    title={
-                      trackAutosnap.scene
-                        ? "Scene: Autosnap an"
-                        : "Scene: Autosnap aus"
-                    }
-                  >
-                    <Crosshair className="size-3.5" strokeWidth={2.25} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setClipMagnets((m) => ({ ...m, scene: !m.scene }))
-                    }
-                    className={cn(
-                      "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
-                      clipMagnets.scene
-                        ? "text-primary opacity-100"
-                        : "text-muted-foreground opacity-40",
-                    )}
-                    title={
-                      clipMagnets.scene
-                        ? "Scene: Magnet (alle Kanten)"
-                        : "Scene: nur Playhead"
-                    }
-                  >
-                    <Magnet className="size-3.5" strokeWidth={2.25} />
-                  </button>
-                </>
-              )}
             </div>
             <div
-              className={cn(
-                "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
-                resizingTrack === "scene"
-                  ? "border-b-4 border-primary"
-                  : "hover:border-b-4 hover:border-primary",
-              )}
-              onMouseDown={(e) => handleResizeStart("scene", e)}
-            />
-          </div>
-          {showAudioDawLaneRows && (
-            <StructureTimelineAudioLaneLabels
-              laneProps={timelineAudio.laneProps}
-              addAudio={timelineAudio.addAudio}
-              metronome={timelineAudio.metronome}
-              isLoading={timelineAudio.lanes.isLoading}
-            />
-          )}
-          {showFilmProductionTracks && (
-            <>
-              <ShotTrackLabel
-                trackHeightPx={trackHeights.shot}
-                shotAddLabel={labelByKind.shot}
-                trackAutosnapShot={trackAutosnap.shot}
-                clipMagnetShot={clipMagnets.shot}
-                resizingTrack={resizingTrack}
-                onToggleAutosnap={() =>
-                  setTrackAutosnap((t) => ({ ...t, shot: !t.shot }))
-                }
-                onToggleMagnet={() =>
-                  setClipMagnets((m) => ({ ...m, shot: !m.shot }))
-                }
-                onResizeStart={(e) => handleResizeStart("shot", e)}
-                onAddShot={() => openAddDialogForKind("shot")}
-                sidebarAudioLink={sidebarShotAudioLink ?? undefined}
-                onSidebarAudioLinkClick={(shotId) =>
-                  openNodeEditWithAudioLinkFocus("shot", shotId)
-                }
-              />
-              {showEditorialClipTrack && (
-                <div
-                  className="border-b border-border px-1 flex items-center justify-between gap-0.5 bg-muted/20 relative"
-                  style={{ height: `${trackHeights.editorialClip}px` }}
-                  title="Editorial-Clips (NLE): gleiche Spur wie Shot/Musik — nur im Tab „Timeline“"
-                >
-                  <div className="flex items-center gap-1 min-w-0">
-                    <Clapperboard
-                      className="size-3 shrink-0 text-zinc-600 dark:text-zinc-300"
-                      aria-hidden
-                    />
-                    <span className="text-[9px] text-foreground font-semibold leading-tight truncate">
-                      Clip
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-0.5 shrink-0">
+              className="border-b border-border px-1 flex items-center justify-between gap-0.5 bg-card relative"
+              style={{ height: `${trackHeights.act}px` }}
+            >
+              <span className="text-[9px] text-foreground font-medium truncate min-w-0">
+                {strategy.actTrackLabel}
+              </span>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <TimelineTrackAddButton
+                  onClick={() => openAddDialogForKind("act")}
+                  title={`${labelByKind.act} hinzufügen`}
+                />
+                {showFilmClipMagnets && (
+                  <>
                     <button
                       type="button"
                       onClick={() =>
-                        setTrackAutosnap((t) => ({
-                          ...t,
-                          editorialClip: !t.editorialClip,
-                        }))
+                        setTrackAutosnap((t) => ({ ...t, act: !t.act }))
                       }
                       className={cn(
                         "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
-                        trackAutosnap.editorialClip
+                        trackAutosnap.act
                           ? "text-primary opacity-100"
                           : "text-muted-foreground opacity-40",
                       )}
                       title={
-                        trackAutosnap.editorialClip
-                          ? "Clip: Autosnap an"
-                          : "Clip: Autosnap aus"
+                        trackAutosnap.act
+                          ? "Act: Autosnap an"
+                          : "Act: Autosnap aus"
                       }
                     >
                       <Crosshair className="size-3.5" strokeWidth={2.25} />
@@ -5640,266 +5391,521 @@ export function StructureTimelineEditor({
                     <button
                       type="button"
                       onClick={() =>
-                        setClipMagnets((m) => ({
-                          ...m,
-                          editorialClip: !m.editorialClip,
-                        }))
+                        setClipMagnets((m) => ({ ...m, act: !m.act }))
                       }
                       className={cn(
                         "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
-                        clipMagnets.editorialClip
+                        clipMagnets.act
                           ? "text-primary opacity-100"
                           : "text-muted-foreground opacity-40",
                       )}
                       title={
-                        clipMagnets.editorialClip
-                          ? "Clip: Magnet (alle Kanten)"
-                          : "Clip: nur Playhead"
+                        clipMagnets.act
+                          ? "Act: Magnet (alle Kanten)"
+                          : "Act: nur Playhead, wenn Autosnap an"
                       }
                     >
                       <Magnet className="size-3.5" strokeWidth={2.25} />
                     </button>
+                  </>
+                )}
+              </div>
+              <div
+                className={cn(
+                  "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
+                  resizingTrack === "act"
+                    ? "border-b-4 border-primary"
+                    : "hover:border-b-4 hover:border-primary",
+                )}
+                onMouseDown={(e) => handleResizeStart("act", e)}
+              />
+            </div>
+            <div
+              className="border-b border-border px-1 flex items-center justify-between gap-0.5 bg-card relative"
+              style={{ height: `${trackHeights.sequence}px` }}
+            >
+              <span className="text-[9px] text-foreground font-medium truncate min-w-0">
+                {strategy.sequenceTrackLabel}
+              </span>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <TimelineTrackAddButton
+                  onClick={() => openAddDialogForKind("sequence")}
+                  title={`${labelByKind.sequence} hinzufügen`}
+                />
+                {showFilmClipMagnets && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTrackAutosnap((t) => ({
+                          ...t,
+                          sequence: !t.sequence,
+                        }))
+                      }
+                      className={cn(
+                        "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
+                        trackAutosnap.sequence
+                          ? "text-primary opacity-100"
+                          : "text-muted-foreground opacity-40",
+                      )}
+                      title={
+                        trackAutosnap.sequence
+                          ? "Seq.: Autosnap an"
+                          : "Seq.: Autosnap aus"
+                      }
+                    >
+                      <Crosshair className="size-3.5" strokeWidth={2.25} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setClipMagnets((m) => ({ ...m, sequence: !m.sequence }))
+                      }
+                      className={cn(
+                        "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
+                        clipMagnets.sequence
+                          ? "text-primary opacity-100"
+                          : "text-muted-foreground opacity-40",
+                      )}
+                      title={
+                        clipMagnets.sequence
+                          ? "Seq.: Magnet (alle Kanten)"
+                          : "Seq.: nur Playhead"
+                      }
+                    >
+                      <Magnet className="size-3.5" strokeWidth={2.25} />
+                    </button>
+                  </>
+                )}
+              </div>
+              <div
+                className={cn(
+                  "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
+                  resizingTrack === "sequence"
+                    ? "border-b-4 border-primary"
+                    : "hover:border-b-4 hover:border-primary",
+                )}
+                onMouseDown={(e) => handleResizeStart("sequence", e)}
+              />
+            </div>
+            <div
+              className="border-b border-border px-1.5 flex items-center justify-between gap-1 bg-card relative"
+              style={{ height: `${trackHeights.scene}px` }}
+            >
+              <span className="text-[9px] text-foreground font-medium truncate min-w-0 shrink">
+                {strategy.sceneTrackLabel}
+              </span>
+              <div className="flex items-center gap-1 shrink-0 min-w-0">
+                {sidebarSceneAudioLink ? (
+                  <TimelineStructureAudioLinkChip
+                    shortLabel={sidebarSceneAudioLink.short}
+                    fullLabel={sidebarSceneAudioLink.full}
+                    variant="scene"
+                    size="sidebar"
+                    onClick={() =>
+                      openNodeEditWithAudioLinkFocus(
+                        "scene",
+                        sidebarSceneAudioLink.nodeId,
+                      )
+                    }
+                  />
+                ) : null}
+                <TimelineTrackAddButton
+                  onClick={() => openAddDialogForKind("scene")}
+                  title={`${labelByKind.scene} hinzufügen`}
+                />
+                {showFilmClipMagnets && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTrackAutosnap((t) => ({ ...t, scene: !t.scene }))
+                      }
+                      className={cn(
+                        "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
+                        trackAutosnap.scene
+                          ? "text-primary opacity-100"
+                          : "text-muted-foreground opacity-40",
+                      )}
+                      title={
+                        trackAutosnap.scene
+                          ? "Scene: Autosnap an"
+                          : "Scene: Autosnap aus"
+                      }
+                    >
+                      <Crosshair className="size-3.5" strokeWidth={2.25} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setClipMagnets((m) => ({ ...m, scene: !m.scene }))
+                      }
+                      className={cn(
+                        "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
+                        clipMagnets.scene
+                          ? "text-primary opacity-100"
+                          : "text-muted-foreground opacity-40",
+                      )}
+                      title={
+                        clipMagnets.scene
+                          ? "Scene: Magnet (alle Kanten)"
+                          : "Scene: nur Playhead"
+                      }
+                    >
+                      <Magnet className="size-3.5" strokeWidth={2.25} />
+                    </button>
+                  </>
+                )}
+              </div>
+              <div
+                className={cn(
+                  "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
+                  resizingTrack === "scene"
+                    ? "border-b-4 border-primary"
+                    : "hover:border-b-4 hover:border-primary",
+                )}
+                onMouseDown={(e) => handleResizeStart("scene", e)}
+              />
+            </div>
+            {showFilmProductionTracks && (
+              <>
+                <ShotTrackLabel
+                  trackHeightPx={trackHeights.shot}
+                  shotAddLabel={labelByKind.shot}
+                  trackAutosnapShot={trackAutosnap.shot}
+                  clipMagnetShot={clipMagnets.shot}
+                  resizingTrack={resizingTrack}
+                  onToggleAutosnap={() =>
+                    setTrackAutosnap((t) => ({ ...t, shot: !t.shot }))
+                  }
+                  onToggleMagnet={() =>
+                    setClipMagnets((m) => ({ ...m, shot: !m.shot }))
+                  }
+                  onResizeStart={(e) => handleResizeStart("shot", e)}
+                  onAddShot={() => openAddDialogForKind("shot")}
+                  sidebarAudioLink={sidebarShotAudioLink ?? undefined}
+                  onSidebarAudioLinkClick={(shotId) =>
+                    openNodeEditWithAudioLinkFocus("shot", shotId)
+                  }
+                />
+                {showEditorialClipTrack && (
+                  <div
+                    className="border-b border-border px-1 flex items-center justify-between gap-0.5 bg-muted/20 relative"
+                    style={{ height: `${trackHeights.editorialClip}px` }}
+                    title="Editorial-Clips (NLE): gleiche Spur wie Shot/Musik — nur im Tab „Timeline“"
+                  >
+                    <div className="flex items-center gap-1 min-w-0">
+                      <Clapperboard
+                        className="size-3 shrink-0 text-zinc-600 dark:text-zinc-300"
+                        aria-hidden
+                      />
+                      <span className="text-[9px] text-foreground font-semibold leading-tight truncate">
+                        Clip
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTrackAutosnap((t) => ({
+                            ...t,
+                            editorialClip: !t.editorialClip,
+                          }))
+                        }
+                        className={cn(
+                          "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
+                          trackAutosnap.editorialClip
+                            ? "text-primary opacity-100"
+                            : "text-muted-foreground opacity-40",
+                        )}
+                        title={
+                          trackAutosnap.editorialClip
+                            ? "Clip: Autosnap an"
+                            : "Clip: Autosnap aus"
+                        }
+                      >
+                        <Crosshair className="size-3.5" strokeWidth={2.25} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setClipMagnets((m) => ({
+                            ...m,
+                            editorialClip: !m.editorialClip,
+                          }))
+                        }
+                        className={cn(
+                          "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
+                          clipMagnets.editorialClip
+                            ? "text-primary opacity-100"
+                            : "text-muted-foreground opacity-40",
+                        )}
+                        title={
+                          clipMagnets.editorialClip
+                            ? "Clip: Magnet (alle Kanten)"
+                            : "Clip: nur Playhead"
+                        }
+                      >
+                        <Magnet className="size-3.5" strokeWidth={2.25} />
+                      </button>
+                    </div>
+                    <div
+                      className={cn(
+                        "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
+                        resizingTrack === "editorialClip"
+                          ? "border-b-4 border-primary"
+                          : "hover:border-b-4 hover:border-primary",
+                      )}
+                      onMouseDown={(e) => handleResizeStart("editorialClip", e)}
+                    />
                   </div>
+                )}
+              </>
+            )}
+            {showAudioDawLaneRows && (
+              <StructureTimelineAudioLaneLabels
+                laneProps={timelineAudio.laneProps}
+                addAudio={timelineAudio.addAudio}
+                metronome={timelineAudio.metronome}
+                isLoading={timelineAudio.lanes.isLoading}
+              />
+            )}
+            {showFilmProductionTracks && (
+              <>
+                <div
+                  className="border-b border-border px-2 flex items-center bg-card relative"
+                  style={{ height: `${trackHeights.music}px` }}
+                >
+                  <span className="text-[9px] text-foreground font-medium leading-tight">
+                    Musik
+                  </span>
                   <div
                     className={cn(
                       "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
-                      resizingTrack === "editorialClip"
+                      resizingTrack === "music"
                         ? "border-b-4 border-primary"
                         : "hover:border-b-4 hover:border-primary",
                     )}
-                    onMouseDown={(e) => handleResizeStart("editorialClip", e)}
+                    onMouseDown={(e) => handleResizeStart("music", e)}
                   />
                 </div>
-              )}
-              <div
-                className="border-b border-border px-2 flex items-center bg-card relative"
-                style={{ height: `${trackHeights.music}px` }}
-              >
-                <span className="text-[9px] text-foreground font-medium leading-tight">
-                  Musik
-                </span>
                 <div
-                  className={cn(
-                    "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
-                    resizingTrack === "music"
-                      ? "border-b-4 border-primary"
-                      : "hover:border-b-4 hover:border-primary",
-                  )}
-                  onMouseDown={(e) => handleResizeStart("music", e)}
-                />
-              </div>
-              <div
-                className="border-b border-border px-2 flex items-center bg-card relative"
-                style={{ height: `${trackHeights.sfx}px` }}
-              >
-                <span className="text-[9px] text-foreground font-medium leading-tight">
-                  SFX
-                </span>
-                <div
-                  className={cn(
-                    "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
-                    resizingTrack === "sfx"
-                      ? "border-b-4 border-primary"
-                      : "hover:border-b-4 hover:border-primary",
-                  )}
-                  onMouseDown={(e) => handleResizeStart("sfx", e)}
-                />
-              </div>
-            </>
-          )}
-        </div>
+                  className="border-b border-border px-2 flex items-center bg-card relative"
+                  style={{ height: `${trackHeights.sfx}px` }}
+                >
+                  <span className="text-[9px] text-foreground font-medium leading-tight">
+                    SFX
+                  </span>
+                  <div
+                    className={cn(
+                      "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
+                      resizingTrack === "sfx"
+                        ? "border-b-4 border-primary"
+                        : "hover:border-b-4 hover:border-primary",
+                    )}
+                    onMouseDown={(e) => handleResizeStart("sfx", e)}
+                  />
+                </div>
+              </>
+            )}
+          </div>
 
-        {/* Timeline Content - Scrollable */}
-        <div
-          ref={scrollRef}
-          className="flex-1 min-h-0 overflow-x-auto overflow-y-auto scrollbar-thin scrollbar-thumb-primary scrollbar-track-muted"
-          onWheel={handleWheel}
-        >
-          <div className="relative" style={{ width: `${totalWidthPx}px` }}>
-            <StructureTimelineRuler
-              ticks={ticks}
-              minorTicks={minorTicks}
-              pageMarkers={pageMarkers}
-              isBookProject={isBookProject}
-              onRulerClick={playheadScrubHandlers.onRulerClick}
-            />
+          {/* Timeline Content - horizontal scroll */}
+          <div
+            ref={scrollRef}
+            className="flex-1 min-w-0 overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-primary scrollbar-track-muted"
+            onWheel={handleWheel}
+          >
+            <div className="relative" style={{ width: `${totalWidthPx}px` }}>
+              <StructureTimelineRuler
+                ticks={ticks}
+                minorTicks={minorTicks}
+                pageMarkers={pageMarkers}
+                isBookProject={isBookProject}
+                onRulerClick={playheadScrubHandlers.onRulerClick}
+              />
 
-            {/* Beat lane — solo marquee */}
-            <TimelineStructureSelectionStack
-              stackRef={beatStackRef}
-              widthPx={totalWidthPx}
-              interactionMode={timelineInteractionMode}
-              selectionApi={beatMarqueeSelection}
-            >
-              <BeatTrack
-                containerRef={beatTrackContainerRef}
-                trackHeightPx={trackHeights.beat}
-                pxPerSec={pxPerSec}
-                viewStartSec={viewStartSec}
-                blocks={beatBlocks}
-                beatLayoutEpoch={beatLayoutEpoch}
+              {/* Beat lane — solo marquee */}
+              <TimelineStructureSelectionStack
+                stackRef={beatStackRef}
+                widthPx={totalWidthPx}
                 interactionMode={timelineInteractionMode}
-                marqueeSelection={beatMarqueeSelection}
-                structureBodyDragMovedRef={structureBodyDragMovedRef}
-                onBeatMoveMouseDown={handleBeatMoveMouseDown}
-                onTrimStart={handleTrimStart}
-                onOpenBeatEdit={(beatId) => openNodeEditForKind("beat", beatId)}
-              />
-            </TimelineStructureSelectionStack>
-
-            {/* Act / Seq / Scene / Shot — cross-track marquee */}
-            <TimelineStructureSelectionStack
-              stackRef={structureStackRef}
-              widthPx={totalWidthPx}
-              interactionMode={timelineInteractionMode}
-              selectionApi={structureMarqueeSelection}
-            >
-              <ActTrack
-                containerRef={actTrackContainerRef}
-                trackHeightPx={trackHeights.act}
-                pxPerSec={pxPerSec}
-                viewStartSec={viewStartSec}
-                blocks={filmActRowBlocks}
-                rowKey={structureRowKey}
-                useFilmTreeLayout={useFilmTreeLayout}
-                marqueeSelection={structureMarqueeSelection}
-                onClipTitleClick={handleStructureClipTitleClick}
-                onStructureMoveMouseDown={handleStructureMoveMouseDown}
-                onTrimClipMouseDown={handleTrimClipMouseDown}
-              />
-
-              <SequenceTrack
-                containerRef={sequenceTrackContainerRef}
-                trackHeightPx={trackHeights.sequence}
-                pxPerSec={pxPerSec}
-                viewStartSec={viewStartSec}
-                blocks={isBookProject ? sequenceBlocks : filmSequenceRowBlocks}
-                rowKey={structureRowKey}
-                useFilmTreeLayout={useFilmTreeLayout}
-                marqueeSelection={structureMarqueeSelection}
-                onClipTitleClick={handleStructureClipTitleClick}
-                onStructureMoveMouseDown={handleStructureMoveMouseDown}
-                onTrimClipMouseDown={handleTrimClipMouseDown}
-              />
-
-              <SceneTrack
-                containerRef={sceneTrackContainerRef}
-                trackHeightPx={trackHeights.scene}
-                pxPerSec={pxPerSec}
-                viewStartSec={viewStartSec}
-                blocks={isBookProject ? sceneBlocks : filmSceneRowBlocks}
-                rowKey={structureRowKey}
-                useFilmTreeLayout={useFilmTreeLayout}
-                isAudioProject={isAudioProject}
-                marqueeSelection={structureMarqueeSelection}
-                structureBodyDragMovedRef={structureBodyDragMovedRef}
-                sceneTitleClickTimerRef={sceneTitleClickTimerRef}
-                scenePreviewById={scenePreviewById}
-                onStructureMoveMouseDown={handleStructureMoveMouseDown}
-                onTrimClipMouseDown={handleTrimClipMouseDown}
-                onOpenSceneEdit={(sceneId) =>
-                  openNodeEditForKind("scene", sceneId)
-                }
-                onOpenSceneContentModal={(scene) => {
-                  setEditingSceneForModal(scene);
-                  setShowContentModal(true);
-                }}
-                onPickAndUploadSceneImage={pickAndUploadSceneImage}
-                onSceneImageFileDrop={structureImageDrop.onSceneImageFileDrop}
-                onFilmSceneClipImageDrop={
-                  structureImageDrop.onFilmSceneClipImageDrop
-                }
-                emptyLaneDropBindings={
-                  structureImageDrop.emptySceneLaneDropBindings
-                }
-                getAudioLinkLabel={
-                  !isBookProject ? getAudioLinkLabel : undefined
-                }
-                onAudioLinkClick={
-                  !isBookProject && isAudioProject
-                    ? (sceneId) =>
-                        openNodeEditWithAudioLinkFocus("scene", sceneId)
-                    : undefined
-                }
-                onOpenSceneEditDirect={(sceneId) =>
-                  openNodeEditForKind("scene", sceneId)
-                }
-              />
-
-              {showFilmProductionTracks && (
-                <ShotTrack
-                  containerRef={shotTrackContainerRef}
-                  trackHeightPx={trackHeights.shot}
+                selectionApi={beatMarqueeSelection}
+              >
+                <BeatTrack
+                  containerRef={beatTrackContainerRef}
+                  trackHeightPx={trackHeights.beat}
                   pxPerSec={pxPerSec}
                   viewStartSec={viewStartSec}
-                  blocks={shotBlocks as StructureTimelineBlock[]}
+                  blocks={beatBlocks}
+                  beatLayoutEpoch={beatLayoutEpoch}
+                  interactionMode={timelineInteractionMode}
+                  marqueeSelection={beatMarqueeSelection}
+                  structureBodyDragMovedRef={structureBodyDragMovedRef}
+                  onBeatMoveMouseDown={handleBeatMoveMouseDown}
+                  onTrimStart={handleTrimStart}
+                  onOpenBeatEdit={(beatId) =>
+                    openNodeEditForKind("beat", beatId)
+                  }
+                />
+              </TimelineStructureSelectionStack>
+
+              {/* Act / Seq / Scene / Shot — cross-track marquee */}
+              <TimelineStructureSelectionStack
+                stackRef={structureStackRef}
+                widthPx={totalWidthPx}
+                interactionMode={timelineInteractionMode}
+                selectionApi={structureMarqueeSelection}
+              >
+                <ActTrack
+                  containerRef={actTrackContainerRef}
+                  trackHeightPx={trackHeights.act}
+                  pxPerSec={pxPerSec}
+                  viewStartSec={viewStartSec}
+                  blocks={filmActRowBlocks}
                   rowKey={structureRowKey}
                   useFilmTreeLayout={useFilmTreeLayout}
                   marqueeSelection={structureMarqueeSelection}
-                  structureBodyDragMovedRef={structureBodyDragMovedRef}
+                  onClipTitleClick={handleStructureClipTitleClick}
+                  onStructureMoveMouseDown={handleStructureMoveMouseDown}
                   onTrimClipMouseDown={handleTrimClipMouseDown}
-                  onOpenShotEdit={(shotId) =>
-                    openNodeEditForKind("shot", shotId)
+                />
+
+                <SequenceTrack
+                  containerRef={sequenceTrackContainerRef}
+                  trackHeightPx={trackHeights.sequence}
+                  pxPerSec={pxPerSec}
+                  viewStartSec={viewStartSec}
+                  blocks={
+                    isBookProject ? sequenceBlocks : filmSequenceRowBlocks
                   }
-                  shotPreviewUrl={(shot) =>
-                    shotBlockPreviewUrl(
-                      shot as Parameters<typeof timelineClipPreviewUrl>[0],
-                    )
+                  rowKey={structureRowKey}
+                  useFilmTreeLayout={useFilmTreeLayout}
+                  marqueeSelection={structureMarqueeSelection}
+                  onClipTitleClick={handleStructureClipTitleClick}
+                  onStructureMoveMouseDown={handleStructureMoveMouseDown}
+                  onTrimClipMouseDown={handleTrimClipMouseDown}
+                />
+
+                <SceneTrack
+                  containerRef={sceneTrackContainerRef}
+                  trackHeightPx={trackHeights.scene}
+                  pxPerSec={pxPerSec}
+                  viewStartSec={viewStartSec}
+                  blocks={isBookProject ? sceneBlocks : filmSceneRowBlocks}
+                  rowKey={structureRowKey}
+                  useFilmTreeLayout={useFilmTreeLayout}
+                  isAudioProject={isAudioProject}
+                  marqueeSelection={structureMarqueeSelection}
+                  structureBodyDragMovedRef={structureBodyDragMovedRef}
+                  sceneTitleClickTimerRef={sceneTitleClickTimerRef}
+                  scenePreviewById={scenePreviewById}
+                  onStructureMoveMouseDown={handleStructureMoveMouseDown}
+                  onTrimClipMouseDown={handleTrimClipMouseDown}
+                  onOpenSceneEdit={(sceneId) =>
+                    openNodeEditForKind("scene", sceneId)
                   }
-                  onShotImageFileDrop={structureImageDrop.onShotImageFileDrop}
+                  onOpenSceneContentModal={(scene) => {
+                    setEditingSceneForModal(scene);
+                    setShowContentModal(true);
+                  }}
+                  onPickAndUploadSceneImage={pickAndUploadSceneImage}
+                  onSceneImageFileDrop={structureImageDrop.onSceneImageFileDrop}
+                  onFilmSceneClipImageDrop={
+                    structureImageDrop.onFilmSceneClipImageDrop
+                  }
                   emptyLaneDropBindings={
-                    structureImageDrop.emptyShotLaneDropBindings
+                    structureImageDrop.emptySceneLaneDropBindings
                   }
                   getAudioLinkLabel={
                     !isBookProject ? getAudioLinkLabel : undefined
                   }
                   onAudioLinkClick={
-                    !isBookProject
-                      ? (shotId) =>
-                          openNodeEditWithAudioLinkFocus("shot", shotId)
+                    !isBookProject && isAudioProject
+                      ? (sceneId) =>
+                          openNodeEditWithAudioLinkFocus("scene", sceneId)
                       : undefined
                   }
-                  onOpenShotEditDirect={(shotId) =>
-                    openNodeEditForKind("shot", shotId)
+                  onOpenSceneEditDirect={(sceneId) =>
+                    openNodeEditForKind("scene", sceneId)
                   }
                 />
+
+                {showFilmProductionTracks && (
+                  <ShotTrack
+                    containerRef={shotTrackContainerRef}
+                    trackHeightPx={trackHeights.shot}
+                    pxPerSec={pxPerSec}
+                    viewStartSec={viewStartSec}
+                    blocks={shotBlocks as StructureTimelineBlock[]}
+                    rowKey={structureRowKey}
+                    useFilmTreeLayout={useFilmTreeLayout}
+                    marqueeSelection={structureMarqueeSelection}
+                    structureBodyDragMovedRef={structureBodyDragMovedRef}
+                    onTrimClipMouseDown={handleTrimClipMouseDown}
+                    onOpenShotEdit={(shotId) =>
+                      openNodeEditForKind("shot", shotId)
+                    }
+                    shotPreviewUrl={(shot) =>
+                      shotBlockPreviewUrl(
+                        shot as Parameters<typeof timelineClipPreviewUrl>[0],
+                      )
+                    }
+                    onShotImageFileDrop={structureImageDrop.onShotImageFileDrop}
+                    emptyLaneDropBindings={
+                      structureImageDrop.emptyShotLaneDropBindings
+                    }
+                    getAudioLinkLabel={
+                      !isBookProject ? getAudioLinkLabel : undefined
+                    }
+                    onAudioLinkClick={
+                      !isBookProject
+                        ? (shotId) =>
+                            openNodeEditWithAudioLinkFocus("shot", shotId)
+                        : undefined
+                    }
+                    onOpenShotEditDirect={(shotId) =>
+                      openNodeEditForKind("shot", shotId)
+                    }
+                  />
+                )}
+              </TimelineStructureSelectionStack>
+
+              {showAudioDawLaneRows && (
+                <StructureTimelineAudioLaneScrollRows
+                  laneProps={timelineAudio.laneProps}
+                  isLoading={timelineAudio.lanes.isLoading}
+                />
               )}
-            </TimelineStructureSelectionStack>
 
-            {showAudioDawLaneRows && (
-              <StructureTimelineAudioLaneScrollRows
-                laneProps={timelineAudio.laneProps}
-                isLoading={timelineAudio.lanes.isLoading}
-              />
-            )}
+              {/* Shot-Musik/SFX (Film/Serie) — Shot-Spur liegt im Structure-Selection-Stack */}
+              {showFilmProductionTracks && (
+                <StructureTimelineFilmProductionTracks
+                  showEditorialClipTrack={showEditorialClipTrack}
+                  trackHeights={{
+                    editorialClip: trackHeights.editorialClip,
+                    music: trackHeights.music,
+                    sfx: trackHeights.sfx,
+                  }}
+                  clipBlocks={clipBlocks}
+                  shotBlocks={shotBlocks}
+                  timelineData={timelineData}
+                  useFilmTreeLayout={useFilmTreeLayout}
+                  canOpenShot={canOpenShot}
+                  blockUnderlyingLanePointerEvents={
+                    blockUnderlyingLanePointerEvents
+                  }
+                  onOpenShot={openShot}
+                  onNleClipPointerDown={handleNleClipPointerDown}
+                />
+              )}
 
-            {/* Shot-Musik/SFX (Film/Serie) — Shot-Spur liegt im Structure-Selection-Stack */}
-            {showFilmProductionTracks && (
-              <StructureTimelineFilmProductionTracks
-                showEditorialClipTrack={showEditorialClipTrack}
-                trackHeights={{
-                  editorialClip: trackHeights.editorialClip,
-                  music: trackHeights.music,
-                  sfx: trackHeights.sfx,
-                }}
-                clipBlocks={clipBlocks}
-                shotBlocks={shotBlocks}
-                timelineData={timelineData}
-                useFilmTreeLayout={useFilmTreeLayout}
-                canOpenShot={canOpenShot}
-                blockUnderlyingLanePointerEvents={
-                  blockUnderlyingLanePointerEvents
+              <StructureTimelinePlayheadOverlay
+                onPlayheadPointerDown={
+                  playheadScrubHandlers.onPlayheadPointerDown
                 }
-                onOpenShot={openShot}
-                onNleClipPointerDown={handleNleClipPointerDown}
               />
-            )}
-
-            <StructureTimelinePlayheadOverlay
-              onPlayheadPointerDown={
-                playheadScrubHandlers.onPlayheadPointerDown
-              }
-            />
+            </div>
           </div>
         </div>
       </div>

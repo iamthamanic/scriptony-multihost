@@ -3,17 +3,21 @@
  */
 
 /**
- * Tests for AddMveTextBlockButton (T26).
- * - renders only on dialog lanes with a character
- * - resolves target scene from lane link or fallback
- * - calls onAddTextBlock with the resolved scene
+ * Tests for AddMveTextBlockButton (T26 + hierarchical scene picker).
  */
 
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  cleanup,
+  waitFor,
+} from "@testing-library/react";
 
 import { AddMveTextBlockButton } from "../AddMveTextBlockButton";
 import type { Character } from "../../../../lib/types";
+import type { MveStructurePickerRefs } from "../../../structure/timeline/mve/MveStructureScenePickerModal";
 
 afterEach(() => cleanup());
 
@@ -25,13 +29,69 @@ const mockCharacter: Character = {
   updatedAt: "2026-01-01T00:00:00Z",
 };
 
+const structurePicker: MveStructurePickerRefs = {
+  acts: [
+    {
+      id: "act-1",
+      projectId: "proj-1",
+      actNumber: 1,
+      title: "Einführung",
+      orderIndex: 0,
+      createdAt: "",
+      updatedAt: "",
+    },
+  ],
+  sequences: [
+    {
+      id: "seq-1",
+      projectId: "proj-1",
+      actId: "act-1",
+      sequenceNumber: 1,
+      title: "Seq 1",
+      orderIndex: 0,
+      createdAt: "",
+      updatedAt: "",
+    },
+    {
+      id: "seq-2",
+      projectId: "proj-1",
+      actId: "act-1",
+      sequenceNumber: 2,
+      title: "Seq 2",
+      orderIndex: 1,
+      createdAt: "",
+      updatedAt: "",
+    },
+  ],
+  scenes: [
+    {
+      id: "scene-1",
+      projectId: "proj-1",
+      sequenceId: "seq-1",
+      sceneNumber: 1,
+      title: "Erste Szene",
+      createdAt: "",
+      updatedAt: "",
+    },
+    {
+      id: "scene-2",
+      projectId: "proj-1",
+      sequenceId: "seq-2",
+      sceneNumber: 2,
+      title: "Zweite Szene",
+      createdAt: "",
+      updatedAt: "",
+    },
+  ],
+};
+
 describe("AddMveTextBlockButton", () => {
   it("renders on character dialog lanes", () => {
     render(
       <AddMveTextBlockButton
         laneIndex={10}
         character={mockCharacter}
-        scenes={[{ id: "scene-1" }]}
+        structurePicker={structurePicker}
         onAddTextBlock={vi.fn()}
       />,
     );
@@ -43,7 +103,7 @@ describe("AddMveTextBlockButton", () => {
       <AddMveTextBlockButton
         laneIndex={1000}
         character={mockCharacter}
-        scenes={[{ id: "scene-1" }]}
+        structurePicker={structurePicker}
         onAddTextBlock={vi.fn()}
       />,
     );
@@ -54,7 +114,7 @@ describe("AddMveTextBlockButton", () => {
     const { container } = render(
       <AddMveTextBlockButton
         laneIndex={10}
-        scenes={[{ id: "scene-1" }]}
+        structurePicker={structurePicker}
         onAddTextBlock={vi.fn()}
       />,
     );
@@ -67,34 +127,69 @@ describe("AddMveTextBlockButton", () => {
       <AddMveTextBlockButton
         laneIndex={10}
         character={mockCharacter}
-        scenes={[{ id: "scene-1" }, { id: "scene-2" }]}
+        structurePicker={structurePicker}
         linkedSceneId="scene-2"
         onAddTextBlock={onAdd}
       />,
     );
     fireEvent.click(screen.getByLabelText("Text hinzufügen"));
-    await new Promise((r) => setTimeout(r, 0));
-    expect(onAdd).toHaveBeenCalledWith({
-      characterId: "char-1",
-      sceneId: "scene-2",
+    await waitFor(() => {
+      expect(onAdd).toHaveBeenCalledWith({
+        characterId: "char-1",
+        sceneId: "scene-2",
+      });
     });
+    expect(screen.queryByTestId("mve-structure-scene-picker-modal")).toBeNull();
   });
 
-  it("falls back to the first scene when no link is set", async () => {
+  it("opens hierarchical scene picker when no link is set", async () => {
     const onAdd = vi.fn();
     render(
       <AddMveTextBlockButton
         laneIndex={10}
         character={mockCharacter}
-        scenes={[{ id: "scene-1" }, { id: "scene-2" }]}
+        structurePicker={structurePicker}
         onAddTextBlock={onAdd}
       />,
     );
     fireEvent.click(screen.getByLabelText("Text hinzufügen"));
-    await new Promise((r) => setTimeout(r, 0));
-    expect(onAdd).toHaveBeenCalledWith({
-      characterId: "char-1",
-      sceneId: "scene-1",
+    expect(
+      await screen.findByTestId("mve-structure-scene-picker-modal"),
+    ).toBeTruthy();
+    expect(screen.getByText("Szene 2: Zweite Szene")).toBeTruthy();
+    expect(onAdd).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId("mve-structure-scene-scene-2"));
+    fireEvent.click(screen.getByTestId("mve-structure-scene-picker-confirm"));
+
+    await waitFor(() => {
+      expect(onAdd).toHaveBeenCalledWith({
+        characterId: "char-1",
+        sceneId: "scene-2",
+      });
     });
+  });
+
+  it("does not add a text block when scene picker is cancelled", async () => {
+    const onAdd = vi.fn();
+    render(
+      <AddMveTextBlockButton
+        laneIndex={10}
+        character={mockCharacter}
+        structurePicker={structurePicker}
+        onAddTextBlock={onAdd}
+      />,
+    );
+    fireEvent.click(screen.getByLabelText("Text hinzufügen"));
+    expect(
+      await screen.findByTestId("mve-structure-scene-picker-modal"),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Abbrechen" }));
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId("mve-structure-scene-picker-modal"),
+      ).toBeNull();
+    });
+    expect(onAdd).not.toHaveBeenCalled();
   });
 });

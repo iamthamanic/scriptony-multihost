@@ -9,8 +9,26 @@
   "milestoneFilter": null,
   "paused": false,
   "runMode": "batch",
-  "queue": [26, 27, 28, 29, 30, 31, 11],
-  "completedIssues": [3, 4, 5],
+  "queue": [],
+  "completedIssues": [
+    3,
+    4,
+    5,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31
+  ],
   "retries": {
     "implement": 0,
     "verifyTicket": 0,
@@ -27,5 +45,5 @@
   "lastError": null,
   "lastErrorCount": 0,
   "issuesProcessedInSession": 0,
-  "updatedAt": "2026-06-26T08:15:00.000Z"
+  "updatedAt": "2026-06-27T18:11:15.000Z"
 }

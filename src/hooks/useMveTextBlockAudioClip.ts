@@ -18,11 +18,14 @@ import { estimateDurationSec } from "@/lib/audio-utils";
 import { requireLocalBackend } from "@/lib/api-adapter/runtime-dispatch";
 import { syncClipWithSelectedTake } from "@/lib/mve/sync-clip-with-selected-take";
 import { extendSceneForAudio } from "@/lib/structure/extend-scene-for-audio";
+import { resizeSceneForContent } from "@/lib/structure/resize-scene-for-content";
+import { isContentDrivenSceneDuration } from "@/lib/mve/scene-duration-policy";
 import type { AudioClip } from "@/lib/types";
 
 export interface UseMveTextBlockAudioClipOptions {
   enabled: boolean;
   projectId: string | undefined;
+  projectType?: string;
   lineId: string;
   characterId: string | undefined;
   effectiveSceneId: string | null;
@@ -31,7 +34,7 @@ export interface UseMveTextBlockAudioClipOptions {
 }
 
 export interface UseMveTextBlockAudioClipResult {
-  createClipShell: () => Promise<AudioClip>;
+  createClipShell: (sceneIdOverride?: string) => Promise<AudioClip>;
   cacheAndBind: (clip: AudioClip) => Promise<void>;
   syncClipIfProject: () => Promise<void>;
   uploadAudioBlob: (blob: Blob) => Promise<void>;
@@ -40,6 +43,7 @@ export interface UseMveTextBlockAudioClipResult {
 export function useMveTextBlockAudioClip({
   enabled,
   projectId,
+  projectType,
   lineId,
   characterId,
   effectiveSceneId,
@@ -56,52 +60,78 @@ export function useMveTextBlockAudioClip({
     return requireLocalBackend(projectId);
   }, [projectId]);
 
-  const createClipShell = useCallback(async (): Promise<AudioClip> => {
-    if (!enabled) throw new Error("Audio-Bindung nicht aktiviert.");
-    const backend = ensureBackend();
-    const activeSceneId = effectiveSceneId;
-    if (!activeSceneId) {
-      throw new Error("Keine Szene für den Audio-Clip ausgewählt.");
-    }
-    const { clip } = await createAudioTrack(
-      activeSceneId,
-      backend.localProject.projectId,
-      {
-        type: "dialog",
-        content: text,
-        characterId,
-        startTime: 0,
-        duration: estimateDurationSec(text, { type: "dialog" }),
-        laneIndex: 0,
-      },
-    );
-    if (!clip?.id) {
-      throw new Error("Audiospur konnte nicht angelegt werden.");
-    }
-    return clip;
-  }, [enabled, characterId, ensureBackend, effectiveSceneId, text]);
+  const createClipShell = useCallback(
+    async (sceneIdOverride?: string): Promise<AudioClip> => {
+      if (!enabled) throw new Error("Audio-Bindung nicht aktiviert.");
+      const backend = ensureBackend();
+      const activeSceneId = sceneIdOverride ?? effectiveSceneId;
+      if (!activeSceneId) {
+        throw new Error("Keine Szene für den Audio-Clip ausgewählt.");
+      }
+      const { clip } = await createAudioTrack(
+        activeSceneId,
+        backend.localProject.projectId,
+        {
+          type: "dialog",
+          content: text,
+          characterId,
+          startTime: 0,
+          duration: estimateDurationSec(text, { type: "dialog" }),
+          laneIndex: 0,
+        },
+      );
+      if (!clip?.id) {
+        throw new Error("Audiospur konnte nicht angelegt werden.");
+      }
+      return clip;
+    },
+    [enabled, characterId, ensureBackend, effectiveSceneId, text],
+  );
 
-  const extendSceneIfNeeded = useCallback(
+  const syncSceneAfterClip = useCallback(
     async (clip: AudioClip) => {
       if (runtime.profile !== "local") return;
       if (!projectId || !effectiveSceneId || !clip.id) return;
 
-      const { extended } = await extendSceneForAudio({
-        projectId,
-        sceneId: effectiveSceneId,
-        clipId: clip.id,
-        clipEndSec: clip.endSec,
-      });
-      if (extended) {
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.timeline.byProject(projectId),
-        });
-        void queryClient.invalidateQueries({
-          queryKey: queryKeys.timeline.audioByProject(projectId),
-        });
+      try {
+        if (isContentDrivenSceneDuration(projectType)) {
+          const { resized } = await resizeSceneForContent({
+            projectId,
+            sceneId: effectiveSceneId,
+            requiredEndSec: clip.endSec,
+            clipId: clip.id,
+          });
+          if (resized) {
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.timeline.byProject(projectId),
+            });
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.timeline.audioByProject(projectId),
+            });
+          }
+        } else {
+          const { extended } = await extendSceneForAudio({
+            projectId,
+            sceneId: effectiveSceneId,
+            clipId: clip.id,
+            clipEndSec: clip.endSec,
+          });
+          if (extended) {
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.timeline.byProject(projectId),
+            });
+            void queryClient.invalidateQueries({
+              queryKey: queryKeys.timeline.audioByProject(projectId),
+            });
+          }
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn("[MVE] Szene-Verlängerung fehlgeschlagen:", err);
+        toast.warning(`Szene konnte nicht angepasst werden: ${msg}`);
       }
     },
-    [runtime.profile, projectId, effectiveSceneId, queryClient],
+    [runtime.profile, projectId, projectType, effectiveSceneId, queryClient],
   );
 
   const cacheAndBind = useCallback(
@@ -119,7 +149,7 @@ export function useMveTextBlockAudioClip({
       }
       await onBindAudioClip(lineId, clip.id);
       try {
-        await extendSceneIfNeeded(clip);
+        await syncSceneAfterClip(clip);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.warn("[MVE] Szene-Verlängerung fehlgeschlagen:", err);
@@ -132,20 +162,26 @@ export function useMveTextBlockAudioClip({
       projectId,
       queryClient,
       onBindAudioClip,
-      extendSceneIfNeeded,
+      syncSceneAfterClip,
     ],
   );
 
   const syncClipIfProject = useCallback(async () => {
     if (!projectId) return;
     try {
-      await syncClipWithSelectedTake(projectId, lineId);
+      const result = await syncClipWithSelectedTake(projectId, lineId);
+      if (result?.clipId) {
+        await syncSceneAfterClip({
+          id: result.clipId,
+          endSec: result.endSec,
+        } as AudioClip);
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.warn("[MVE] Take-Clip-Sync fehlgeschlagen:", err);
       toast.warning(`Take-Clip-Sync fehlgeschlagen: ${msg}`);
     }
-  }, [projectId, lineId]);
+  }, [projectId, lineId, syncSceneAfterClip]);
 
   const uploadAudioBlob = useCallback(
     async (blob: Blob) => {

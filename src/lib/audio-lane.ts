@@ -207,8 +207,35 @@ export function hasOverlap(
 export const LANE_UI = {
   heightCompact: 152,
   heightExpanded: 184,
+  /** Character dialog lanes — inline MveDialogClipCard (Slice 1+2). */
+  heightDialogCompact: 280,
+  heightDialogExpanded: 320,
   mixerWidthClass: "w-[248px] min-w-[248px] max-w-[248px]",
+  /** Left/right column chrome — must match between labels and scroll rows. */
+  sectionHeaderClass:
+    "border-b border-border px-2 py-1 flex items-center justify-between gap-2 bg-card/80 min-h-[1.75rem]",
+  sectionFooterClass:
+    "border-t border-border px-2 py-2 bg-card/80 min-h-[2.75rem] flex items-center",
 } as const;
+
+/** Lane row height in px (character dialog lanes taller for inline clip UI). */
+export function resolveLaneHeightPx(
+  laneIndex: number,
+  expandedLane: number | null,
+): number {
+  const expanded = expandedLane === laneIndex;
+  const isDialogCharacterLane =
+    isCharacterDialogLane(laneIndex) && getLaneType(laneIndex) === "dialog";
+  if (isDialogCharacterLane) {
+    return expanded
+      ? LANE_UI.heightDialogExpanded
+      : LANE_UI.heightDialogCompact;
+  }
+  return expanded ? LANE_UI.heightExpanded : LANE_UI.heightCompact;
+}
+
+/** Minimum width for inline MveDialogClipCard (toolbar + textarea need ~220px). */
+export const MVE_TEXT_BLOCK_MIN_WIDTH_PX = 220;
 
 // ── Pan/Volume Helpers ─────────────────────────────────────────
 

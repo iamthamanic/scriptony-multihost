@@ -227,7 +227,7 @@ Self-Hosted-Anleitung ausführlich: [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.m
 
 ## Für Entwickler
 
-**Desktop (Standard):** [`docs/DESKTOP_FIRST_DEV.md`](docs/DESKTOP_FIRST_DEV.md) — `npm run dev:desktop`, lokale `.scriptony`-Projekte, ohne Appwrite im Alltag. Architektur (3 Achsen): [`docs/ARCHITECTURE_LOCAL_CLOUD.md`](docs/ARCHITECTURE_LOCAL_CLOUD.md), Domänen-Glossar: [`docs/DOMAIN_GLOSSAR.md`](docs/DOMAIN_GLOSSAR.md). Agent-Regeln: [`AGENTS.md`](AGENTS.md). Cloud/Docker: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md).
+**Desktop (Standard):** [`docs/DESKTOP_FIRST_DEV.md`](docs/DESKTOP_FIRST_DEV.md) — `npm run dev:desktop`, lokale `.scriptony`-Projekte, ohne Appwrite im Alltag. Architektur (3 Achsen): [`docs/ARCHITECTURE_LOCAL_CLOUD.md`](docs/ARCHITECTURE_LOCAL_CLOUD.md), Feature-Matrix Lokal/Cloud/API: [`docs/FEATURE_LOCAL_CLOUD_MATRIX.md`](docs/FEATURE_LOCAL_CLOUD_MATRIX.md), Domänen-Glossar: [`docs/DOMAIN_GLOSSAR.md`](docs/DOMAIN_GLOSSAR.md). Agent-Regeln: [`AGENTS.md`](AGENTS.md). Cloud/Docker: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md).
 
 ### Projektstruktur
 
@@ -368,6 +368,7 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 
 <!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
 
+- **2026-06-28** — MVE Dialog-Clips: inline Card für text-only und audio-bound Clips, hierarchischer Szenen-Picker, scene-capped Breiten (local desktop)
 - **2026-06-27** — MVE 0.4 (#16): Voice Studio UI — Generate/Clone/Tune aktiv im Charakterstimme-Modal
 - **2026-06-27** — MVE 0.4 (#14): Voice Clone Request — lifecycle, consent-gated start, `/voices/clone` route
 - **2026-06-27** — MVE 0.4 (#15): Voice Tune — non-destructives Preset-Profil (`type=tuned`, local desktop)
@@ -378,8 +379,6 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 - **2026-06-26** — T31: Metronom-Count-in vor Audio-Aufnahme (BPM/Takt einstellbar, local desktop)
 - **2026-06-26** — T30: Lane-Link-Icon + hierarchischer Act/Sequence/Scene-Modal für MVE-Dialog-Spuren (local desktop)
 - **2026-06-26** — T29: Szene verlängert sich per Ripple, wenn MVE-Textblock-Audio länger als die Szene ist (local desktop)
-- **2026-06-26** — ECC: `@ecc-check`, `@commit-pr-safe`, `npm run verify`; GitHub CI nutzt verify (hart); pre-push ohne Shim AI Review
-- **2026-06-16** — Ticket gate: scoped `SHIM_CHANGED_FILES`, Fallow, Codex fallback, `TEST_COVERAGE_REGISTRY` (process/docs)
 
 ---
 

@@ -16,14 +16,12 @@ describe("useTimelineTransport", () => {
 
   it("seek clamps to [0, duration]", () => {
     const scrollRef = { current: null as HTMLDivElement | null };
-    const trackLabelsRef = { current: null };
     const viewStartSecRef = { current: 0 };
 
     const { result } = renderHook(() =>
       useTimelineTransport({
         durationSec: 10,
         scrollRef,
-        trackLabelsRef,
         viewStartSec: 0,
         pxPerSec: 100,
         viewStartSecRef,
@@ -43,14 +41,12 @@ describe("useTimelineTransport", () => {
 
   it("play() resets to start when at end", () => {
     const scrollRef = { current: null as HTMLDivElement | null };
-    const trackLabelsRef = { current: null };
     const viewStartSecRef = { current: 0 };
 
     const { result } = renderHook(() =>
       useTimelineTransport({
         durationSec: 5,
         scrollRef,
-        trackLabelsRef,
         viewStartSec: 0,
         pxPerSec: 100,
         viewStartSecRef,
@@ -68,14 +64,12 @@ describe("useTimelineTransport", () => {
 
   it("play() keeps playingRef true before React commits playing", () => {
     const scrollRef = { current: null as HTMLDivElement | null };
-    const trackLabelsRef = { current: null };
     const viewStartSecRef = { current: 0 };
 
     const { result } = renderHook(() =>
       useTimelineTransport({
         durationSec: 5,
         scrollRef,
-        trackLabelsRef,
         viewStartSec: 0,
         pxPerSec: 100,
         viewStartSecRef,
@@ -101,7 +95,6 @@ describe("useTimelineTransport", () => {
       value: 2000,
     });
     const scrollRef = { current: scrollEl };
-    const trackLabelsRef = { current: null };
     const viewStartSecRef = { current: 0 };
 
     let rafCb: FrameRequestCallback | null = null;
@@ -115,7 +108,6 @@ describe("useTimelineTransport", () => {
       useTimelineTransport({
         durationSec: 300,
         scrollRef,
-        trackLabelsRef,
         viewStartSec: 0,
         pxPerSec: 100,
         viewStartSecRef,
@@ -136,7 +128,6 @@ describe("useTimelineTransport", () => {
 
   it("advances positionSec while playing via RAF", () => {
     const scrollRef = { current: null as HTMLDivElement | null };
-    const trackLabelsRef = { current: null };
     const viewStartSecRef = { current: 0 };
 
     let rafCb: FrameRequestCallback | null = null;
@@ -152,7 +143,6 @@ describe("useTimelineTransport", () => {
       useTimelineTransport({
         durationSec: 60,
         scrollRef,
-        trackLabelsRef,
         viewStartSec: 0,
         pxPerSec: 100,
         viewStartSecRef,
@@ -173,14 +163,12 @@ describe("useTimelineTransport", () => {
 
   it("stop() resets to 0 and clears playing", () => {
     const scrollRef = { current: null as HTMLDivElement | null };
-    const trackLabelsRef = { current: null };
     const viewStartSecRef = { current: 0 };
 
     const { result } = renderHook(() =>
       useTimelineTransport({
         durationSec: 60,
         scrollRef,
-        trackLabelsRef,
         viewStartSec: 0,
         pxPerSec: 100,
         viewStartSecRef,
@@ -209,7 +197,6 @@ describe("useTimelineTransport", () => {
       ({ left: 0, top: 0, width: 1000, height: 100 }) as DOMRect;
 
     const scrollRef = { current: scrollEl };
-    const trackLabelsRef = { current: null };
     const viewStartSecRef = { current: 0 };
     const onScrubTimeChange = vi.fn();
 
@@ -217,7 +204,6 @@ describe("useTimelineTransport", () => {
       useTimelineTransport({
         durationSec: 60,
         scrollRef,
-        trackLabelsRef,
         viewStartSec: 0,
         pxPerSec: 100,
         viewStartSecRef,

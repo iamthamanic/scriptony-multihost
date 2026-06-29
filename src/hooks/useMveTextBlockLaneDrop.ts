@@ -9,6 +9,11 @@ import {
   timelineSecFromPointer,
   type SceneTimeBlock,
 } from "@/lib/mve/resolve-scene-at-timeline-sec";
+import {
+  resolveMveLineSpan,
+  type MveLineSpan,
+} from "@/lib/mve/resolve-mve-line-span";
+import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 
 export const MVE_LINE_DRAG_MIME = "application/x-scriptony-mve-line-id";
 
@@ -80,17 +85,29 @@ export function useMveTextBlockLaneDrop({
 }
 
 export function textBlockTimingForLine(
-  lineSceneId: string,
+  line: MveLine,
   sceneBlocks: SceneTimeBlock[],
+  linesInScene: MveLine[] = [],
+  readingSpeedWpm?: number,
   fallbackStart = 0,
   fallbackDuration = 3,
-): { startSec: number; endSec: number } {
-  const block = sceneBlocks.find((s) => s.id === lineSceneId);
+): MveLineSpan {
+  const block = sceneBlocks.find((s) => s.id === line.sceneId);
   if (block) {
-    return { startSec: block.startSec, endSec: block.endSec };
+    const siblings = linesInScene.filter(
+      (l) => l.sceneId === line.sceneId && !l.audioClipId,
+    );
+    return resolveMveLineSpan({
+      line,
+      sceneBlock: block,
+      linesInScene: siblings.length > 0 ? siblings : [line],
+      readingSpeedWpm,
+    });
   }
   return {
     startSec: fallbackStart,
     endSec: fallbackStart + fallbackDuration,
+    durationSec: fallbackDuration,
+    source: "min",
   };
 }

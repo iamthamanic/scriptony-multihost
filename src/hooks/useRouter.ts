@@ -21,6 +21,9 @@ const VALID_PAGES = [
   "qa-mve-voice",
   "qa-mve-take-ui",
   "qa-mve-text-block-lane",
+  "qa-mve-empty-text-block-shell",
+  "qa-mve-dialog-clip-inline-slice3",
+  "qa-mve-dialog-lane-layout-fixes",
   "project-recovery",
 ] as const;
 

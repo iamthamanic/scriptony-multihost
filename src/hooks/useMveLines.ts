@@ -7,6 +7,7 @@ import { useCallback, useMemo } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createMveLine,
+  deleteMveLine,
   getMveLines,
   updateMveLine,
 } from "@/lib/api-adapter/mve-adapter";
@@ -19,16 +20,63 @@ import type { AudioClip } from "@/lib/types";
 import { toast } from "sonner";
 import { moveTextBlockToScene } from "@/lib/mve/move-text-block-to-scene";
 import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
+import { syncSceneDurationForMveContent } from "@/lib/mve/sync-scene-duration-for-mve-content";
 
-export function useMveLines(projectId: string | undefined) {
+export interface UseMveLinesOptions {
+  projectType?: string;
+  readingSpeedWpm?: number;
+  getSceneBlocks?: () => SceneTimeBlock[];
+}
+
+export function useMveLines(
+  projectId: string | undefined,
+  options: UseMveLinesOptions = {},
+) {
   const queryClient = useQueryClient();
   const enabled = Boolean(projectId) && isLocalProfile();
+  const { projectType, readingSpeedWpm, getSceneBlocks } = options;
 
   const linesQuery = useQuery({
     queryKey: queryKeys.mve.linesByProject(projectId ?? ""),
     queryFn: () => getMveLines(projectId!),
     enabled,
   });
+
+  const syncSceneForLine = useCallback(
+    async (lineId: string, clipId?: string, clipEndSec?: number) => {
+      if (!projectId) return;
+      const sceneBlocks = getSceneBlocks?.() ?? [];
+      if (sceneBlocks.length === 0) return;
+
+      try {
+        const lines = await getMveLines(projectId);
+        const line = lines.find((l) => l.id === lineId);
+        if (!line) return;
+
+        const { synced } = await syncSceneDurationForMveContent({
+          projectId,
+          projectType,
+          sceneId: line.sceneId,
+          sceneBlocks,
+          lines,
+          readingSpeedWpm,
+          clipId,
+          clipEndSec,
+        });
+        if (synced) {
+          await queryClient.invalidateQueries({
+            queryKey: queryKeys.timeline.byProject(projectId),
+          });
+          await queryClient.invalidateQueries({
+            queryKey: queryKeys.timeline.audioByProject(projectId),
+          });
+        }
+      } catch (err) {
+        console.warn("[MVE] Szene-Dauer-Sync fehlgeschlagen:", err);
+      }
+    },
+    [projectId, projectType, readingSpeedWpm, getSceneBlocks, queryClient],
+  );
 
   const lineByClipId = useMemo(() => {
     const map = new Map<string, MveLine>();
@@ -51,7 +99,10 @@ export function useMveLines(projectId: string | undefined) {
         text,
         status: "dirty",
       }),
-    onSuccess: () => void invalidate(),
+    onSuccess: async (_data, { lineId }) => {
+      await invalidate();
+      await syncSceneForLine(lineId);
+    },
     onError: (err: Error) => {
       toast.error(err.message || "Dialogtext konnte nicht gespeichert werden.");
     },
@@ -100,7 +151,10 @@ export function useMveLines(projectId: string | undefined) {
       text?: string;
       orderIndex?: number;
     }) => createMveLine(projectId!, payload),
-    onSuccess: () => void invalidate(),
+    onSuccess: async (line) => {
+      await invalidate();
+      await syncSceneForLine(line.id);
+    },
     onError: (err: Error) => {
       toast.error(err.message || "Textblock konnte nicht erstellt werden.");
     },
@@ -197,6 +251,29 @@ export function useMveLines(projectId: string | undefined) {
     [moveLineToSceneMutation],
   );
 
+  const deleteLineMutation = useMutation({
+    mutationFn: async (lineId: string) => deleteMveLine(lineId),
+    onSuccess: async () => {
+      await invalidate();
+      if (projectId) {
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.timeline.audioByProject(projectId),
+        });
+      }
+      toast.success("Textblock gelöscht.");
+    },
+    onError: (err: Error) => {
+      toast.error(err.message || "Textblock konnte nicht gelöscht werden.");
+    },
+  });
+
+  const deleteLine = useCallback(
+    async (lineId: string) => {
+      await deleteLineMutation.mutateAsync(lineId);
+    },
+    [deleteLineMutation],
+  );
+
   return {
     lines: linesQuery.data ?? [],
     lineByClipId,
@@ -209,12 +286,14 @@ export function useMveLines(projectId: string | undefined) {
     saveLineDirection,
     bindAudioClip,
     moveLineToScene,
+    deleteLine,
     isSaving:
       saveTextMutation.isPending ||
       saveDirectionMutation.isPending ||
       bindAudioClipMutation.isPending ||
       createLineMutation.isPending ||
-      moveLineToSceneMutation.isPending,
+      moveLineToSceneMutation.isPending ||
+      deleteLineMutation.isPending,
   };
 }
 

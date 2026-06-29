@@ -126,4 +126,4 @@ Legacy full gate (Appwrite deploy): `npm run checks`. Include `src-tauri/` in sc
 
 ---
 
-**See also:** [LOCAL_PROJECT_FORMAT.md](LOCAL_PROJECT_FORMAT.md), [GETTING_STARTED.md](GETTING_STARTED.md)
+**See also:** [FEATURE_LOCAL_CLOUD_MATRIX.md](FEATURE_LOCAL_CLOUD_MATRIX.md) (Lokal / Appwrite / API pro Feature), [LOCAL_PROJECT_FORMAT.md](LOCAL_PROJECT_FORMAT.md), [GETTING_STARTED.md](GETTING_STARTED.md)

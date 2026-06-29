@@ -103,6 +103,27 @@ const MveTextBlockLanePreviewPage = lazy(() =>
     default: module.MveTextBlockLanePreviewPage,
   })),
 );
+const MveEmptyTextBlockShellPreviewPage = lazy(() =>
+  import("../components/qa/MveEmptyTextBlockShellPreviewPage").then(
+    (module) => ({
+      default: module.MveEmptyTextBlockShellPreviewPage,
+    }),
+  ),
+);
+const MveDialogClipInlineSlice3PreviewPage = lazy(() =>
+  import("../components/qa/MveDialogClipInlineSlice3PreviewPage").then(
+    (module) => ({
+      default: module.MveDialogClipInlineSlice3PreviewPage,
+    }),
+  ),
+);
+const MveDialogLaneLayoutFixesPreviewPage = lazy(() =>
+  import("../components/qa/MveDialogLaneLayoutFixesPreviewPage").then(
+    (module) => ({
+      default: module.MveDialogLaneLayoutFixesPreviewPage,
+    }),
+  ),
+);
 const ScriptonyAssistant = lazy(() =>
   import("../components/assistant/ScriptonyAssistant").then((module) => ({
     default: module.ScriptonyAssistant,
@@ -239,6 +260,24 @@ export function AppContent() {
       case "qa-mve-text-block-lane":
         return import.meta.env.DEV ? (
           <MveTextBlockLanePreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-mve-empty-text-block-shell":
+        return import.meta.env.DEV ? (
+          <MveEmptyTextBlockShellPreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-mve-dialog-clip-inline-slice3":
+        return import.meta.env.DEV ? (
+          <MveDialogClipInlineSlice3PreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-mve-dialog-lane-layout-fixes":
+        return import.meta.env.DEV ? (
+          <MveDialogLaneLayoutFixesPreviewPage />
         ) : (
           <HomePage onNavigate={onNavigate} />
         );

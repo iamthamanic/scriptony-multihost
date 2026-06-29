@@ -26,7 +26,6 @@ const SCRUB_CLICK_SUPPRESS_MS = 400;
 export interface UseTimelineTransportOptions {
   durationSec: number;
   scrollRef: RefObject<HTMLDivElement | null>;
-  trackLabelsRef: RefObject<HTMLDivElement | null>;
   viewStartSec: number;
   pxPerSec: number;
   /** Shared with structure trim/move bridges for viewport sync. */
@@ -66,7 +65,6 @@ function applyPlayheadCssVar(
 export function useTimelineTransport({
   durationSec,
   scrollRef,
-  trackLabelsRef,
   viewStartSec,
   pxPerSec,
   viewStartSecRef: externalViewStartSecRef,
@@ -346,10 +344,6 @@ export function useTimelineTransport({
         if (Math.abs(el.scrollLeft - targetScroll) > 2) {
           el.scrollLeft = targetScroll;
           viewStartSecRef.current = el.scrollLeft / pxPerSecRef.current;
-          const labels = trackLabelsRef.current;
-          if (labels && labels.scrollTop !== el.scrollTop) {
-            labels.scrollTop = el.scrollTop;
-          }
         }
       }
 
@@ -380,7 +374,7 @@ export function useTimelineTransport({
         transportRafRef.current = null;
       }
     };
-  }, [playheadSyncGeneration, scrollRef, trackLabelsRef, viewStartSecRef]);
+  }, [playheadSyncGeneration, scrollRef, viewStartSecRef]);
 
   const reanchorPlaybackClock = anchorPlaybackClock;
 

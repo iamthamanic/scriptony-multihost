@@ -41,6 +41,7 @@ import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
 export interface StructureTimelineAudioLanesProps {
   projectId: string;
   projectType?: string;
+  readingSpeedWpm?: number;
   pxPerSec: number;
   viewStartSec: number;
   totalWidthPx: number;
@@ -54,7 +55,11 @@ export function useStructureTimelineAudioLanes(
 ) {
   const [expandedLane, setExpandedLane] = useState<number | null>(null);
   const lanes = useProjectClipLanes(props.projectId, props.projectType);
-  const mve = useMveLines(props.projectId);
+  const mve = useMveLines(props.projectId, {
+    projectType: props.projectType,
+    readingSpeedWpm: props.readingSpeedWpm,
+    getSceneBlocks: () => props.sceneBlocksRef?.current ?? [],
+  });
   const mveRender = useMveLineRender(props.projectId);
   const mveLaneLinks = useMveLaneLinks(props.projectId);
   const mveVoices = useMveVoiceProfiles(props.projectId);
@@ -220,13 +225,40 @@ export function useStructureTimelineAudioLanes(
     ],
   );
 
+  const structurePicker = useMemo(
+    () =>
+      mve.enabled
+        ? {
+            acts: lanes.acts,
+            sequences: lanes.sequences,
+            scenes: lanes.scenes,
+          }
+        : undefined,
+    [mve.enabled, lanes.acts, lanes.sequences, lanes.scenes],
+  );
+
+  const getSceneLabel = useCallback(
+    (sceneId: string) => findSceneLabelInTree(structurePickerTree, sceneId),
+    [structurePickerTree],
+  );
+
+  const handleDeleteLine = useCallback(
+    async (lineId: string) => {
+      if (!mve.enabled) return;
+      await mve.deleteLine(lineId);
+    },
+    [mve],
+  );
+
   const mveLines = useMemo(
     () =>
       mve.enabled && props.projectId
         ? {
             projectId: props.projectId,
+            projectType: props.projectType,
             lineByClipId: mve.lineByClipId,
             linesByCharacterId,
+            structurePicker,
             onSaveText: mve.saveLineText,
             onSaveDirection: mve.saveLineDirection,
             onBindAudioClip: mve.bindAudioClip,
@@ -235,6 +267,8 @@ export function useStructureTimelineAudioLanes(
             getRenderBlockReason: getMveRenderBlockReason,
             onRenderLine: mveRender.renderLine,
             isRenderingLineId: mveRender.renderingLineId,
+            getSceneLabel,
+            onDeleteLine: handleDeleteLine,
           }
         : undefined,
     [
@@ -244,12 +278,16 @@ export function useStructureTimelineAudioLanes(
       mve.saveLineDirection,
       mve.bindAudioClip,
       handleMoveLineToScene,
+      handleDeleteLine,
       linesByCharacterId,
       props.projectId,
+      props.projectType,
       mveRender.renderLine,
       mveRender.renderingLineId,
       getMveRenderBlockReason,
       linkedSceneIdForLane,
+      structurePicker,
+      getSceneLabel,
     ],
   );
 
@@ -327,6 +365,7 @@ export function useStructureTimelineAudioLanes(
     viewStartSec: props.viewStartSec,
     totalWidthPx: props.totalWidthPx,
     scenes: lanes.scenes,
+    structurePicker,
     sceneBlocks,
     laneGroups: lanes.laneGroups,
     sortedLaneIndices: lanes.sortedLaneIndices,
@@ -356,6 +395,7 @@ export function useStructureTimelineAudioLanes(
     },
     mveLines,
     onAddMveTextBlock: mve.enabled ? handleAddMveTextBlock : undefined,
+    readingSpeedWpm: props.readingSpeedWpm,
     linkedSceneIdForLane,
     getMveLaneLinkForLane,
     mveLaneLinkBase,
@@ -393,10 +433,7 @@ export function StructureTimelineAudioLaneLabels({
         className="hidden"
         onChange={addAudio.onFileInputChange}
       />
-      <div
-        className="border-b border-border px-2 py-1 flex items-center justify-between gap-2 bg-card/80"
-        style={{ minHeight: "1.75rem" }}
-      >
+      <div className={LANE_UI.sectionHeaderClass}>
         <span className="text-[9px] font-semibold text-foreground">
           Audio-Spuren
         </span>
@@ -408,7 +445,7 @@ export function StructureTimelineAudioLaneLabels({
         ) : null}
       </div>
       <StructureTimelineClipLaneLabels {...laneProps} fullWidthSidebar />
-      <div className="border-t border-border px-2 py-2 bg-card/80">
+      <div className={LANE_UI.sectionFooterClass}>
         <button
           type="button"
           disabled={addAudio.isBusy}
@@ -445,7 +482,9 @@ export function StructureTimelineAudioLaneScrollRows({
 
   return (
     <div className="relative border-t-2 border-primary/30 shrink-0">
+      <div className={LANE_UI.sectionHeaderClass} aria-hidden="true" />
       <StructureTimelineClipLaneContent {...laneProps} />
+      <div className={LANE_UI.sectionFooterClass} aria-hidden="true" />
     </div>
   );
 }

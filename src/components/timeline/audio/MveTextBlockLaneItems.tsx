@@ -9,6 +9,7 @@ import { textBlockTimingForLine } from "@/hooks/useMveTextBlockLaneDrop";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveSceneOption } from "@/hooks/useMveTextBlockAudio";
 import type { MveLineClipHandlers } from "./AudioClipLaneContent";
+import type { Character } from "../../../lib/types";
 
 export interface MveTextBlockLaneItemsProps {
   lines: MveLine[];
@@ -16,9 +17,18 @@ export interface MveTextBlockLaneItemsProps {
   viewStartSec: number;
   sceneBlocks: SceneTimeBlock[];
   characterId?: string;
+  character?: Character;
   sceneOptions: MveSceneOption[];
+  readingSpeedWpm?: number;
   mveLines?: MveLineClipHandlers;
   draggable?: boolean;
+}
+
+function sceneLabelForLine(
+  line: MveLine,
+  sceneOptions: MveSceneOption[],
+): string | undefined {
+  return sceneOptions.find((s) => s.id === line.sceneId)?.name;
 }
 
 export function MveTextBlockLaneItems({
@@ -27,31 +37,49 @@ export function MveTextBlockLaneItems({
   viewStartSec,
   sceneBlocks,
   characterId,
+  character,
   sceneOptions,
+  readingSpeedWpm,
   mveLines,
   draggable,
 }: MveTextBlockLaneItemsProps) {
   return (
     <>
       {lines.map((line) => {
-        const { startSec, endSec } = textBlockTimingForLine(
-          line.sceneId,
+        const span = textBlockTimingForLine(
+          line,
           sceneBlocks,
+          lines,
+          readingSpeedWpm,
         );
+        const sceneBlock = sceneBlocks.find((b) => b.id === line.sceneId);
+        const sceneLabel =
+          mveLines?.getSceneLabel?.(line.sceneId) ??
+          sceneLabelForLine(line, sceneOptions);
         return (
           <AudioTimelineMveTextBlock
             key={`text-block-${line.id}`}
             line={line}
             pxPerSec={pxPerSec}
             viewStartSec={viewStartSec}
-            sceneStartSec={startSec}
-            sceneEndSec={endSec}
+            startSec={span.startSec}
+            endSec={span.endSec}
             projectId={mveLines?.projectId}
+            projectType={mveLines?.projectType}
             sceneId={line.sceneId}
-            characterId={characterId}
+            sceneLabel={sceneLabel}
+            character={character}
             scenes={sceneOptions}
+            structurePicker={mveLines?.structurePicker}
             onSaveText={mveLines?.onSaveText}
+            onSaveDirection={mveLines?.onSaveDirection}
             onBindAudioClip={mveLines?.onBindAudioClip}
+            onDeleteLine={mveLines?.onDeleteLine}
+            sceneBlock={
+              sceneBlock
+                ? { startSec: sceneBlock.startSec, endSec: sceneBlock.endSec }
+                : undefined
+            }
             draggable={draggable}
           />
         );

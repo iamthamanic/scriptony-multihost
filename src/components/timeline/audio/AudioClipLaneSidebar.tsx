@@ -5,7 +5,11 @@
 
 import { useState } from "react";
 import { cn } from "../../../lib/utils";
-import { getLaneType, LANE_UI } from "../../../lib/audio-lane";
+import {
+  getLaneType,
+  LANE_UI,
+  resolveLaneHeightPx,
+} from "../../../lib/audio-lane";
 import { isCharacterDialogLane } from "../../../lib/character-lane-map";
 import { TrackHeader } from "../../audio/track-header/TrackHeader";
 import { AddAudioTimelineMenu } from "./AddAudioTimelineMenu";
@@ -20,6 +24,7 @@ import type {
 } from "../../../lib/types";
 import type { AudioClipLaneTracksProps } from "./AudioClipLaneTracks";
 import type { TimelineSceneRef } from "../../../lib/timeline-add-audio";
+import type { MveStructurePickerRefs } from "../../structure/timeline/mve/MveStructureScenePickerModal";
 
 export interface MveLaneLinkControlProps {
   enabled?: boolean;
@@ -35,9 +40,7 @@ export interface MveLaneLinkControlProps {
 }
 
 function laneHeight(expandedLane: number | null, laneIndex: number): number {
-  return expandedLane === laneIndex
-    ? LANE_UI.heightExpanded
-    : LANE_UI.heightCompact;
+  return resolveLaneHeightPx(laneIndex, expandedLane);
 }
 
 function renderAddAudioMenu(
@@ -75,6 +78,7 @@ export interface AudioClipLaneSidebarProps {
   character?: Character;
   addAudio?: AudioClipLaneTracksProps["addAudio"];
   scenes?: TimelineSceneRef[];
+  structurePicker?: MveStructurePickerRefs;
   currentTimeSec: number;
   onExpandedLaneChange?: (laneIndex: number | null) => void;
   onMuteChange: (laneIndex: number, mute: boolean) => void;
@@ -106,6 +110,7 @@ export function AudioClipLaneSidebar({
   character,
   addAudio,
   scenes,
+  structurePicker,
   currentTimeSec,
   onExpandedLaneChange,
   onMuteChange,
@@ -132,7 +137,7 @@ export function AudioClipLaneSidebar({
       laneIndex={laneIndex}
       character={character}
       disabled={(addAudio?.isBusy ?? false) || locked || !onAddMveTextBlock}
-      scenes={scenes}
+      structurePicker={structurePicker}
       linkedSceneId={linkedSceneId}
       onAddTextBlock={({ characterId, sceneId }) =>
         onAddMveTextBlock?.({

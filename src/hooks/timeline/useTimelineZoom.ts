@@ -23,7 +23,6 @@ import {
 
 export interface UseTimelineZoomOptions {
   scrollRef: RefObject<HTMLDivElement | null>;
-  trackLabelsRef: RefObject<HTMLDivElement | null>;
   viewStartSecRef: RefObject<number>;
   pxPerSecRef: RefObject<number>;
   totalDurationSec: number;
@@ -32,7 +31,6 @@ export interface UseTimelineZoomOptions {
 
 export function useTimelineZoom({
   scrollRef,
-  trackLabelsRef,
   viewStartSecRef,
   pxPerSecRef,
   totalDurationSec,
@@ -73,14 +71,10 @@ export function useTimelineZoom({
       setScrollLeft(el.scrollLeft);
       viewStartSecRef.current = el.scrollLeft / (pxPerSecRef.current || 1);
       onScrollRef.current?.();
-      const labels = trackLabelsRef.current;
-      if (labels && labels.scrollTop !== el.scrollTop) {
-        labels.scrollTop = el.scrollTop;
-      }
     };
     el.addEventListener("scroll", handleScroll);
     return () => el.removeEventListener("scroll", handleScroll);
-  }, [pxPerSecRef, scrollRef, trackLabelsRef, viewStartSecRef]);
+  }, [pxPerSecRef, scrollRef, viewStartSecRef]);
 
   useEffect(() => {
     if (!viewportWidth || totalDurationSec <= 0) return;

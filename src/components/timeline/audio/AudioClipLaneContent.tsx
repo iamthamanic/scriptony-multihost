@@ -13,13 +13,16 @@ import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-direction";
 import type { TimelineSceneRef } from "../../../lib/timeline-add-audio";
 import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
+import type { MveStructurePickerRefs } from "../../structure/timeline/mve/MveStructureScenePickerModal";
 import { useMveTextBlockLaneDrop } from "@/hooks/useMveTextBlockLaneDrop";
 import { MveTextBlockLaneItems } from "./MveTextBlockLaneItems";
 
 export interface MveLineClipHandlers {
   projectId: string;
+  projectType?: string;
   lineByClipId: Map<string, MveLine>;
   linesByCharacterId?: Map<string, MveLine[]>;
+  structurePicker?: MveStructurePickerRefs;
   onSaveText: (lineId: string, text: string) => Promise<void>;
   onSaveDirection: (
     lineId: string,
@@ -31,6 +34,8 @@ export interface MveLineClipHandlers {
   getRenderBlockReason?: (line: MveLine) => string | undefined;
   onRenderLine?: (lineId: string) => Promise<unknown>;
   isRenderingLineId?: string | null;
+  getSceneLabel?: (sceneId: string) => string | undefined;
+  onDeleteLine?: (lineId: string) => Promise<void>;
 }
 
 export interface AudioClipLaneContentProps {
@@ -51,6 +56,7 @@ export interface AudioClipLaneContentProps {
     ReturnType<typeof useCharacterLaneMap>,
     "getCharacterForLane" | "characterIdForLane" | "dialogLaneOrder"
   >;
+  readingSpeedWpm?: number;
   mveLines?: MveLineClipHandlers;
   className?: string;
 }
@@ -71,10 +77,12 @@ export function AudioClipLaneContent({
   allClips = [],
   characterLanes,
   mveLines,
+  readingSpeedWpm,
   className,
 }: AudioClipLaneContentProps) {
   const audible = isLaneAudible(laneIndex, laneState.laneStates);
   const characterId = characterLanes?.characterIdForLane(laneIndex);
+  const character = characterLanes?.getCharacterForLane(laneIndex);
   const textOnlyLines = characterId
     ? (mveLines?.linesByCharacterId?.get(characterId) ?? [])
     : [];
@@ -120,43 +128,67 @@ export function AudioClipLaneContent({
           />
         ) : null,
       )}
-      {clips.map((clip) => (
-        <AudioTimelineSegment
-          key={clip.id}
-          item={clip}
-          pxPerSec={pxPerSec}
-          viewStartSec={viewStartSec}
-          onTrimEnd={onTrimEnd}
-          isEditable={!locked}
-          onGenerateTts={() => onGenerateTts(clip)}
-          allClips={allClips}
-          onLaneChange={onLaneChange}
-          mveLine={mveLines?.lineByClipId.get(clip.id)}
-          mveProjectId={mveLines?.projectId}
-          onMveSaveText={mveLines?.onSaveText}
-          onMveSaveDirection={mveLines?.onSaveDirection}
-          mveRenderBlockReason={(() => {
-            const line = mveLines?.lineByClipId.get(clip.id);
-            return line && mveLines?.getRenderBlockReason
-              ? mveLines.getRenderBlockReason(line)
-              : undefined;
-          })()}
-          onMveRenderLine={mveLines?.onRenderLine}
-          mveIsRendering={
-            mveLines?.isRenderingLineId != null &&
-            mveLines.lineByClipId.get(clip.id)?.id ===
-              mveLines.isRenderingLineId
-          }
-        />
-      ))}
+      {clips.map((clip) => {
+        const line = mveLines?.lineByClipId.get(clip.id);
+        const sceneLabel =
+          (line?.sceneId && mveLines?.getSceneLabel?.(line.sceneId)) ||
+          sceneOptions.find((s) => s.id === line?.sceneId)?.name;
+        const mveSceneBlock = line?.sceneId
+          ? sceneBlocks.find((b) => b.id === line.sceneId)
+          : undefined;
+        return (
+          <AudioTimelineSegment
+            key={clip.id}
+            item={clip}
+            pxPerSec={pxPerSec}
+            viewStartSec={viewStartSec}
+            onTrimEnd={onTrimEnd}
+            isEditable={!locked}
+            onGenerateTts={() => onGenerateTts(clip)}
+            allClips={allClips}
+            onLaneChange={onLaneChange}
+            mveLine={line}
+            mveProjectId={mveLines?.projectId}
+            mveProjectType={mveLines?.projectType}
+            mveCharacter={character}
+            mveSceneLabel={sceneLabel}
+            mveSceneBlock={
+              mveSceneBlock
+                ? {
+                    startSec: mveSceneBlock.startSec,
+                    endSec: mveSceneBlock.endSec,
+                  }
+                : undefined
+            }
+            mveScenes={sceneOptions}
+            mveStructurePicker={mveLines?.structurePicker}
+            onMveSaveText={mveLines?.onSaveText}
+            onMveSaveDirection={mveLines?.onSaveDirection}
+            onMveBindAudioClip={mveLines?.onBindAudioClip}
+            onMveDeleteLine={mveLines?.onDeleteLine}
+            mveRenderBlockReason={
+              line && mveLines?.getRenderBlockReason
+                ? mveLines.getRenderBlockReason(line)
+                : undefined
+            }
+            onMveRenderLine={mveLines?.onRenderLine}
+            mveIsRendering={
+              mveLines?.isRenderingLineId != null &&
+              line?.id === mveLines.isRenderingLineId
+            }
+          />
+        );
+      })}
       <MveTextBlockLaneItems
         lines={textOnlyLines}
         pxPerSec={pxPerSec}
         viewStartSec={viewStartSec}
         sceneBlocks={sceneBlocks}
         characterId={characterId}
+        character={character}
         sceneOptions={sceneOptions}
         mveLines={mveLines}
+        readingSpeedWpm={readingSpeedWpm}
         draggable={Boolean(mveLines?.onMoveLineToScene) && !locked}
       />
     </div>

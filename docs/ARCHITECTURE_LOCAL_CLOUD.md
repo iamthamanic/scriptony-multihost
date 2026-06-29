@@ -4,6 +4,7 @@
 > **Principle:** KISS · SOLID · DRY — one dispatch layer, domain names in code, HTTP routes only in `*-cloud-http.ts`.
 
 Canonical desktop workflow: [DESKTOP_FIRST_DEV.md](DESKTOP_FIRST_DEV.md).  
+Feature matrix (Lokal / Appwrite / externe API): [FEATURE_LOCAL_CLOUD_MATRIX.md](FEATURE_LOCAL_CLOUD_MATRIX.md).
 **Generic multihost blueprint (new apps / AI handoff):** [MULTIHOST_BLUEPRINT.md](MULTIHOST_BLUEPRINT.md).  
 Domain mapping table: [DOMAIN_GLOSSAR.md](DOMAIN_GLOSSAR.md).  
 Capability gates: [`src/capabilities/registry.ts`](../src/capabilities/registry.ts).

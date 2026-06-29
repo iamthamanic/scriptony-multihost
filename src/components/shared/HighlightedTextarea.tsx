@@ -6,6 +6,8 @@ interface HighlightedTextareaProps extends React.TextareaHTMLAttributes<HTMLText
   value?: string;
   highlightPattern?: RegExp;
   highlightClassName?: string;
+  /** Typography/padding for the highlight overlay — must match `className` on the textarea. */
+  overlayClassName?: string;
 }
 
 /**
@@ -20,6 +22,7 @@ export const HighlightedTextarea = forwardRef<
     value = "",
     highlightPattern = /@\\w+/g,
     highlightClassName = "text-[#60A5FA] font-bold",
+    overlayClassName,
     className,
     onChange,
     onScroll,
@@ -106,8 +109,8 @@ export const HighlightedTextarea = forwardRef<
         className={cn(
           "absolute inset-0 pointer-events-none overflow-hidden z-10",
           "whitespace-pre-wrap break-words",
-          "p-2 text-[13px] leading-[1.5]",
-          "text-[#0A0A0A] dark:text-[#EDE9FE]", // Explicit hex colors for maximum contrast
+          overlayClassName ??
+            "p-2 text-[13px] leading-[1.5] text-[#0A0A0A] dark:text-[#EDE9FE]",
         )}
         aria-hidden="true"
       >
