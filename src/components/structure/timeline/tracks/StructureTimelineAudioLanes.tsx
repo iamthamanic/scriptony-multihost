@@ -11,7 +11,6 @@ import {
   useCallback,
   type RefObject,
 } from "react";
-import { Plus } from "lucide-react";
 import { useProjectClipLanes } from "../../../../hooks/useProjectClipLanes";
 import { useTimelineAddAudio } from "../../../../hooks/useTimelineAddAudio";
 import { useMveLines } from "../../../../hooks/useMveLines";
@@ -35,7 +34,10 @@ import {
   StructureTimelineClipLaneContent,
   StructureTimelineClipLaneLabels,
 } from "./StructureTimelineClipLanes";
-import { MetronomeSettingsButton } from "../modals/MetronomeSettingsButton";
+import {
+  StructureTimelineAudioSectionFooter,
+  StructureTimelineAudioSectionHeader,
+} from "./StructureTimelineAudioSectionChrome";
 import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
 
 export interface StructureTimelineAudioLanesProps {
@@ -433,30 +435,18 @@ export function StructureTimelineAudioLaneLabels({
         className="hidden"
         onChange={addAudio.onFileInputChange}
       />
-      <div className={LANE_UI.sectionHeaderClass}>
-        <span className="text-[9px] font-semibold text-foreground">
-          Audio-Spuren
-        </span>
-        {metronome && isLocalProfile() ? (
-          <MetronomeSettingsButton
-            config={metronome.config}
-            onSave={metronome.setConfig}
-          />
-        ) : null}
-      </div>
+      <StructureTimelineAudioSectionHeader
+        side="labels"
+        metronome={metronome}
+      />
       <StructureTimelineClipLaneLabels {...laneProps} fullWidthSidebar />
-      <div className={LANE_UI.sectionFooterClass}>
-        <button
-          type="button"
-          disabled={addAudio.isBusy}
-          onClick={() => void addAudio.addSfxLane()}
-          className="flex items-center justify-center gap-1 w-full py-1 text-[10px] rounded border border-dashed border-orange-400/60 text-muted-foreground hover:text-foreground hover:bg-orange-500/10 disabled:opacity-50"
-          aria-label="SFX-Spur hinzufügen"
-        >
-          <Plus className="size-3" />
-          SFX
-        </button>
-      </div>
+      <StructureTimelineAudioSectionFooter
+        side="labels"
+        addAudio={{
+          isBusy: addAudio.isBusy,
+          addSfxLane: addAudio.addSfxLane,
+        }}
+      />
     </div>
   );
 }
@@ -464,9 +454,11 @@ export function StructureTimelineAudioLaneLabels({
 /** Scroll area: clip lanes aligned with structure timeline width. */
 export function StructureTimelineAudioLaneScrollRows({
   laneProps,
+  metronome,
   isLoading,
 }: {
   laneProps: ReturnType<typeof useStructureTimelineAudioLanes>["laneProps"];
+  metronome?: ReturnType<typeof useStructureTimelineAudioLanes>["metronome"];
   isLoading: boolean;
 }) {
   if (isLoading) {
@@ -482,9 +474,12 @@ export function StructureTimelineAudioLaneScrollRows({
 
   return (
     <div className="relative border-t-2 border-primary/30 shrink-0">
-      <div className={LANE_UI.sectionHeaderClass} aria-hidden="true" />
+      <StructureTimelineAudioSectionHeader
+        side="scroll"
+        metronome={metronome}
+      />
       <StructureTimelineClipLaneContent {...laneProps} />
-      <div className={LANE_UI.sectionFooterClass} aria-hidden="true" />
+      <StructureTimelineAudioSectionFooter side="scroll" />
     </div>
   );
 }
@@ -512,6 +507,7 @@ export function StructureTimelineAudioLanesStack(
       >
         <StructureTimelineAudioLaneScrollRows
           laneProps={laneProps}
+          metronome={metronome}
           isLoading={lanes.isLoading}
         />
       </div>

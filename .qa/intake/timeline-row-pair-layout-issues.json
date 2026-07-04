@@ -1,0 +1,35 @@
+{
+  "epicSlug": "timeline-row-pair-layout",
+  "designPath": ".qa/design/timeline-row-pair-layout.md",
+  "defaultLabels": ["P1"],
+  "issues": [
+    {
+      "title": "Structure Timeline: introduce RowShell and migrate Beat–Scene rows",
+      "featureSlug": "timeline-row-shell-structure",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": [],
+      "body": "## Intent\nEinführung von `StructureTimelineRowShell` (Label-Slot + Content-Slot pro Zeile) und Migration der Structure-Tracks Beat, Act, Sequence, Scene.\n\n## User Journey\n1. User öffnet Structure Timeline in Tauri.\n2. User scrollt vertikal — Beat-Label und Beat-Lane bleiben als eine Zeile gekoppelt.\n3. User scrollt horizontal — Labels bleiben fix, Lanes bewegen sich.\n\n## Problem\nZwei parallele Listen (Labels links, Lanes rechts) erfordern manuelle Höhen-/Reihenfolge-Sync (Slice 1 nur Patches).\n\n## Solution\n- Neu: `src/components/structure/timeline/StructureTimelineRowShell.tsx`\n- Migrate Beat/Act/Seq/Scene in `StructureTimelineEditor.tsx`\n- Behalte einen `scrollRef` für Playhead\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Book vs audio vs film strategy flags — nur Structure-Rows, keine Film-Zeilen in diesem Slice\n- Resize track heights — RowShell prop `heightPx`\n\n## Acceptance\n- [ ] Jede Structure-Zeile ist ein DOM-Paar `[label | content]`\n- [ ] Vertikal ein Row-Stack; horizontal ein gemeinsamer scrollRef\n- [ ] Labels horizontal fix\n- [ ] Playwright Beat/Akt alignment Δ ≤ 2px\n- [ ] Marquee/trim Beat/Act regression grün\n\n## Design\nEpic: `.qa/design/timeline-row-pair-layout.md`\n\n## Runner\nFeature slug: `timeline-row-shell-structure`"
+    },
+    {
+      "title": "Structure Timeline: migrate audio lanes to row-pair shell",
+      "featureSlug": "timeline-row-shell-audio",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": [
+        "Structure Timeline: introduce RowShell and migrate Beat–Scene rows"
+      ],
+      "body": "## Intent\nAudio-Section und jede DAW-Lane als Row-Pair statt getrennte Label-/Scroll-Listen.\n\n## User Journey\n1. User sieht Dialog-Mixer links und Clip-Lane rechts in einer Zeile.\n2. Vertikales Scrollen koppelt Sidebar und Lane.\n\n## Problem\n`StructureTimelineAudioLaneLabels` und `ScrollRows` sind weiterhin zwei Listen.\n\n## Solution\n- Per-lane rows via RowShell\n- Reuse `StructureTimelineAudioSectionChrome`\n- Refactor `StructureTimelineAudioLanes.tsx`\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n| Appwrite Functions | skip |\n\n## Acceptance\n- [ ] Audio header/footer als Row-Pair-Zeilen\n- [ ] Jede Lane: sidebar + content in einer Zeile\n- [ ] Dialog lane Δ ≤ 2px in Playwright\n- [ ] Expanded 280/320px heights sync\n\n## Design\nEpic: `.qa/design/timeline-row-pair-layout.md`\n\n## Blockers\nDepends on RowShell structure slice\n\n## Runner\nFeature slug: `timeline-row-shell-audio`"
+    },
+    {
+      "title": "Structure Timeline: film rows in RowShell; remove parallel label column",
+      "featureSlug": "timeline-row-shell-film",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": [
+        "Structure Timeline: migrate audio lanes to row-pair shell"
+      ],
+      "body": "## Intent\nFilm-Zeilen (Shot/Clip/Musik/SFX) in RowShell; parallele Label-Spalte entfernen; Editor shrink (T50).\n\n## User Journey\n1. Film-Projekt: Shot → Audio → Clip → Musik → SFX visuell korrekt untereinander.\n2. Kein dauerhafter Versatz zwischen Label- und Content-Spalte.\n\n## Problem\nFilm-Reihenfolge war in Slice 1 gefixt, Architektur-Risiko bleibt.\n\n## Solution\n- Migrate `StructureTimelineFilmProductionTracks` into row stack\n- Remove legacy left label column from editor\n- Update `docs/STRUCTURE_TIMELINE.md`\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n| Appwrite Functions | skip |\n\n## Acceptance\n- [ ] Film row order korrekt im Row-Stack\n- [ ] Keine parallele Label-Spalte\n- [ ] Tauri `#qa-timeline-row-alignment-tauri` PASS\n- [ ] docs/STRUCTURE_TIMELINE.md Layout-Abschnitt\n\n## Design\nEpic: `.qa/design/timeline-row-pair-layout.md`\n\n## Blockers\nDepends on audio row-pair slice\n\n## Runner\nFeature slug: `timeline-row-shell-film`"
+    }
+  ]
+}

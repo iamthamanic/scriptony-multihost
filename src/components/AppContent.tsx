@@ -124,6 +124,16 @@ const MveDialogLaneLayoutFixesPreviewPage = lazy(() =>
     }),
   ),
 );
+const TimelineRowAlignmentPreviewPage = lazy(() =>
+  import("../components/qa/TimelineRowAlignmentPreviewPage").then((module) => ({
+    default: module.TimelineRowAlignmentPreviewPage,
+  })),
+);
+const TimelineRowAlignmentTauriPage = lazy(() =>
+  import("../components/qa/TimelineRowAlignmentTauriPage").then((module) => ({
+    default: module.TimelineRowAlignmentTauriPage,
+  })),
+);
 const ScriptonyAssistant = lazy(() =>
   import("../components/assistant/ScriptonyAssistant").then((module) => ({
     default: module.ScriptonyAssistant,
@@ -278,6 +288,18 @@ export function AppContent() {
       case "qa-mve-dialog-lane-layout-fixes":
         return import.meta.env.DEV ? (
           <MveDialogLaneLayoutFixesPreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-timeline-row-alignment":
+        return import.meta.env.DEV ? (
+          <TimelineRowAlignmentPreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-timeline-row-alignment-tauri":
+        return import.meta.env.DEV ? (
+          <TimelineRowAlignmentTauriPage />
         ) : (
           <HomePage onNavigate={onNavigate} />
         );

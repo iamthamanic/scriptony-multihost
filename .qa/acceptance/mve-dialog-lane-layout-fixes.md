@@ -23,7 +23,7 @@ Timeline-Label-Spalte und Lane-Inhalt scrollen gemeinsam (FL-Studio-Stil). Textc
 ## Edge Cases
 
 - [x] Sehr schmale Szene: Block breiter als MIN_WIDTH nicht über Szene hinaus — *Playwright: 40px scene → width ≤ 41px*
-- [ ] Film-Projekt: Label-Reihenfolge links = rechts (Shot vor Audio) — *code-verified only (no film project in QA harness)*
+- [ ] Film-Projekt: Label-Reihenfolge links = rechts (Shot → Audio → Clip → Musik → SFX) — *fixed in timeline-row-alignment Slice 1*
 
 ## Regression
 

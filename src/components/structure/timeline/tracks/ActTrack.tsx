@@ -39,6 +39,7 @@ export function ActTrack({
   return (
     <div
       ref={containerRef as RefObject<HTMLDivElement>}
+      data-testid="timeline-content-act"
       className="relative border-b border-border bg-muted/30"
       style={{ height: `${trackHeightPx}px` }}
     >

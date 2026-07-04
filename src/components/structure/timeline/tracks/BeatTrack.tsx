@@ -35,6 +35,7 @@ export function BeatTrack({
   return (
     <div
       ref={containerRef as RefObject<HTMLDivElement>}
+      data-testid="timeline-content-beat"
       className="relative border-b border-border bg-muted/30"
       style={{ height: `${trackHeightPx}px` }}
     >

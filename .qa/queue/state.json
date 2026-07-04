@@ -9,7 +9,9 @@
   "milestoneFilter": null,
   "paused": false,
   "runMode": "batch",
-  "queue": [],
+  "queue": [
+    49
+  ],
   "completedIssues": [
     3,
     4,
@@ -45,5 +47,5 @@
   "lastError": null,
   "lastErrorCount": 0,
   "issuesProcessedInSession": 0,
-  "updatedAt": "2026-06-27T18:11:15.000Z"
+  "updatedAt": "2026-07-04T14:50:48.000Z"
 }

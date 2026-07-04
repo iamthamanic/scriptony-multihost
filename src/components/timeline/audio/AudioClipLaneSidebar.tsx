@@ -167,6 +167,7 @@ export function AudioClipLaneSidebar({
           className,
         )}
         style={{ height: `${height}px` }}
+        data-testid={`audio-lane-sidebar-${laneIndex}`}
         onDoubleClick={() =>
           onExpandedLaneChange?.(expanded ? null : laneIndex)
         }
