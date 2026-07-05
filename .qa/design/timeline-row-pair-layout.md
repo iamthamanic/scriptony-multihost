@@ -46,13 +46,30 @@ Keep two columns; shared `grid-template-rows`. Still fragile for order; rejected
 
 ## Decision
 
-**Option B** — staged migration:
+**Option B, revised 2026-07-05 (Option A2 — content-anchored coordinates).**
 
-1. Introduce `StructureTimelineRowShell` (label slot + content slot, shared row height)
-2. Migrate structure tracks (Beat → Scene → Shot)
-3. Migrate audio section (per-lane rows + section chrome as rows)
-4. Migrate film production rows (Clip, Musik, SFX)
-5. Remove legacy parallel label column from `StructureTimelineEditor`
+The first RowShell attempt regressed playhead/lane alignment because moving the
+label column inside `scrollRef` shifted the content origin by the label width,
+while all clientX→time math assumed the scroller's left edge as x=0.
+
+Final architecture:
+
+1. Single scroller (`scrollRef`) with row-pair flex layout: each row =
+   sticky label cell (`position: sticky; left: 0`) + content cell.
+2. A `timeline-content-origin` element positioned at `left: labelWidth`,
+   `width: totalWidthPx` marks the true content x=0 and hosts the playhead
+   overlay.
+3. Coordinate utils (`timeSecFromTimelineClientX`,
+   `timeSecFromTimelineDropEvent`) accept an optional `contentOriginEl` and
+   anchor on its bounding rect; `useTimelineTransport` /
+   `useStructureTimelineImageDrop` receive `contentOriginRef`;
+   `useTimelineZoom` receives `originInsetPx` for viewport width and wheel
+   zoom anchoring.
+4. Marquee/selection stacks wrap only content cells, never label cells.
+5. Label column width: 248px with audio DAW lanes, else 96px.
+
+The windowed coordinate system (`x = (t − viewStartSec) · pxPerSec`,
+`t = (scrollLeft + localX) / pxPerSec`) is preserved unchanged.
 
 ## Runtime Matrix
 

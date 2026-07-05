@@ -186,6 +186,39 @@ describe("useTimelineTransport", () => {
     expect(result.current.positionSec).toBe(0);
   });
 
+  it("scrubs relative to content origin element when provided", () => {
+    const scrollEl = document.createElement("div");
+    Object.defineProperty(scrollEl, "scrollLeft", {
+      configurable: true,
+      writable: true,
+      value: 0,
+    });
+    scrollEl.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 1000, height: 100 }) as DOMRect;
+
+    // Sticky label column: timeline t=0 starts 248px right of the scroller.
+    const originEl = document.createElement("div");
+    originEl.getBoundingClientRect = () =>
+      ({ left: 248, top: 0, width: 752, height: 100 }) as DOMRect;
+
+    const { result } = renderHook(() =>
+      useTimelineTransport({
+        durationSec: 60,
+        scrollRef: { current: scrollEl },
+        contentOriginRef: { current: originEl },
+        viewStartSec: 0,
+        pxPerSec: 100,
+        viewStartSecRef: { current: 0 },
+      }),
+    );
+
+    act(() => {
+      result.current.seekFromClientX(248 + 250);
+    });
+
+    expect(result.current.positionSecRef.current).toBe(2.5);
+  });
+
   it("playhead scrub pauses playback and updates position via clientX", () => {
     const scrollEl = document.createElement("div");
     Object.defineProperty(scrollEl, "scrollLeft", {

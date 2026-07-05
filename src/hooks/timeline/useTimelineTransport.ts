@@ -26,6 +26,11 @@ const SCRUB_CLICK_SUPPRESS_MS = 400;
 export interface UseTimelineTransportOptions {
   durationSec: number;
   scrollRef: RefObject<HTMLDivElement | null>;
+  /**
+   * Element where timeline t=0 lives (scrolls with content). Required for
+   * correct clientX→time mapping when sticky labels sit inside the scroller.
+   */
+  contentOriginRef?: RefObject<HTMLElement | null>;
   viewStartSec: number;
   pxPerSec: number;
   /** Shared with structure trim/move bridges for viewport sync. */
@@ -65,6 +70,7 @@ function applyPlayheadCssVar(
 export function useTimelineTransport({
   durationSec,
   scrollRef,
+  contentOriginRef,
   viewStartSec,
   pxPerSec,
   viewStartSecRef: externalViewStartSecRef,
@@ -117,9 +123,10 @@ export function useTimelineTransport({
         scrollEl,
         pxPerSecRef.current,
         durationRef.current,
+        contentOriginRef?.current ?? null,
       );
     },
-    [scrollRef],
+    [contentOriginRef, scrollRef],
   );
 
   const applyScrubPosition = useCallback(

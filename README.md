@@ -368,7 +368,7 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 
 <!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
 
-- **2026-06-28** — MVE Dialog-Clips: inline Card für text-only und audio-bound Clips, hierarchischer Szenen-Picker, scene-capped Breiten (local desktop)
+- **2026-07-05** — Structure Timeline: Row-Pair-Layout mit sticky Labels (CapCut-Stil), Playhead/Scrub über Content-Origin-Anker (#49, local desktop)
 - **2026-06-27** — MVE 0.4 (#16): Voice Studio UI — Generate/Clone/Tune aktiv im Charakterstimme-Modal
 - **2026-06-27** — MVE 0.4 (#14): Voice Clone Request — lifecycle, consent-gated start, `/voices/clone` route
 - **2026-06-27** — MVE 0.4 (#15): Voice Tune — non-destructives Preset-Profil (`type=tuned`, local desktop)

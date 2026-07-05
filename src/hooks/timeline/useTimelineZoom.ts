@@ -26,6 +26,11 @@ export interface UseTimelineZoomOptions {
   viewStartSecRef: RefObject<number>;
   pxPerSecRef: RefObject<number>;
   totalDurationSec: number;
+  /**
+   * Fixed non-timeline width inside the scroller (sticky label column).
+   * Viewport width and zoom cursor anchors are measured after this inset.
+   */
+  originInsetPx?: number;
   onScroll?: () => void;
 }
 
@@ -34,6 +39,7 @@ export function useTimelineZoom({
   viewStartSecRef,
   pxPerSecRef,
   totalDurationSec,
+  originInsetPx = 0,
   onScroll,
 }: UseTimelineZoomOptions) {
   const [zoom, setZoom] = useState(0);
@@ -46,6 +52,8 @@ export function useTimelineZoom({
   const prevFitPxPerSecRef = useRef(FALLBACK_MIN_PX_PER_SEC);
   const onScrollRef = useRef(onScroll);
   onScrollRef.current = onScroll;
+  const originInsetRef = useRef(originInsetPx);
+  originInsetRef.current = originInsetPx;
 
   pxPerSecRef.current = pxPerSec;
 
@@ -55,13 +63,21 @@ export function useTimelineZoom({
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setViewportWidth(entry.contentRect.width);
+        setViewportWidth(
+          Math.max(0, entry.contentRect.width - originInsetRef.current),
+        );
       }
     });
 
     resizeObserver.observe(el);
     return () => resizeObserver.disconnect();
   }, [scrollRef]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setViewportWidth(Math.max(0, el.clientWidth - originInsetPx));
+  }, [originInsetPx, scrollRef]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -159,7 +175,9 @@ export function useTimelineZoom({
         const zoomDelta = -e.deltaY * 0.001;
         const newZoom = Math.max(0, Math.min(1, zoom + zoomDelta));
         const rect = scrollRef.current?.getBoundingClientRect();
-        const cursorX = rect ? e.clientX - rect.left : viewportWidth / 2;
+        const cursorX = rect
+          ? e.clientX - rect.left - originInsetRef.current
+          : viewportWidth / 2;
         setZoomAroundCursor(newZoom, cursorX);
       }
     },
