@@ -27,9 +27,21 @@ Einführung von `StructureTimelineRowShell` (Label-Slot + Content-Slot pro Zeile
 | 1 | `01-happy-path.png` |
 
 ## Implementation Notes
-- `StructureTimelineRowShell` — sticky label + content column per row (`heightPx` optional).
-- `StructureTimelineStructureRows` — Zeit, Beat, Act, Sequence, Scene (+ Shot when film) as RowShell pairs; cross-track marquee stack width = label + content.
-- `StructureTimelineStructureRowLabels` — extracted label chrome from editor.
-- `StructureTimelineEditor` — vertical row stack for structure tracks; legacy parallel columns remain for audio/film (#50/#51).
-- Playhead overlay spans full timeline height with `left: labelColumnPx`.
-- Playwright `.qa/runs/2026-07-04-timeline-row-alignment.spec.ts` — pass.
+
+**2026-07-05 — REVERTED.** First RowShell integration moved the label column
+*inside* the horizontal `scrollRef`. That shifted the timeline coordinate
+origin by the label width (248px/96px) and broke every consumer that assumes
+scroll content starts at timeline x=0:
+
+- `src/hooks/timeline/timeline-scrub-utils.ts` (`timeSecFromTimelineClientX`,
+  `playheadLeftPxFromTimeSec`) — playhead seek/scrub off by label width
+- Marquee stacks (`structureStackRef`, `beatStackRef`) — selection offset
+- Lane content vs sidebar visually shifted
+
+Editor layout restored to two-column state (labels outside horizontal scroll,
+Slice-1 fixes re-applied: film label order, testids, metronome mirror).
+
+**Blocker for redesign:** RowShell needs either (a) offset-aware scrub/marquee
+utils (`labelOffsetPx` threaded through transport, trim engine, marquee), or
+(b) labels rendered as overlay outside the scroll coordinate system.
+→ back to `needs-design`.
