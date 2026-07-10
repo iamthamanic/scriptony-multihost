@@ -97,6 +97,24 @@ describe("resolveMveLineVisualSpanMap", () => {
     expect(end).toBeGreaterThan(15);
   });
 
+  it("caps stacked visual spans to scene end for render", () => {
+    const tightScene = {
+      id: "scene-1",
+      startSec: 10,
+      endSec: 15,
+    };
+    const lines = [
+      { id: "l1", sceneId: "scene-1", orderIndex: 0, text: "" },
+      { id: "l2", sceneId: "scene-1", orderIndex: 1, text: "" },
+      { id: "l3", sceneId: "scene-1", orderIndex: 2, text: "" },
+    ] as import("@/lib/multi-voice-engine/schema/line").MveLine[];
+    const map = resolveMveLineVisualSpanMap(lines, [tightScene], 20);
+    for (const span of map.values()) {
+      expect(span.endSec).toBeLessThanOrEqual(15 + 1e-6);
+      expect(span.startSec).toBeGreaterThanOrEqual(10 - 1e-6);
+    }
+  });
+
   it("extends scene end at low pxPerSec when min-width blocks exceed shell pixels", () => {
     const scene = { id: "scene-1", startSec: 100, endSec: 120 };
     const lines = [

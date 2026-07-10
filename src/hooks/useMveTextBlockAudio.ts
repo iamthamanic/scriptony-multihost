@@ -32,6 +32,7 @@ export interface UseMveTextBlockAudioOptions {
   sceneId: string | undefined;
   scenes: MveSceneOption[];
   text: string;
+  timelineStartSec?: number;
   onBindAudioClip?: (lineId: string, clipId: string | null) => Promise<void>;
 }
 
@@ -60,6 +61,7 @@ export function useMveTextBlockAudio({
   sceneId,
   scenes,
   text,
+  timelineStartSec,
   onBindAudioClip,
 }: UseMveTextBlockAudioOptions): MveTextBlockAudioState {
   const enabled = Boolean(onBindAudioClip);
@@ -79,6 +81,7 @@ export function useMveTextBlockAudio({
       characterId,
       effectiveSceneId,
       text,
+      timelineStartSec,
       onBindAudioClip,
     });
 

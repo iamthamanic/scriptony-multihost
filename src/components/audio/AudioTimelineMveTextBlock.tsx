@@ -6,7 +6,7 @@
 
 import { useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { resolveMveLineStackWidthPx } from "@/lib/mve/mve-dialog-clip-layout";
+import { resolveMveDialogClipWidthPx } from "@/lib/mve/mve-dialog-clip-layout";
 import { MVE_LINE_DRAG_MIME } from "@/hooks/useMveTextBlockLaneDrop";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-direction";
@@ -57,10 +57,16 @@ export function AudioTimelineMveTextBlock({
   onSaveDirection,
   onBindAudioClip,
   onDeleteLine,
+  sceneBlock,
   onClick,
   draggable: draggableProp,
 }: AudioTimelineMveTextBlockProps) {
-  const clipWidthPx = resolveMveLineStackWidthPx(startSec, endSec, pxPerSec);
+  const clipWidthPx = resolveMveDialogClipWidthPx(
+    startSec,
+    endSec,
+    pxPerSec,
+    sceneBlock,
+  );
 
   const style = useMemo(
     () => ({
@@ -98,10 +104,12 @@ export function AudioTimelineMveTextBlock({
       onClick={() => onClick?.(line.id)}
       data-testid="audio-timeline-mve-text-block"
       data-mve-line-id={line.id}
+      data-mve-scene-id={sceneId}
     >
       <MveDialogClipHost
         line={line}
         clipWidthPx={clipWidthPx}
+        timelineStartSec={startSec}
         projectId={projectId}
         projectType={projectType}
         sceneId={sceneId}

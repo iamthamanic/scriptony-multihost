@@ -30,6 +30,7 @@ export interface UseMveTextBlockAudioClipOptions {
   characterId: string | undefined;
   effectiveSceneId: string | null;
   text: string;
+  timelineStartSec?: number;
   onBindAudioClip?: (lineId: string, clipId: string | null) => Promise<void>;
 }
 
@@ -48,6 +49,7 @@ export function useMveTextBlockAudioClip({
   characterId,
   effectiveSceneId,
   text,
+  timelineStartSec,
   onBindAudioClip,
 }: UseMveTextBlockAudioClipOptions): UseMveTextBlockAudioClipResult {
   const queryClient = useQueryClient();
@@ -68,6 +70,7 @@ export function useMveTextBlockAudioClip({
       if (!activeSceneId) {
         throw new Error("Keine Szene für den Audio-Clip ausgewählt.");
       }
+      const clipStartSec = Math.max(0, timelineStartSec ?? 0);
       const { clip } = await createAudioTrack(
         activeSceneId,
         backend.localProject.projectId,
@@ -75,7 +78,7 @@ export function useMveTextBlockAudioClip({
           type: "dialog",
           content: text,
           characterId,
-          startTime: 0,
+          startTime: clipStartSec,
           duration: estimateDurationSec(text, { type: "dialog" }),
           laneIndex: 0,
         },
@@ -85,7 +88,14 @@ export function useMveTextBlockAudioClip({
       }
       return clip;
     },
-    [enabled, characterId, ensureBackend, effectiveSceneId, text],
+    [
+      enabled,
+      characterId,
+      ensureBackend,
+      effectiveSceneId,
+      text,
+      timelineStartSec,
+    ],
   );
 
   const syncSceneAfterClip = useCallback(
@@ -191,8 +201,8 @@ export function useMveTextBlockAudioClip({
       );
       const updated = await updateClip(clip.id, {
         audioFileId: persisted.storagePath,
-        startSec: 0,
-        endSec: persisted.durationSec,
+        startSec: clip.startSec,
+        endSec: clip.startSec + persisted.durationSec,
       });
       await cacheAndBind(updated);
       await syncClipIfProject();

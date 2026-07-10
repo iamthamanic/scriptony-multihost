@@ -55,6 +55,11 @@ import {
 } from "../contexts/TimelineStateContext";
 import { withFilmActsPctResolved } from "../lib/timeline-act-layout";
 import { isTrailingPointerActivationSuppressed } from "../lib/suppress-trailing-pointer-activation";
+import {
+  clampStructureTimelinePanelHeightPx,
+  readStructureTimelinePanelHeightPx,
+  writeStructureTimelinePanelHeightPx,
+} from "../lib/structure/structure-timeline-panel-height";
 
 /**
  * 🎬 STRUCTURE & BEATS SECTION
@@ -230,6 +235,54 @@ export function StructureBeatsSection({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [selectedSearchIndex, setSelectedSearchIndex] = useState(0);
+  const isAudioProject = isAudioProjectType(projectType);
+  const [timelinePanelHeightPx, setTimelinePanelHeightPx] = useState(() =>
+    readStructureTimelinePanelHeightPx(projectId, isAudioProject),
+  );
+  const [isResizingTimelinePanel, setIsResizingTimelinePanel] = useState(false);
+  const timelinePanelResizeStartYRef = useRef(0);
+  const timelinePanelResizeStartHeightRef = useRef(0);
+
+  useEffect(() => {
+    setTimelinePanelHeightPx(
+      readStructureTimelinePanelHeightPx(projectId, isAudioProject),
+    );
+  }, [projectId, isAudioProject]);
+
+  useEffect(() => {
+    writeStructureTimelinePanelHeightPx(projectId, timelinePanelHeightPx);
+  }, [projectId, timelinePanelHeightPx]);
+
+  const handleTimelinePanelResizeStart = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      setIsResizingTimelinePanel(true);
+      timelinePanelResizeStartYRef.current = e.clientY;
+      timelinePanelResizeStartHeightRef.current = timelinePanelHeightPx;
+    },
+    [timelinePanelHeightPx],
+  );
+
+  useEffect(() => {
+    if (!isResizingTimelinePanel) return;
+
+    const onMove = (e: MouseEvent) => {
+      const deltaY = e.clientY - timelinePanelResizeStartYRef.current;
+      setTimelinePanelHeightPx(
+        clampStructureTimelinePanelHeightPx(
+          timelinePanelResizeStartHeightRef.current + deltaY,
+        ),
+      );
+    };
+    const onEnd = () => setIsResizingTimelinePanel(false);
+
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onEnd);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onEnd);
+    };
+  }, [isResizingTimelinePanel]);
 
   // 🚀 REACT QUERY: Lade Beats für dieses Projekt (mit Cache!)
   const { data: beatsData, isLoading: beatsLoading } = useBeats(projectId);
@@ -885,13 +938,14 @@ export function StructureBeatsSection({
           {/* Content */}
           <CollapsibleContent>
             <div
-              className="flex flex-col border border-border rounded-lg overflow-hidden bg-background"
+              className={cn(
+                "relative flex flex-col border border-border rounded-lg overflow-hidden bg-background",
+                isResizingTimelinePanel && "select-none",
+              )}
               style={{
                 height:
                   structureView === STRUCTURE_VIEW_IDS.timelineview
-                    ? isAudioProjectType(projectType)
-                      ? "min(800px, 72vh)"
-                      : "600px"
+                    ? `${timelinePanelHeightPx}px`
                     : "auto",
               }}
             >
@@ -1020,6 +1074,20 @@ export function StructureBeatsSection({
                   )
                 ) : null}
               </div>
+              {structureView === STRUCTURE_VIEW_IDS.timelineview ? (
+                <div
+                  role="separator"
+                  aria-orientation="horizontal"
+                  aria-label="Timeline-Höhe anpassen"
+                  data-testid="structure-timeline-panel-resize-handle"
+                  className={cn(
+                    "absolute bottom-0 left-0 right-0 z-40 h-2 cursor-ns-resize touch-none",
+                    "border-t border-transparent hover:border-primary/60 hover:bg-primary/10",
+                    isResizingTimelinePanel && "border-primary bg-primary/15",
+                  )}
+                  onMouseDown={handleTimelinePanelResizeStart}
+                />
+              ) : null}
             </div>
           </CollapsibleContent>
         </Collapsible>

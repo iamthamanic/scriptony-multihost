@@ -20,6 +20,8 @@ import type { Character } from "@/lib/types";
 export interface MveDialogClipHostProps {
   line: MveLine;
   clipWidthPx: number;
+  /** Absolute timeline start for clip shell placement (from visual span). */
+  timelineStartSec?: number;
   projectId: string;
   projectType?: string;
   sceneId?: string;
@@ -44,6 +46,7 @@ export interface MveDialogClipHostProps {
 export function MveDialogClipHost({
   line,
   clipWidthPx,
+  timelineStartSec,
   projectId,
   projectType,
   sceneId,
@@ -70,6 +73,7 @@ export function MveDialogClipHost({
     sceneId,
     scenes,
     text: line.text ?? "",
+    timelineStartSec,
     onBindAudioClip,
   });
 

@@ -88,13 +88,20 @@ export interface MveLineVisualSpan {
   endSec: number;
 }
 
+export interface ResolveMveLineVisualSpanMapOptions {
+  /** When false, stacked spans may exceed scene end (content-driven resize sizing). */
+  capToSceneEnd?: boolean;
+}
+
 /** Stack lines left-to-right using rendered width (min-width px), not logical WPM seconds. */
 export function resolveMveLineVisualSpanMap(
   lines: MveLine[],
   sceneBlocks: SceneTimeBlock[],
   pxPerSec: number,
   readingSpeedWpm?: number,
+  options?: ResolveMveLineVisualSpanMapOptions,
 ): Map<string, MveLineVisualSpan> {
+  const capToSceneEnd = options?.capToSceneEnd !== false;
   const byScene = new Map<string, MveLine[]>();
   for (const line of lines) {
     if (line.audioClipId) continue;
@@ -117,13 +124,23 @@ export function resolveMveLineVisualSpanMap(
         linesInScene: ordered,
         readingSpeedWpm,
       });
+      const sceneEndSec = sceneBlock.endSec;
+      if (capToSceneEnd && visualCursorSec >= sceneEndSec - 1e-6) {
+        break;
+      }
       const startSec = Math.max(logical.startSec, visualCursorSec);
       const widthPx = resolveMveLineStackWidthPx(
         logical.startSec,
         logical.endSec,
         pxPerSec,
       );
-      const endSec = startSec + widthPx / pxPerSec;
+      let endSec = startSec + widthPx / pxPerSec;
+      if (capToSceneEnd) {
+        endSec = Math.min(endSec, sceneEndSec);
+      }
+      if (endSec <= startSec + 1e-6) {
+        break;
+      }
       result.set(line.id, { startSec, endSec });
       visualCursorSec = endSec;
     }
@@ -146,6 +163,7 @@ export function maxVisualContentEndSecInScene(
     [sceneBlock],
     pxPerSec,
     readingSpeedWpm,
+    { capToSceneEnd: false },
   );
   let maxEnd = sceneBlock.startSec;
   for (const line of linesInScene) {

@@ -86,6 +86,7 @@ export function applyStructureDragFollow(input: DragFollowInput): void {
 
 const STRUCTURE_DIM_OVERLAY_ATTR = "data-structure-dim-overlay";
 const STRUCTURE_DROP_ZONE_ATTR = "data-structure-drop-zone";
+const MVE_SCENE_CONTENT_ATTR = "data-mve-scene-id";
 
 export interface StructureDropZonePreviewInput {
   structureStackEl: HTMLElement;
@@ -208,6 +209,7 @@ export function clearStructureDropZonesOnExtraStacks(
   for (const stack of stacks) {
     clearStructureMoveOverlays(stack ?? undefined);
   }
+  resetMveSceneContentDragFollow(stacks);
 }
 
 const STRUCTURE_LANE_KINDS: ItemKind[] = ["act", "sequence", "scene", "shot"];
@@ -288,6 +290,35 @@ function clearStructurePreviewEl(el: HTMLElement): void {
   el.style.opacity = "";
   el.style.boxShadow = "";
   el.style.pointerEvents = "";
+}
+
+/** Mirror structure scene drag on MVE text blocks + dialog clips in audio lanes. */
+export function applyMveSceneContentDragFollow(input: {
+  audioLaneStacks: Array<HTMLElement | null | undefined>;
+  sceneId: string;
+  offsetPx: number;
+}): void {
+  for (const stack of input.audioLaneStacks) {
+    if (!stack) continue;
+    const nodes = stack.querySelectorAll<HTMLElement>(
+      `[${MVE_SCENE_CONTENT_ATTR}]`,
+    );
+    for (const el of nodes) {
+      if (el.getAttribute(MVE_SCENE_CONTENT_ATTR) !== input.sceneId) continue;
+      el.style.transform = `translateX(${input.offsetPx}px)`;
+    }
+  }
+}
+
+export function resetMveSceneContentDragFollow(
+  audioLaneStacks: Array<HTMLElement | null | undefined>,
+): void {
+  for (const stack of audioLaneStacks) {
+    if (!stack) continue;
+    stack
+      .querySelectorAll<HTMLElement>(`[${MVE_SCENE_CONTENT_ATTR}]`)
+      .forEach(clearStructurePreviewEl);
+  }
 }
 
 /** When `changedIds` is set, only touched rows are cleared (avoids React style bailout on unchanged siblings). */

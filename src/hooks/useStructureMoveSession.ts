@@ -26,6 +26,7 @@ import {
   applyStructureDragFollow,
   applyStructureDimOverlays,
   applyStructureDropZoneAcrossLanes,
+  applyMveSceneContentDragFollow,
   clearStructureDropZonesForLanes,
   clearStructureDropZonesOnExtraStacks,
   resetStructurePreviewStyles,
@@ -241,12 +242,20 @@ export function useStructureMoveSession(
 
           for (const id of dragIds) {
             const baseLeft = startLeftPxByIdRef.current.get(id) ?? 0;
+            const leftPx = Math.max(minLeftPx, baseLeft + deltaPx);
             applyStructureDragFollow({
               containerByKind: containers,
               kind: session.kind,
               id,
-              leftPx: Math.max(minLeftPx, baseLeft + deltaPx),
+              leftPx,
             });
+            if (session.kind === "scene") {
+              applyMveSceneContentDragFollow({
+                audioLaneStacks: extraStacks,
+                sceneId: id,
+                offsetPx: deltaPx,
+              });
+            }
           }
         }
       });

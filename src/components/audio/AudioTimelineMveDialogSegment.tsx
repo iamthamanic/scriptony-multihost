@@ -147,10 +147,12 @@ export function AudioTimelineMveDialogSegment({
       onMouseLeave={handleMouseLeave}
       data-testid="audio-timeline-mve-dialog-segment"
       data-mve-line-id={line.id}
+      data-mve-scene-id={line.sceneId}
     >
       <MveDialogClipHost
         line={line}
         clipWidthPx={widthPx}
+        timelineStartSec={clip.startSec}
         projectId={projectId}
         projectType={projectType}
         sceneId={line.sceneId}
