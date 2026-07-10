@@ -122,7 +122,6 @@ import {
   API_CONFIG,
   STORAGE_CONFIG,
   STORAGE_KEYS,
-  FEATURE_FLAGS,
   USER_ROLES,
 } from "./lib/config";
 
@@ -131,11 +130,6 @@ const endpoint = `${API_CONFIG.SERVER_BASE_PATH}/projects`;
 
 // Storage keys
 localStorage.setItem(STORAGE_KEYS.THEME, "dark");
-
-// Feature flags
-if (FEATURE_FLAGS.AUTO_MIGRATION) {
-  runMigration();
-}
 
 // User roles
 if (user.role === USER_ROLES.SUPERADMIN) {
@@ -148,11 +142,12 @@ if (user.role === USER_ROLES.SUPERADMIN) {
 - **API_CONFIG**: Server paths, timeouts, retry logic
 - **STORAGE_CONFIG**: File upload limits, bucket names, image settings
 - **STORAGE_KEYS**: LocalStorage key constants
-- **FEATURE_FLAGS**: Enable/disable features
 - **USER_ROLES**: User role constants
 - **PAGINATION**: Default page sizes
 - **APP_METADATA**: App name, version, description
 - **TEST_USER**: Test credentials (dev only)
+
+**Feature flags:** Use `./feature-flags` (env-driven), not the removed static `FEATURE_FLAGS` from `config.ts`.
 
 **Rules:**
 

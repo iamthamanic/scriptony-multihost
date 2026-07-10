@@ -11,6 +11,7 @@ import {
 describe("sceneDurationModeForProjectType", () => {
   it("audio projects are contentDriven", () => {
     expect(sceneDurationModeForProjectType("audio")).toBe("contentDriven");
+    expect(sceneDurationModeForProjectType("hörspiel")).toBe("contentDriven");
   });
 
   it("film projects are structureDriven", () => {

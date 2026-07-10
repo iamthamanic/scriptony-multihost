@@ -16,8 +16,8 @@ scripts/.env.migration
 build/
 node_modules/
 functions/node_modules/
-# Bundled Appwrite function entry (rebuild with: cd functions && npm run build:scriptony-ai)
-functions/scriptony-ai/index.js
+# Bundled Appwrite function entries (build artifacts — rebuild via: npm --prefix functions run build:appwrite-deploy → outputs to .appwrite-deploy/)
+functions/*/index.js
 .appwrite-deploy/
 functions/.deploy-staging/
 starter-for-react/

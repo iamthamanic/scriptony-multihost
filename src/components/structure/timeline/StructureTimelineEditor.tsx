@@ -622,6 +622,8 @@ export function StructureTimelineEditor({
   const sequenceTrackContainerRef = useRef<HTMLElement | null>(null);
   const sceneTrackContainerRef = useRef<HTMLElement | null>(null);
   const shotTrackContainerRef = useRef<HTMLElement | null>(null);
+  const audioDialogScrollStackRef = useRef<HTMLDivElement | null>(null);
+  const onMveStructureSyncedRef = useRef<(() => Promise<void>) | null>(null);
   const beatTrimPointerIdRef = useRef<number | null>(null);
 
   // Buch-Shot legacy trim: duration overrides during drag (film uses VET tree bridge).
@@ -848,12 +850,21 @@ export function StructureTimelineEditor({
     moveClip: structureMoveClip,
   });
 
+  const syncAudioClipsAfterStructureCommit = useCallback(async () => {
+    if (!isAudioProject || !projectId) return;
+    await queryClient.invalidateQueries({
+      queryKey: queryKeys.timeline.audioByProject(projectId),
+    });
+  }, [isAudioProject, projectId, queryClient]);
+
   const structureTrimBridge = useStructureTimelineTrimBridge({
     timelineData:
       timelineData && "acts" in timelineData
         ? (timelineData as TimelineData)
         : null,
     projectDurationSec: structureProjectDurationSec,
+    projectId,
+    projectType,
     viewStartSecRef,
     pxPerSecRef,
     currentTimeSec: currentTime,
@@ -880,6 +891,9 @@ export function StructureTimelineEditor({
       setStructureLayoutEpoch((epoch) => epoch + 1);
     },
     onProjectDurationGrow: bumpStructureDurationSec,
+    onAudioClipsSynced: () => {
+      void syncAudioClipsAfterStructureCommit();
+    },
   });
   structureTrimBridgeRef.current = structureTrimBridge;
 
@@ -889,6 +903,8 @@ export function StructureTimelineEditor({
         ? (timelineData as TimelineData)
         : null,
     projectDurationSec: structureProjectDurationSec,
+    projectId,
+    projectType,
     currentTimeSec: currentTime,
     viewStartSecRef,
     pxPerSecRef,
@@ -896,6 +912,7 @@ export function StructureTimelineEditor({
     sequenceTrackRef: sequenceTrackContainerRef,
     sceneTrackRef: sceneTrackContainerRef,
     shotTrackRef: shotTrackContainerRef,
+    audioDialogScrollStackRef,
     getAccessToken,
     setTimelineData: (value) => {
       setTimelineData((prev) => {
@@ -914,6 +931,9 @@ export function StructureTimelineEditor({
     onMoveSessionEnd: () => {
       setStructureMoveClip(null);
       setStructureLayoutEpoch((epoch) => epoch + 1);
+    },
+    onAudioClipsSynced: () => {
+      void syncAudioClipsAfterStructureCommit();
     },
   });
   structureMoveBridgeRef.current = structureMoveBridge;
@@ -2877,6 +2897,10 @@ export function StructureTimelineEditor({
     };
   }, [sceneAudioLaneLinks.links, playheadSeek]);
 
+  const handleMveStructureSynced = useCallback(async () => {
+    await onMveStructureSyncedRef.current?.();
+  }, []);
+
   const timelineAudio = useStructureTimelineAudioLanes({
     projectId,
     projectType,
@@ -2887,6 +2911,7 @@ export function StructureTimelineEditor({
     currentTimeSec: currentTime,
     linkedLaneAudio,
     sceneBlocksRef,
+    onStructureSynced: handleMveStructureSynced,
   });
   const hasVisibleAudioLanes =
     timelineAudio.laneProps.sortedLaneIndices.length > 0;
@@ -3916,6 +3941,10 @@ export function StructureTimelineEditor({
     timelineCtx,
     timelineData,
   ]);
+
+  useEffect(() => {
+    onMveStructureSyncedRef.current = reloadTimelineDataFromSource;
+  }, [reloadTimelineDataFromSource]);
 
   const { uploadForScene: uploadSceneImageForPreview, uploadingSceneId } =
     useSceneImageUpload(projectId, {
@@ -5834,6 +5863,7 @@ export function StructureTimelineEditor({
                   laneProps={timelineAudio.laneProps}
                   metronome={timelineAudio.metronome}
                   isLoading={timelineAudio.lanes.isLoading}
+                  scrollStackRef={audioDialogScrollStackRef}
                 />
               </div>
             </div>

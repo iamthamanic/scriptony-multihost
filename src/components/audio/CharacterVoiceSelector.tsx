@@ -1,5 +1,5 @@
 /**
- * CharacterVoiceSelector — Kokoro-Stimme für MVE VoiceProfile (Characters-Panel).
+ * CharacterVoiceSelector — lokale Stimme für MVE VoiceProfile (Characters-Panel).
  *
  * Select statt Popover: sichtbar über Dialog-Modals (z-index 11000).
  * Location: src/components/audio/CharacterVoiceSelector.tsx
@@ -7,9 +7,13 @@
 
 import { useCallback } from "react";
 import { Loader2, Mic } from "lucide-react";
-import { toast } from "sonner";
 import { useAssignMveVoice } from "../../hooks/useAssignMveVoice";
-import { useLocalVoices } from "../../hooks/useLocalVoices";
+import { useTtsVoiceProfiles } from "../../hooks/useTtsVoiceProfiles";
+import {
+  DEFAULT_VOICE_ENGINE,
+  isVoiceboxDefault,
+  localVoiceEngineLabel,
+} from "@/lib/config/voice-engine";
 import { resolveMveTtsVoiceId } from "../../lib/mve/resolve-tts-voice-id";
 import { isDesktopShell } from "../../runtime/detect-runtime";
 import {
@@ -46,19 +50,22 @@ export function CharacterVoiceSelector({
   onAssigned,
   onAssignedProfile,
   showLabel = true,
-  label = "Charakterstimme (Kokoro lokal)",
+  label = `Charakterstimme (${localVoiceEngineLabel(DEFAULT_VOICE_ENGINE)} lokal)`,
 }: CharacterVoiceSelectorProps) {
   const { assignVoice, isSaving } = useAssignMveVoice(onAssigned);
 
-  const { data, isLoading, isFetching, error, refetch } = useLocalVoices({
+  const { data, isLoading, isFetching, error, refetch } = useTtsVoiceProfiles({
     enabled: Boolean(projectDir),
     projectDir,
   });
 
   const voices = data?.voices ?? [];
+  const engineLabel =
+    data?.engineLabel ?? localVoiceEngineLabel(DEFAULT_VOICE_ENGINE);
+  const engineReady = data?.engineReady ?? false;
+  const engineError = data?.engineError;
   const sidecarReady = data?.sidecarReady ?? false;
   const kokoroReady = data?.kokoroReady ?? false;
-  const kokoroError = data?.kokoroError;
   const usedCatalogFallback = data?.usedCatalogFallback ?? false;
 
   const selectedVoiceId = resolveMveTtsVoiceId(profile);
@@ -99,7 +106,7 @@ export function CharacterVoiceSelector({
   if (!projectDir) {
     return (
       <p className="text-muted-foreground text-xs italic">
-        Lokales .scriptony-Projekt öffnen, um Kokoro-Stimmen zu laden.
+        Lokales .scriptony-Projekt öffnen, um {engineLabel}-Stimmen zu laden.
       </p>
     );
   }
@@ -127,7 +134,7 @@ export function CharacterVoiceSelector({
       >
         <SelectTrigger
           className="h-9 w-full text-xs"
-          aria-label="Kokoro-Stimme auswählen"
+          aria-label={`${engineLabel}-Stimme auswählen`}
           data-testid="character-voice-select-trigger"
         >
           <div className="flex items-center gap-2 min-w-0">
@@ -154,8 +161,8 @@ export function CharacterVoiceSelector({
         </SelectContent>
       </Select>
 
-      {kokoroError ? (
-        <p className="text-[10px] text-destructive">{kokoroError}</p>
+      {engineError ? (
+        <p className="text-[10px] text-destructive">{engineError}</p>
       ) : null}
 
       {error ? (
@@ -166,20 +173,26 @@ export function CharacterVoiceSelector({
 
       {!error && busy && voices.length === 0 ? (
         <p className="text-[10px] text-muted-foreground">
-          Kokoro-Server wird gestartet (beim ersten Mal ggf. Python-Setup)…
+          {isVoiceboxDefault()
+            ? `${engineLabel} wird verbunden…`
+            : "Kokoro-Server wird gestartet (beim ersten Mal ggf. Python-Setup)…"}
         </p>
       ) : null}
 
       {!error && voices.length > 0 ? (
         <p className="text-[10px] text-muted-foreground">
           {voices.length} Stimmen
-          {kokoroReady
-            ? " — TTS bereit"
-            : sidecarReady
-              ? " — Sidecar läuft, Modell wird geladen…"
-              : usedCatalogFallback
-                ? " — Vorschau startet Sidecar automatisch"
-                : ""}
+          {isVoiceboxDefault()
+            ? engineReady
+              ? " — TTS bereit"
+              : ""
+            : kokoroReady
+              ? " — TTS bereit"
+              : sidecarReady
+                ? " — Sidecar läuft, Modell wird geladen…"
+                : usedCatalogFallback
+                  ? " — Vorschau startet Sidecar automatisch"
+                  : ""}
         </p>
       ) : null}
     </div>

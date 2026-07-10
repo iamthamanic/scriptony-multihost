@@ -25,6 +25,8 @@ import { useStructureMoveSession } from "./useStructureMoveSession";
 export interface StructureTimelineMoveBridgeOptions {
   timelineData: TimelineData | null | undefined;
   projectDurationSec: number;
+  projectId?: string;
+  projectType?: string | null;
   currentTimeSec?: number;
   viewStartSecRef: React.RefObject<number>;
   pxPerSecRef: React.RefObject<number>;
@@ -32,11 +34,14 @@ export interface StructureTimelineMoveBridgeOptions {
   sequenceTrackRef: React.RefObject<HTMLElement | null>;
   sceneTrackRef: React.RefObject<HTMLElement | null>;
   shotTrackRef: React.RefObject<HTMLElement | null>;
+  /** Scroll stack wrapping dialog/audio lane rows — white insertion slot during structure move. */
+  audioDialogScrollStackRef?: React.RefObject<HTMLDivElement | null>;
   getAccessToken: () => Promise<string | null>;
   setTimelineData: React.Dispatch<
     React.SetStateAction<TimelineData | null | undefined>
   >;
   onMoveSessionEnd?: () => void;
+  onAudioClipsSynced?: () => void;
 }
 
 const MOVE_KINDS: ItemKind[] = ["act", "sequence", "scene"];
@@ -100,16 +105,27 @@ export function useStructureTimelineMoveBridge(
       scene: options.sceneTrackRef.current,
       shot: options.shotTrackRef.current,
     }),
-    onCommit: async ({ next, patches }) => {
+    getExtraDropZoneStacks: () => {
+      const root = options.audioDialogScrollStackRef?.current;
+      if (!root) return [];
+      return Array.from(
+        root.querySelectorAll<HTMLElement>("[data-audio-lane-drop-stack]"),
+      );
+    },
+    onCommit: async ({ before, next, patches }) => {
       const base = options.timelineData;
       if (!base) return;
       await commitStructureRipple({
+        before,
         next,
         patches,
         timelineData: base,
         setTimelineData: options.setTimelineData,
         getAccessToken: options.getAccessToken,
         projectDurationSec: options.projectDurationSec,
+        projectId: options.projectId,
+        projectType: options.projectType,
+        onAudioClipsSynced: options.onAudioClipsSynced,
       });
     },
     onMoveSessionEnd: options.onMoveSessionEnd,

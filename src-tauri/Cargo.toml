@@ -32,3 +32,4 @@ reqwest = { version = "0.12", features = ["blocking", "json"] }
 tokio = { version = "1.41", features = ["rt", "macros"] }
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+tauri-plugin-visual-editor = { version = "0.1", features = ["visual-inspector"] }

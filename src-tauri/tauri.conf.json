@@ -12,9 +12,12 @@
   "app": {
     "windows": [
       {
+        "label": "main",
         "title": "Scriptony",
         "width": 1440,
         "height": 960,
+        "center": true,
+        "visible": true,
         "resizable": true,
         "fullscreen": false
       }
@@ -42,6 +45,14 @@
     }
   },
   "plugins": {
+    "visualEditor": {
+      "enabled": true,
+      "allow": true,
+      "allowInProduction": false,
+      "autoOpen": true,
+      "overlayMode": "embedded",
+      "overlayDeferMs": 100
+    },
     "deep-link": {
       "desktop": {
         "schemes": ["scriptony"]

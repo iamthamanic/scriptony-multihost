@@ -4,6 +4,13 @@
  */
 
 import { MVE_TEXT_BLOCK_MIN_WIDTH_PX } from "@/lib/audio-lane";
+import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
+import {
+  hasNonEmptyTextInLines,
+  resolveMveLineSpan,
+  sortLinesInScene,
+} from "@/lib/mve/resolve-mve-line-span";
+import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
 import type { MveEmotion } from "@/lib/multi-voice-engine/schema/enums";
 
 export type MveDialogClipLayoutTier = "compact" | "medium" | "full";
@@ -39,6 +46,16 @@ export function mveEmotionDisplayLabel(emotion?: MveEmotion): string | null {
   return EMOTION_LABELS[emotion] ?? emotion;
 }
 
+/** Min pixel width for stacked layout (shell grows to fit — do not cap to parent). */
+export function resolveMveLineStackWidthPx(
+  startSec: number,
+  endSec: number,
+  pxPerSec: number,
+): number {
+  const durationPx = Math.max(endSec - startSec, 0.1) * pxPerSec;
+  return Math.max(durationPx, MVE_TEXT_BLOCK_MIN_WIDTH_PX);
+}
+
 /** Pixel width capped to assigned scene bounds (WPM/default must not exceed parent scene). */
 export function resolveMveDialogClipWidthPx(
   startSec: number,
@@ -51,6 +68,11 @@ export function resolveMveDialogClipWidthPx(
   if (sceneBlock) {
     cappedStart = Math.max(startSec, sceneBlock.startSec);
     cappedEnd = Math.min(endSec, sceneBlock.endSec);
+    // No overlap with scene shell — keep clip visible at its stored timing (orphan until sync).
+    if (cappedEnd <= cappedStart) {
+      cappedStart = startSec;
+      cappedEnd = endSec;
+    }
   }
   const widthSec = Math.max(cappedEnd - cappedStart, 0.1);
   const sceneWidthPx = sceneBlock
@@ -59,4 +81,81 @@ export function resolveMveDialogClipWidthPx(
   const durationPx = widthSec * pxPerSec;
   const minPx = Math.min(MVE_TEXT_BLOCK_MIN_WIDTH_PX, sceneWidthPx);
   return Math.min(Math.max(durationPx, minPx), sceneWidthPx);
+}
+
+export interface MveLineVisualSpan {
+  startSec: number;
+  endSec: number;
+}
+
+/** Stack lines left-to-right using rendered width (min-width px), not logical WPM seconds. */
+export function resolveMveLineVisualSpanMap(
+  lines: MveLine[],
+  sceneBlocks: SceneTimeBlock[],
+  pxPerSec: number,
+  readingSpeedWpm?: number,
+): Map<string, MveLineVisualSpan> {
+  const byScene = new Map<string, MveLine[]>();
+  for (const line of lines) {
+    if (line.audioClipId) continue;
+    const list = byScene.get(line.sceneId) ?? [];
+    list.push(line);
+    byScene.set(line.sceneId, list);
+  }
+
+  const result = new Map<string, MveLineVisualSpan>();
+  for (const sceneLines of byScene.values()) {
+    const sceneBlock = sceneBlocks.find((b) => b.id === sceneLines[0]?.sceneId);
+    if (!sceneBlock) continue;
+    const ordered = sortLinesInScene(sceneLines);
+    let visualCursorSec = sceneBlock.startSec;
+
+    for (const line of ordered) {
+      const logical = resolveMveLineSpan({
+        line,
+        sceneBlock,
+        linesInScene: ordered,
+        readingSpeedWpm,
+      });
+      const startSec = Math.max(logical.startSec, visualCursorSec);
+      const widthPx = resolveMveLineStackWidthPx(
+        logical.startSec,
+        logical.endSec,
+        pxPerSec,
+      );
+      const endSec = startSec + widthPx / pxPerSec;
+      result.set(line.id, { startSec, endSec });
+      visualCursorSec = endSec;
+    }
+  }
+
+  return result;
+}
+
+/** Max timeline end among visually stacked text blocks (content-driven scene resize). */
+export function maxVisualContentEndSecInScene(
+  sceneBlock: SceneTimeBlock,
+  linesInScene: MveLine[],
+  pxPerSec: number,
+  readingSpeedWpm?: number,
+): number {
+  if (linesInScene.length === 0) return sceneBlock.endSec;
+
+  const visual = resolveMveLineVisualSpanMap(
+    linesInScene,
+    [sceneBlock],
+    pxPerSec,
+    readingSpeedWpm,
+  );
+  let maxEnd = sceneBlock.startSec;
+  for (const line of linesInScene) {
+    const span = visual.get(line.id);
+    if (span) maxEnd = Math.max(maxEnd, span.endSec);
+  }
+
+  if (!hasNonEmptyTextInLines(linesInScene)) {
+    return maxEnd;
+  }
+
+  return maxEnd;
 }

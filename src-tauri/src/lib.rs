@@ -1,8 +1,11 @@
 mod commands;
 
+use tauri::Manager;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_visual_editor::init())
     .plugin(tauri_plugin_deep_link::init())
     .plugin(tauri_plugin_dialog::init())
     .plugin(tauri_plugin_store::Builder::default().build())
@@ -33,6 +36,13 @@ pub fn run() {
       commands::kokoro::kokoro_server_status,
     ])
     .setup(|app| {
+      #[cfg(desktop)]
+      if cfg!(debug_assertions) {
+        if let Some(main) = app.get_webview_window("main") {
+          let _ = main.show();
+          let _ = main.set_focus();
+        }
+      }
       if let Ok(Some(root)) = commands::workspace::paths::load_trusted_root(app.handle()) {
         let _ = commands::workspace::paths::allow_workspace_directory(app.handle(), &root);
       }

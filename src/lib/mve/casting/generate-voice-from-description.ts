@@ -8,6 +8,10 @@ import {
   updateMveVoiceProfile,
 } from "@/lib/api-adapter/mve-adapter";
 import type { VoiceEntry } from "@/lib/api/local-tts-api";
+import {
+  DEFAULT_VOICE_ENGINE,
+  localVoiceEngineLabel,
+} from "@/lib/config/voice-engine";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 import { mveDefaultPreviewForCharacter } from "@/lib/mve/default-preview-text";
 import { matchVoiceFromDescription } from "./match-voice-from-description";
@@ -38,7 +42,7 @@ export async function generateVoiceFromDescription(
   }
   if (params.voices.length === 0) {
     throw new Error(
-      "Kein Kokoro-Stimmenkatalog verfügbar — Sidecar starten oder erneut versuchen.",
+      `Kein ${localVoiceEngineLabel(DEFAULT_VOICE_ENGINE)}-Stimmenkatalog verfügbar — Engine starten oder erneut versuchen.`,
     );
   }
 
@@ -56,13 +60,13 @@ export async function generateVoiceFromDescription(
     mveDefaultPreviewForCharacter(params.characterName);
 
   const hint = match.weakMatch
-    ? "Kein exakter Treffer — nächstbeste Kokoro-Stimme wurde gewählt."
+    ? `Kein exakter Treffer — nächstbeste ${localVoiceEngineLabel(DEFAULT_VOICE_ENGINE)}-Stimme wurde gewählt.`
     : undefined;
 
   const patch = {
     name: `${params.characterName.trim() || "Charakter"} — generiert`,
     description,
-    engine: "kokoro" as const,
+    engine: DEFAULT_VOICE_ENGINE,
     type: "generated" as const,
     status: "ready" as const,
     baseVoiceId: match.voice.id,

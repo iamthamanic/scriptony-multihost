@@ -51,7 +51,11 @@ function emptyLineDurationSec(
   sceneBlock: SceneTimeBlock,
   linesInScene: MveLine[],
 ): { durationSec: number; source: MveLineSpanSource } {
-  if (isFirstTextLineInScene(line, linesInScene)) {
+  const ordered = sortLinesInScene(
+    linesInScene.filter((l) => l.sceneId === line.sceneId),
+  );
+  const soleLineInScene = ordered.length <= 1;
+  if (soleLineInScene && isFirstTextLineInScene(line, linesInScene)) {
     return { durationSec: sceneDurationSec(sceneBlock), source: "shell" };
   }
   return {
@@ -85,7 +89,13 @@ function lineDurationSec(
 
 /** Lines in scene sorted for sequential placement. */
 export function sortLinesInScene(lines: MveLine[]): MveLine[] {
-  return [...lines].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+  return [...lines].sort((a, b) => {
+    const orderDelta = (a.orderIndex ?? 0) - (b.orderIndex ?? 0);
+    if (orderDelta !== 0) return orderDelta;
+    const createdDelta = (a.createdAt ?? "").localeCompare(b.createdAt ?? "");
+    if (createdDelta !== 0) return createdDelta;
+    return a.id.localeCompare(b.id);
+  });
 }
 
 export function resolveMveLineSpan(

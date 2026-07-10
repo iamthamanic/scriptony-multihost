@@ -2,7 +2,9 @@ import { describe, it, expect } from "vitest";
 import {
   mveDialogClipLayoutTier,
   mveEmotionDisplayLabel,
+  maxVisualContentEndSecInScene,
   resolveMveDialogClipWidthPx,
+  resolveMveLineVisualSpanMap,
 } from "@/lib/mve/mve-dialog-clip-layout";
 import { resolveLaneHeightPx, LANE_UI } from "@/lib/audio-lane";
 import { LANE_SCHEMA } from "@/lib/types";
@@ -35,6 +37,77 @@ describe("mve-dialog-clip-layout", () => {
     const pxPerSec = 10;
     const sceneBlock = { startSec: 0, endSec: 60 };
     expect(resolveMveDialogClipWidthPx(0, 1, pxPerSec, sceneBlock)).toBe(220);
+  });
+
+  it("keeps full clip width when scene shell moved away (orphan clip)", () => {
+    const pxPerSec = 100;
+    const sceneBlock = { startSec: 600, endSec: 700 };
+    expect(resolveMveDialogClipWidthPx(0, 10, pxPerSec, sceneBlock)).toBe(1000);
+  });
+});
+
+describe("resolveMveLineVisualSpanMap", () => {
+  const sceneBlock = { id: "scene-1", startSec: 10, endSec: 40 };
+  const pxPerSec = 20;
+
+  it("stacks second block after min-width of WPM text block", () => {
+    const tenWords = "one two three four five six seven eight nine ten";
+    const lines = [
+      {
+        id: "l1",
+        sceneId: "scene-1",
+        orderIndex: 0,
+        text: tenWords,
+      },
+      {
+        id: "l2",
+        sceneId: "scene-1",
+        orderIndex: 1,
+        text: "",
+      },
+    ] as import("@/lib/multi-voice-engine/schema/line").MveLine[];
+
+    const map = resolveMveLineVisualSpanMap(lines, [sceneBlock], pxPerSec);
+    const first = map.get("l1")!;
+    const second = map.get("l2")!;
+    expect(second.startSec).toBeGreaterThanOrEqual(first.endSec - 1e-6);
+  });
+
+  it("maxVisualContentEndSecInScene includes min-width stacking", () => {
+    const tightScene = {
+      id: "scene-1",
+      startSec: 10,
+      endSec: 15,
+    };
+    const lines = [
+      {
+        id: "l1",
+        sceneId: "scene-1",
+        orderIndex: 0,
+        text: "",
+      },
+      {
+        id: "l2",
+        sceneId: "scene-1",
+        orderIndex: 1,
+        text: "",
+      },
+    ] as import("@/lib/multi-voice-engine/schema/line").MveLine[];
+    const end = maxVisualContentEndSecInScene(tightScene, lines, 20);
+    expect(end).toBeGreaterThan(15);
+  });
+
+  it("extends scene end at low pxPerSec when min-width blocks exceed shell pixels", () => {
+    const scene = { id: "scene-1", startSec: 100, endSec: 120 };
+    const lines = [
+      { id: "l1", sceneId: "scene-1", orderIndex: 0, text: "" },
+      { id: "l2", sceneId: "scene-1", orderIndex: 1, text: "" },
+      { id: "l3", sceneId: "scene-1", orderIndex: 2, text: "" },
+    ] as import("@/lib/multi-voice-engine/schema/line").MveLine[];
+    const pxPerSec = 2;
+    const requiredEnd = maxVisualContentEndSecInScene(scene, lines, pxPerSec);
+    expect(requiredEnd).toBeGreaterThan(120);
+    expect((requiredEnd - 100) * pxPerSec).toBeGreaterThanOrEqual(220 * 3 - 1);
   });
 });
 

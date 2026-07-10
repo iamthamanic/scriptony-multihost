@@ -39,6 +39,24 @@ export function nextLineOrderIndex(
   return Math.max(...linesInTargetScene.map((l) => l.orderIndex ?? 0), 0) + 1;
 }
 
+/** Next `orderIndex` for a new text-only line on a dialog lane in a scene. */
+export function nextLineOrderIndexForScene(
+  lines: Array<{
+    sceneId: string;
+    characterId?: string;
+    audioClipId?: string | null;
+    orderIndex?: number;
+  }>,
+  sceneId: string,
+  characterId: string,
+): number {
+  const inScene = lines.filter(
+    (l) =>
+      l.sceneId === sceneId && !l.audioClipId && l.characterId === characterId,
+  );
+  return nextLineOrderIndex(inScene);
+}
+
 export function clipTimesAfterSceneMove(
   clipStartSec: number,
   clipEndSec: number,

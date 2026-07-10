@@ -3,10 +3,11 @@
  * Location: src/lib/multi-voice-engine/adapters/registry.ts
  */
 
+import { DEFAULT_VOICE_ENGINE } from "@/lib/config/voice-engine";
 import type { VoiceEngineAdapter } from "./voice-engine-adapter";
 import { UnknownVoiceEngineError } from "./voice-engine-adapter";
 
-const DEFAULT_ENGINE = "kokoro";
+const DEFAULT_ENGINE = DEFAULT_VOICE_ENGINE;
 
 export class VoiceEngineRegistry {
   private readonly adapters = new Map<string, VoiceEngineAdapter>();

@@ -6,7 +6,7 @@
 
 import { useMemo, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { resolveMveDialogClipWidthPx } from "@/lib/mve/mve-dialog-clip-layout";
+import { resolveMveLineStackWidthPx } from "@/lib/mve/mve-dialog-clip-layout";
 import { MVE_LINE_DRAG_MIME } from "@/hooks/useMveTextBlockLaneDrop";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-direction";
@@ -57,16 +57,10 @@ export function AudioTimelineMveTextBlock({
   onSaveDirection,
   onBindAudioClip,
   onDeleteLine,
-  sceneBlock,
   onClick,
   draggable: draggableProp,
 }: AudioTimelineMveTextBlockProps) {
-  const clipWidthPx = resolveMveDialogClipWidthPx(
-    startSec,
-    endSec,
-    pxPerSec,
-    sceneBlock,
-  );
+  const clipWidthPx = resolveMveLineStackWidthPx(startSec, endSec, pxPerSec);
 
   const style = useMemo(
     () => ({

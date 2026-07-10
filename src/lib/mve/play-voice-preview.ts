@@ -1,9 +1,14 @@
 /**
- * Play a local Kokoro TTS preview (Characters panel).
+ * Play a local TTS preview (Voicebox or Kokoro, Characters panel).
  * Location: src/lib/mve/play-voice-preview.ts
  */
 
 import { ensureKokoroSidecar } from "@/lib/api/local-tts-api";
+import { ensureVoiceboxAvailable } from "@/lib/api/voicebox-api";
+import {
+  DEFAULT_VOICE_ENGINE,
+  isVoiceboxDefault,
+} from "@/lib/config/voice-engine";
 import type { LoadingProgressReporter } from "@/lib/loading/global-loading-progress";
 import {
   PLAYBACK_PROGRESS,
@@ -12,7 +17,7 @@ import {
 import { resolveLocalAudioPlaybackUrl } from "@/lib/local-audio-playback-url";
 import { isDesktopShell } from "@/runtime/detect-runtime";
 import { resolveVoiceEngineAdapter } from "@/lib/multi-voice-engine/adapters";
-import { minimalKokoroVoiceProfile } from "@/lib/mve/minimal-kokoro-profile";
+import { minimalVoiceProfile } from "@/lib/mve/minimal-voice-profile";
 
 function playUrlWithWebAudio(
   audioContext: AudioContext,
@@ -89,15 +94,23 @@ export async function playLocalVoicePreview(params: {
     throw new Error("Voice-Vorschau nur in der Desktop-App verfügbar.");
   }
 
-  await ensureKokoroSidecar(params.projectDir, params.onProgress);
+  if (isVoiceboxDefault()) {
+    await ensureVoiceboxAvailable();
+  } else {
+    await ensureKokoroSidecar(params.projectDir, params.onProgress);
+  }
   params.onProgress?.(SYNTHESIS_PROGRESS);
 
-  const adapter = resolveVoiceEngineAdapter("kokoro");
+  const adapter = resolveVoiceEngineAdapter(DEFAULT_VOICE_ENGINE);
   const result = await adapter.renderLine({
     lineId: "mve_preview_line",
     text: params.text,
     language: "de",
-    voice: minimalKokoroVoiceProfile(params.voiceId, params.speed),
+    voice: minimalVoiceProfile(
+      params.voiceId,
+      DEFAULT_VOICE_ENGINE,
+      params.speed,
+    ),
     takeIndex: 0,
     projectDir: params.projectDir,
   });

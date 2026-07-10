@@ -5,7 +5,7 @@
 
 import { AudioTimelineMveTextBlock } from "../../audio/AudioTimelineMveTextBlock";
 import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
-import { textBlockTimingForLine } from "@/hooks/useMveTextBlockLaneDrop";
+import { resolveMveLineVisualSpanMap } from "@/lib/mve/mve-dialog-clip-layout";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveSceneOption } from "@/hooks/useMveTextBlockAudio";
 import type { MveLineClipHandlers } from "./AudioClipLaneContent";
@@ -43,15 +43,18 @@ export function MveTextBlockLaneItems({
   mveLines,
   draggable,
 }: MveTextBlockLaneItemsProps) {
+  const visualSpans = resolveMveLineVisualSpanMap(
+    lines,
+    sceneBlocks,
+    pxPerSec,
+    readingSpeedWpm,
+  );
+
   return (
     <>
       {lines.map((line) => {
-        const span = textBlockTimingForLine(
-          line,
-          sceneBlocks,
-          lines,
-          readingSpeedWpm,
-        );
+        const span = visualSpans.get(line.id);
+        if (!span) return null;
         const sceneBlock = sceneBlocks.find((b) => b.id === line.sceneId);
         const sceneLabel =
           mveLines?.getSceneLabel?.(line.sceneId) ??

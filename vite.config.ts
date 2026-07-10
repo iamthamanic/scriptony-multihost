@@ -505,7 +505,8 @@ export default defineConfig(({ mode }) => {
           ? true
           : "localhost",
       strictPort: true,
-      open: true,
+      /** Tauri WebView loads this URL — browser auto-open is only for `npm run dev:web`. */
+      open: process.env.SCRIPTONY_OPEN_BROWSER === "1",
       proxy,
     },
   };

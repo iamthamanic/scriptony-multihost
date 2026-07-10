@@ -27,6 +27,7 @@ import {
   applyStructureDimOverlays,
   applyStructureDropZoneAcrossLanes,
   clearStructureDropZonesForLanes,
+  clearStructureDropZonesOnExtraStacks,
   resetStructurePreviewStyles,
   type StructurePreviewContainers,
 } from "../lib/ripple-engine/preview";
@@ -51,6 +52,8 @@ export interface UseStructureMoveSessionOptions {
   pxPerFrameRef: React.RefObject<number>;
   viewStartFrameRef: React.RefObject<number>;
   getContainers: () => StructurePreviewContainers;
+  /** Dialog/audio lane stacks that mirror the structure insertion slot (#49). */
+  getExtraDropZoneStacks?: () => Array<HTMLElement | null | undefined>;
   onCommit: (args: {
     before: TimelineTree;
     next: TimelineTree;
@@ -76,6 +79,12 @@ export function useStructureMoveSession(
 
   const finishMoveSession = useCallback(() => {
     optionsRef.current.onMoveSessionEnd?.();
+  }, []);
+
+  const clearExtraDropZoneStacks = useCallback(() => {
+    clearStructureDropZonesOnExtraStacks(
+      optionsRef.current.getExtraDropZoneStacks?.() ?? [],
+    );
   }, []);
 
   const minDur =
@@ -193,6 +202,7 @@ export function useStructureMoveSession(
       rafRef.current = requestAnimationFrame(() => {
         const containers = opts.getContainers();
         const viewStartFrame = opts.viewStartFrameRef.current ?? 0;
+        const extraStacks = opts.getExtraDropZoneStacks?.() ?? [];
 
         const groupIds = session.groupIds;
         const isGroup = Boolean(groupIds && groupIds.length > 1);
@@ -216,9 +226,10 @@ export function useStructureMoveSession(
             endFrame: slot.endFrame,
             viewStartFrame,
             pxPerFrame,
+            extraDropZoneStacks: extraStacks,
           });
         } else {
-          clearStructureDropZonesForLanes(containers);
+          clearStructureDropZonesForLanes(containers, extraStacks);
         }
 
         if (dragItem) {
@@ -252,6 +263,7 @@ export function useStructureMoveSession(
       optionsRef.current.getContainers(),
       previewTouchedIdsRef.current,
     );
+    clearExtraDropZoneStacks();
     activeSessionRef.current = null;
     dragStartTreeRef.current = null;
     lastDeltaFramesRef.current = null;
@@ -259,7 +271,7 @@ export function useStructureMoveSession(
     startLeftPxByIdRef.current = new Map();
     previewTouchedIdsRef.current = new Set();
     finishMoveSession();
-  }, [finishMoveSession]);
+  }, [clearExtraDropZoneStacks, finishMoveSession]);
 
   const endMove = useCallback(
     async (clientX: number) => {
@@ -278,6 +290,7 @@ export function useStructureMoveSession(
           optionsRef.current.getContainers(),
           previewTouchedIdsRef.current,
         );
+        clearExtraDropZoneStacks();
         previewTouchedIdsRef.current = new Set();
         finishMoveSession();
         return;
@@ -337,6 +350,7 @@ export function useStructureMoveSession(
           optionsRef.current.getContainers(),
           previewTouchedIdsRef.current,
         );
+        clearExtraDropZoneStacks();
         latestPreviewResultRef.current = null;
         previewTouchedIdsRef.current = new Set();
         finishMoveSession();
@@ -387,6 +401,7 @@ export function useStructureMoveSession(
           optionsRef.current.getContainers(),
           result.changedIds,
         );
+        clearExtraDropZoneStacks();
       } catch (err) {
         console.error("structure move persist failed", err);
         toast.error("Struktur-Verschieben konnte nicht gespeichert werden.");
@@ -395,6 +410,7 @@ export function useStructureMoveSession(
           optionsRef.current.getContainers(),
           previewTouchedIdsRef.current,
         );
+        clearExtraDropZoneStacks();
       }
 
       lastDeltaFramesRef.current = null;
@@ -403,7 +419,13 @@ export function useStructureMoveSession(
       previewTouchedIdsRef.current = new Set();
       finishMoveSession();
     },
-    [minDur, finishMoveSession, readPointerDelta, snapThreshold],
+    [
+      minDur,
+      finishMoveSession,
+      readPointerDelta,
+      snapThreshold,
+      clearExtraDropZoneStacks,
+    ],
   );
 
   const isActive = useCallback(() => activeSessionRef.current !== null, []);

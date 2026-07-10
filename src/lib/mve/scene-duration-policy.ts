@@ -5,13 +5,14 @@
  * Location: src/lib/mve/scene-duration-policy.ts
  */
 
+import { isAudioProjectType } from "@/lib/project-type-audio";
+
 export type SceneDurationMode = "contentDriven" | "structureDriven";
 
 export function sceneDurationModeForProjectType(
   projectType?: string | null,
 ): SceneDurationMode {
-  const t = (projectType ?? "").toLowerCase().trim();
-  if (t === "audio") return "contentDriven";
+  if (isAudioProjectType(projectType)) return "contentDriven";
   return "structureDriven";
 }
 

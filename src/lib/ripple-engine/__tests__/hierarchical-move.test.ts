@@ -162,4 +162,26 @@ describe("resolveStructureMoveOperation", () => {
     expect(result.blocked).toBe(false);
     expect(result.next.items.get("seq-1")!.parentId).toBe("act-2");
   });
+
+  it("reparents scene-3 into seq-1 when drop frame lands in target sequence", () => {
+    const tree = buildJourneyTree();
+    const scene3 = tree.items.get("scene-3")!;
+    const seq1 = tree.items.get("seq-1")!;
+    const dropFrame = seq1.startFrame + Math.floor(seq1.durationFrames / 2);
+
+    const result = resolveStructureMoveOperation({
+      tree,
+      itemId: "scene-3",
+      deltaFrames: dropFrame - scene3.startFrame,
+      dropFrame,
+      minItemDurationFrames: MIN,
+    });
+
+    expect(result.blocked).toBe(false);
+    expect(result.invariantErrors ?? []).toEqual([]);
+    expect(result.next.items.get("scene-3")!.parentId).toBe("seq-1");
+    expect(
+      validateTimelineTree(result.next, { minItemDurationFrames: MIN }),
+    ).toEqual([]);
+  });
 });

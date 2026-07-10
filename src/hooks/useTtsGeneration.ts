@@ -19,6 +19,12 @@ import {
   synthesizeLocal,
   isKokoroHealthy,
 } from "../lib/api/local-tts-api";
+import {
+  ensureVoiceboxAvailable,
+  generateVoiceboxSpeech,
+  isVoiceboxHealthy,
+} from "../lib/api/voicebox-api";
+import { isVoiceboxDefault } from "@/lib/config/voice-engine";
 import { queryKeys } from "../lib/react-query";
 import type { TtsJobPayload, TtsJobStatus } from "../lib/api/audio-tts-api";
 import type { LocalTtsPayload } from "../lib/api/local-tts-api";
@@ -78,7 +84,7 @@ export function useTtsGeneration({
     };
   }, []);
 
-  // ── Lokale TTS via Kokoro (kein Cloud-API) ──────────────────────────────
+  // ── Lokale TTS via Voicebox oder Kokoro (kein Cloud-API) ───────────────
 
   const startLocalTts = useCallback(
     async (payload: LocalTtsPayload, sceneIdOverride?: string) => {
@@ -100,19 +106,46 @@ export function useTtsGeneration({
       cancelledRef.current = false;
 
       try {
-        // Sidecar starten (falls noch nicht laufend)
-        await ensureKokoroSidecar(projectDir);
+        let result: { audioPath: string; duration?: number };
 
-        const healthy = await isKokoroHealthy();
-        if (!healthy) {
-          throw new Error(
-            "Kokoro-Server nicht erreichbar. Bitte Seite neu laden.",
-          );
+        if (isVoiceboxDefault()) {
+          await ensureVoiceboxAvailable();
+          const healthy = await isVoiceboxHealthy();
+          if (!healthy) {
+            throw new Error(
+              "Voicebox ist nicht erreichbar. Bitte Voicebox-App starten.",
+            );
+          }
+
+          toast.info("TTS wird lokal über Voicebox generiert…");
+          const vb = await generateVoiceboxSpeech({
+            text: payload.text,
+            profileId: payload.voice,
+            projectDir,
+          });
+          if (cancelledRef.current) return;
+          result = {
+            audioPath: vb.audioPath,
+            duration: vb.durationMs != null ? vb.durationMs / 1000 : undefined,
+          };
+        } else {
+          await ensureKokoroSidecar(projectDir);
+
+          const healthy = await isKokoroHealthy();
+          if (!healthy) {
+            throw new Error(
+              "Kokoro-Server nicht erreichbar. Bitte Seite neu laden.",
+            );
+          }
+
+          toast.info("TTS wird lokal generiert…");
+          const kokoro = await synthesizeLocal(payload);
+          if (cancelledRef.current) return;
+          result = {
+            audioPath: kokoro.audioPath,
+            duration: kokoro.duration,
+          };
         }
-
-        toast.info("TTS wird lokal generiert…");
-        const result = await synthesizeLocal(payload);
-        if (cancelledRef.current) return;
 
         setLocalAudioPath(result.audioPath);
         setProgress(100);

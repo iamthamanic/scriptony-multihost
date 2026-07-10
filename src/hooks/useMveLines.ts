@@ -3,7 +3,7 @@
  * Location: src/hooks/useMveLines.ts
  */
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createMveLine,
@@ -20,12 +20,19 @@ import type { AudioClip } from "@/lib/types";
 import { toast } from "sonner";
 import { moveTextBlockToScene } from "@/lib/mve/move-text-block-to-scene";
 import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
-import { syncSceneDurationForMveContent } from "@/lib/mve/sync-scene-duration-for-mve-content";
+import {
+  reconcileMveSceneDurations,
+  syncSceneDurationForMveContent,
+} from "@/lib/mve/sync-scene-duration-for-mve-content";
+import { isContentDrivenSceneDuration } from "@/lib/mve/scene-duration-policy";
 
 export interface UseMveLinesOptions {
   projectType?: string;
   readingSpeedWpm?: number;
   getSceneBlocks?: () => SceneTimeBlock[];
+  getPxPerSec?: () => number;
+  /** Reload structure timeline after content-driven scene resize (audio projects). */
+  onStructureSynced?: () => void | Promise<void>;
 }
 
 export function useMveLines(
@@ -34,13 +41,88 @@ export function useMveLines(
 ) {
   const queryClient = useQueryClient();
   const enabled = Boolean(projectId) && isLocalProfile();
-  const { projectType, readingSpeedWpm, getSceneBlocks } = options;
+  const {
+    projectType,
+    readingSpeedWpm,
+    getSceneBlocks,
+    getPxPerSec,
+    onStructureSynced,
+  } = options;
 
   const linesQuery = useQuery({
     queryKey: queryKeys.mve.linesByProject(projectId ?? ""),
     queryFn: () => getMveLines(projectId!),
     enabled,
   });
+
+  const reconcileKeyRef = useRef("");
+
+  useEffect(() => {
+    reconcileKeyRef.current = "";
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!enabled || !projectId || linesQuery.isLoading || !linesQuery.data) {
+      return;
+    }
+    if (!isContentDrivenSceneDuration(projectType)) return;
+
+    const lineIds = linesQuery.data
+      .map((line) => line.id)
+      .sort()
+      .join(",");
+
+    void (async () => {
+      let sceneBlocks = getSceneBlocks?.() ?? [];
+      for (
+        let attempt = 0;
+        attempt < 30 && sceneBlocks.length === 0;
+        attempt += 1
+      ) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        sceneBlocks = getSceneBlocks?.() ?? [];
+      }
+      if (sceneBlocks.length === 0) return;
+
+      const reconcileKey = `${projectId}:${lineIds}:${sceneBlocks
+        .map((block) => `${block.id}:${block.endSec.toFixed(3)}`)
+        .join("|")}:px${getPxPerSec?.() ?? 0}`;
+      if (reconcileKeyRef.current === reconcileKey) return;
+      reconcileKeyRef.current = reconcileKey;
+
+      try {
+        const synced = await reconcileMveSceneDurations({
+          projectId,
+          projectType,
+          sceneBlocks,
+          lines: linesQuery.data!,
+          readingSpeedWpm,
+          pxPerSec: getPxPerSec?.(),
+        });
+        if (!synced) return;
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.timeline.byProject(projectId),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: queryKeys.timeline.audioByProject(projectId),
+        });
+        await onStructureSynced?.();
+      } catch (err) {
+        console.warn("[MVE] Szene-Reconcile fehlgeschlagen:", err);
+      }
+    })();
+  }, [
+    enabled,
+    projectId,
+    projectType,
+    linesQuery.data,
+    linesQuery.isLoading,
+    readingSpeedWpm,
+    getSceneBlocks,
+    getPxPerSec,
+    queryClient,
+    onStructureSynced,
+  ]);
 
   const syncSceneForLine = useCallback(
     async (lineId: string, clipId?: string, clipEndSec?: number) => {
@@ -53,16 +135,25 @@ export function useMveLines(
         const line = lines.find((l) => l.id === lineId);
         if (!line) return;
 
-        const { synced } = await syncSceneDurationForMveContent({
-          projectId,
-          projectType,
-          sceneId: line.sceneId,
-          sceneBlocks,
-          lines,
-          readingSpeedWpm,
-          clipId,
-          clipEndSec,
-        });
+        const { synced, requiredEndSec } = await syncSceneDurationForMveContent(
+          {
+            projectId,
+            projectType,
+            sceneId: line.sceneId,
+            sceneBlocks,
+            lines,
+            readingSpeedWpm,
+            clipId,
+            clipEndSec,
+            pxPerSec: getPxPerSec?.(),
+          },
+        );
+        const sceneBlock = sceneBlocks.find((b) => b.id === line.sceneId);
+        const needsGrow =
+          sceneBlock &&
+          requiredEndSec != null &&
+          requiredEndSec > sceneBlock.endSec + 1e-6;
+
         if (synced) {
           await queryClient.invalidateQueries({
             queryKey: queryKeys.timeline.byProject(projectId),
@@ -70,12 +161,31 @@ export function useMveLines(
           await queryClient.invalidateQueries({
             queryKey: queryKeys.timeline.audioByProject(projectId),
           });
+          await onStructureSynced?.();
+        } else if (needsGrow && isContentDrivenSceneDuration(projectType)) {
+          console.warn(
+            "[MVE] Szene konnte nicht verlängert werden:",
+            line.sceneId,
+            { requiredEndSec, sceneEndSec: sceneBlock?.endSec },
+          );
+          toast.message(
+            "Szene konnte nicht automatisch verlängert werden — Struktur-Verschieben prüfen.",
+            { duration: 3500 },
+          );
         }
       } catch (err) {
         console.warn("[MVE] Szene-Dauer-Sync fehlgeschlagen:", err);
       }
     },
-    [projectId, projectType, readingSpeedWpm, getSceneBlocks, queryClient],
+    [
+      projectId,
+      projectType,
+      readingSpeedWpm,
+      getSceneBlocks,
+      getPxPerSec,
+      queryClient,
+      onStructureSynced,
+    ],
   );
 
   const lineByClipId = useMemo(() => {

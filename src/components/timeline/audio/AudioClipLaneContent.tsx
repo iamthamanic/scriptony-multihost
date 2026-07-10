@@ -15,6 +15,7 @@ import type { TimelineSceneRef } from "../../../lib/timeline-add-audio";
 import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
 import type { MveStructurePickerRefs } from "../../structure/timeline/mve/MveStructureScenePickerModal";
 import { useMveTextBlockLaneDrop } from "@/hooks/useMveTextBlockLaneDrop";
+import { TIMELINE_INSERTION_DROP_ZONE_CLASS } from "@/lib/ripple-engine/preview";
 import { MveTextBlockLaneItems } from "./MveTextBlockLaneItems";
 
 export interface MveLineClipHandlers {
@@ -107,7 +108,6 @@ export function AudioClipLaneContent({
       className={cn(
         "relative border-b border-border bg-muted/10 shrink-0",
         !audible && "opacity-30",
-        dragOverSceneId && "ring-1 ring-inset ring-primary/40",
         className,
       )}
       style={{ height: `${height}px`, width: `${totalWidthPx}px` }}
@@ -115,15 +115,19 @@ export function AudioClipLaneContent({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       data-testid={`audio-lane-content-${laneIndex}`}
+      data-audio-lane-drop-stack="true"
     >
       {sceneBlocks.map((block) =>
         dragOverSceneId === block.id ? (
           <div
             key={`drop-hint-${block.id}`}
-            className="pointer-events-none absolute top-0 bottom-0 bg-primary/10 border-x border-primary/30"
+            className={TIMELINE_INSERTION_DROP_ZONE_CLASS}
             style={{
               left: `${(block.startSec - viewStartSec) * pxPerSec}px`,
-              width: `${(block.endSec - block.startSec) * pxPerSec}px`,
+              width: `${Math.max(
+                12,
+                (block.endSec - block.startSec) * pxPerSec,
+              )}px`,
             }}
           />
         ) : null,

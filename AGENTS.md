@@ -12,6 +12,24 @@ gotchas, and decision tree for this project. Update it when workflows change.
 
 **Default product focus (2026):** Tauri desktop, **local runtime** (`.scriptony` + SQLite). See **`docs/DESKTOP_FIRST_DEV.md`**, **`docs/ARCHITECTURE_LOCAL_CLOUD.md`** (3 Achsen: Shell / Cloud-Session / Daten-Ort), **`docs/DOMAIN_GLOSSAR.md`**, and **`.cursor/rules/scriptony-desktop-dev.mdc`**. Do not suggest Appwrite deploy, Docker `npm run dev`, or `verify:test-env` unless the ticket explicitly targets cloud, web, or hybrid.
 
+## Cloud-Freeze Policy (active since 2026-06-29)
+
+The Appwrite cloud stack is **frozen** until a deliberate stack decision is made (Supabase / Hono-Sidecar / Cloudflare Workers / keep Appwrite). Existing cloud code stays as reference, is not deleted, but is **not actively maintained or extended**.
+
+**Binding rules for every agent and contributor:**
+
+- **No new `appwrite` imports** in `src/`. New features use **only** `LocalBackend` + `src/lib/api-adapter/` + `dispatchByRuntime`.
+- **No new Appwrite Functions.** Existing `functions/` are archived reference; do not deploy, do not extend, do not add tests for them.
+- **No new cloud-only feature work** (no new KI/TTS/style-job cloud paths). Hybrid features stay as-is and keep working only when `canUseCloudFeatures()` is true — but they are not enhanced.
+- **Generated `functions/*/index.js` bundles are no longer committed** (build via `npm --prefix functions run build:appwrite-deploy` → outputs to `.appwrite-deploy/`, which is gitignored).
+- **Runtime is pinned:** `VITE_SCRIPTONY_RUNTIME=local` in `.env.local`. Appwrite vars remain as reference for later reactivation, not for active use.
+- **`canUseCloudSession()` may return hard `false`** in local profile — cloud buttons/dialogs should be hidden, not merely optional. This is intentional.
+- **Ponytail marker:** When touching frozen cloud code, add `// ponytail: frozen-cloud-path — revisit when new cloud stack is decided` so the debt stays visible and harvestable.
+
+**Reactivation gate:** Lifting the freeze requires (a) a written stack decision in `docs/ARCHITECTURE_LOCAL_CLOUD.md`, (b) a new adapter/stack plan, and (c) explicit user approval. Until then, treat the cloud paths as read-only archive.
+
+**Scope of the freeze:** `functions/`, `src/backend/appwrite/`, `src/backend/hybrid/`, `src/backend/sync/`, `src/lib/appwrite/`, `src/lib/auth/*appwrite*`, cloud-gated branches in megafiles (`ProjectsPage`, `WorldbuildingPage`, etc.). **Not frozen:** `src/backend/local/`, `src/local/`, `src/lib/kokoro/`, `src/lib/style-guide-local-draft.ts`, Tauri FS, workspace scanner — these are the live local foundation.
+
 ## Desktop-first development (default ticket mode)
 
 Use this unless the user or ticket explicitly asks for cloud, web, or Appwrite deploy.

@@ -121,6 +121,34 @@ export function applyStructureDimOverlay(structureStackEl: HTMLElement): void {
 /** Min visible width for the insertion band (junction between two blocks). */
 const DROP_ZONE_MIN_WIDTH_PX = 12;
 
+/** Shared VET insertion slot styling (structure move + MVE text-block drop). */
+export const TIMELINE_INSERTION_DROP_ZONE_CLASS =
+  "pointer-events-none absolute top-0 bottom-0 z-[36] rounded-sm border-2 border-white bg-white/50 shadow-[0_0_12px_rgba(255,255,255,0.85)]";
+
+function positionDropZoneEl(
+  zone: HTMLElement,
+  rawWidthPx: number,
+  leftPx: number,
+): void {
+  const widthPx = Math.max(DROP_ZONE_MIN_WIDTH_PX, rawWidthPx);
+  zone.style.left = "0";
+  zone.style.transform = `translateX(${leftPx}px)`;
+  zone.style.width = `${widthPx}px`;
+  zone.style.display = "block";
+}
+
+function getOrCreateDropZoneEl(stack: HTMLElement): HTMLElement {
+  let zone = stack.querySelector<HTMLElement>(`[${STRUCTURE_DROP_ZONE_ATTR}]`);
+  if (!zone) {
+    zone = document.createElement("div");
+    zone.setAttribute(STRUCTURE_DROP_ZONE_ATTR, "true");
+    zone.setAttribute("aria-hidden", "true");
+    zone.className = TIMELINE_INSERTION_DROP_ZONE_CLASS;
+    stack.appendChild(zone);
+  }
+  return zone;
+}
+
 /** Bright white insertion slot — junction band or full reparent column. */
 export function applyStructureDropZone(
   input: StructureDropZonePreviewInput,
@@ -129,32 +157,40 @@ export function applyStructureDropZone(
     input;
   ensureStackPositioning(structureStackEl);
 
-  let zone = structureStackEl.querySelector<HTMLElement>(
-    `[${STRUCTURE_DROP_ZONE_ATTR}]`,
-  );
-  if (!zone) {
-    zone = document.createElement("div");
-    zone.setAttribute(STRUCTURE_DROP_ZONE_ATTR, "true");
-    zone.setAttribute("aria-hidden", "true");
-    zone.className =
-      "pointer-events-none absolute top-0 bottom-0 z-[36] rounded-sm border-2 border-white bg-white/50 shadow-[0_0_12px_rgba(255,255,255,0.85)]";
-    structureStackEl.appendChild(zone);
-  }
-
+  const zone = getOrCreateDropZoneEl(structureStackEl);
   const rawWidthPx = (endFrame - startFrame) * pxPerFrame;
   const widthPx = Math.max(DROP_ZONE_MIN_WIDTH_PX, rawWidthPx);
-  // Narrow junction band: center it on the boundary frame.
   const leftPx =
     (startFrame - viewStartFrame) * pxPerFrame - (widthPx - rawWidthPx) / 2;
-  zone.style.left = "0";
-  zone.style.transform = `translateX(${leftPx}px)`;
-  zone.style.width = `${widthPx}px`;
-  zone.style.display = "block";
+  positionDropZoneEl(zone, rawWidthPx, leftPx);
+}
+
+export interface TimelineDropZoneSecInput {
+  stackEl: HTMLElement;
+  startSec: number;
+  endSec: number;
+  viewStartSec: number;
+  pxPerSec: number;
+}
+
+/** Same white slot using timeline seconds (audio / MVE dialog lanes). */
+export function applyTimelineDropZoneSec(
+  input: TimelineDropZoneSecInput,
+): void {
+  const { stackEl, startSec, endSec, viewStartSec, pxPerSec } = input;
+  ensureStackPositioning(stackEl);
+  const zone = getOrCreateDropZoneEl(stackEl);
+  const rawWidthPx = (endSec - startSec) * pxPerSec;
+  const widthPx = Math.max(DROP_ZONE_MIN_WIDTH_PX, rawWidthPx);
+  const leftPx =
+    (startSec - viewStartSec) * pxPerSec - (widthPx - rawWidthPx) / 2;
+  positionDropZoneEl(zone, rawWidthPx, leftPx);
 }
 
 /** Hide only the drop zones (keep dim overlays) — e.g. no-op slot. */
 export function clearStructureDropZonesForLanes(
   containerByKind: StructurePreviewContainers,
+  extraStacks: Array<HTMLElement | null | undefined> = [],
 ): void {
   for (const kind of STRUCTURE_LANE_KINDS) {
     const lane = containerByKind[kind];
@@ -162,6 +198,15 @@ export function clearStructureDropZonesForLanes(
     lane
       .querySelectorAll<HTMLElement>(`[${STRUCTURE_DROP_ZONE_ATTR}]`)
       .forEach((node) => node.remove());
+  }
+  clearStructureDropZonesOnExtraStacks(extraStacks);
+}
+
+export function clearStructureDropZonesOnExtraStacks(
+  stacks: Array<HTMLElement | null | undefined>,
+): void {
+  for (const stack of stacks) {
+    clearStructureMoveOverlays(stack ?? undefined);
   }
 }
 
@@ -201,23 +246,36 @@ export interface StructureDropZoneAcrossLanesInput {
   endFrame: number;
   viewStartFrame: number;
   pxPerFrame: number;
+  /** Audio dialog stack(s) — same horizontal slot as structure lanes. */
+  extraDropZoneStacks?: Array<HTMLElement | null | undefined>;
 }
 
 /** Same horizontal drop slot painted on every structure lane (Act…Shot). */
 export function applyStructureDropZoneAcrossLanes(
   input: StructureDropZoneAcrossLanesInput,
 ): void {
-  const { containerByKind, startFrame, endFrame, viewStartFrame, pxPerFrame } =
-    input;
+  const {
+    containerByKind,
+    startFrame,
+    endFrame,
+    viewStartFrame,
+    pxPerFrame,
+    extraDropZoneStacks = [],
+  } = input;
+  const slot = { startFrame, endFrame, viewStartFrame, pxPerFrame };
   for (const kind of STRUCTURE_LANE_KINDS) {
     const lane = containerByKind[kind];
     if (!lane) continue;
     applyStructureDropZone({
       structureStackEl: lane,
-      startFrame,
-      endFrame,
-      viewStartFrame,
-      pxPerFrame,
+      ...slot,
+    });
+  }
+  for (const stack of extraDropZoneStacks) {
+    if (!stack) continue;
+    applyStructureDropZone({
+      structureStackEl: stack,
+      ...slot,
     });
   }
 }

@@ -17,7 +17,11 @@ import {
 } from "@/components/ui/dialog";
 import { useMveVoicePreview } from "@/hooks/useMveVoicePreview";
 import { useSaveVoiceProfile } from "@/hooks/useSaveVoiceProfile";
-import { useLocalVoices } from "@/hooks/useLocalVoices";
+import { useTtsVoiceProfiles } from "@/hooks/useTtsVoiceProfiles";
+import {
+  DEFAULT_VOICE_ENGINE,
+  isVoiceboxDefault,
+} from "@/lib/config/voice-engine";
 import { generateVoiceFromDescription } from "@/lib/mve/casting/generate-voice-from-description";
 import { createTunedVoiceProfile } from "@/lib/mve/tune/create-tuned-voice-profile";
 import {
@@ -79,7 +83,7 @@ export function VoiceProfileEditorModal({
   const [tuneSourceProfile, setTuneSourceProfile] =
     useState<MveVoiceProfile | null>(null);
 
-  const localVoices = useLocalVoices({
+  const localVoices = useTtsVoiceProfiles({
     projectDir,
     enabled: open && Boolean(projectDir),
   });
@@ -150,15 +154,17 @@ export function VoiceProfileEditorModal({
 
   const catalogVoices = localVoices.data?.voices?.length
     ? localVoices.data.voices
-    : KOKORO_VOICE_CATALOG;
+    : isVoiceboxDefault()
+      ? []
+      : KOKORO_VOICE_CATALOG;
 
   const handleSuggestFromDescription = useCallback(async () => {
     if (!description.trim()) return;
 
-    if (localVoices.data && !localVoices.data.kokoroReady) {
+    if (localVoices.data && !localVoices.data.engineReady) {
       toast.error(
-        localVoices.data.kokoroError ??
-          "Kokoro ist noch nicht bereit — Vorschau ggf. erst nach Sidecar-Start.",
+        localVoices.data.engineError ??
+          `${localVoices.data.engineLabel} ist noch nicht bereit.`,
       );
     }
 
@@ -207,7 +213,7 @@ export function VoiceProfileEditorModal({
       const created = await createMveVoiceProfile(projectId, {
         name: `${characterName.trim() || "Charakter"} — Stimme`,
         characterId,
-        engine: "kokoro",
+        engine: DEFAULT_VOICE_ENGINE,
         language: "de",
         status: "draft",
         consentStatus: "pending",

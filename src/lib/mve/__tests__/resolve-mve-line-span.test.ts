@@ -69,8 +69,9 @@ describe("resolveMveLineSpan", () => {
       sceneBlock,
       linesInScene: [l1, l2],
     });
-    expect(span1.endSec).toBe(40);
-    expect(span2.startSec).toBe(40);
+    expect(span1.startSec).toBe(10);
+    expect(span1.endSec).toBe(10 + DEFAULT_EMPTY_LINE_SHELL_SEC);
+    expect(span2.startSec).toBe(span1.endSec);
     expect(span2.durationSec).toBe(DEFAULT_EMPTY_LINE_SHELL_SEC);
     expect(span2.source).toBe("shell");
   });
@@ -108,10 +109,15 @@ describe("maxContentEndSecInScene", () => {
     expect(end).toBe(40);
   });
 
-  it("extends scene when second empty shell exceeds scene end", () => {
+  it("extends scene when stacked empty shells exceed scene end (logical)", () => {
+    const tightScene: SceneTimeBlock = {
+      id: "scene-1",
+      startSec: 10,
+      endSec: 15,
+    };
     const l1 = line("l1", "", 0);
     const l2 = line("l2", "", 1);
-    const end = maxContentEndSecInScene(sceneBlock, [l1, l2]);
-    expect(end).toBe(40 + DEFAULT_EMPTY_LINE_SHELL_SEC);
+    const end = maxContentEndSecInScene(tightScene, [l1, l2]);
+    expect(end).toBe(10 + DEFAULT_EMPTY_LINE_SHELL_SEC * 2);
   });
 });

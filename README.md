@@ -52,7 +52,7 @@ Vom ersten Logline bis zum finalen Shot — alles in einer Anwendung, alles auf 
 | **Film-Projekt**         | Drehbuch-Editor, Shots, Clips, Beat-Timeline, Charaktere, Worldbuilding, Style-Guide     |
 | **Serien-Projekt**       | Staffel-/Episoden-Struktur, sonst identisch zu Film                                      |
 | **Buch-Projekt**         | Buch-Editor mit Kapitelhierarchie, Lesedauer-Timeline, Konzeptblöcke                     |
-| **Hörbuch-Projekt**      | Stereo-Audio-Timeline, Voice-Casting, Aufnahmesessions, TTS-Integration                  |
+| **Hörbuch-Projekt**      | Stereo-Audio-Timeline, Voice-Casting, Aufnahmesessions, TTS (Voicebox lokal, Kokoro Fallback) |
 | **Projektstruktur**      | Hierarchische Knoten: Akt → Sequenz → Szene → Shot → Clip (Film) / Kapitel (Buch)        |
 | **Story Beats**          | Lite-7, Save the Cat (15 Beats), Hero's Journey (12), Syd Field (3-Act), Seven Point (7) |
 | **Narrative Struktur**   | 3-Akt, 4-Akt, 5-Akt (Theater), 3-Teilig (Buch)                                           |
@@ -368,6 +368,7 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 
 <!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
 
+- **2026-07-10** — Desktop: Voicebox als Standard-TTS (Kokoro via `VITE_DEFAULT_VOICE_ENGINE=kokoro`), MVE Multi-Textblock-Reihenfolge + Scene-Shell-Sync, Visual Editor (embedded, dev)
 - **2026-07-05** — Structure Timeline: Row-Pair-Layout mit sticky Labels (CapCut-Stil), Playhead/Scrub über Content-Origin-Anker (#49, local desktop)
 - **2026-06-27** — MVE 0.4 (#16): Voice Studio UI — Generate/Clone/Tune aktiv im Charakterstimme-Modal
 - **2026-06-27** — MVE 0.4 (#14): Voice Clone Request — lifecycle, consent-gated start, `/voices/clone` route

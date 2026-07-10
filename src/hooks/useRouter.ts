@@ -22,6 +22,7 @@ const VALID_PAGES = [
   "qa-mve-take-ui",
   "qa-mve-text-block-lane",
   "qa-mve-empty-text-block-shell",
+  "qa-mve-textblock-order-sync",
   "qa-mve-dialog-clip-inline-slice3",
   "qa-mve-dialog-lane-layout-fixes",
   "qa-timeline-row-alignment",

@@ -15,6 +15,7 @@ import {
   parseMveTake,
   parseMveVoiceProfile,
 } from "@/lib/multi-voice-engine/schema/parse";
+import { DEFAULT_VOICE_ENGINE } from "@/lib/config/voice-engine";
 
 function parseJson<T>(value: unknown, field: string): T | undefined {
   if (value == null || value === "") return undefined;
@@ -64,7 +65,7 @@ export function mapMveVoiceProfileRow(
     workspaceId: projectId,
     name: String(row.name ?? ""),
     language: row.language ?? "de",
-    engine: row.engine ?? "elevenlabs",
+    engine: row.engine ?? DEFAULT_VOICE_ENGINE,
     type: row.profile_type ?? "default",
     status: row.status ?? "draft",
     characterId: row.character_id ? String(row.character_id) : undefined,
@@ -97,7 +98,7 @@ export function mapMveAudioJobRow(row: Record<string, unknown>): MveAudioJob {
     projectId: String(row.project_id ?? ""),
     lineId: String(row.line_id ?? ""),
     status: row.status ?? "pending",
-    engine: String(row.engine ?? "kokoro"),
+    engine: String(row.engine ?? DEFAULT_VOICE_ENGINE),
     takeCount: Number(row.take_count ?? 1),
     scriptSnapshot: parseJson(row.script_snapshot_json, "script_snapshot_json"),
     errorMessage:

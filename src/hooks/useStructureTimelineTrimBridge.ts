@@ -30,6 +30,8 @@ import { useStructureTrimSession } from "./useStructureTrimSession";
 export interface StructureTimelineTrimBridgeOptions {
   timelineData: TimelineData | null | undefined;
   projectDurationSec: number;
+  projectId?: string;
+  projectType?: string | null;
   viewStartSecRef: React.RefObject<number>;
   pxPerSecRef: React.RefObject<number>;
   currentTimeSec: number;
@@ -44,6 +46,7 @@ export interface StructureTimelineTrimBridgeOptions {
   onTrimSessionEnd?: () => void;
   /** Committed tree needs more seconds than projectDurationSec — parent auto-extends project duration. */
   onProjectDurationGrow?: (minSeconds: number) => void;
+  onAudioClipsSynced?: () => void;
 }
 
 export function useStructureTimelineTrimBridge(
@@ -137,16 +140,20 @@ export function useStructureTimelineTrimBridge(
       scene: options.sceneTrackRef.current,
       shot: options.shotTrackRef.current,
     }),
-    onCommit: async ({ next, patches }) => {
+    onCommit: async ({ before, next, patches }) => {
       const base = options.timelineData;
       if (!base) return;
       await commitStructureRipple({
+        before,
         next,
         patches,
         timelineData: base,
         setTimelineData: options.setTimelineData,
         getAccessToken: options.getAccessToken,
         projectDurationSec: options.projectDurationSec,
+        projectId: options.projectId,
+        projectType: options.projectType,
+        onAudioClipsSynced: options.onAudioClipsSynced,
         onProjectDurationGrow: options.onProjectDurationGrow,
       });
     },

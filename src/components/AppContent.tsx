@@ -110,6 +110,13 @@ const MveEmptyTextBlockShellPreviewPage = lazy(() =>
     }),
   ),
 );
+const MveTextBlockOrderSyncPreviewPage = lazy(() =>
+  import("../components/qa/MveTextBlockOrderSyncPreviewPage").then(
+    (module) => ({
+      default: module.MveTextBlockOrderSyncPreviewPage,
+    }),
+  ),
+);
 const MveDialogClipInlineSlice3PreviewPage = lazy(() =>
   import("../components/qa/MveDialogClipInlineSlice3PreviewPage").then(
     (module) => ({
@@ -276,6 +283,12 @@ export function AppContent() {
       case "qa-mve-empty-text-block-shell":
         return import.meta.env.DEV ? (
           <MveEmptyTextBlockShellPreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-mve-textblock-order-sync":
+        return import.meta.env.DEV ? (
+          <MveTextBlockOrderSyncPreviewPage />
         ) : (
           <HomePage onNavigate={onNavigate} />
         );

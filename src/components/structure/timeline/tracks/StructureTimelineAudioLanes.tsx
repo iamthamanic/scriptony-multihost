@@ -23,7 +23,10 @@ import type { TimelineSceneRef } from "../../../../lib/timeline-add-audio";
 import type { MveLine } from "../../../../lib/multi-voice-engine/schema/line";
 import { LANE_UI, laneIndexToTrackType } from "../../../../lib/audio-lane";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
-import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
+import {
+  nextLineOrderIndexForScene,
+  type SceneTimeBlock,
+} from "@/lib/mve/resolve-scene-at-timeline-sec";
 import {
   buildStructurePickerTree,
   findSceneLabelInTree,
@@ -50,6 +53,7 @@ export interface StructureTimelineAudioLanesProps {
   currentTimeSec: number;
   linkedLaneAudio?: LinkedLaneAudioContext;
   sceneBlocksRef?: RefObject<SceneTimeBlock[]>;
+  onStructureSynced?: () => void | Promise<void>;
 }
 
 export function useStructureTimelineAudioLanes(
@@ -61,6 +65,8 @@ export function useStructureTimelineAudioLanes(
     projectType: props.projectType,
     readingSpeedWpm: props.readingSpeedWpm,
     getSceneBlocks: () => props.sceneBlocksRef?.current ?? [],
+    getPxPerSec: () => props.pxPerSec,
+    onStructureSynced: props.onStructureSynced,
   });
   const mveRender = useMveLineRender(props.projectId);
   const mveLaneLinks = useMveLaneLinks(props.projectId);
@@ -349,17 +355,19 @@ export function useStructureTimelineAudioLanes(
       startSec: number;
     }) => {
       if (!mve.enabled) return;
-      const orderIndex = lanes.scenes.findIndex(
-        (s: TimelineSceneRef) => s.id === payload.sceneId,
+      const orderIndex = nextLineOrderIndexForScene(
+        mve.lines,
+        payload.sceneId,
+        payload.characterId,
       );
       await mve.createLine({
         sceneId: payload.sceneId,
         characterId: payload.characterId,
         text: "",
-        orderIndex: Math.max(orderIndex, 0),
+        orderIndex,
       });
     },
-    [mve, lanes.scenes],
+    [mve],
   );
 
   const laneProps = {
@@ -456,10 +464,12 @@ export function StructureTimelineAudioLaneScrollRows({
   laneProps,
   metronome,
   isLoading,
+  scrollStackRef,
 }: {
   laneProps: ReturnType<typeof useStructureTimelineAudioLanes>["laneProps"];
   metronome?: ReturnType<typeof useStructureTimelineAudioLanes>["metronome"];
   isLoading: boolean;
+  scrollStackRef?: RefObject<HTMLDivElement | null>;
 }) {
   if (isLoading) {
     return (
@@ -478,7 +488,13 @@ export function StructureTimelineAudioLaneScrollRows({
         side="scroll"
         metronome={metronome}
       />
-      <StructureTimelineClipLaneContent {...laneProps} />
+      <div
+        ref={scrollStackRef}
+        data-testid="timeline-audio-dialog-scroll-stack"
+        className="relative"
+      >
+        <StructureTimelineClipLaneContent {...laneProps} />
+      </div>
       <StructureTimelineAudioSectionFooter side="scroll" />
     </div>
   );
