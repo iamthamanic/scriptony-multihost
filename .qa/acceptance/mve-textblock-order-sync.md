@@ -52,7 +52,7 @@ Roadmap: MVE Slice 1 (Stufe B) — `mve-line-duration-width.md`
 - `resolveMveLineVisualSpanMap()` — cumulative min-width stacking (fixes WPM vs 220px overlap)
 - QA: `/#qa-mve-textblock-order-sync`, `.qa/runs/2026-07-06-mve-textblock-order-sync.spec.ts`
 - Tests: `resolve-scene-at-timeline-sec.test.ts`, `mve-dialog-clip-layout.test.ts`
-- Known limitation: block width still updates after debounced save (800ms), not live while typing
+- Known limitation: ~~block width still updates after debounced save (800ms), not live while typing~~ live WPM width preview since 2026-07-10; scene sync still debounced 800ms
 - Tauri manual: scene shell refresh after Plus + text save still needs smoke on real project
 
 ## verify-ui (2026-07-10)

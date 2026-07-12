@@ -63,10 +63,12 @@ export function MveTextBlockLaneItems({
           <AudioTimelineMveTextBlock
             key={`text-block-${line.id}`}
             line={line}
+            linesInLane={lines}
             pxPerSec={pxPerSec}
             viewStartSec={viewStartSec}
             startSec={span.startSec}
             endSec={span.endSec}
+            readingSpeedWpm={readingSpeedWpm}
             projectId={mveLines?.projectId}
             projectType={mveLines?.projectType}
             sceneId={line.sceneId}
@@ -78,11 +80,13 @@ export function MveTextBlockLaneItems({
             onSaveDirection={mveLines?.onSaveDirection}
             onBindAudioClip={mveLines?.onBindAudioClip}
             onDeleteLine={mveLines?.onDeleteLine}
+            onSyncSceneForDraft={mveLines?.onSyncSceneForDraft}
             sceneBlock={
               sceneBlock
                 ? { startSec: sceneBlock.startSec, endSec: sceneBlock.endSec }
                 : undefined
             }
+            sceneBlocks={sceneBlocks}
             draggable={draggable}
           />
         );

@@ -95,8 +95,12 @@ export interface AudioClipLaneTracksProps {
   >;
 }
 
-function laneHeight(expandedLane: number | null, laneIndex: number): number {
-  return resolveLaneHeightPx(laneIndex, expandedLane);
+function laneHeight(
+  expandedLane: number | null,
+  laneIndex: number,
+  hasContent = true,
+): number {
+  return resolveLaneHeightPx(laneIndex, expandedLane, hasContent);
 }
 
 export function AudioClipLaneTracks({
@@ -156,10 +160,15 @@ export function AudioClipLaneTracks({
     <>
       {sortedLaneIndices.map((laneIndex) => {
         const expanded = expandedLane === laneIndex;
-        const height = laneHeight(expandedLane, laneIndex);
         const clips = laneGroups[laneIndex] ?? [];
         const locked = laneState.getLaneState(laneIndex)?.locked ?? false;
         const character = characterLanes?.getCharacterForLane(laneIndex);
+        const characterId = characterLanes?.characterIdForLane(laneIndex);
+        const linesForCharacter = characterId
+          ? (mveLines?.linesByCharacterId?.get(characterId) ?? [])
+          : [];
+        const hasContent = clips.length > 0 || linesForCharacter.length > 0;
+        const height = laneHeight(expandedLane, laneIndex, hasContent);
 
         if (labelMode === "sidebar") {
           return (
@@ -169,6 +178,7 @@ export function AudioClipLaneTracks({
               laneIndex={laneIndex}
               expanded={expanded}
               expandedLane={expandedLane}
+              hasContent={hasContent}
               locked={locked}
               character={character}
               addAudio={addAudio}

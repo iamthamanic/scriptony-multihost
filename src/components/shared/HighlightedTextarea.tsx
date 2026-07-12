@@ -1,4 +1,4 @@
-import { forwardRef, useRef, useEffect, useImperativeHandle } from "react";
+import { forwardRef, useRef, useImperativeHandle, type ReactNode } from "react";
 import { cn } from "../ui/utils";
 import { Textarea } from "../ui/textarea";
 
@@ -6,8 +6,14 @@ interface HighlightedTextareaProps extends React.TextareaHTMLAttributes<HTMLText
   value?: string;
   highlightPattern?: RegExp;
   highlightClassName?: string;
+  /** Custom overlay node for each pattern match (overrides highlightClassName). */
+  renderHighlight?: (match: string) => ReactNode;
   /** Typography/padding for the highlight overlay — must match `className` on the textarea. */
   overlayClassName?: string;
+  /** Shared font metrics applied to overlay + textarea (caret alignment). */
+  mirrorClassName?: string;
+  /** Wrapper around textarea + overlay (e.g. focus ring). */
+  containerClassName?: string;
 }
 
 /**
@@ -22,10 +28,14 @@ export const HighlightedTextarea = forwardRef<
     value = "",
     highlightPattern = /@\\w+/g,
     highlightClassName = "text-[#60A5FA] font-bold",
+    renderHighlight,
     overlayClassName,
+    mirrorClassName,
+    containerClassName,
     className,
     onChange,
     onScroll,
+    style,
     ...restProps
   } = props;
 
@@ -48,7 +58,7 @@ export const HighlightedTextarea = forwardRef<
   const renderHighlightedText = () => {
     if (!value) return null;
 
-    const parts: React.ReactNode[] = [];
+    const parts: ReactNode[] = [];
     let lastIndex = 0;
 
     const text = String(value);
@@ -64,11 +74,16 @@ export const HighlightedTextarea = forwardRef<
         parts.push(<span key={`normal-${matchIdx}`}>{normalText}</span>);
       }
 
-      // Add highlighted @mention
       parts.push(
-        <span key={`highlight-${matchIdx}`} className={highlightClassName}>
-          {match[0]}
-        </span>,
+        renderHighlight ? (
+          <span key={`highlight-${matchIdx}`} className="inline align-baseline">
+            {renderHighlight(match[0])}
+          </span>
+        ) : (
+          <span key={`highlight-${matchIdx}`} className={highlightClassName}>
+            {match[0]}
+          </span>
+        ),
       );
 
       lastIndex = matchEnd;
@@ -84,31 +99,14 @@ export const HighlightedTextarea = forwardRef<
   };
 
   return (
-    <div className="relative w-full">
-      {/* Actual textarea - text is transparent, provides background and border */}
-      <Textarea
-        ref={textareaRef}
-        value={value}
-        onChange={onChange}
-        onScroll={handleScroll}
-        className={cn(
-          "relative",
-          "text-transparent caret-gray-900 dark:caret-gray-100",
-          "[&::selection]:bg-blue-500/30",
-          className,
-        )}
-        style={{
-          caretColor: "inherit", // Make cursor visible
-        }}
-        {...restProps}
-      />
-
-      {/* Backdrop with syntax highlighting - POSITIONED ON TOP with higher z-index */}
+    <div className={cn("relative h-full w-full", containerClassName)}>
+      {/* Highlight overlay behind textarea so the caret stays visible on top. */}
       <div
         ref={backdropRef}
         className={cn(
-          "absolute inset-0 pointer-events-none overflow-hidden z-10",
-          "whitespace-pre-wrap break-words",
+          "absolute inset-0 z-0 overflow-auto pointer-events-none",
+          "whitespace-pre-wrap",
+          mirrorClassName,
           overlayClassName ??
             "p-2 text-[13px] leading-[1.5] text-[#0A0A0A] dark:text-[#EDE9FE]",
         )}
@@ -116,6 +114,22 @@ export const HighlightedTextarea = forwardRef<
       >
         {renderHighlightedText()}
       </div>
+
+      <Textarea
+        ref={textareaRef}
+        value={value}
+        onChange={onChange}
+        onScroll={handleScroll}
+        className={cn(
+          "relative z-10 overflow-auto",
+          mirrorClassName,
+          "text-transparent caret-gray-900 dark:caret-gray-100",
+          "[&::selection]:bg-blue-500/30",
+          className,
+        )}
+        style={style}
+        {...restProps}
+      />
     </div>
   );
 });

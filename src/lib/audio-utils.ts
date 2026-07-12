@@ -71,3 +71,13 @@ export function formatDurationSec(totalSeconds: number): string {
   const s = Math.floor(totalSeconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
+
+/** Formatiert Sekunden immer als HH:MM:SS (MVE dialog clip header). */
+export function formatDurationHms(totalSeconds: number): string {
+  const safe = Math.max(0, totalSeconds);
+  const h = Math.floor(safe / 3600);
+  const m = Math.floor((safe % 3600) / 60);
+  const s = Math.floor(safe % 60);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}

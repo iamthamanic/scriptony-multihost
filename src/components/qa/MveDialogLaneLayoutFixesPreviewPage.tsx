@@ -14,10 +14,10 @@ import { GlobalLoadingProgressProvider } from "@/hooks/useGlobalLoadingProgress"
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { Character } from "@/lib/types";
 import { resolveMveDialogClipWidthPx } from "@/lib/mve/mve-dialog-clip-layout";
-import { MVE_TEXT_BLOCK_MIN_WIDTH_PX } from "@/lib/audio-lane";
+import { MVE_TEXT_BLOCK_MIN_WIDTH_PX, LANE_UI } from "@/lib/audio-lane";
 
 const PX_PER_SEC = 20;
-const LANE_H = 280;
+const LANE_H = LANE_UI.heightDialogCompact;
 const NOW = "2026-06-29T12:00:00.000Z";
 const PROJECT_ID = "proj_layout_fixes_preview";
 

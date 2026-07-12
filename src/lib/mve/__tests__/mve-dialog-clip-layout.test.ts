@@ -5,6 +5,7 @@ import {
   maxVisualContentEndSecInScene,
   resolveMveDialogClipWidthPx,
   resolveMveLineVisualSpanMap,
+  resolveMveLineVisualSpanMapWithDraft,
 } from "@/lib/mve/mve-dialog-clip-layout";
 import { resolveLaneHeightPx, LANE_UI } from "@/lib/audio-lane";
 import { LANE_SCHEMA } from "@/lib/types";
@@ -130,13 +131,33 @@ describe("resolveMveLineVisualSpanMap", () => {
 });
 
 describe("resolveLaneHeightPx", () => {
-  it("uses taller height for character dialog lanes", () => {
+  it("uses taller height for character dialog lanes by default", () => {
     expect(resolveLaneHeightPx(0, null)).toBe(LANE_UI.heightDialogCompact);
     expect(resolveLaneHeightPx(0, 0)).toBe(LANE_UI.heightDialogExpanded);
   });
 
   it("uses standard height for sfx lanes", () => {
     expect(resolveLaneHeightPx(LANE_SCHEMA.sfx.base, null)).toBe(
+      LANE_UI.heightCompact,
+    );
+  });
+
+  it("shrinks empty dialog lanes to the compact standard height", () => {
+    expect(resolveLaneHeightPx(0, null, false)).toBe(LANE_UI.heightDialogEmpty);
+  });
+
+  it("keeps full compact height once a dialog lane has content", () => {
+    expect(resolveLaneHeightPx(0, null, true)).toBe(
+      LANE_UI.heightDialogCompact,
+    );
+  });
+
+  it("expanded dialog lane ignores hasContent", () => {
+    expect(resolveLaneHeightPx(0, 0, false)).toBe(LANE_UI.heightDialogExpanded);
+  });
+
+  it("non-dialog lanes ignore hasContent", () => {
+    expect(resolveLaneHeightPx(LANE_SCHEMA.sfx.base, null, false)).toBe(
       LANE_UI.heightCompact,
     );
   });

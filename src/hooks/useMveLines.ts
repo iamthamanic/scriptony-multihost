@@ -25,6 +25,7 @@ import {
   syncSceneDurationForMveContent,
 } from "@/lib/mve/sync-scene-duration-for-mve-content";
 import { isContentDrivenSceneDuration } from "@/lib/mve/scene-duration-policy";
+import { useMveLineReorder } from "./useMveLineReorder";
 
 export interface UseMveLinesOptions {
   projectType?: string;
@@ -125,13 +126,18 @@ export function useMveLines(
   ]);
 
   const syncSceneForLine = useCallback(
-    async (lineId: string, clipId?: string, clipEndSec?: number) => {
+    async (
+      lineId: string,
+      clipId?: string,
+      clipEndSec?: number,
+      linesOverride?: MveLine[],
+    ) => {
       if (!projectId) return;
       const sceneBlocks = getSceneBlocks?.() ?? [];
       if (sceneBlocks.length === 0) return;
 
       try {
-        const lines = await getMveLines(projectId);
+        const lines = linesOverride ?? (await getMveLines(projectId));
         const line = lines.find((l) => l.id === lineId);
         if (!line) return;
 
@@ -153,6 +159,10 @@ export function useMveLines(
           sceneBlock &&
           requiredEndSec != null &&
           requiredEndSec > sceneBlock.endSec + 1e-6;
+        const needsShrink =
+          sceneBlock &&
+          requiredEndSec != null &&
+          requiredEndSec < sceneBlock.endSec - 1e-6;
 
         if (synced) {
           await queryClient.invalidateQueries({
@@ -172,6 +182,12 @@ export function useMveLines(
             "Szene konnte nicht automatisch verlängert werden — Struktur-Verschieben prüfen.",
             { duration: 3500 },
           );
+        } else if (needsShrink && isContentDrivenSceneDuration(projectType)) {
+          console.warn(
+            "[MVE] Szene konnte nicht verkürzt werden:",
+            line.sceneId,
+            { requiredEndSec, sceneEndSec: sceneBlock?.endSec },
+          );
         }
       } catch (err) {
         console.warn("[MVE] Szene-Dauer-Sync fehlgeschlagen:", err);
@@ -186,6 +202,18 @@ export function useMveLines(
       queryClient,
       onStructureSynced,
     ],
+  );
+
+  const syncSceneForDraftLine = useCallback(
+    async (lineId: string, draftText: string) => {
+      if (!projectId) return;
+      const lines = linesQuery.data ?? [];
+      const merged = lines.map((line) =>
+        line.id === lineId ? { ...line, text: draftText } : line,
+      );
+      await syncSceneForLine(lineId, undefined, undefined, merged);
+    },
+    [projectId, linesQuery.data, syncSceneForLine],
   );
 
   const lineByClipId = useMemo(() => {
@@ -361,6 +389,8 @@ export function useMveLines(
     [moveLineToSceneMutation],
   );
 
+  const lineReorder = useMveLineReorder(projectId, invalidate);
+
   const deleteLineMutation = useMutation({
     mutationFn: async (lineId: string) => deleteMveLine(lineId),
     onSuccess: async () => {
@@ -396,13 +426,16 @@ export function useMveLines(
     saveLineDirection,
     bindAudioClip,
     moveLineToScene,
+    reorderLineInScene: lineReorder.reorderLineInScene,
     deleteLine,
+    syncSceneForDraftLine,
     isSaving:
       saveTextMutation.isPending ||
       saveDirectionMutation.isPending ||
       bindAudioClipMutation.isPending ||
       createLineMutation.isPending ||
       moveLineToSceneMutation.isPending ||
+      lineReorder.isPending ||
       deleteLineMutation.isPending,
   };
 }

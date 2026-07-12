@@ -161,6 +161,7 @@ export function AudioTimelineMveDialogSegment({
         scenes={scenes}
         structurePicker={structurePicker}
         waveformData={waveformData}
+        audioDurationSec={durationSec}
         headerAddon={headerAddon}
         renderBlockReason={renderBlockReason}
         onRenderLine={onRenderLine}

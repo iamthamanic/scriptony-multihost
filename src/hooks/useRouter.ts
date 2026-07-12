@@ -25,6 +25,7 @@ const VALID_PAGES = [
   "qa-mve-textblock-order-sync",
   "qa-mve-dialog-clip-inline-slice3",
   "qa-mve-dialog-lane-layout-fixes",
+  "qa-mve-dialog-lane-scroll-compact",
   "qa-timeline-row-alignment",
   "qa-timeline-row-alignment-tauri",
   "project-recovery",

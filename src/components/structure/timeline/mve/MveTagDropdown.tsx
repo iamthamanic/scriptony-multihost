@@ -34,6 +34,10 @@ export function MveTagDropdown({
           type="button"
           variant="ghost"
           size="sm"
+          className={cn(
+            compact && "h-7 w-7 p-0",
+            "text-white hover:bg-white/10 hover:text-white",
+          )}
           disabled={disabled}
           aria-label="Tags einfügen"
           title="Tags"

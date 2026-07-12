@@ -11,9 +11,10 @@ import { AudioTimelineSegment } from "@/components/audio/AudioTimelineSegment";
 import { GlobalLoadingProgressProvider } from "@/hooks/useGlobalLoadingProgress";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { AudioClip, Character } from "@/lib/types";
+import { LANE_UI } from "@/lib/audio-lane";
 
 const PX_PER_SEC = 20;
-const DIALOG_LANE_H = 280;
+const DIALOG_LANE_H = LANE_UI.heightDialogCompact;
 const NOW = "2026-06-26T12:00:00.000Z";
 const PROJECT_ID = "proj_slice3_preview";
 

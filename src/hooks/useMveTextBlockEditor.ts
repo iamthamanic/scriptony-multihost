@@ -7,35 +7,53 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
-import { formatMveTag, parseMveTag } from "@/lib/mve/tags";
+import {
+  formatMveTag,
+  parseMveTag,
+  removeMveTagFromText,
+} from "@/lib/mve/tags";
 import type { MveTag } from "@/lib/mve/tags";
+import {
+  getCaretTextOffset,
+  setCaretTextOffset,
+} from "@/lib/mve/mve-dialog-text-dom";
 import type { MveEnhanceLineDraft } from "@/lib/multi-voice-engine/schema/enhance-script";
 
 export interface UseMveTextBlockEditorOptions {
   initialText: string;
   onSave: (text: string) => Promise<void>;
   onEnhance: (rawText: string) => Promise<MveEnhanceLineDraft[] | null>;
+  /** Live draft for WPM width preview (not persisted). */
+  onDraftTextChange?: (text: string) => void;
 }
 
 export function useMveTextBlockEditor({
   initialText,
   onSave,
   onEnhance,
+  onDraftTextChange,
 }: UseMveTextBlockEditorOptions) {
   const [text, setText] = useState(initialText);
   const [suggestions, setSuggestions] = useState<MveEnhanceLineDraft[] | null>(
     null,
   );
   const [isEnhancing, setIsEnhancing] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const textareaRef = useRef<HTMLElement | null>(null);
   const saveTimerRef = useRef<number | null>(null);
 
   const insertTag = useCallback(
     (tag: MveTag) => {
-      const ta = textareaRef.current;
-      if (!ta) return;
-      const start = ta.selectionStart ?? text.length;
-      const end = ta.selectionEnd ?? start;
+      const surface = textareaRef.current;
+      const start =
+        surface instanceof HTMLTextAreaElement
+          ? (surface.selectionStart ?? text.length)
+          : surface?.isContentEditable
+            ? getCaretTextOffset(surface)
+            : text.length;
+      const end =
+        surface instanceof HTMLTextAreaElement
+          ? (surface.selectionEnd ?? start)
+          : start;
       const before = text.slice(0, start);
       const after = text.slice(end);
       const token = formatMveTag(tag);
@@ -47,12 +65,21 @@ export function useMveTextBlockEditor({
       const caret =
         start + needsSpaceBefore.length + token.length + needsSpaceAfter.length;
       window.requestAnimationFrame(() => {
-        ta.focus();
-        ta.setSelectionRange(caret, caret);
+        if (!surface) return;
+        surface.focus();
+        if (surface instanceof HTMLTextAreaElement) {
+          surface.setSelectionRange(caret, caret);
+        } else {
+          setCaretTextOffset(surface, caret);
+        }
       });
     },
     [text],
   );
+
+  const removeTag = useCallback((tag: MveTag) => {
+    setText((prev) => removeMveTagFromText(prev, tag));
+  }, []);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -111,6 +138,10 @@ export function useMveTextBlockEditor({
   }, [text, initialText, doSave]);
 
   useEffect(() => {
+    onDraftTextChange?.(text);
+  }, [text, onDraftTextChange]);
+
+  useEffect(() => {
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     saveTimerRef.current = window.setTimeout(() => {
       if (text !== initialText) {
@@ -127,8 +158,11 @@ export function useMveTextBlockEditor({
     setText,
     suggestions,
     isEnhancing,
+    /** Text surface: `<textarea>` or contenteditable dialog editor. */
+    editorRef: textareaRef,
     textareaRef,
     insertTag,
+    removeTag,
     handleDrop,
     handleDragOver,
     enhance,

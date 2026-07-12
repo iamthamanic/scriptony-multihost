@@ -131,6 +131,13 @@ const MveDialogLaneLayoutFixesPreviewPage = lazy(() =>
     }),
   ),
 );
+const MveDialogLaneScrollCompactPreviewPage = lazy(() =>
+  import("../components/qa/MveDialogLaneScrollCompactPreviewPage").then(
+    (module) => ({
+      default: module.MveDialogLaneScrollCompactPreviewPage,
+    }),
+  ),
+);
 const TimelineRowAlignmentPreviewPage = lazy(() =>
   import("../components/qa/TimelineRowAlignmentPreviewPage").then((module) => ({
     default: module.TimelineRowAlignmentPreviewPage,
@@ -301,6 +308,12 @@ export function AppContent() {
       case "qa-mve-dialog-lane-layout-fixes":
         return import.meta.env.DEV ? (
           <MveDialogLaneLayoutFixesPreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-mve-dialog-lane-scroll-compact":
+        return import.meta.env.DEV ? (
+          <MveDialogLaneScrollCompactPreviewPage />
         ) : (
           <HomePage onNavigate={onNavigate} />
         );

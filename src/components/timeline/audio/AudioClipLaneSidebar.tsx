@@ -39,8 +39,12 @@ export interface MveLaneLinkControlProps {
   onRemoveLink?: () => Promise<void>;
 }
 
-function laneHeight(expandedLane: number | null, laneIndex: number): number {
-  return resolveLaneHeightPx(laneIndex, expandedLane);
+function laneHeight(
+  expandedLane: number | null,
+  laneIndex: number,
+  hasContent = true,
+): number {
+  return resolveLaneHeightPx(laneIndex, expandedLane, hasContent);
 }
 
 function renderAddAudioMenu(
@@ -74,6 +78,8 @@ export interface AudioClipLaneSidebarProps {
   laneIndex: number;
   expanded: boolean;
   expandedLane: number | null;
+  /** Lane has no text blocks/clips yet — shrinks compact height. Defaults to true. */
+  hasContent?: boolean;
   locked: boolean;
   character?: Character;
   addAudio?: AudioClipLaneTracksProps["addAudio"];
@@ -106,6 +112,7 @@ export function AudioClipLaneSidebar({
   laneIndex,
   expanded,
   expandedLane,
+  hasContent = true,
   locked,
   character,
   addAudio,
@@ -129,7 +136,7 @@ export function AudioClipLaneSidebar({
 }: AudioClipLaneSidebarProps) {
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const laneType = getLaneType(laneIndex);
-  const height = laneHeight(expandedLane, laneIndex);
+  const height = laneHeight(expandedLane, laneIndex, hasContent);
   const isDialog = isCharacterDialogLane(laneIndex);
 
   const headerAddon = isDialog ? (

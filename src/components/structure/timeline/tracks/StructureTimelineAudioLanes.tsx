@@ -159,6 +159,14 @@ export function useStructureTimelineAudioLanes(
     [mve, sceneBlocks],
   );
 
+  const handleReorderLineInScene = useCallback(
+    async (lineId: string, sceneId: string, targetIndex: number) => {
+      if (!mve.enabled) return;
+      await mve.reorderLineInScene(lineId, sceneId, targetIndex);
+    },
+    [mve],
+  );
+
   const structurePickerTree = useMemo(
     () => buildStructurePickerTree(lanes.acts, lanes.sequences, lanes.scenes),
     [lanes.acts, lanes.sequences, lanes.scenes],
@@ -271,6 +279,8 @@ export function useStructureTimelineAudioLanes(
             onSaveDirection: mve.saveLineDirection,
             onBindAudioClip: mve.bindAudioClip,
             onMoveLineToScene: handleMoveLineToScene,
+            onReorderLineInScene: handleReorderLineInScene,
+            onSyncSceneForDraft: mve.syncSceneForDraftLine,
             linkedSceneIdForLane,
             getRenderBlockReason: getMveRenderBlockReason,
             onRenderLine: mveRender.renderLine,
@@ -286,7 +296,9 @@ export function useStructureTimelineAudioLanes(
       mve.saveLineDirection,
       mve.bindAudioClip,
       handleMoveLineToScene,
+      handleReorderLineInScene,
       handleDeleteLine,
+      mve.syncSceneForDraftLine,
       linesByCharacterId,
       props.projectId,
       props.projectType,

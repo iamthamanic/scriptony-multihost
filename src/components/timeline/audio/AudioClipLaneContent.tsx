@@ -31,6 +31,12 @@ export interface MveLineClipHandlers {
   ) => Promise<void>;
   onBindAudioClip?: (lineId: string, clipId: string | null) => Promise<void>;
   onMoveLineToScene?: (lineId: string, targetSceneId: string) => Promise<void>;
+  onReorderLineInScene?: (
+    lineId: string,
+    sceneId: string,
+    targetIndex: number,
+  ) => Promise<void>;
+  onSyncSceneForDraft?: (lineId: string, draftText: string) => void;
   linkedSceneIdForLane?: (laneIndex: number) => string | undefined;
   getRenderBlockReason?: (line: MveLine) => string | undefined;
   onRenderLine?: (lineId: string) => Promise<unknown>;
@@ -91,11 +97,17 @@ export function AudioClipLaneContent({
 
   const { dragOverSceneId, onDragOver, onDragLeave, onDrop } =
     useMveTextBlockLaneDrop({
-      enabled: Boolean(mveLines?.onMoveLineToScene) && !locked,
+      enabled:
+        Boolean(
+          mveLines?.onMoveLineToScene || mveLines?.onReorderLineInScene,
+        ) && !locked,
       sceneBlocks,
       viewStartSec,
       pxPerSec,
       onMoveLineToScene: mveLines?.onMoveLineToScene,
+      onReorderLineInScene: mveLines?.onReorderLineInScene,
+      linesInLane: textOnlyLines,
+      readingSpeedWpm,
     });
 
   const sceneOptions = scenes.map((s) => ({
@@ -193,7 +205,11 @@ export function AudioClipLaneContent({
         sceneOptions={sceneOptions}
         mveLines={mveLines}
         readingSpeedWpm={readingSpeedWpm}
-        draggable={Boolean(mveLines?.onMoveLineToScene) && !locked}
+        draggable={
+          Boolean(
+            mveLines?.onMoveLineToScene || mveLines?.onReorderLineInScene,
+          ) && !locked
+        }
       />
     </div>
   );

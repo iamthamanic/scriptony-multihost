@@ -36,6 +36,7 @@ const line: MveLine = {
   type: "dialogue",
   status: "ready",
   text: "Hallo Audio",
+  audioClipId: "clip-1",
   createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-01T00:00:00Z",
 };
@@ -105,5 +106,7 @@ describe("AudioTimelineMveDialogSegment", () => {
     const footer = screen.getByTestId("mve-dialog-clip-waveform");
     expect(footer.querySelector("svg")).toBeTruthy();
     expect(footer.querySelectorAll("rect").length).toBe(3);
+    expect(screen.getByTestId("mve-dialog-clip-audio-duration")).toBeTruthy();
+    expect(screen.getByText("00:00:05")).toBeTruthy();
   });
 });

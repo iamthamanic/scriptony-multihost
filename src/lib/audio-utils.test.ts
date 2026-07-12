@@ -6,7 +6,11 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { estimateDurationSec, WPM_DEFAULTS } from "./audio-utils";
+import {
+  estimateDurationSec,
+  formatDurationHms,
+  WPM_DEFAULTS,
+} from "./audio-utils";
 
 describe("estimateDurationSec", () => {
   it("gibt minDurationSec bei leerem Text zurück", () => {
@@ -88,5 +92,17 @@ describe("estimateDurationSec", () => {
 
     // Erzähler-Default ist 140 WPM (langsamer als Dialog 150)
     expect(narrator).toBeGreaterThan(dialog);
+  });
+});
+
+describe("formatDurationHms", () => {
+  it("formats seconds as HH:MM:SS with zero-padded hours", () => {
+    expect(formatDurationHms(4)).toBe("00:00:04");
+    expect(formatDurationHms(90)).toBe("00:01:30");
+    expect(formatDurationHms(3661)).toBe("01:01:01");
+  });
+
+  it("clamps negative values to zero", () => {
+    expect(formatDurationHms(-5)).toBe("00:00:00");
   });
 });

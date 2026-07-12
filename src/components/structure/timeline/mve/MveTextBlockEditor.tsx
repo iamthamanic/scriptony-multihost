@@ -108,7 +108,7 @@ export function MveTextBlockEditor({
       </div>
 
       <HighlightedTextarea
-        ref={editor.textareaRef}
+        ref={editor.textareaRef as React.RefObject<HTMLTextAreaElement>}
         value={editor.text}
         onChange={(e) => editor.setText(e.target.value)}
         highlightPattern={getMveTagPattern()}

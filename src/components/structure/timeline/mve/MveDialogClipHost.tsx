@@ -30,6 +30,8 @@ export interface MveDialogClipHostProps {
   scenes?: MveSceneOption[];
   structurePicker?: MveStructurePickerRefs;
   waveformData?: number[];
+  /** Bound audio clip length in seconds (footer chip). */
+  audioDurationSec?: number;
   headerAddon?: ReactNode;
   renderBlockReason?: string;
   onRenderLine?: (lineId: string) => Promise<unknown>;
@@ -41,6 +43,9 @@ export interface MveDialogClipHostProps {
   ) => Promise<void>;
   onBindAudioClip?: (lineId: string, clipId: string | null) => Promise<void>;
   onDeleteLine?: (lineId: string) => Promise<void>;
+  onDraftTextChange?: (text: string) => void;
+  readingSpeedWpm?: number;
+  onTextareaFocusChange?: (focused: boolean) => void;
 }
 
 export function MveDialogClipHost({
@@ -55,6 +60,7 @@ export function MveDialogClipHost({
   scenes = [],
   structurePicker,
   waveformData,
+  audioDurationSec,
   headerAddon,
   renderBlockReason,
   onRenderLine,
@@ -63,6 +69,9 @@ export function MveDialogClipHost({
   onSaveDirection,
   onBindAudioClip,
   onDeleteLine,
+  onDraftTextChange,
+  readingSpeedWpm,
+  onTextareaFocusChange,
 }: MveDialogClipHostProps) {
   const { enhance } = useMveLineEnhance(projectId);
   const audioMenu = useMveTextBlockAudio({
@@ -109,6 +118,7 @@ export function MveDialogClipHost({
         character={character}
         sceneId={sceneId}
         waveformData={waveformData}
+        audioDurationSec={audioDurationSec}
         headerAddon={headerAddon}
         projectId={projectId}
         renderBlockReason={renderBlockReason}
@@ -118,6 +128,9 @@ export function MveDialogClipHost({
         onEnhance={handleEnhance}
         onSaveDirection={onSaveDirection ? handleSaveDirection : undefined}
         onDeleteLine={onDeleteLine ? handleDeleteLine : undefined}
+        onDraftTextChange={onDraftTextChange}
+        readingSpeedWpm={readingSpeedWpm}
+        onTextareaFocusChange={onTextareaFocusChange}
         audioMenu={audioMenu}
       />
       {structurePicker ? (

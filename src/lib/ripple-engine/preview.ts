@@ -321,6 +321,25 @@ export function resetMveSceneContentDragFollow(
   }
 }
 
+/**
+ * Live width preview for the pink Structure scene shell while typing in an
+ * MVE text block. Direct DOM style mutation only — no React state, no ripple
+ * on sibling scenes. Self-corrects on the next keystroke and gets
+ * authoritatively overwritten once the debounced backend sync invalidates
+ * the timeline query (real `scene.width` re-render).
+ */
+export function applyMveSceneWidthPreviewPx(
+  sceneId: string,
+  widthPx: number,
+): void {
+  if (typeof document === "undefined") return;
+  const el = document.querySelector<HTMLElement>(
+    `[data-scene-id="${sceneId}"]`,
+  );
+  if (!el) return;
+  el.style.width = `${Math.max(widthPx, 4)}px`;
+}
+
 /** When `changedIds` is set, only touched rows are cleared (avoids React style bailout on unchanged siblings). */
 export function resetStructurePreviewStyles(
   containerByKind: StructurePreviewContainers,

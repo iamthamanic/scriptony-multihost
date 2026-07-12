@@ -7,15 +7,18 @@
 
 import { Sparkles, Loader2, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
+import { useCallback, useMemo, useState, type RefObject } from "react";
 import { Button } from "../../../ui/button";
-import { Textarea } from "../../../ui/textarea";
 import { cn } from "@/lib/utils";
+import { MveDialogTextEditor } from "./MveDialogTextEditor";
 import { MveTagDropdown } from "./MveTagDropdown";
 import { MveEnhanceSuggestions } from "./MveEnhanceSuggestions";
 import { MveTextBlockAudioMenu } from "./MveTextBlockAudioMenu";
 import { MveLineInspector } from "./MveLineInspector";
 import { MveLineTakePanel } from "./MveLineTakePanel";
 import { MveDialogClipWaveformFooter } from "./MveDialogClipWaveformFooter";
+import { MveEmotionChip } from "./MveEmotionChip";
+import { MveDurationChip } from "./MveDurationChip";
 import { useMveTextBlockEditor } from "@/hooks/useMveTextBlockEditor";
 import {
   mveDialogClipLayoutTier,
@@ -26,6 +29,8 @@ import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-direction";
 import type { Character } from "@/lib/types";
 import type { MveTextBlockAudioState } from "@/hooks/useMveTextBlockAudio";
+import { estimateDurationSec, formatDurationHms } from "@/lib/audio-utils";
+import { stripMveTagsFromTextForDuration } from "@/lib/mve/tags";
 
 export interface MveDialogClipCardProps {
   line: MveLine;
@@ -36,10 +41,17 @@ export interface MveDialogClipCardProps {
   onEnhance: (rawText: string) => Promise<MveEnhanceLineDraft[] | null>;
   onSaveDirection?: (direction: MveLineDirection) => Promise<void>;
   onDeleteLine?: () => Promise<void>;
+  onDraftTextChange?: (text: string) => void;
+  /** Project reading speed for WPM duration label in header. */
+  readingSpeedWpm?: number;
+  /** Lane drag is disabled while the textarea is focused (WKWebView + draggable ancestor). */
+  onTextareaFocusChange?: (focused: boolean) => void;
   audioMenu?: MveTextBlockAudioState;
   sceneId?: string;
   waveformData?: number[];
   headerAddon?: ReactNode;
+  /** Bound audio clip length in seconds (footer chip). */
+  audioDurationSec?: number;
   projectId?: string;
   renderBlockReason?: string;
   onRenderLine?: (lineId: string) => Promise<unknown>;
@@ -55,10 +67,14 @@ export function MveDialogClipCard({
   onEnhance,
   onSaveDirection,
   onDeleteLine,
+  onDraftTextChange,
+  readingSpeedWpm,
+  onTextareaFocusChange,
   audioMenu,
   sceneId,
   waveformData,
   headerAddon,
+  audioDurationSec,
   projectId,
   renderBlockReason,
   onRenderLine,
@@ -72,14 +88,54 @@ export function MveDialogClipCard({
     initialText: line.text ?? "",
     onSave: onSaveText,
     onEnhance,
+    onDraftTextChange,
   });
   const emotionLabel = mveEmotionDisplayLabel(line.direction?.emotion);
+  const [textareaFocused, setTextareaFocused] = useState(false);
   const hasScene = Boolean(audioMenu?.selectedSceneId ?? sceneId);
+  const hasAudioClip = Boolean(line.audioClipId);
+
+  const wpmDurationLabel = useMemo(() => {
+    const draft = editor.text.trim();
+    if (!draft) return null;
+    const textForDuration = stripMveTagsFromTextForDuration(editor.text);
+    const sec = estimateDurationSec(textForDuration, {
+      type: "dialog",
+      wpmOverride: readingSpeedWpm,
+    });
+    return formatDurationHms(sec);
+  }, [editor.text, readingSpeedWpm]);
+
+  const headerDurationChip = useMemo(() => {
+    if (compact || !wpmDurationLabel) return null;
+    return {
+      label: wpmDurationLabel,
+      variant: "estimate" as const,
+      testId: "mve-dialog-clip-wpm-duration",
+    };
+  }, [compact, wpmDurationLabel]);
+
+  const handleTextareaFocus = useCallback(() => {
+    setTextareaFocused(true);
+    onTextareaFocusChange?.(true);
+  }, [onTextareaFocusChange]);
+
+  const handleTextareaBlur = useCallback(() => {
+    setTextareaFocused(false);
+    onTextareaFocusChange?.(false);
+  }, [onTextareaFocusChange]);
+
+  const handleClearDirectionEmotion = useCallback(async () => {
+    if (!onSaveDirection) return;
+    const next = { ...line.direction };
+    delete next.emotion;
+    await onSaveDirection(next);
+  }, [line.direction, onSaveDirection]);
 
   return (
     <div
       className={cn(
-        "flex h-full min-h-0 w-full flex-col overflow-hidden rounded border border-white/80",
+        "flex h-full min-h-0 w-full flex-col overflow-hidden rounded border border-white",
         "bg-zinc-900/95 text-white shadow-sm",
         className,
       )}
@@ -88,22 +144,39 @@ export function MveDialogClipCard({
       onMouseDown={(e) => e.stopPropagation()}
       data-testid="mve-dialog-clip-card"
     >
-      <div className="flex shrink-0 items-center justify-between gap-1 border-b border-white/10 px-1.5 py-0.5">
-        <div className="min-w-0 truncate text-[8px] leading-tight">
+      <div className="flex h-7 shrink-0 items-center justify-between gap-1 border-b border-white/10 px-1.5">
+        <div className="flex min-w-0 flex-1 items-center truncate text-[8px] leading-none">
           {sceneLabel ? (
             <span className="text-rose-400 font-medium">{sceneLabel}</span>
           ) : null}
           {sceneLabel ? <span className="text-white/50 mx-1">·</span> : null}
           <span className="text-white/90 font-medium">Audio: Dialog</span>
+          {headerDurationChip ? (
+            <>
+              <span className="text-white/50 mx-1">·</span>
+              <MveDurationChip
+                label={headerDurationChip.label}
+                variant={headerDurationChip.variant}
+                data-testid={headerDurationChip.testId}
+              />
+            </>
+          ) : null}
         </div>
         {headerAddon}
       </div>
 
-      <div className="flex shrink-0 items-center gap-0.5 overflow-x-auto overflow-y-hidden border-b border-white/10 px-1 py-0.5 scrollbar-hide">
+      <div className="mx-1 mt-1 flex h-7 shrink-0 items-center gap-0.5 overflow-x-auto overflow-y-hidden rounded-sm border border-white px-1 scrollbar-hide">
         {emotionLabel && !compact ? (
-          <span className="inline-flex max-w-[7rem] shrink-0 truncate rounded-full border border-white/25 bg-white/10 px-1.5 py-px text-[8px] text-white/90">
-            Emotion: {emotionLabel}
-          </span>
+          <MveEmotionChip
+            label={emotionLabel}
+            onRemove={
+              onSaveDirection
+                ? () => void handleClearDirectionEmotion()
+                : undefined
+            }
+            removeAriaLabel="Emotion entfernen"
+            data-testid="mve-direction-emotion-chip"
+          />
         ) : null}
         {onSaveDirection && !compact ? (
           <MveLineInspector
@@ -178,19 +251,26 @@ export function MveDialogClipCard({
         ) : null}
       </div>
 
-      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden px-1 py-0.5">
-        <Textarea
-          ref={editor.textareaRef}
+      <div
+        className={cn(
+          "relative mx-1 mb-1 mt-1 flex min-h-0 flex-1 flex-col overflow-y-auto rounded-sm px-1.5 py-1 transition-[border-color,box-shadow]",
+          textareaFocused
+            ? "border border-violet-400 shadow-[0_0_0_1px_var(--color-violet-400)]"
+            : "border border-transparent",
+        )}
+        data-testid="mve-dialog-clip-textarea-shell"
+        data-focused={textareaFocused ? "true" : "false"}
+      >
+        <MveDialogTextEditor
+          ref={editor.textareaRef as React.RefObject<HTMLDivElement>}
           value={editor.text}
-          onChange={(e) => editor.setText(e.target.value)}
-          className={cn(
-            "h-full min-h-0 w-full resize-none rounded-none border-0 bg-transparent p-0 text-[10px] leading-snug text-white",
-            "[field-sizing:fixed] shadow-none focus-visible:ring-0 focus-visible:ring-offset-0",
-            "placeholder:text-white/45 caret-white",
-          )}
+          onChange={editor.setText}
+          onRemoveTag={editor.removeTag}
           placeholder="Dialogtext eingeben…"
           data-testid="mve-text-block-textarea"
-          rows={compact ? 2 : 3}
+          className="min-h-0 w-full"
+          onFocus={handleTextareaFocus}
+          onBlur={handleTextareaBlur}
         />
         {editor.suggestions ? (
           <div className="absolute inset-x-1 bottom-0 z-10 max-h-[55%] overflow-y-auto rounded border border-white/20 bg-zinc-950/95 p-1 shadow-lg">
@@ -206,6 +286,8 @@ export function MveDialogClipCard({
       <MveDialogClipWaveformFooter
         clipWidthPx={clipWidthPx}
         waveformData={waveformData}
+        hasAudioClip={hasAudioClip}
+        audioDurationSec={audioDurationSec}
       />
     </div>
   );

@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import type { RefObject } from "react";
 import {
   render,
   screen,
@@ -47,7 +48,7 @@ function TestHarness({
       data-testid="editor-root"
     >
       <textarea
-        ref={editor.textareaRef}
+        ref={editor.textareaRef as RefObject<HTMLTextAreaElement | null>}
         value={editor.text}
         onChange={(e) => editor.setText(e.target.value)}
         data-testid="editor-textarea"
@@ -82,6 +83,12 @@ function TestHarness({
         data-testid="insert-tag-btn"
       >
         Tag
+      </button>
+      <button
+        onClick={() => editor.removeTag("sad")}
+        data-testid="remove-tag-btn"
+      >
+        Remove sad
       </button>
       <button onClick={() => void editor.flushSave()} data-testid="flush-btn">
         Flush
@@ -159,6 +166,14 @@ describe("useMveTextBlockEditor", () => {
     fireEvent.drop(root, { dataTransfer });
     // When the textarea has no caret, the tag is inserted at the start.
     expect(screen.getByTestId("editor-text").textContent).toBe("--sad Hello");
+  });
+
+  it("removes a tag token from text", () => {
+    setup({ initialText: "Soll ich committen? --sad" });
+    fireEvent.click(screen.getByTestId("remove-tag-btn"));
+    expect(screen.getByTestId("editor-text").textContent).toBe(
+      "Soll ich committen?",
+    );
   });
 
   it("shows suggestions after successful enhance", async () => {

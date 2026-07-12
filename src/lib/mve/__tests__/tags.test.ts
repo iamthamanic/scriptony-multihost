@@ -9,6 +9,10 @@ import {
   formatMveTag,
   parseMveTag,
   getMveTagPattern,
+  mveTagDisplayLabel,
+  extractMveTagsFromText,
+  removeMveTagFromText,
+  stripMveTagsFromTextForDuration,
 } from "../tags";
 
 describe("MVE tags", () => {
@@ -45,5 +49,33 @@ describe("MVE tags", () => {
     a.exec("--sad");
     expect(a.lastIndex).not.toBe(0);
     expect(b.lastIndex).toBe(0);
+  });
+
+  it("maps tag tokens to German display labels", () => {
+    expect(mveTagDisplayLabel("sad")).toBe("Traurig");
+    expect(mveTagDisplayLabel("happy")).toBe("Fröhlich");
+  });
+
+  it("extracts unique tags from text in order", () => {
+    expect(extractMveTagsFromText("Hi --sad there --happy --sad")).toEqual([
+      "sad",
+      "happy",
+    ]);
+  });
+
+  it("removes one tag token from text", () => {
+    expect(removeMveTagFromText("Soll ich committen? --sad", "sad")).toBe(
+      "Soll ich committen?",
+    );
+    expect(removeMveTagFromText("Hello --sad world", "sad")).toBe(
+      "Hello world",
+    );
+  });
+
+  it("strips all tag tokens for duration word counting", () => {
+    expect(
+      stripMveTagsFromTextForDuration("Hello --whisper --pause world"),
+    ).toBe("Hello world");
+    expect(stripMveTagsFromTextForDuration("--sad --happy")).toBe("");
   });
 });

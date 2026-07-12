@@ -149,6 +149,26 @@ export function resolveMveLineVisualSpanMap(
   return result;
 }
 
+/** Recompute visual spans with unsaved draft text for one line (live WPM preview). */
+export function resolveMveLineVisualSpanMapWithDraft(
+  lines: MveLine[],
+  sceneBlocks: SceneTimeBlock[],
+  pxPerSec: number,
+  lineId: string,
+  draftText: string,
+  readingSpeedWpm?: number,
+): Map<string, MveLineVisualSpan> {
+  const merged = lines.map((line) =>
+    line.id === lineId ? { ...line, text: draftText } : line,
+  );
+  return resolveMveLineVisualSpanMap(
+    merged,
+    sceneBlocks,
+    pxPerSec,
+    readingSpeedWpm,
+  );
+}
+
 /** Max timeline end among visually stacked text blocks (content-driven scene resize). */
 export function maxVisualContentEndSecInScene(
   sceneBlock: SceneTimeBlock,

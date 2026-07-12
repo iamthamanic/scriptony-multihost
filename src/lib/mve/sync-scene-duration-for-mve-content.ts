@@ -5,7 +5,10 @@
  */
 
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
-import { resizeSceneForContent } from "@/lib/structure/resize-scene-for-content";
+import {
+  computeSceneResizeDelta,
+  resizeSceneForContent,
+} from "@/lib/structure/resize-scene-for-content";
 import { isContentDrivenSceneDuration } from "./scene-duration-policy";
 import { maxVisualContentEndSecInScene } from "./mve-dialog-clip-layout";
 import { sortLinesInScene } from "./resolve-mve-line-span";
@@ -13,6 +16,19 @@ import {
   sceneBlockForId,
   type SceneTimeBlock,
 } from "./resolve-scene-at-timeline-sec";
+
+/** ~half frame @ 30fps — matches resize-scene-for-content epsilon. */
+export const SCENE_CONTENT_DURATION_EPS_SEC = 0.5 / 30;
+
+export function sceneNeedsContentDurationSync(
+  sceneEndSec: number,
+  requiredEndSec: number,
+): boolean {
+  return (
+    Math.abs(computeSceneResizeDelta(sceneEndSec, requiredEndSec)) >
+    SCENE_CONTENT_DURATION_EPS_SEC
+  );
+}
 
 export interface SyncSceneDurationForMveContentInput {
   projectId: string;
@@ -102,7 +118,9 @@ export async function reconcileMveSceneDurations(input: {
       pxPerSec,
       input.readingSpeedWpm,
     );
-    if (requiredEndSec <= sceneBlock.endSec + 1e-6) continue;
+    if (!sceneNeedsContentDurationSync(sceneBlock.endSec, requiredEndSec)) {
+      continue;
+    }
 
     const { resized } = await resizeSceneForContent({
       projectId: input.projectId,

@@ -97,7 +97,7 @@ export function MveTextBlockAudioMenu({
             ) : (
               <Wand2 className="size-3.5" aria-hidden />
             )}
-            Generate
+            Generate Audio
           </DropdownMenuItem>
           <DropdownMenuItem
             disabled={busy}
@@ -112,7 +112,7 @@ export function MveTextBlockAudioMenu({
             ) : (
               <Upload className="size-3.5" aria-hidden />
             )}
-            {hasScene ? "Upload" : "Szene wählen…"}
+            {hasScene ? "Upload Audio" : "Szene wählen…"}
           </DropdownMenuItem>
           <DropdownMenuItem
             disabled={disabled || isGenerating || isUploading}
@@ -128,7 +128,7 @@ export function MveTextBlockAudioMenu({
             {hasScene
               ? isRecording
                 ? "Aufnahme stoppen"
-                : "Record"
+                : "Record Audio"
               : "Szene wählen…"}
           </DropdownMenuItem>
           {!hasScene ? (

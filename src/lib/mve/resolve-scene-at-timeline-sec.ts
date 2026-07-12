@@ -57,6 +57,25 @@ export function nextLineOrderIndexForScene(
   return nextLineOrderIndex(inScene);
 }
 
+/** Sequential (0..n-1) `orderIndex` re-assignment after dragging `lineId` to
+ * `targetIndex` among its current scene siblings (in-scene reorder, T32 follow-up). */
+export function reorderLineOrderIndexes(
+  siblings: Array<{ id: string; orderIndex?: number }>,
+  lineId: string,
+  targetIndex: number,
+): Array<{ id: string; orderIndex: number }> {
+  const dragged = siblings.find((l) => l.id === lineId);
+  if (!dragged) return [];
+  const rest = siblings.filter((l) => l.id !== lineId);
+  const clampedIndex = Math.max(0, Math.min(targetIndex, rest.length));
+  const next = [
+    ...rest.slice(0, clampedIndex),
+    dragged,
+    ...rest.slice(clampedIndex),
+  ];
+  return next.map((line, index) => ({ id: line.id, orderIndex: index }));
+}
+
 export function clipTimesAfterSceneMove(
   clipStartSec: number,
   clipEndSec: number,
