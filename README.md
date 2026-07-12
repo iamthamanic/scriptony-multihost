@@ -368,6 +368,7 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 
 <!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
 
+- **2026-07-12** — Voicebox Auto-Start auf macOS für Charakterstimmen-Vorschau + aktualisierte Banner-Copy (local desktop)
 - **2026-07-12** — MVE Dialog-Clips: kompakte Lane (210px), scrollbarer Text, WPM-/Audio-Dauer-Chips, Contenteditable-Editor mit Tag-Chips (local desktop, #49)
 - **2026-07-10** — Desktop: Voicebox als Standard-TTS (Kokoro via `VITE_DEFAULT_VOICE_ENGINE=kokoro`), MVE Multi-Textblock-Reihenfolge + Scene-Shell-Sync, Visual Editor (embedded, dev)
 - **2026-07-05** — Structure Timeline: Row-Pair-Layout mit sticky Labels (CapCut-Stil), Playhead/Scrub über Content-Origin-Anker (#49, local desktop)

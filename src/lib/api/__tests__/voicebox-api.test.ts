@@ -18,9 +18,15 @@ vi.mock("@tauri-apps/plugin-fs", () => ({
   writeFile: vi.fn(async () => undefined),
 }));
 
+vi.mock("@/lib/voicebox/voicebox-loading-progress", () => ({
+  waitForVoiceboxReadyWithProgress: vi.fn(async () => undefined),
+}));
+
 import { isDesktopShell } from "@/runtime/detect-runtime";
+import { waitForVoiceboxReadyWithProgress } from "@/lib/voicebox/voicebox-loading-progress";
 import {
   ensureVoiceboxAvailable,
+  ensureVoiceboxSidecar,
   isVoiceboxHealthy,
   listVoiceboxProfiles,
   voiceboxProfilesAsVoiceEntries,
@@ -94,10 +100,23 @@ describe("voicebox-api", () => {
     ]);
   });
 
-  it("throws from ensureVoiceboxAvailable when sidecar is down", async () => {
-    vi.mocked(fetch).mockRejectedValueOnce(new Error("ECONNREFUSED"));
+  it("delegates ensureVoiceboxAvailable to waitForVoiceboxReadyWithProgress", async () => {
+    await ensureVoiceboxAvailable();
+    expect(waitForVoiceboxReadyWithProgress).toHaveBeenCalled();
+  });
+
+  it("ensureVoiceboxSidecar forwards progress reporter", async () => {
+    const report = vi.fn();
+    await ensureVoiceboxSidecar(report);
+    expect(waitForVoiceboxReadyWithProgress).toHaveBeenCalledWith(report);
+  });
+
+  it("throws from ensureVoiceboxAvailable when launch fails", async () => {
+    vi.mocked(waitForVoiceboxReadyWithProgress).mockRejectedValueOnce(
+      new Error("Voicebox-Start hat zu lange gedauert"),
+    );
     await expect(ensureVoiceboxAvailable()).rejects.toThrow(
-      /Voicebox ist nicht erreichbar/,
+      /zu lange gedauert/,
     );
   });
 

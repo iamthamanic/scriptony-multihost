@@ -6,6 +6,8 @@
 
 import { isDesktopShell } from "@/runtime/detect-runtime";
 import { VOICEBOX_BASE_URL } from "@/lib/config/voice-engine";
+import type { LoadingProgressReporter } from "@/lib/loading/global-loading-progress";
+import { waitForVoiceboxReadyWithProgress } from "@/lib/voicebox/voicebox-loading-progress";
 import type { VoiceEntry } from "./local-tts-api";
 
 export interface VoiceboxProfile {
@@ -161,9 +163,15 @@ export async function generateVoiceboxSpeech(params: {
   };
 }
 
-export async function ensureVoiceboxAvailable(): Promise<void> {
-  const ok = await isVoiceboxHealthy();
-  if (!ok) {
-    throw new Error(voiceboxUnavailableMessage());
-  }
+export async function ensureVoiceboxSidecar(
+  onProgress?: LoadingProgressReporter,
+): Promise<void> {
+  if (!isDesktopShell()) return;
+  await waitForVoiceboxReadyWithProgress(onProgress);
+}
+
+export async function ensureVoiceboxAvailable(
+  onProgress?: LoadingProgressReporter,
+): Promise<void> {
+  await ensureVoiceboxSidecar(onProgress);
 }

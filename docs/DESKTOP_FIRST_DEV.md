@@ -70,23 +70,25 @@ UI (pages/hooks)
 | Project open / SQLite | `LocalBackend`, `LocalProjectOpenGuard`, `src/local/` |
 | Assets on disk | `src/local/` + Tauri FS capabilities |
 | Jobs (optional) | Sidecar `VITE_SCRIPTONY_SIDECAR_PORT` (default 3765) |
-| Local TTS (MVE + scenes) | **Voicebox** default (`http://127.0.0.1:17493`) — start Voicebox app separately; Kokoro via `VITE_DEFAULT_VOICE_ENGINE=kokoro` |
+| Local TTS (MVE + scenes) | **Voicebox** default (`http://127.0.0.1:17493`) — auto-launches on macOS via `open -a`; Kokoro via `VITE_DEFAULT_VOICE_ENGINE=kokoro` |
 
 Facade: `src/utils/api.tsx` delegates `projectsApi`, `worldsApi`, `categoriesApi`, `itemsApi` to adapters.
 
 ### Local TTS (Voicebox / Kokoro)
 
-Desktop MVE and scene TTS use **`Voicebox`** by default when the [Voicebox](https://github.com/jamiepine/voicebox) app is running on port **17493**. Scriptony does not spawn Voicebox.
+Desktop MVE and scene TTS use **`Voicebox`** by default when the [Voicebox](https://github.com/jamiepine/voicebox) app is running on port **17493**. On **macOS**, Scriptony attempts to launch Voicebox automatically (`open -a Voicebox`) when the API is unreachable — with global loading progress, same UX pattern as Kokoro sidecar boot.
 
 ```bash
 # .env.local (optional)
 VITE_DEFAULT_VOICE_ENGINE=voicebox   # default when unset
 VITE_VOICEBOX_BASE_URL=http://127.0.0.1:17493
+# When the app bundle name differs from "Voicebox":
+# VITE_VOICEBOX_APP_NAME=Voicebox
 # Kokoro fallback:
 # VITE_DEFAULT_VOICE_ENGINE=kokoro
 ```
 
-Kokoro still auto-starts its Python sidecar when selected. See `src/lib/config/voice-engine.ts` and `docs/multi-voice-engine.md`.
+Kokoro still auto-starts its Python sidecar when selected. Non-macOS desktop: start Voicebox manually. See `src/lib/config/voice-engine.ts` and `docs/multi-voice-engine.md`.
 
 ---
 

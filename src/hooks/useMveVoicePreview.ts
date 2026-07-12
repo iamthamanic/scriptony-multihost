@@ -6,6 +6,10 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import {
+  DEFAULT_VOICE_ENGINE,
+  localVoiceEngineLabel,
+} from "@/lib/config/voice-engine";
+import {
   createVoicePreviewAudioContext,
   playLocalVoicePreview,
 } from "@/lib/mve/play-voice-preview";
@@ -37,9 +41,9 @@ export function useMveVoicePreview() {
       setIsPlaying(true);
 
       void runWithProgress({
-        id: `kokoro-voice-preview-${params.voiceId}`,
-        title: "Stimmen-Vorschau",
-        initialMessage: "TTS-Engine wird gestartet…",
+        id: `voice-preview-${DEFAULT_VOICE_ENGINE}-${params.voiceId}`,
+        title: `${localVoiceEngineLabel(DEFAULT_VOICE_ENGINE)} Vorschau`,
+        initialMessage: `${localVoiceEngineLabel(DEFAULT_VOICE_ENGINE)} wird gestartet…`,
         initialPercent: 5,
         run: async (report) => {
           await playLocalVoicePreview({

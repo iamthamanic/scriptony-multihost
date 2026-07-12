@@ -7,7 +7,7 @@ import { useCallback, useState } from "react";
 import { Loader2, Pencil, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMveVoicePreview } from "@/hooks/useMveVoicePreview";
-import { useLocalVoices } from "@/hooks/useLocalVoices";
+import { useTtsVoiceProfiles } from "@/hooks/useTtsVoiceProfiles";
 import { mveDefaultPreviewForCharacter } from "@/lib/mve/default-preview-text";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
@@ -33,7 +33,7 @@ export function CharacterVoiceRow({
   const [modalOpen, setModalOpen] = useState(false);
   const onSaved = useCallback(() => onVoiceChange(), [onVoiceChange]);
   const { playPreview, isPlaying } = useMveVoicePreview();
-  const { data: voicesData } = useLocalVoices({
+  const { data: voicesData } = useTtsVoiceProfiles({
     enabled: Boolean(projectDir),
     projectDir,
   });

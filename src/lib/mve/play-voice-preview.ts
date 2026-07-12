@@ -95,7 +95,7 @@ export async function playLocalVoicePreview(params: {
   }
 
   if (isVoiceboxDefault()) {
-    await ensureVoiceboxAvailable();
+    await ensureVoiceboxAvailable(params.onProgress);
   } else {
     await ensureKokoroSidecar(params.projectDir, params.onProgress);
   }

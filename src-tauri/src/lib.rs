@@ -34,6 +34,8 @@ pub fn run() {
       commands::kokoro::list_kokoro_voices,
       commands::kokoro::synthesize_kokoro,
       commands::kokoro::kokoro_server_status,
+      commands::voicebox::start_voicebox_app,
+      commands::voicebox::voicebox_server_health,
     ])
     .setup(|app| {
       #[cfg(desktop)]

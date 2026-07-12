@@ -11,11 +11,13 @@ import {
 } from "@/lib/config/voice-engine";
 import {
   listVoiceboxProfiles,
+  ensureVoiceboxSidecar,
   voiceboxProfilesAsVoiceEntries,
 } from "@/lib/api/voicebox-api";
 import { listLocalVoices, type VoiceEntry } from "@/lib/api/local-tts-api";
 import { isDesktopShell } from "@/runtime/detect-runtime";
 import { queryKeys } from "@/lib/react-query";
+import type { LoadingProgressReporter } from "@/lib/loading/global-loading-progress";
 import { useGlobalLoadingProgress } from "./useGlobalLoadingProgress";
 
 export interface UseTtsVoiceProfilesOptions {
@@ -36,8 +38,11 @@ export interface TtsVoiceProfilesData {
   kokoroReady: boolean;
 }
 
-async function loadVoiceboxProfiles(): Promise<TtsVoiceProfilesData> {
+async function loadVoiceboxProfiles(
+  report?: LoadingProgressReporter,
+): Promise<TtsVoiceProfilesData> {
   try {
+    await ensureVoiceboxSidecar(report);
     const profiles = await listVoiceboxProfiles();
     return {
       voices: voiceboxProfilesAsVoiceEntries(profiles),
@@ -80,7 +85,13 @@ export function useTtsVoiceProfiles(options: UseTtsVoiceProfilesOptions = {}) {
       const dir = options.projectDir!;
 
       if (isVoiceboxDefault()) {
-        return loadVoiceboxProfiles();
+        return runWithProgress({
+          id: `voicebox-voices-${dir}`,
+          title: "Voicebox Stimmen",
+          initialMessage: "Voicebox wird gestartet…",
+          initialPercent: 5,
+          run: (report) => loadVoiceboxProfiles(report),
+        });
       }
 
       const kokoro = await runWithProgress({
