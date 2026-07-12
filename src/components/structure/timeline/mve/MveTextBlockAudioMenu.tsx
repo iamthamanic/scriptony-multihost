@@ -71,11 +71,11 @@ export function MveTextBlockAudioMenu({
             aria-label="Audio hinzufügen"
             data-testid="mve-text-block-audio-add"
             className={cn(
-              "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border text-[11px] font-bold",
-              "border-white/30 bg-white/10 text-white hover:bg-white/20",
+              "inline-flex h-6 w-6 shrink-0 items-center justify-center rounded text-[11px] font-bold",
+              "bg-white/10 text-white hover:bg-white/20",
               "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/50",
               "disabled:pointer-events-none disabled:opacity-50",
-              isRecording && "border-red-400/80 bg-red-500/90 text-white",
+              isRecording && "bg-red-500/90 text-white hover:bg-red-500/90",
             )}
           >
             {showSpinner ? (
