@@ -1,0 +1,31 @@
+{
+  "epicSlug": "mve-timeline-ux-polish",
+  "designPath": ".qa/design/mve-timeline-ux-polish.md",
+  "defaultLabels": [],
+  "issues": [
+    {
+      "title": "MVE Scene-Sync: faster debounce + live DOM preview of scene shell width",
+      "featureSlug": "mve-scene-sync-live-preview",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": [],
+      "body": "## Intent\nBeim Tippen im MVE-Textblock soll die pinke Structure-Szenenspur schneller und ohne Backend-Roundtrip pro Tastenanschlag sichtbar mitwachsen/-schrumpfen.\n\n## User Journey\n1. User tippt Dialogtext in einen MVE-Textblock.\n2. Die pinke Szenenspur passt ihre Breite sofort visuell an (DOM-Preview).\n3. Nach 300ms Pause synced der echte Backend-Call die Szene und der Query-Invalidate übernimmt die endgültige Breite.\n\n## Problem\n`SCENE_SYNC_DEBOUNCE_MS = 800` fühlt sich träge an; die Szenenspur selbst hat keine Live-Vorschau, nur der Textblock im Audio-Sidebar wächst sofort.\n\n## Solution\n- Debounce 800ms → 300ms in `AudioTimelineMveTextBlock.tsx`\n- Neue Funktion `applyMveSceneWidthPreviewPx()` in `ripple-engine/preview.ts` (direkte `style.width`-Mutation auf `[data-scene-id]`, kein Re-Render, kein Ripple auf Nachbar-Szenen)\n- Berechnung via bestehende `maxVisualContentEndSecInScene()` mit Draft-Text\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | n/a |\n| Appwrite Functions | skip (frozen) |\n\n## Edge Cases\n- Draft-Text zurück auf Original: Preview korrigiert sich automatisch (jeder Tastenanschlag neu berechnet)\n- Film-Projekt: keine Preview (nur `contentDriven`/Audio)\n\n## Acceptance\n- [ ] Tippen aktualisiert Szenenbreite im DOM ohne Re-Render/Ripple\n- [ ] Debounce 300ms bis zum echten Backend-Sync\n- [ ] Nach Sync: echte Breite aus Timeline-Query übernimmt (kein Rückspringen)\n- [ ] Bestehende Unit-Tests (`sync-scene-duration-for-mve-content.test.ts`) bleiben grün\n\n## Design\nEpic: `.qa/design/mve-timeline-ux-polish.md`\n\n## Runner\nFeature slug: `mve-scene-sync-live-preview`"
+    },
+    {
+      "title": "MVE Text Blocks: in-scene horizontal reorder via drag-and-drop",
+      "featureSlug": "mve-textblock-in-scene-reorder",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": [],
+      "body": "## Intent\nMehrere MVE-Textblöcke in derselben Szene sollen per Drag horizontal neu sortiert werden können (nicht nur zwischen Szenen verschoben).\n\n## User Journey\n1. User zieht einen Textblock innerhalb derselben Szene an eine andere Position.\n2. Beim Drop wird die neue Reihenfolge (`orderIndex`) persistiert.\n3. Die Blöcke stapeln sich in der neuen Reihenfolge (gleiche Stacking-Logik wie bisher).\n\n## Problem\n`useMveTextBlockLaneDrop` / `moveTextBlockToScene` erkennen nur Szenen-Wechsel; Drop innerhalb derselben Szene ist ein No-Op.\n\n## Solution\n- `reorderLineOrderIndexes()` (pure) in `resolve-scene-at-timeline-sec.ts`\n- `reorderTextBlockInScene()` in neuer Datei `src/lib/mve/reorder-text-block-in-scene.ts` (lädt Lines, berechnet neue orderIndex-Liste, persistiert via `updateMveLine`)\n- `useMveTextBlockLaneDrop`: bei Drop mit `targetSceneId === draggedLine.sceneId` → Ziel-Index aus Pointer-X vs. Sibling-Midpoints (`resolveMveLineVisualSpanMap`) statt `onMoveLineToScene`\n- `useMveLines`: neue Mutation `reorderLineInScene`\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | n/a |\n| Appwrite Functions | skip (frozen) |\n\n## Edge Cases\n- Nur 1 Block in Szene: Drop ist No-Op (kein Sibling zum Reordern)\n- Drop exakt auf sich selbst: keine Änderung, kein unnötiger API-Call\n\n## Acceptance\n- [ ] Drei Textblöcke in einer Szene, Drag von Block 3 vor Block 1 → neue orderIndex-Reihenfolge persistiert\n- [ ] Visuelles Stacking nach Reload korrekt (min-width Stacking-Logik unverändert)\n- [ ] Cross-Scene Move bleibt unverändert funktionsfähig\n- [ ] Unit-Test für `reorderLineOrderIndexes`\n\n## Design\nEpic: `.qa/design/mve-timeline-ux-polish.md`\n\n## Runner\nFeature slug: `mve-textblock-in-scene-reorder`"
+    },
+    {
+      "title": "MVE Dialog Lanes: compact height for empty/minimal lanes",
+      "featureSlug": "mve-dialog-lane-compact-height",
+      "priority": "P2",
+      "labels": ["P2"],
+      "dependsOn": [],
+      "body": "## Intent\nLeere Character-Dialog-Lanes (keine Textblöcke, keine Clips) sollen im Audio-Sidebar deutlich weniger Vertikalraum belegen als Lanes mit Inhalt.\n\n## User Journey\n1. User öffnet ein Audio-Projekt mit mehreren Charakteren, aber nur einer hat bereits Dialog.\n2. Leere Charakter-Lanes sind kompakt (wie SFX/Musik-Lanes), die aktive Lane bleibt groß genug für den Inline-Editor.\n\n## Problem\n`LANE_UI.heightDialogCompact` (280px) gilt für **jede** Dialog-Lane unabhängig vom Inhalt — großer Leerraum bei unbenutzten Charakteren.\n\n## Solution\n- Neue Konstante `LANE_UI.heightDialogEmpty` (= `heightCompact`, 152px)\n- `resolveLaneHeightPx(laneIndex, expandedLane, hasContent = true)` — neuer optionaler Parameter, Default erhält bisheriges Verhalten für bestehende Aufrufer\n- `AudioClipLaneTracks.tsx` berechnet `hasContent` pro Lane (Clips oder MVE-Lines für den zugeordneten Charakter) und reicht es an Sidebar + Content-Row weiter\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | n/a |\n| Appwrite Functions | skip (frozen) |\n\n## Edge Cases\n- Lane wird während Session befüllt (erster Textblock erstellt): Höhe wechselt sofort auf `heightDialogCompact`\n- Expanded-Lane behält immer `heightDialogExpanded`, unabhängig von Inhalt\n\n## Acceptance\n- [ ] Leere Dialog-Lane: Höhe = `heightDialogEmpty` (152px)\n- [ ] Dialog-Lane mit ≥1 Textblock/Clip: Höhe = `heightDialogCompact` (280px), unverändert\n- [ ] Sidebar- und Content-Zeile bleiben höhengleich (keine Row-Alignment-Regression)\n- [ ] Bestehender Unit-Test `resolveLaneHeightPx` bleibt grün + neue Fälle für `hasContent=false`\n\n## Design\nEpic: `.qa/design/mve-timeline-ux-polish.md`\n\n## Runner\nFeature slug: `mve-dialog-lane-compact-height`"
+    }
+  ]
+}

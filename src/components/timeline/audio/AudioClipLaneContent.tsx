@@ -17,6 +17,7 @@ import type { MveStructurePickerRefs } from "../../structure/timeline/mve/MveStr
 import { useMveTextBlockLaneDrop } from "@/hooks/useMveTextBlockLaneDrop";
 import { TIMELINE_INSERTION_DROP_ZONE_CLASS } from "@/lib/ripple-engine/preview";
 import { MveTextBlockLaneItems } from "./MveTextBlockLaneItems";
+import { shouldSkipMveDialogClipSegment } from "@/lib/mve/mve-dialog-clip-dedup";
 
 export interface MveLineClipHandlers {
   projectId: string;
@@ -146,6 +147,11 @@ export function AudioClipLaneContent({
       )}
       {clips.map((clip) => {
         const line = mveLines?.lineByClipId.get(clip.id);
+        const skipMveDialogSegment = shouldSkipMveDialogClipSegment(
+          clip,
+          line,
+          textOnlyLines,
+        );
         const sceneLabel =
           (line?.sceneId && mveLines?.getSceneLabel?.(line.sceneId)) ||
           sceneOptions.find((s) => s.id === line?.sceneId)?.name;
@@ -163,7 +169,7 @@ export function AudioClipLaneContent({
             onGenerateTts={() => onGenerateTts(clip)}
             allClips={allClips}
             onLaneChange={onLaneChange}
-            mveLine={line}
+            mveLine={skipMveDialogSegment ? undefined : line}
             mveProjectId={mveLines?.projectId}
             mveProjectType={mveLines?.projectType}
             mveCharacter={character}
