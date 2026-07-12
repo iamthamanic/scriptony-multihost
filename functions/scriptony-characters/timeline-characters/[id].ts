@@ -2,29 +2,33 @@
  * Timeline character item routes for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../_shared/auth";
-import { requestGraphql } from "../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../_shared/auth";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
-} from "../../../_shared/http";
+  sendUnauthorized,
+} from "../../_shared/http";
 import {
   getCharacterById,
   mapCharacter,
   normalizeCharacterInput,
-} from "../../../_shared/timeline";
+} from "../../_shared/timeline";
+import { requireProjectAccess } from "../../_shared/scriptony";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -43,6 +47,13 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         return;
       }
 
+      const _project = await requireProjectAccess(
+        String(character.project_id),
+        bootstrap.user.id,
+        res,
+      );
+      if (!_project) return;
+
       sendJson(res, 200, { character: mapCharacter(character) });
       return;
     }
@@ -53,6 +64,13 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         sendNotFound(res, "Character not found");
         return;
       }
+
+      const _project = await requireProjectAccess(
+        String(existing.project_id),
+        bootstrap.user.id,
+        res,
+      );
+      if (!_project) return;
 
       const body = await readJsonBody<Record<string, any>>(req);
       const updates = normalizeCharacterInput(body);
@@ -73,11 +91,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               name
               role
               description
-              image_url
               avatar_url
               backstory
               personality
               color
+              reference_images_json
               created_at
               updated_at
             }
@@ -86,14 +104,29 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           id: characterId,
           changes: updates,
-        }
+        },
       );
 
-      sendJson(res, 200, { character: mapCharacter(updated.update_characters_by_pk || existing) });
+      sendJson(res, 200, {
+        character: mapCharacter(updated.update_characters_by_pk || existing),
+      });
       return;
     }
 
     if (req.method === "DELETE") {
+      const character = await getCharacterById(characterId);
+      if (!character) {
+        sendNotFound(res, "Character not found");
+        return;
+      }
+
+      const _project = await requireProjectAccess(
+        String(character.project_id),
+        bootstrap.user.id,
+        res,
+      );
+      if (!_project) return;
+
       await requestGraphql(
         `
           mutation DeleteCharacter($id: uuid!) {
@@ -102,7 +135,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { id: characterId }
+        { id: characterId },
       );
 
       sendJson(res, 200, { success: true });

@@ -1,6 +1,11 @@
 import { getAuthToken } from "../lib/auth/getAuthToken";
 import { apiGateway } from "../lib/api-gateway";
 import { buildFunctionRouteUrl, EDGE_FUNCTIONS } from "../lib/api-gateway";
+import {
+  prepareImageFileForUpload,
+  type PrepareImageFileOptions,
+} from "../lib/image-upload-prep";
+import { fileToBase64 } from "../lib/api/image-upload-api";
 
 interface UploadResult {
   url: string;
@@ -17,7 +22,8 @@ interface UploadResult {
 export async function uploadImage(
   file: File,
   userId: string,
-  folder: string = "general"
+  folder: string = "general",
+  prepOptions?: PrepareImageFileOptions,
 ): Promise<UploadResult> {
   try {
     // Get auth token
@@ -27,22 +33,25 @@ export async function uploadImage(
       throw new Error("Unauthorized - please log in");
     }
 
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("userId", userId);
-    formData.append("folder", folder);
+    const ready = await prepareImageFileForUpload(file, prepOptions);
+    const base64 = await fileToBase64(ready);
 
-    // apiGateway doesn't support FormData yet, so this uses fetch directly
-    // with the correct backend route URL from the gateway.
     const response = await fetch(
       buildFunctionRouteUrl(EDGE_FUNCTIONS.AUTH, "/storage/upload"),
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
-        body: formData,
-      }
+        body: JSON.stringify({
+          fileBase64: base64,
+          fileName: ready.name,
+          mimeType: ready.type,
+          userId,
+          folder,
+        }),
+      },
     );
 
     if (!response.ok) {
@@ -114,6 +123,9 @@ export const STORAGE_LIMIT_MB = 1024; // 1 GB in MB
 /**
  * Check if upload would exceed storage limit
  */
-export function wouldExceedLimit(currentBytes: number, fileSize: number): boolean {
-  return (currentBytes + fileSize) > STORAGE_LIMIT_BYTES;
+export function wouldExceedLimit(
+  currentBytes: number,
+  fileSize: number,
+): boolean {
+  return currentBytes + fileSize > STORAGE_LIMIT_BYTES;
 }

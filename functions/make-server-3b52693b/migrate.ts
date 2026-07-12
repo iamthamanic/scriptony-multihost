@@ -1,10 +1,21 @@
 /**
- * Legacy migration endpoint placeholder.
+ * @deprecated T17 LEGACY_DO_NOT_EXTEND — Nicht in build-appwrite-deploy.mjs registriert.
+ *          Nicht deployed. Keine Frontend-Aufrufer. Keine Execution-Logs.
+ *          Verbleibt als Archiv bis zur vollstaendigen T17-Entfernung.
+ *          Ersatz: scriptony-projects (project listing), Appwrite Console (migrations).
  */
 
-import { sendMethodNotAllowed, sendNotImplemented, type RequestLike, type ResponseLike } from "../_shared/http";
+import {
+  type RequestLike,
+  type ResponseLike,
+  sendMethodNotAllowed,
+  sendNotImplemented,
+} from "../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   if (req.method !== "POST") {
     sendMethodNotAllowed(res, ["POST"]);
     return;
@@ -12,6 +23,6 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
   sendNotImplemented(
     res,
-    "KV-to-Postgres migration is obsolete. Use Appwrite schema changes or your own migration tooling, not this endpoint."
+    "KV-to-Postgres migration is obsolete. Use Appwrite schema changes or your own migration tooling, not this endpoint.",
   );
 }

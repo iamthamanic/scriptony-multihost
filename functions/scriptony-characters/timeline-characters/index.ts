@@ -2,39 +2,51 @@
  * Timeline character collection routes for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../_shared/auth";
-import { requestGraphql } from "../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../_shared/auth";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getQuery,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
-} from "../../../_shared/http";
+  sendUnauthorized,
+} from "../../_shared/http";
 import {
   getCharactersByProject,
   mapCharacter,
   normalizeCharacterInput,
-} from "../../../_shared/timeline";
+} from "../../_shared/timeline";
+import { requireProjectAccess } from "../../_shared/scriptony";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
     }
 
     if (req.method === "GET") {
-      const projectId = getQuery(req, "project_id") || getQuery(req, "projectId");
+      const projectId =
+        getQuery(req, "project_id") || getQuery(req, "projectId");
       if (!projectId) {
         sendBadRequest(res, "project_id is required");
         return;
       }
+
+      const _project = await requireProjectAccess(
+        projectId,
+        bootstrap.user.id,
+        res,
+      );
+      if (!_project) return;
 
       const characters = await getCharactersByProject(projectId);
       sendJson(res, 200, { characters: characters.map(mapCharacter) });
@@ -51,6 +63,13 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         return;
       }
 
+      const _project = await requireProjectAccess(
+        projectId,
+        bootstrap.user.id,
+        res,
+      );
+      if (!_project) return;
+
       const created = await requestGraphql<{
         insert_characters_one: Record<string, any>;
       }>(
@@ -64,11 +83,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               name
               role
               description
-              image_url
               avatar_url
               backstory
               personality
               color
+              reference_images_json
               created_at
               updated_at
             }
@@ -80,10 +99,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             organization_id:
               characterInput.organization_id ?? bootstrap.organizationId,
           },
-        }
+        },
       );
 
-      sendJson(res, 201, { character: mapCharacter(created.insert_characters_one) });
+      sendJson(res, 201, {
+        character: mapCharacter(created.insert_characters_one),
+      });
       return;
     }
 

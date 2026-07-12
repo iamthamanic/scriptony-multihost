@@ -9,22 +9,25 @@ import { requireUserBootstrap } from "../_shared/auth";
 import { requestGraphql } from "../_shared/graphql-compat";
 import {
   getQuery,
-  sendJson,
-  sendMethodNotAllowed,
-  sendUnauthorized,
-  sendServerError,
   type RequestLike,
   type ResponseLike,
+  sendJson,
+  sendMethodNotAllowed,
+  sendServerError,
+  sendUnauthorized,
 } from "../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   if (req.method !== "GET") {
     sendMethodNotAllowed(res, ["GET"]);
     return;
   }
 
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -50,7 +53,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             description
             backstory
             personality
-            image_url
+            avatar_url
             color
             created_at
             updated_at
@@ -60,7 +63,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       {
         organizationId: bootstrap.organizationId,
         worldId: worldId || null,
-      }
+      },
     );
 
     sendJson(res, 200, { characters: data.characters });

@@ -1,0 +1,10 @@
+# Local scratch / secrets (never analyze)
+.env
+.env.*
+.rag/
+node_modules/
+build/
+dist/
+functions/**/index.js
+src-tauri/target/
+.tauri/*.key

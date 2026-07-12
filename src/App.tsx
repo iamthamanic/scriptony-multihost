@@ -1,11 +1,16 @@
 import { useState, useEffect } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { AppContent } from "./components/AppContent";
+import { RuntimeProvider } from "./runtime";
+import { BackendProvider } from "./backend";
+import { LocalProjectProvider } from "./hooks/useLocalProject";
 import { AuthProvider } from "./hooks/useAuth";
+import { CloudLoginProvider } from "./hooks/useCloudSession";
 import { TranslationProvider } from "./hooks/useTranslation";
+import { GlobalLoadingProgressProvider } from "./hooks/useGlobalLoadingProgress";
 import { queryClient } from "./lib/react-query";
 import { STORAGE_KEYS } from "./lib/config";
-import scriptonyLogo from './assets/scriptony-logo.png';
+import scriptonyLogo from "./assets/scriptony-logo.png";
 import { seedTestUser } from "./utils/seedData";
 
 export default function App() {
@@ -15,7 +20,7 @@ export default function App() {
   useEffect(() => {
     const runAutoSetup = async () => {
       if (typeof window === "undefined") return;
-      
+
       const hasMigrated = localStorage.getItem(STORAGE_KEYS.HAS_MIGRATED);
 
       if (hasMigrated) {
@@ -58,12 +63,22 @@ export default function App() {
   }
 
   return (
-    <TranslationProvider>
-      <AuthProvider>
-        <QueryClientProvider client={queryClient}>
-          <AppContent />
-        </QueryClientProvider>
-      </AuthProvider>
-    </TranslationProvider>
+    <RuntimeProvider>
+      <LocalProjectProvider>
+        <BackendProvider>
+          <TranslationProvider>
+            <AuthProvider>
+              <CloudLoginProvider>
+                <QueryClientProvider client={queryClient}>
+                  <GlobalLoadingProgressProvider>
+                    <AppContent />
+                  </GlobalLoadingProgressProvider>
+                </QueryClientProvider>
+              </CloudLoginProvider>
+            </AuthProvider>
+          </TranslationProvider>
+        </BackendProvider>
+      </LocalProjectProvider>
+    </RuntimeProvider>
   );
 }

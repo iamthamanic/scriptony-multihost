@@ -1,0 +1,470 @@
+Bestandsaufnahme: Scriptony Audio/Hörspiel — Was ist da, was fehlt, was macht Sinn                         
+                                                                                                            
+ ────────────────────────────────────────────────────────────────────────────────                           
+                                                                                                            
+ 1. WAS BEREITS EXISTIERT                                                                                   
+                                                                                                            
+ ### A. Frontend-Komponenten                                                                                
+                                                                                                            
+ ┌──────────────────────┬──────────────────────────────────┬──────────────────────────────────────────────┐ 
+ │ Komponente           │ Pfad                             │ Was es aktuell tut                           │ 
+ ├──────────────────────┼──────────────────────────────────┼──────────────────────────────────────────────┤ 
+ │ AudioDropdown        │ src/components/audio/AudioDropdo │ Hierarchische Ansicht (Akt/Seq/Szene),       │ 
+ │                      │ wn.tsx                           │ Track-CRUD, Inline-Editing,                  │ 
+ │                      │                                  │ Szenenbild-Upload, Track-Typ-Select          │ 
+ │                      │                                  │ (Dialog/SFX/Musik/Atmo/Erzähler),            │ 
+ │                      │                                  │ Play-Button pro Track                        │ 
+ ├──────────────────────┼──────────────────────────────────┼──────────────────────────────────────────────┤ 
+ │ AudioTimeline        │ src/components/audio/AudioTimeli │ DAW-artige Timeline mit Lanes: pro Charakter │ 
+ │                      │ ne.tsx                           │ eine Dialog-Lane, SFX/Musik/Atmo/Erzähler je │ 
+ │                      │                                  │ eine Lane. Waveform-Platzhalter. Playback    │ 
+ │                      │                                  │ mit Playhead. Zoom.                          │ 
+ ├──────────────────────┼──────────────────────────────────┼──────────────────────────────────────────────┤ 
+ │ AudioTimelineLane    │ src/components/audio/AudioTimeli │ Einzelne horizontale Spur mit Label links,   │ 
+ │                      │ neLane.tsx                       │ Track-Segments als absolute Position         │ 
+ │                      │                                  │ (track.startTime * pxPerSec)                 │ 
+ ├──────────────────────┼──────────────────────────────────┼──────────────────────────────────────────────┤ 
+ │ AudioTimelineSegment │ src/components/audio/AudioTimeli │ Farbiger Block pro Track mit left: startPx,  │ 
+ │                      │ neSegment.tsx                    │ width: durationPx. Zeigt Text-Label. Min 4px │ 
+ │                      │                                  │ Breite.                                      │ 
+ ├──────────────────────┼──────────────────────────────────┼──────────────────────────────────────────────┤ 
+ │ AudioSceneView       │ src/components/audio/AudioSceneV │ Karten-Statistik-Ansicht (Szenen-Anzahl,     │ 
+ │                      │ iew.tsx                          │ Charaktere, Gesamtdauer). Nicht das          │ 
+ │                      │                                  │ formatierte Drehbuch.                        │ 
+ ├──────────────────────┼──────────────────────────────────┼──────────────────────────────────────────────┤ 
+ │ NativeAudiobookView  │ src/components/audio/NativeAudio │ Text-Ansicht für Hörspiel (Sprecher fett,    │ 
+ │                      │ bookView.tsx                     │ Dialog klar formatiert). Read-only.          │ 
+ ├──────────────────────┼──────────────────────────────────┼──────────────────────────────────────────────┤ 
+ │ VideoEditorTimeline  │ src/components/VideoEditorTimeli │ 8500+ Zeilen. Enthält: Clip-System           │ 
+ │                      │ ne.tsx                           │ (startSec/endSec/laneIndex), Trim-Engine,    │ 
+ │                      │                                  │ Zoom/Scroll/Ruler, Playback, Beat-Magnet,    │ 
+ │                      │                                  │ Ripple für Beats, PCT-basierte Hierarchie,   │ 
+ │                      │                                  │ NLE (Editorial) Clip-Spur, Shot-Modal        │ 
+ └──────────────────────┴──────────────────────────────────┴──────────────────────────────────────────────┘ 
+                                                                                                            
+ ### B. Hooks & API                                                                                         
+                                                                                                            
+ ┌────────────────────────────────────┬───────────────────────────────────────────────────────────────────┐ 
+ │ Datei                              │ Was es tut                                                        │ 
+ ├────────────────────────────────────┼───────────────────────────────────────────────────────────────────┤ 
+ │ useAudioTimeline.ts                │ React Query: lädt acts/sequences/scenes + tracksByScene +         │ 
+ │                                    │ voiceAssignments                                                  │ 
+ ├────────────────────────────────────┼───────────────────────────────────────────────────────────────────┤ 
+ │ useAudioTracks.ts                  │ React Query: lädt Tracks pro Szene                                │ 
+ ├────────────────────────────────────┼───────────────────────────────────────────────────────────────────┤ 
+ │ useCreate/Update/DeleteAudioTrack. │ Mutations für Track-CRUD                                          │ 
+ │ ts                                 │                                                                   │ 
+ ├────────────────────────────────────┼───────────────────────────────────────────────────────────────────┤ 
+ │ audio-story-api.ts                 │ API-Client: getSceneAudioTracks, createAudioTrack,                │ 
+ │                                    │ updateAudioTrack, deleteAudioTrack, getVoiceAssignments           │ 
+ ├────────────────────────────────────┼───────────────────────────────────────────────────────────────────┤ 
+ │ useProjectTimeline.ts              │ Lädt strukturelle Daten (Acts/Sequences/Scenes) für alle          │ 
+ │                                    │ Projekttypen                                                      │ 
+ └────────────────────────────────────┴───────────────────────────────────────────────────────────────────┘ 
+                                                                                                            
+ ### C. Backend                                                                                             
+                                                                                                            
+ ┌────────────────────────────────────────────┬───────────────────────────────────────────────────────────┐ 
+ │ Datei                                      │ Was es tut                                                │ 
+ ├────────────────────────────────────────────┼───────────────────────────────────────────────────────────┤ 
+ │ functions/scriptony-audio-story/routes/tra │ GraphQL-CRUD für scene_audio_tracks (Hasura/Nhost).       │ 
+ │ cks.ts                                     │ List/Create/Update/Delete.                                │ 
+ ├────────────────────────────────────────────┼───────────────────────────────────────────────────────────┤ 
+ │ functions/scriptony-audio-story/routes/voi │ Voice-Casting (TTS/Human Zuordnung)                       │ 
+ │ ces.ts                                     │                                                           │ 
+ ├────────────────────────────────────────────┼───────────────────────────────────────────────────────────┤ 
+ │ functions/scriptony-audio-story/routes/ses │ Recording-Sessions                                        │ 
+ │ sions.ts                                   │                                                           │ 
+ ├────────────────────────────────────────────┼───────────────────────────────────────────────────────────┤ 
+ │ functions/scriptony-audio/routes/tts.ts    │ TTS-Generierung (OpenAI/ElevenLabs)                       │ 
+ ├────────────────────────────────────────────┼───────────────────────────────────────────────────────────┤ 
+ │ functions/scriptony-audio/routes/stt.ts    │ Speech-to-Text                                            │ 
+ └────────────────────────────────────────────┴───────────────────────────────────────────────────────────┘ 
+                                                                                                            
+ ### D. Typen & Registry                                                                                    
+                                                                                                            
+ ┌─────────────────────────────────┬──────────────────────────────────────────────────────────────────────┐ 
+ │ Datei                           │ Was definiert                                                        │ 
+ ├─────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤ 
+ │ src/lib/types/index.ts          │ AudioTrack (mit startTime, duration, ttsSettings, waveformData,      │ 
+ │                                 │ audioFileId)                                                         │ 
+ ├─────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤ 
+ │ src/lib/types/audio-timeline.ts │ AudioTimelineData                                                    │ 
+ │                                 │ (acts/sequences/scenes/tracksByScene/voiceAssignments)               │ 
+ ├─────────────────────────────────┼──────────────────────────────────────────────────────────────────────┤ 
+ │ src/lib/projectTypeRegistry.ts  │ Routet audio Projekttyp zu AudioDropdown / AudioTimeline /           │ 
+ │                                 │ AudioSceneView                                                       │ 
+ └─────────────────────────────────┴──────────────────────────────────────────────────────────────────────┘ 
+                                                                                                            
+ ### E. Thestuu (Referenz-DAW)                                                                              
+                                                                                                            
+ ┌───────────────────────────────────────┬────────────────────────────────────────────────────────────────┐ 
+ │ Datei                                 │ Was es enthält                                                 │ 
+ ├───────────────────────────────────────┼────────────────────────────────────────────────────────────────┤ 
+ │ thestuu/apps/dashboard/components/stu │ 444KB komplette DAW: Arrangement-Tracks, Mixer-Strips,         │ 
+ │ u-shell.jsx                           │ Mute/Solo/Record, Volume/Pan/FX-Chain, Plugin-Slots,           │ 
+ │                                       │ Waveform-Rendering, WebSocket-Metering                         │ 
+ ├───────────────────────────────────────┼────────────────────────────────────────────────────────────────┤ 
+ │ thestuu/apps/dashboard/components/Mix │ FX-Chain mit 7 Slots, Drag-and-Drop, Bypass, Remove            │ 
+ │ StripChain.jsx                        │                                                                │ 
+ ├───────────────────────────────────────┼────────────────────────────────────────────────────────────────┤ 
+ │ thestuu/apps/dashboard/components/Lev │ Vertikaler Peak-Meter mit Green/Yellow/Red Gradient            │ 
+ │ elMeter.jsx                           │                                                                │ 
+ └───────────────────────────────────────┴────────────────────────────────────────────────────────────────┘ 
+                                                                                                            
+ ────────────────────────────────────────────────────────────────────────────────                           
+                                                                                                            
+ 2. WAS ANGEPASST WERDEN MUSS                                                                               
+                                                                                                            
+ ### A. Datenmodell — AudioTrack hat Plan+Ist vermischt                                                     
+                                                                                                            
+ Problem: AudioTrack.startTime und AudioTrack.duration sind direkt auf dem Track. Das bedeutet, der Track   
+ ist Plan und Zeit gleichzeitig.                                                                            
+                                                                                                            
+ ```ts                                                                                                      
+   // AKTUELL (falsch für dein Modell):                                                                     
+   export interface AudioTrack {                                                                            
+     sceneId: string;                                                                                       
+     type: "dialog" | "narrator" | "music" | "sfx" | "atmo";                                                
+     content: string;        // Plan: der Text                                                              
+     characterId?: string;     // Plan: wer spricht                                                         
+     startTime: number;        // ❌ IST-Zeit auf Plan-Objekt!                                              
+     duration: number;         // ❌ IST-Zeit auf Plan-Objekt!                                              
+     ttsSettings?: { emotion, stability, style, speed };                                                    
+   }                                                                                                        
+ ```                                                                                                        
+                                                                                                            
+ Fix: Zeit-Felder aus AudioTrack entfernen oder als geschätzte Default-Werte behalten (WPM-Schätzung).      
+ Echte Zeit kommt in AudioClip.                                                                             
+                                                                                                            
+ ### B. AudioDropdown zeigt aktuell Zeitwerte                                                               
+                                                                                                            
+ Problem: In der Szene-View werden Tracks mit ihrer startTime/duration angezeigt, als wären sie schon       
+ zeitlich positioniert. Aber im Dropdown soll es Planung sein — Text schreiben, Emotion setzen, Charakter   
+ zuordnen, Typ wählen.                                                                                      
+                                                                                                            
+ Fix: Dropdown zeigt keine Zeiten mehr. Stattdessen: Text-Editor, Emotion-Select, Charakter-Badge,          
+ Typ-Badge. Die Reihenfolge der Tracks in der Szene ist narrativ (nicht zeitlich).                          
+                                                                                                            
+ ### C. AudioTimeline nutzt direkt AudioTrack.startTime                                                     
+                                                                                                            
+ Problem: AudioTimelineSegment rendert track.startTime * pxPerSec direkt. Es gibt keine separate            
+ Clip-Ebene.                                                                                                
+                                                                                                            
+ ```tsx                                                                                                     
+   // AudioTimelineSegment.tsx (aktuell):                                                                   
+   const startPx = track.startTime * pxPerSec;                                                              
+   const widthPx = track.duration * pxPerSec;                                                               
+ ```                                                                                                        
+                                                                                                            
+ Fix: Timeline rendert AudioClip (nicht AudioTrack). AudioClip hat startSec, endSec, laneIndex, trackId,    
+ audioFileId, waveformData.                                                                                 
+                                                                                                            
+ ### D. StructureBeatsSection rendert falsche Timeline für Audio                                            
+                                                                                                            
+ Problem: In StructureBeatsSection.tsx (Zeile 962) wird für alle Projekttypen die VideoEditorTimeline       
+ gerendert, nicht die AudioTimeline:                                                                        
+                                                                                                            
+ ```tsx                                                                                                     
+   } : structureView === "timeline" ? (                                                                     
+     <VideoEditorTimeline      // ← Auch für Audio!                                                         
+       projectId={projectId}                                                                                
+       projectType={projectType}                                                                            
+       ...                                                                                                  
+     />                                                                                                     
+ ```                                                                                                        
+                                                                                                            
+ Fix: Audio-Projekte müssen die neue Audio-Timeline bekommen (die auf AudioClip basiert).                   
+                                                                                                            
+ ### E. Backend speichert keine AudioClips                                                                  
+                                                                                                            
+ Problem: Die scriptony-audio-story Function hat nur scene_audio_tracks (Tracks). Es gibt keine audio_clips 
+  Collection/Tabelle.                                                                                       
+                                                                                                            
+ Fix: Neue Collection audio_clips mit: track_id, scene_id, project_id, start_sec, end_sec, lane_index,      
+ audio_file_id, waveform_data, order_index.                                                                 
+                                                                                                            
+ ────────────────────────────────────────────────────────────────────────────────                           
+                                                                                                            
+ 3. WAS KOMPLETT NEU GEBAUT WERDEN MUSS                                                                     
+                                                                                                            
+ ┌───┬───────────────────────────────┬──────────────────────────────────────────────────────┬─────────────┐ 
+ │ # │ Feature                       │ Warum neu                                            │ Komplexität │ 
+ ├───┼───────────────────────────────┼──────────────────────────────────────────────────────┼─────────────┤ 
+ │ 1 │ AudioClip Type + Collection   │ Trennung Plan (Track) ↔ Ist (Clip) existiert nicht   │ Mittel      │ 
+ ├───┼───────────────────────────────┼──────────────────────────────────────────────────────┼─────────────┤ 
+ │ 2 │ WPM-Schätzung                 │ Tracks ohne generiertes Audio brauchen               │ Gering      │ 
+ │   │                               │ Platzhalter-Breite                                   │             │ 
+ ├───┼───────────────────────────────┼──────────────────────────────────────────────────────┼─────────────┤ 
+ │ 3 │ TTS → AudioClip Pipeline      │ Text + Emotion → TTS → Audio-File → Clip mit echter  │ Hoch        │ 
+ │   │                               │ Dauer                                                │             │ 
+ ├───┼───────────────────────────────┼──────────────────────────────────────────────────────┼─────────────┤ 
+ │ 4 │ Ripple-Recalculation          │ Clip länger → Szene länger → Sequence länger → Akt   │ Hoch        │ 
+ │   │                               │ länger → alles danach rutscht                        │             │ 
+ ├───┼───────────────────────────────┼──────────────────────────────────────────────────────┼─────────────┤ 
+ │ 5 │ Mehrere SFX-Lanes             │ Aktuell nur eine SFX-Lane; SFX können sich           │ Mittel      │ 
+ │   │                               │ überlappen                                           │             │ 
+ ├───┼───────────────────────────────┼──────────────────────────────────────────────────────┼─────────────┤ 
+ │ 6 │ Track-Header                  │ Aus thestuu übernehmbar, aber Integration in         │ Hoch        │ 
+ │   │ (Mute/Solo/Volume/Pan)        │ React-Timeline neu                                   │             │ 
+ ├───┼───────────────────────────────┼──────────────────────────────────────────────────────┼─────────────┤ 
+ │ 7 │ FX-Chain                      │ Presets (Reverb leicht/mittel/stark) zuerst, später  │ Sehr hoch   │ 
+ │   │                               │ VST-Slots                                            │             │ 
+ ├───┼───────────────────────────────┼──────────────────────────────────────────────────────┼─────────────┤ 
+ │ 8 │ Cross-Scene-Tracks            │ Musik/Atmo läuft über Szene-Grenzen → absolute Zeit, │ Mittel      │ 
+ │   │                               │ nicht an Szene gebunden                              │             │ 
+ └───┴───────────────────────────────┴──────────────────────────────────────────────────────┴─────────────┘ 
+                                                                                                            
+ ────────────────────────────────────────────────────────────────────────────────                           
+                                                                                                            
+ 4. WAS SINN MACHT — UND WARUM                                                                              
+                                                                                                            
+ ### ✅ Sinn macht                                                                                          
+                                                                                                            
+ ┌────────────────────────────────┬───────────────────────────────────────────────────────────────────────┐ 
+ │ Feature                        │ Begründung                                                            │ 
+ ├────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤ 
+ │ Pro Charakter = eigene Lane    │ Bereits implementiert. Übersichtlich, klar wer wann spricht.          │ 
+ ├────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤ 
+ │ Clip-System                    │ Film hat es (Shot→Clip). Audio braucht es genauso (Track→Clip).       │ 
+ │ (Plan/Ist-Trennung)            │ Universell skalierbar.                                                │ 
+ ├────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤ 
+ │ Ripple Bottom-Up               │ Wenn TTS länger ist als erwartet, rutscht alles danach mit. In DAWs   │ 
+ │                                │ Standard. Bei Film fehlt es noch (PCT-basiert).                       │ 
+ ├────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤ 
+ │ WPM-Schätzung vor TTS          │ Timeline muss vor Audio-Generierung sinnvoll aussehen. Textlänge ×    │ 
+ │                                │ 150 WPM = geschätzte Sekunden.                                        │ 
+ ├────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤ 
+ │ Track-Header                   │ Aus thestuu übernehmbar. Essenziell für Mixing.                       │ 
+ │ (Mute/Solo/Volume/Pan)         │                                                                       │ 
+ ├────────────────────────────────┼───────────────────────────────────────────────────────────────────────┤ 
+ │ Szenen-Bild + Storyboard in    │ Visuelle Orientierung. Film macht es mit Shot-Bildern. Audio mit      │ 
+ │ Timeline                       │ Szenen-Bildern.                                                       │ 
+ └────────────────────────────────┴───────────────────────────────────────────────────────────────────────┘ 
+                                                                                                            
+ ### ⚠️ Sinn macht, aber mit Einschränkungen                                                                
+                                                                                                            
+ ┌───────────────────────┬────────────────────────────────────────────────────────────────────────────────┐ 
+ │ Feature               │ Einschränkung                                                                  │ 
+ ├───────────────────────┼────────────────────────────────────────────────────────────────────────────────┤ 
+ │ FX-Chain (VST)        │ Zuerst nur Presets (Reverb leicht/mittel/stark). VST-Integration erfordert     │ 
+ │                       │ Audio-Engine (Tracktion/thestuu).                                              │ 
+ ├───────────────────────┼────────────────────────────────────────────────────────────────────────────────┤ 
+ │ Drag & Drop Tracks in │ Innerhalb einer Szene: nur narrative Reihenfolge, keine Zeitänderung. Zwischen │ 
+ │ Dropdown              │ Szenen: Track folgt neuer Szene (neue absolute Zeit).                          │ 
+ ├───────────────────────┼────────────────────────────────────────────────────────────────────────────────┤ 
+ │ Native-View als       │ Korrekt so. Aber es sollte ein formatiertes Drehbuch sein, keine               │ 
+ │ Read-Only             │ Statistik-Karten.                                                              │ 
+ └───────────────────────┴────────────────────────────────────────────────────────────────────────────────┘ 
+                                                                                                            
+ ### ❌ Macht (aktuell) keinen Sinn / Ist problematisch                                                     
+                                                                                                            
+ ┌─────────────────────────────┬──────────────────────────────────────────────────────────────────────────┐ 
+ │ Feature                     │ Problem                                                                  │ 
+ ├─────────────────────────────┼──────────────────────────────────────────────────────────────────────────┤ 
+ │ AudioTrack mit              │ Vermischt Plan und Ist. Führt zu Sync-Problemen.                         │ 
+ │ startTime/duration          │                                                                          │ 
+ ├─────────────────────────────┼──────────────────────────────────────────────────────────────────────────┤ 
+ │ Nur eine SFX-Lane           │ SFX können sich überlappen (Zug bremst + Rollkoffer gleichzeitig). Eine  │ 
+ │                             │ Lane blockiert das.                                                      │ 
+ ├─────────────────────────────┼──────────────────────────────────────────────────────────────────────────┤ 
+ │ AudioSceneView als "Native" │ Zeigt Statistik-Karten, kein formatiertes Drehbuch. Sollte               │ 
+ │                             │ NativeAudiobookView sein.                                                │ 
+ ├─────────────────────────────┼──────────────────────────────────────────────────────────────────────────┤ 
+ │ VideoEditorTimeline für     │ Film-Timeline ist PCT-basiert, Shot-orientiert, NLE-Clip-Spur. Audio     │ 
+ │ Audio                       │ braucht Sekunden-basiert, Track-orientiert, Lane-basiert.                │ 
+ └─────────────────────────────┴──────────────────────────────────────────────────────────────────────────┘ 
+                                                                                                            
+ ────────────────────────────────────────────────────────────────────────────────                           
+                                                                                                            
+ 5. ALLE BETROFFENEN BEREICHE                                                                               
+                                                                                                            
+ ### Frontend (React/TypeScript)                                                                            
+                                                                                                            
+ ```                                                                                                        
+   src/                                                                                                     
+   ├── lib/types/                                                                                           
+   │   ├── index.ts              ← AudioTrack umstrukturieren, AudioClip hinzufügen                         
+   │   └── audio-timeline.ts     ← AudioTimelineData um AudioClip erweitern                                 
+   ├── lib/api/                                                                                             
+   │   ├── audio-story-api.ts    ← AudioClip CRUD hinzufügen                                                
+   │   └── clips-api.ts          ← Film-Clips; Audio-Clips hinzufügen oder separat                          
+   ├── hooks/                                                                                               
+   │   ├── useAudioTimeline.ts   ← AudioClips laden statt nur Tracks                                        
+   │   └── useAudioClips.ts      ← NEU: Clip-CRUD Mutations                                                 
+   ├── components/                                                                                          
+   │   ├── audio/                                                                                           
+   │   │   ├── AudioDropdown.tsx     ← Keine Zeiten anzeigen, Plan-Editor                                   
+   │   │   ├── AudioTimeline.tsx     ← Auf AudioClip umstellen                                              
+   │   │   ├── AudioTimelineLane.tsx ← Clip-Rendering statt Track-Rendering                                 
+   │   │   ├── AudioTimelineSegment.tsx ← Auf AudioClip umstellen                                           
+   │   │   ├── AudioSceneView.tsx    ← Deprecated oder umwidmen                                             
+   │   │   └── NativeAudiobookView.tsx ← Als Native-View nutzen                                             
+   │   ├── film/                                                                                            
+   │   │   └── VideoEditorTimeline.tsx ← Optional: Ripple für Film erweitern                                
+   │   └── StructureBeatsSection.tsx   ← Audio → neue Timeline routen                                       
+   └── contexts/                                                                                            
+       └── TimelineStateContext.tsx    ← AudioClip-State hinzufügen                                         
+ ```                                                                                                        
+                                                                                                            
+ ### Backend (Appwrite Functions/Hasura)                                                                    
+                                                                                                            
+ ```                                                                                                        
+   functions/                                                                                               
+   ├── scriptony-audio-story/                                                                               
+   │   └── routes/                                                                                          
+   │       ├── tracks.ts           ← AudioTrack ohne Zeit-Felder                                            
+   │       └── clips.ts            ← NEU: AudioClip CRUD                                                    
+   └── scriptony-audio/                                                                                     
+       └── tts.ts                  ← TTS-Generierung → AudioFile + Clip-Dauer zurückgeben                   
+ ```                                                                                                        
+                                                                                                            
+ ### Datenbank                                                                                              
+                                                                                                            
+ ┌────────────────────┬───────────────────────────────────────────────────────────────────────────────────┐ 
+ │ Collection         │ Änderung                                                                          │ 
+ ├────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤ 
+ │ scene_audio_tracks │ start_time, duration optional/nullable (nur Plan-Defaults)                        │ 
+ ├────────────────────┼───────────────────────────────────────────────────────────────────────────────────┤ 
+ │ audio_clips        │ NEU: track_id, scene_id, project_id, start_sec, end_sec, lane_index,              │ 
+ │                    │ audio_file_id, waveform_data, order_index, created_at, updated_at                 │ 
+ └────────────────────┴───────────────────────────────────────────────────────────────────────────────────┘ 
+                                                                                                            
+ ────────────────────────────────────────────────────────────────────────────────                           
+                                                                                                            
+ 6. IMPLEMENTIERUNGSREIHENFOLGE — MIT BEGRÜNDUNG                                                            
+                                                                                                            
+ ### Phase 1: Fundament (Wochen 1–2)                                                                        
+                                                                                                            
+ ┌─────┬────────────────────────────────────────────────────┬─────────────────────────────────────────────┐ 
+ │ #   │ Task                                               │ Warum zuerst                                │ 
+ ├─────┼────────────────────────────────────────────────────┼─────────────────────────────────────────────┤ 
+ │ 1.1 │ AudioClip Type definieren (startSec, endSec,       │ Alle anderen Features bauen darauf auf.     │ 
+ │     │ laneIndex, trackId)                                │                                             │ 
+ ├─────┼────────────────────────────────────────────────────┼─────────────────────────────────────────────┤ 
+ │ 1.2 │ Backend: audio_clips Collection + CRUD API         │ Frontend braucht Datenquelle.               │ 
+ ├─────┼────────────────────────────────────────────────────┼─────────────────────────────────────────────┤ 
+ │ 1.3 │ AudioDropdown: Zeit-Felder entfernen, Plan-Editor  │ Klare Trennung Plan/Ist. Kein Zeit-Code     │ 
+ │     │ bauen                                              │ mehr im Dropdown.                           │ 
+ ├─────┼────────────────────────────────────────────────────┼─────────────────────────────────────────────┤ 
+ │ 1.4 │ AudioTimeline: Auf AudioClip umstellen             │ Timeline zeigt jetzt echte Clips statt      │ 
+ │     │                                                    │ Track-Zeiten.                               │ 
+ └─────┴────────────────────────────────────────────────────┴─────────────────────────────────────────────┘ 
+                                                                                                            
+ Begründung: Ohne Clip-System ist alles andere Sandkasten-Spiel. Die Trennung Plan/Ist ist das Fundament.   
+                                                                                                            
+ ────────────────────────────────────────────────────────────────────────────────                           
+                                                                                                            
+ ### Phase 2: Zeit & Schätzung (Wochen 2–3)                                                                 
+                                                                                                            
+ ┌─────┬─────────────────────────────────────┬────────────────────────────────────────────────────────────┐ 
+ │ #   │ Task                                │ Warum                                                      │ 
+ ├─────┼─────────────────────────────────────┼────────────────────────────────────────────────────────────┤ 
+ │ 2.1 │ WPM-Schätzung                       │ Timeline braucht Platzhalter-Breiten vor TTS.              │ 
+ │     │ (estimateDuration(text, wpm=150))   │                                                            │ 
+ ├─────┼─────────────────────────────────────┼────────────────────────────────────────────────────────────┤ 
+ │ 2.2 │ Clip-Initialisierung                │ Beim Track-Hinzufügen: Auto-Clip mit startSec =            │ 
+ │     │                                     │ Szene-Anfang + Offset, endSec = startSec + WPM-Schätzung.  │ 
+ ├─────┼─────────────────────────────────────┼────────────────────────────────────────────────────────────┤ 
+ │ 2.3 │ Szene-Dauer = Max(Clip-Enden)       │ Bottom-Up: Szene.endSec = max(all clips in scene).         │ 
+ └─────┴─────────────────────────────────────┴────────────────────────────────────────────────────────────┘ 
+                                                                                                            
+ Begründung: Die Timeline muss sofort nach dem Planen sinnvoll aussehen, auch ohne generiertes Audio.       
+                                                                                                            
+ ────────────────────────────────────────────────────────────────────────────────                           
+                                                                                                            
+ ### Phase 3: Ripple & Synchronisation (Wochen 3–4)                                                         
+                                                                                                            
+ ┌─────┬─────────────────────────┬────────────────────────────────────────────────────────────────────────┐ 
+ │ #   │ Task                    │ Warum                                                                  │ 
+ ├─────┼─────────────────────────┼────────────────────────────────────────────────────────────────────────┤ 
+ │ 3.1 │ Ripple-Algorithmus      │ Clip.endSec ändert sich → nachfolgende Clips/Szenen/Sequences/Acts     │ 
+ │     │                         │ verschieben.                                                           │ 
+ ├─────┼─────────────────────────┼────────────────────────────────────────────────────────────────────────┤ 
+ │ 3.2 │ Dropdown ↔ Timeline     │ Szene/Sequence/Akt verschieben im Dropdown → Cascade-Recalculation in  │ 
+ │     │ Sync                    │ Timeline.                                                              │ 
+ ├─────┼─────────────────────────┼────────────────────────────────────────────────────────────────────────┤ 
+ │ 3.3 │ Cross-Scene-Tracks      │ Musik/Atmo mit absoluter Zeit, nicht an Szene gebunden.                │ 
+ └─────┴─────────────────────────┴────────────────────────────────────────────────────────────────────────┘ 
+                                                                                                            
+ Begründung: Das ist der "Magie"-Moment, wo Plan und Ist automatisch synchron bleiben.                      
+                                                                                                            
+ ────────────────────────────────────────────────────────────────────────────────                           
+                                                                                                            
+ ### Phase 4: TTS & Audio (Wochen 4–5)                                                                      
+                                                                                                            
+ ┌─────┬────────────────────────┬─────────────────────────────────────────────────────────────────────────┐ 
+ │ #   │ Task                   │ Warum                                                                   │ 
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────┤ 
+ │ 4.1 │ TTS-Trigger aus        │ "Generieren" Button pro Track → Text + Emotion + TTS-Voice →            │ 
+ │     │ Dropdown               │ Audio-File.                                                             │ 
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────┤ 
+ │ 4.2 │ TTS → AudioClip-Update │ Nach Generierung: clip.endSec = clip.startSec + audioDuration,          │ 
+ │     │                        │ clip.waveformData = [...].                                              │ 
+ ├─────┼────────────────────────┼─────────────────────────────────────────────────────────────────────────┤ 
+ │ 4.3 │ Ripple nach TTS        │ Audio länger als Schätzung → Cascade durch alle Container.              │ 
+ └─────┴────────────────────────┴─────────────────────────────────────────────────────────────────────────┘ 
+                                                                                                            
+ Begründung: Erst nach stabilem Clip-System und Ripple kann TTS sinnvoll integriert werden.                 
+                                                                                                            
+ ────────────────────────────────────────────────────────────────────────────────                           
+                                                                                                            
+ ### Phase 5: DAW-Features (Wochen 5–7)                                                                     
+                                                                                                            
+ ┌─────┬─────────────────────────────────────┬────────────────────────────────────────────────────┐         
+ │ #   │ Task                                │ Warum                                              │         
+ ├─────┼─────────────────────────────────────┼────────────────────────────────────────────────────┤         
+ │ 5.1 │ Mehrere SFX-Lanes                   │ SFX können überlappen → dynamische Lane-Zuweisung. │         
+ ├─────┼─────────────────────────────────────┼────────────────────────────────────────────────────┤         
+ │ 5.2 │ Track-Header (Mute/Solo/Volume/Pan) │ Aus thestuu übernehmen. Mixer-Controls pro Lane.   │         
+ ├─────┼─────────────────────────────────────┼────────────────────────────────────────────────────┤         
+ │ 5.3 │ FX-Chain Presets                    │ Reverb leicht/mittel/stark pro Track.              │         
+ └─────┴─────────────────────────────────────┴────────────────────────────────────────────────────┘         
+                                                                                                            
+ Begründung: Diese Features sind "Nice-to-Have" für die Produktion, aber nicht für die Planung essenziell.  
+                                                                                                            
+ ────────────────────────────────────────────────────────────────────────────────                           
+                                                                                                            
+ ### Phase 6: Film-Vereinheitlichung (Wochen 7–8, optional)                                                 
+                                                                                                            
+ ┌─────┬───────────────────────────────────────────┬──────────────────────────────────────────────────────┐ 
+ │ #   │ Task                                      │ Warum                                                │ 
+ ├─────┼───────────────────────────────────────────┼──────────────────────────────────────────────────────┤ 
+ │ 6.1 │ Film-Refactoring: Weg von PCT, hin zu     │ Du willst Ripple auch bei Film. Aktuell ist es       │ 
+ │     │ Clip-basiertem Ripple                     │ PCT-basiert.                                         │ 
+ ├─────┼───────────────────────────────────────────┼──────────────────────────────────────────────────────┤ 
+ │ 6.2 │ Vereinheitlichtes Clip-System             │ Clip für Film (Shot→Clip), AudioClip für Audio       │ 
+ │     │                                           │ (Track→Clip) → gemeinsames Interface.                │ 
+ └─────┴───────────────────────────────────────────┴──────────────────────────────────────────────────────┘ 
+                                                                                                            
+ Begründung: Film-Refactoring ist riskant (8500 Zeilen VideoEditorTimeline). Besser erst nach stabilem      
+ Audio-System.                                                                                              
+                                                                                                            
+ ────────────────────────────────────────────────────────────────────────────────                           
+                                                                                                            
+ 7. FAZIT                                                                                                   
+                                                                                                            
+ ┌─────────────────┬─────────────────────────────────────────────────────────────────────────┐              
+ │                 │ Status                                                                  │              
+ ├─────────────────┼─────────────────────────────────────────────────────────────────────────┤              
+ │ Plan/Dropdown   │ 70% da (AudioDropdown), aber Zeit-Felder müssen raus                    │              
+ ├─────────────────┼─────────────────────────────────────────────────────────────────────────┤              
+ │ Timeline        │ 40% da (AudioTimeline existiert, aber auf falschem Datenmodell)         │              
+ ├─────────────────┼─────────────────────────────────────────────────────────────────────────┤              
+ │ Native/Drehbuch │ 30% da (NativeAudiobookView ist da, aber wird nicht als Native genutzt) │              
+ ├─────────────────┼─────────────────────────────────────────────────────────────────────────┤              
+ │ Backend         │ 60% da (Track-CRUD existiert, aber kein Clip-System)                    │              
+ ├─────────────────┼─────────────────────────────────────────────────────────────────────────┤              
+ │ TTS             │ 80% da (scriptony-audio/tts.ts existiert)                               │              
+ ├─────────────────┼─────────────────────────────────────────────────────────────────────────┤              
+ │ Mixer/FX        │ 10% da (thestuu existiert als Referenz, aber nicht integriert)          │              
+ ├─────────────────┼─────────────────────────────────────────────────────────────────────────┤              
+ │ Ripple          │ 20% da (nur für Beats in VideoEditorTimeline, nicht universell)         │              
+ └─────────────────┴─────────────────────────────────────────────────────────────────────────┘              
+                                                                                                            
+ Der kritische Pfad: Clip-System definieren → Backend bauen → Dropdown und Timeline umstellen →             
+ WPM-Schätzung → Ripple → TTS-Integration.                                                                  
+                                                                                                            
+ Soll ich jetzt Phase 1 als konkretes Architektur-Ticket schreiben (AudioClip Type, Collection, API,        
+ Frontend-Integration)? Oder willst du zuerst ein Proof-of-Concept für einen einzelnen Bereich (z.B. nur    
+ die WPM-Schätzung + Clip-Initialisierung)?                     

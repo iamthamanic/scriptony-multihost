@@ -1,28 +1,38 @@
 /**
  * Shot image upload route for the Scriptony HTTP API.
+ *
+ * @deprecated LEGACY — Asset uploads belong to scriptony-assets.
+ *   This route is frozen; do not extend.
  */
 
-import { requireUserBootstrap } from "../../../../_shared/auth";
-import { getStorageBucketId } from "../../../../_shared/env";
-import { requestGraphql } from "../../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../../_shared/auth";
+import { getStorageBucketId } from "../../../_shared/env";
+import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
+  type RequestLike,
+  type ResponseLike,
+  readJsonBody,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
-} from "../../../../_shared/http";
-import { ensureFile, uploadFileToStorage } from "../../../../_shared/storage";
-import { getAccessibleProject, getUserOrganizationIds } from "../../../../_shared/scriptony";
-import { getShotById } from "../../../../_shared/timeline";
+  sendUnauthorized,
+} from "../../../_shared/http";
+import {
+  getAccessibleProject,
+  getUserOrganizationIds,
+} from "../../../_shared/scriptony";
+import { ensureFile, uploadFileToStorage } from "../../../_shared/storage";
+import { getShotById } from "../../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -46,10 +56,24 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
-    const project = await getAccessibleProject(shot.project_id, bootstrap.user.id, organizationIds);
+    const project = await getAccessibleProject(
+      shot.project_id,
+      bootstrap.user.id,
+      organizationIds,
+    );
     if (!project) {
       sendNotFound(res, "Shot not found");
       return;
+    }
+
+    // Normalize JSON body (Appwrite sometimes delivers a string; ensureFile reads req.body)
+    const parsed = await readJsonBody<Record<string, unknown>>(req);
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      Object.keys(parsed).length > 0
+    ) {
+      req.body = parsed;
     }
 
     const file = ensureFile(req, res, {
@@ -73,12 +97,17 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       },
     });
 
+    const mime =
+      typeof file.type === "string" && file.type.startsWith("image/")
+        ? file.type
+        : "image/jpeg";
+
     await requestGraphql(
       `
-        mutation UpdateShotImage($id: uuid!, $imageUrl: String!, $userId: uuid!) {
+        mutation UpdateShotImage($id: uuid!, $imageUrl: String!, $userId: uuid!, $shotImageMime: String!) {
           update_shots_by_pk(
             pk_columns: { id: $id }
-            _set: { image_url: $imageUrl, user_id: $userId }
+            _set: { image_url: $imageUrl, user_id: $userId, shot_image_mime: $shotImageMime }
           ) {
             id
           }
@@ -88,7 +117,8 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         id: shotId,
         imageUrl: uploaded.url,
         userId: bootstrap.user.id,
-      }
+        shotImageMime: mime,
+      },
     );
 
     sendJson(res, 200, { imageUrl: uploaded.url });

@@ -1,0 +1,32 @@
+# ECC Runner + feature-intake profile (scriptony-multihost)
+
+issueBackend: github
+
+github:
+  defaultLabels: []
+  milestone: null
+
+stackProfile: scriptony-desktop
+
+locale: de
+
+runtimeAxes:
+  - local-desktop
+  - cloud-session
+  - appwrite-functions
+
+checksSnippet: 'npm run verify -- --frontend'
+
+helperSkills:
+  desktop: scriptony-desktop-dev.mdc
+  implement: implement
+  verify: verify-ticket
+  qualityGate: ecc-check
+  ship: commit-pr-safe
+
+epicPrdSearch:
+  - docs/multi-voice-engine.md
+  - docs/PRD.md
+  - docs/**/*.md
+
+legacyTicketsDir: tickets/

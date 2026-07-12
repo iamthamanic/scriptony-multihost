@@ -2,21 +2,24 @@
  * RAG sync queue route for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../../_shared/auth";
-import { requestGraphql } from "../../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../../_shared/auth";
+import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   readJsonBody,
-  sendJson,
-  sendMethodNotAllowed,
-  sendUnauthorized,
-  sendServerError,
   type RequestLike,
   type ResponseLike,
-} from "../../../../_shared/http";
+  sendJson,
+  sendMethodNotAllowed,
+  sendServerError,
+  sendUnauthorized,
+} from "../../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -52,7 +55,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           data: body,
           processed: false,
         },
-      }
+      },
     );
 
     sendJson(res, 202, {

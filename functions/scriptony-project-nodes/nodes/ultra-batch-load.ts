@@ -1,30 +1,43 @@
 /**
  * Ultra batch timeline load route for the Scriptony HTTP API.
+ *
+ * @deprecated Use GET /editor/projects/:projectId/state from scriptony-editor-readmodel instead.
+ *   ultra-batch-load is frozen; new aggregation fields (script blocks, audio tracks,
+ *   assets, style) are only added to the read-model endpoint.
  */
 
-import { requireUserBootstrap } from "../../../_shared/auth";
+import { Query } from "node-appwrite";
+import { C, listDocumentsFull } from "../../_shared/appwrite-db";
+import { requireUserBootstrap } from "../../_shared/auth";
+import { mapClip } from "../../_shared/clips-map";
 import {
   getQuery,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
-} from "../../../_shared/http";
+  sendUnauthorized,
+} from "../../_shared/http";
+import { requireProjectAccess } from "../../_shared/scriptony";
 import {
+  buildTimeline,
   getAllProjectNodes,
   getCharactersByProject,
   getShots,
   mapCharacter,
   mapNode,
   mapShot,
-} from "../../../_shared/timeline";
+  stripContentFromNodes,
+} from "../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -41,18 +54,31 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const [nodes, characters, shots] = await Promise.all([
+    const _project = await requireProjectAccess(
+      projectId,
+      bootstrap.user.id,
+      res,
+    );
+    if (!_project) return;
+
+    const includeShots = (getQuery(req, "include_shots") || "true") !== "false";
+    const excludeContent =
+      (getQuery(req, "exclude_content") || "false") === "true";
+
+    const [nodes, characters, shots, clipRows] = await Promise.all([
       getAllProjectNodes(projectId),
       getCharactersByProject(projectId),
-      getShots({ projectId }),
+      includeShots ? getShots({ projectId }) : Promise.resolve([]),
+      listDocumentsFull(C.clips, [Query.equal("project_id", projectId)]),
     ]);
 
-    const mappedNodes = nodes.map(mapNode);
-    const acts = mappedNodes.filter((node) => node.level === 1);
-    const sequences = mappedNodes.filter((node) => node.level === 2);
-    const scenes = mappedNodes.filter((node) => node.level === 3);
+    const mappedNodes = excludeContent
+      ? stripContentFromNodes(nodes.map(mapNode))
+      : nodes.map(mapNode);
+    const { acts, sequences, scenes } = buildTimeline(mappedNodes);
     const mappedCharacters = characters.map(mapCharacter);
     const mappedShots = shots.map(mapShot);
+    const mappedClips = clipRows.map(mapClip);
 
     sendJson(res, 200, {
       timeline: {
@@ -62,6 +88,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       },
       characters: mappedCharacters,
       shots: mappedShots,
+      clips: mappedClips,
       stats: {
         totalNodes: mappedNodes.length,
         acts: acts.length,
@@ -69,6 +96,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         scenes: scenes.length,
         characters: mappedCharacters.length,
         shots: mappedShots.length,
+        clips: mappedClips.length,
       },
     });
   } catch (error) {

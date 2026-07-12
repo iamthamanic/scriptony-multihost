@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Toaster as Sonner, ToasterProps } from "sonner@2.0.3";
+import { Toaster as Sonner, ToasterProps } from "sonner";
 
 const Toaster = ({ ...props }: ToasterProps) => {
   const [theme, setTheme] = useState<"light" | "dark">("light");
@@ -7,7 +7,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
   useEffect(() => {
     // Watch for theme changes
     const updateTheme = () => {
-      setTheme(document.documentElement.classList.contains("dark") ? "dark" : "light");
+      setTheme(
+        document.documentElement.classList.contains("dark") ? "dark" : "light",
+      );
     };
 
     updateTheme();
@@ -26,6 +28,9 @@ const Toaster = ({ ...props }: ToasterProps) => {
     <Sonner
       theme={theme}
       className="toaster group"
+      duration={4000}
+      closeButton
+      toastOptions={{ duration: 4000 }}
       style={
         {
           "--normal-bg": "var(--popover)",

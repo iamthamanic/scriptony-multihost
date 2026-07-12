@@ -1,31 +1,43 @@
 /**
  * Storage usage endpoint for the Scriptony auth service.
+ *
+ * @deprecated T24 — MIGRIERT nach `scriptony-storage`.
+ *   Neue Endpunkte: GET /storage/connections, GET /storage/objects, etc.
+ *   Diese Route wird in einer zukünftigen Version entfernt.
+ *   Usage-Metriken koennten spaeter `scriptony-observability` kreuzen; siehe Domain Map.
  */
 
+import { requireUserBootstrap } from "../../_shared/auth";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
+  type RequestLike,
+  type ResponseLike,
   sendJson,
   sendMethodNotAllowed,
   sendUnauthorized,
-  type RequestLike,
-  type ResponseLike,
 } from "../../_shared/http";
-import { requireUserBootstrap } from "../../_shared/auth";
-import { requestGraphql } from "../../_shared/graphql-compat";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   if (req.method !== "GET") {
     sendMethodNotAllowed(res, ["GET"]);
     return;
   }
 
-  const bootstrap = await requireUserBootstrap(req.headers.authorization);
+  const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
     return;
   }
 
   const data = await requestGraphql<{
-    shot_audio: Array<{ file_name: string; file_size: number | null; created_at: string }>;
+    shot_audio: Array<{
+      file_name: string;
+      file_size: number | null;
+      created_at: string;
+    }>;
     projects: Array<{ cover_image_url: string | null }>;
     worlds: Array<{ cover_image_url: string | null }>;
     shots: Array<{ image_url: string | null; storyboard_url: string | null }>;
@@ -49,7 +61,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         }
       }
     `,
-    { organizationId: bootstrap.organizationId }
+    { organizationId: bootstrap.organizationId },
   );
 
   const audioFiles = data.shot_audio.map((entry) => ({
@@ -60,7 +72,8 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
   const imageCount =
     data.projects.filter((entry) => entry.cover_image_url).length +
     data.worlds.filter((entry) => entry.cover_image_url).length +
-    data.shots.filter((entry) => entry.image_url || entry.storyboard_url).length;
+    data.shots.filter((entry) => entry.image_url || entry.storyboard_url)
+      .length;
 
   sendJson(res, 200, {
     totalSize: audioFiles.reduce((sum, file) => sum + file.size, 0),

@@ -1,0 +1,51 @@
+{
+  "version": 2,
+  "repo": "iamthamanic/scriptony-multihost",
+  "activeIssue": null,
+  "featureSlug": null,
+  "phase": "idle",
+  "branch": null,
+  "prUrl": null,
+  "milestoneFilter": null,
+  "paused": false,
+  "runMode": "batch",
+  "queue": [
+    49
+  ],
+  "completedIssues": [
+    3,
+    4,
+    5,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31
+  ],
+  "retries": {
+    "implement": 0,
+    "verifyTicket": 0,
+    "verifyUi": 0,
+    "review": 0
+  },
+  "maxRetries": {
+    "implement": 3,
+    "verifyTicket": 2,
+    "verifyUi": 2,
+    "review": 2,
+    "sameRootCause": 2
+  },
+  "lastError": null,
+  "lastErrorCount": 0,
+  "issuesProcessedInSession": 0,
+  "updatedAt": "2026-07-04T14:50:48.000Z"
+}

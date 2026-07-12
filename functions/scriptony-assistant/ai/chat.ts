@@ -2,49 +2,61 @@
  * AI chat route for the Scriptony HTTP API.
  */
 
-import { generateAiResponse } from "../../../_shared/ai";
-import { requireUserBootstrap } from "../../../_shared/auth";
-import { requestGraphql } from "../../../_shared/graphql-compat";
+import { chat as runAiServiceChat } from "../../_shared/ai-service";
+import { resolveFeatureRuntime } from "../../_shared/ai-central-store";
+import { describeResolvedFeatureRuntime } from "../../_shared/ai-feature-runtime-view";
+import {
+  buildRagChatContext,
+  normalizeRagIdList,
+} from "../../_shared/rag-chat-context";
+
+import { requireUserBootstrap } from "../../_shared/auth";
+import { requestGraphql } from "../../_shared/graphql-compat";
+import { estimateTokens } from "../../_shared/estimate-tokens";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
-} from "../../../_shared/http";
+  sendUnauthorized,
+} from "../../_shared/http";
 
-async function getSettings(userId: string): Promise<Record<string, any> | null> {
-  const data = await requestGraphql<{
-    ai_chat_settings: Array<Record<string, any>>;
-  }>(
-    `
-      query GetChatSettings($userId: uuid!) {
-        ai_chat_settings(where: { user_id: { _eq: $userId } }, limit: 1) {
-          id
-          active_provider
-          active_model
-          system_prompt
-          use_rag
-          openai_api_key
-          anthropic_api_key
-          google_api_key
-          openrouter_api_key
-          deepseek_api_key
-        }
-      }
-    `,
-    { userId }
-  );
-
-  return data.ai_chat_settings[0] || null;
+function chatMessageMetadata(
+  model: string,
+  provider: string,
+  tokensUsed: number,
+): string {
+  return JSON.stringify({ model, provider, tokens_used: tokensUsed });
 }
 
-async function getConversationMessages(conversationId: string): Promise<
-  Array<{ role: "user" | "assistant" | "system"; content: string }>
-> {
+function enrichChatMessageForApi(
+  entry: Record<string, any>,
+): Record<string, any> {
+  let meta: Record<string, any> = {};
+  try {
+    if (typeof entry.metadata_json === "string" && entry.metadata_json.trim()) {
+      meta = JSON.parse(entry.metadata_json);
+    }
+  } catch {
+    /* ignore */
+  }
+  return {
+    ...entry,
+    model: meta.model,
+    provider: meta.provider,
+    tokens_used: meta.tokens_used,
+  };
+}
+
+const RAG_CONTEXT_SEPARATOR =
+  "\n\n--- Scriptony Kontext (Auszug, nur zur Orientierung) ---\n";
+
+async function getConversationMessages(
+  conversationId: string,
+): Promise<Array<{ role: "user" | "assistant" | "system"; content: string }>> {
   const data = await requestGraphql<{
     ai_chat_messages: Array<Record<string, any>>;
   }>(
@@ -59,7 +71,7 @@ async function getConversationMessages(conversationId: string): Promise<
         }
       }
     `,
-    { conversationId }
+    { conversationId },
   );
 
   return data.ai_chat_messages
@@ -70,9 +82,12 @@ async function getConversationMessages(conversationId: string): Promise<
     .filter((entry) => entry.content);
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -84,31 +99,70 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     const body = await readJsonBody<Record<string, any>>(req);
-    const rawMessage = typeof body.message === "string" ? body.message.trim() : "";
+    const rawMessage =
+      typeof body.message === "string" ? body.message.trim() : "";
     if (!rawMessage) {
       sendBadRequest(res, "message is required");
       return;
     }
 
-    const settings = await getSettings(bootstrap.user.id);
-    const provider = settings?.active_provider || "openai";
-    const model = settings?.active_model || "gpt-4o-mini";
-    const providerKey = settings?.[`${provider}_api_key`];
-    const systemPrompt =
-      settings?.system_prompt ||
-      "Du bist ein hilfreicher Assistent fuer Drehbuchautoren.";
-    const temperature =
-      typeof settings?.temperature === "number" ? settings.temperature : 0.7;
-    const maxTokens =
-      typeof settings?.max_tokens === "number" ? settings.max_tokens : 2000;
-
-    if (!providerKey) {
-      sendBadRequest(res, "No API key configured for the active provider");
+    const runtime = await resolveFeatureRuntime(
+      bootstrap.user.id,
+      "assistant_chat",
+    );
+    const runtimeStatus = describeResolvedFeatureRuntime(runtime);
+    if (!runtimeStatus.configured) {
+      sendBadRequest(res, runtimeStatus.error || "Assistant is not configured");
       return;
     }
+    const provider = runtime.config.provider;
+    const model = runtime.config.model;
 
     let conversationId = body.conversation_id ?? body.conversationId ?? null;
+    const priorMessages = conversationId
+      ? await getConversationMessages(conversationId)
+      : [];
 
+    const useRag = runtime.userSettings.use_rag !== false;
+    const projectIds = normalizeRagIdList(
+      body.rag_project_ids ?? body.ragProjectIds,
+    );
+    const worldIds = normalizeRagIdList(body.rag_world_ids ?? body.ragWorldIds);
+    const characterIds = normalizeRagIdList(
+      body.rag_character_ids ?? body.ragCharacterIds,
+    );
+
+    let retrievalContext: string | undefined;
+    if (
+      useRag &&
+      (projectIds.length > 0 || worldIds.length > 0 || characterIds.length > 0)
+    ) {
+      const block = await buildRagChatContext({
+        userId: bootstrap.user.id,
+        organizationId: bootstrap.organizationId,
+        projectIds,
+        worldIds,
+        characterIds,
+      });
+      if (block.trim()) retrievalContext = block;
+    }
+
+    const baseSystemPrompt = runtime.userSettings.system_prompt || "";
+    const effectiveSystemPrompt =
+      retrievalContext && retrievalContext.trim()
+        ? `${baseSystemPrompt}${RAG_CONTEXT_SEPARATOR}${retrievalContext.trim()}`
+        : baseSystemPrompt;
+
+    const generated = await runAiServiceChat(
+      bootstrap.user.id,
+      [...priorMessages, { role: "user", content: rawMessage }],
+      "assistant_chat",
+      {
+        systemPrompt: effectiveSystemPrompt,
+      },
+    );
+
+    // Create conversation only after successful generation to avoid empty chat rows on provider failure/timeouts.
     if (!conversationId) {
       const createdConversation = await requestGraphql<{
         insert_ai_conversations_one: Record<string, any>;
@@ -124,27 +178,13 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           object: {
             user_id: bootstrap.user.id,
             title: rawMessage.slice(0, 60),
-            system_prompt: settings?.system_prompt ?? null,
+            system_prompt: runtime.userSettings.system_prompt ?? null,
             message_count: 0,
           },
-        }
+        },
       );
       conversationId = createdConversation.insert_ai_conversations_one.id;
     }
-
-    const priorMessages = await getConversationMessages(conversationId);
-    const generated = await generateAiResponse({
-      settings: {
-        provider,
-        model,
-        apiKey: providerKey,
-        systemPrompt,
-        temperature,
-        maxTokens,
-      },
-      conversationMessages: priorMessages,
-      latestMessage: rawMessage,
-    });
 
     const createdMessages = await requestGraphql<{
       insert_ai_chat_messages: { returning: Array<Record<string, any>> };
@@ -157,9 +197,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               conversation_id
               role
               content
-              model
-              provider
-              tokens_used
+              metadata_json
               created_at
             }
           }
@@ -171,25 +209,30 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             conversation_id: conversationId,
             role: "user",
             content: rawMessage,
-            model,
-            provider,
-            tokens_used: rawMessage.split(/\s+/).filter(Boolean).length,
+            metadata_json: chatMessageMetadata(
+              model,
+              provider,
+              estimateTokens(rawMessage),
+            ),
           },
           {
             conversation_id: conversationId,
             role: "assistant",
             content: generated.content,
-            model,
-            provider,
-            tokens_used: generated.outputTokens,
+            metadata_json: chatMessageMetadata(
+              model,
+              provider,
+              generated.usage?.completionTokens ??
+                estimateTokens(generated.content),
+            ),
           },
         ],
-      }
+      },
     );
 
     const assistantMessage =
       createdMessages.insert_ai_chat_messages.returning.find(
-        (entry) => entry.role === "assistant"
+        (entry) => entry.role === "assistant",
       ) || createdMessages.insert_ai_chat_messages.returning[1];
 
     await requestGraphql(
@@ -208,18 +251,27 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       `,
       {
         id: conversationId,
-        messageCount: priorMessages.length + createdMessages.insert_ai_chat_messages.returning.length,
+        messageCount:
+          priorMessages.length +
+          createdMessages.insert_ai_chat_messages.returning.length,
         lastMessageAt: assistantMessage.created_at,
-      }
+      },
     );
 
     sendJson(res, 200, {
       conversation_id: conversationId,
-      message: assistantMessage,
+      message: enrichChatMessageForApi(assistantMessage),
       token_details: {
-        input_tokens: generated.inputTokens,
-        output_tokens: generated.outputTokens,
-        total_tokens: generated.inputTokens + generated.outputTokens,
+        input_tokens:
+          generated.usage?.promptTokens ?? estimateTokens(rawMessage),
+        output_tokens:
+          generated.usage?.completionTokens ??
+          estimateTokens(generated.content),
+        total_tokens:
+          generated.usage?.totalTokens ??
+          (generated.usage?.promptTokens ?? estimateTokens(rawMessage)) +
+            (generated.usage?.completionTokens ??
+              estimateTokens(generated.content)),
       },
     });
   } catch (error) {

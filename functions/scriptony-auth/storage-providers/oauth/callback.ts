@@ -3,19 +3,26 @@
  *
  * Receives the OAuth code from the provider, exchanges it for access/refresh tokens,
  * and redirects the user back to the frontend with tokens in the URL hash (client-only).
+ *
+ * @deprecated T24 — Ziel T20 (`scriptony-storage`): OAuth-Callback fuer Storage-Provider.
+ *          Compat-Route bis Migration. Siehe `docs/backend-domain-map.md`.
  */
 
+import { Buffer } from "node:buffer";
 import { getOptionalEnv } from "../../../_shared/env";
-import { getAppBaseUrl, isRedirectUriAllowed } from "../../../_shared/oauth-redirect";
 import {
   getQuery,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendMethodNotAllowed,
   sendRedirect,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
 } from "../../../_shared/http";
+import {
+  getAppBaseUrl,
+  isRedirectUriAllowed,
+} from "../../../_shared/oauth-redirect";
 
 interface StatePayload {
   redirect_uri: string;
@@ -33,11 +40,15 @@ function decodeState(state: string): StatePayload | null {
 
 async function exchangeGoogleDriveCode(
   code: string,
-  redirectUri: string
+  redirectUri: string,
 ): Promise<{ access_token: string; refresh_token?: string }> {
   const clientId = getOptionalEnv("scriptony_oauth_google_drive_client_id");
-  const clientSecret = getOptionalEnv("scriptony_oauth_google_drive_client_secret");
-  if (!clientId || !clientSecret) throw new Error("Google Drive OAuth not configured");
+  const clientSecret = getOptionalEnv(
+    "scriptony_oauth_google_drive_client_secret",
+  );
+  if (!clientId || !clientSecret) {
+    throw new Error("Google Drive OAuth not configured");
+  }
 
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -56,13 +67,16 @@ async function exchangeGoogleDriveCode(
     throw new Error(`Google token exchange failed: ${res.status} ${err}`);
   }
 
-  const data = (await res.json()) as { access_token: string; refresh_token?: string };
+  const data = (await res.json()) as {
+    access_token: string;
+    refresh_token?: string;
+  };
   return { access_token: data.access_token, refresh_token: data.refresh_token };
 }
 
 async function exchangeDropboxCode(
   code: string,
-  redirectUri: string
+  redirectUri: string,
 ): Promise<{ access_token: string; refresh_token?: string }> {
   const appKey = getOptionalEnv("scriptony_oauth_dropbox_app_key");
   const appSecret = getOptionalEnv("scriptony_oauth_dropbox_app_secret");
@@ -72,9 +86,14 @@ async function exchangeDropboxCode(
     method: "POST",
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
-      Authorization: "Basic " + Buffer.from(`${appKey}:${appSecret}`).toString("base64"),
+      Authorization:
+        "Basic " + Buffer.from(`${appKey}:${appSecret}`).toString("base64"),
     },
-    body: new URLSearchParams({ code, grant_type: "authorization_code", redirect_uri: redirectUri }),
+    body: new URLSearchParams({
+      code,
+      grant_type: "authorization_code",
+      redirect_uri: redirectUri,
+    }),
   });
 
   if (!res.ok) {
@@ -82,7 +101,10 @@ async function exchangeDropboxCode(
     throw new Error(`Dropbox token exchange failed: ${res.status} ${err}`);
   }
 
-  const data = (await res.json()) as { access_token: string; refresh_token?: string };
+  const data = (await res.json()) as {
+    access_token: string;
+    refresh_token?: string;
+  };
   return { access_token: data.access_token, refresh_token: data.refresh_token };
 }
 
@@ -92,11 +114,17 @@ function sendErrorRedirect(res: ResponseLike, message: string): void {
     sendServerError(res, new Error("App URL not configured"));
     return;
   }
-  const redirectUri = `${base.replace(/\/+$/, "")}/settings?storage_oauth=error&error=${encodeURIComponent(message)}`;
+  const redirectUri = `${base.replace(
+    /\/+$/,
+    "",
+  )}/settings?storage_oauth=error&error=${encodeURIComponent(message)}`;
   sendRedirect(res, 302, redirectUri);
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   if (req.method !== "GET") {
     sendMethodNotAllowed(res, ["GET"]);
     return;
@@ -145,7 +173,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         break;
       case "onedrive":
       case "kdrive":
-        sendServerError(res, new Error(`OAuth for ${statePayload.provider} not implemented yet`));
+        sendServerError(
+          res,
+          new Error(`OAuth for ${statePayload.provider} not implemented yet`),
+        );
         return;
       default:
         sendBadRequest(res, `Unknown provider: ${statePayload.provider}`);

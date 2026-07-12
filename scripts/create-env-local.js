@@ -4,7 +4,7 @@
  *
  * Usage:
  *   node scripts/create-env-local.js <VITE_APPWRITE_ENDPOINT> <VITE_APPWRITE_PROJECT_ID> [VITE_BACKEND_API_BASE_URL]
- *   npm run env:local -- https://cloud.appwrite.io/v1 YOUR_PROJECT_ID https://your-functions-host/.../v1
+ *   npm run env:local -- http://localhost:8080/v1 YOUR_PROJECT_ID https://your-functions-host/.../v1
  */
 const fs = require("fs");
 const path = require("path");
@@ -20,7 +20,7 @@ const fnBase =
 if (!endpoint?.trim() || !projectId?.trim()) {
   console.error("Appwrite endpoint und Projekt-ID fehlen.");
   console.error(
-    "  node scripts/create-env-local.js <VITE_APPWRITE_ENDPOINT> <VITE_APPWRITE_PROJECT_ID> [functions base URL]"
+    "  node scripts/create-env-local.js <VITE_APPWRITE_ENDPOINT> <VITE_APPWRITE_PROJECT_ID> [functions base URL]",
   );
   process.exit(1);
 }
@@ -39,7 +39,7 @@ lines.push(
   `VITE_APP_WEB_URL=http://localhost:3000`,
   `VITE_AUTH_REDIRECT_URL=http://localhost:3000`,
   `VITE_PASSWORD_RESET_REDIRECT_URL=http://localhost:3000/reset-password`,
-  ``
+  ``,
 );
 
 const outPath = path.join(__dirname, "..", ".env.local");

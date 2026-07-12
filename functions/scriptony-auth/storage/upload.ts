@@ -1,22 +1,36 @@
 /**
  * Generic storage upload endpoint for legacy frontend helpers.
+ *
+ * @deprecated T24 — MIGRIERT nach `scriptony-storage`.
+ *   Neue Endpunkte:
+ *     POST /storage/objects (Storage-Object-Metadaten)
+ *     OAuth-Flows: /storage/oauth/authorize, /storage/oauth/callback
+ *   Diese Route wird in einer zukünftigen Version entfernt.
+ *   Siehe `docs/backend-domain-map.md` (T24 Abschnitt).
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";
 import { getStorageBucketId } from "../../_shared/env";
 import {
-  sendJson,
-  sendMethodNotAllowed,
-  sendUnauthorized,
-  sendServerError,
   type RequestLike,
   type ResponseLike,
+  sendJson,
+  sendMethodNotAllowed,
+  sendServerError,
+  sendUnauthorized,
 } from "../../_shared/http";
-import { ensureFile, getMultipartField, uploadFileToStorage } from "../../_shared/storage";
+import {
+  ensureFile,
+  getMultipartField,
+  uploadFileToStorage,
+} from "../../_shared/storage";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;

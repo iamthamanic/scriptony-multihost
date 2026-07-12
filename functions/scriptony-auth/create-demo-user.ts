@@ -2,14 +2,31 @@
  * Demo-user bootstrap endpoint for local testing.
  *
  * This preserves the old helper used by the app's debug and seed utilities.
+ *
+ * @deprecated T17 — Nur fuer lokale Entwicklung/Seed. Nicht fuer Production.
+ *          Verbleibt als Compat-Route. Neue Demo-User-Logik muss explizit opt-in sein.
  */
 
+import {
+  createEmailPasswordUser,
+  findUserByEmail,
+  isAppwriteConflictError,
+  toAuthUser,
+} from "../_shared/appwrite-users";
+import { ensureUserBootstrap } from "../_shared/auth";
 import { getDemoUserCredentials } from "../_shared/env";
-import { ensureUserBootstrap, getUserFromToken } from "../_shared/auth";
-import { getAuthBaseUrl } from "../_shared/env";
-import { sendJson, sendMethodNotAllowed, sendServerError, type RequestLike, type ResponseLike } from "../_shared/http";
+import {
+  type RequestLike,
+  type ResponseLike,
+  sendJson,
+  sendMethodNotAllowed,
+  sendServerError,
+} from "../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   if (req.method !== "POST") {
     sendMethodNotAllowed(res, ["POST"]);
     return;
@@ -17,47 +34,34 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
   try {
     const credentials = getDemoUserCredentials();
-    const signupResponse = await fetch(`${getAuthBaseUrl()}/signup/email-password`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    let user;
+    let created = false;
+
+    try {
+      user = await createEmailPasswordUser({
         email: credentials.email,
         password: credentials.password,
-        options: {
-          displayName: credentials.displayName,
-          allowedRoles: ["user"],
-          defaultRole: "user",
-          metadata: {
-            name: credentials.displayName,
-            role: "user",
-          },
-        },
-      }),
-    });
-
-    const signupPayload = await signupResponse.json().catch(() => ({}));
-    if (!signupResponse.ok && signupResponse.status !== 409) {
-      sendJson(res, signupResponse.status, {
-        error: signupPayload.message || signupPayload.error || "Demo signup failed",
+        name: credentials.displayName,
       });
-      return;
-    }
+      created = true;
+    } catch (error) {
+      if (!isAppwriteConflictError(error)) {
+        throw error;
+      }
 
-    const accessToken = signupPayload.session?.accessToken;
-    if (accessToken) {
-      const user = await getUserFromToken(accessToken);
-      if (user) {
-        await ensureUserBootstrap(user);
+      user = await findUserByEmail(credentials.email);
+      if (!user) {
+        throw error;
       }
     }
+
+    await ensureUserBootstrap(toAuthUser(user));
 
     sendJson(res, 200, {
       success: true,
       email: credentials.email,
       password: credentials.password,
-      message: "Demo signup requested",
+      message: created ? "Demo user created" : "Demo user already exists",
     });
   } catch (error) {
     sendServerError(res, error);

@@ -7,16 +7,16 @@ import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
-import { normalizeWorldInput } from "../../_shared/scriptony";
+import { worldsUpdatePayload } from "../../_shared/scriptony";
 
 async function getWorld(worldId: string, organizationId: string) {
   const data = await requestGraphql<{
@@ -34,8 +34,6 @@ async function getWorld(worldId: string, organizationId: string) {
           id
           name
           description
-          lore
-          image_url
           cover_image_url
           linked_project_id
           organization_id
@@ -44,15 +42,18 @@ async function getWorld(worldId: string, organizationId: string) {
         }
       }
     `,
-    { worldId, organizationId }
+    { worldId, organizationId },
   );
 
   return data.worlds[0] || null;
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -77,7 +78,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
 
     if (req.method === "PUT") {
       const body = await readJsonBody<Record<string, any>>(req);
-      const changes = normalizeWorldInput(body);
+      const changes = worldsUpdatePayload(body);
 
       const updated = await requestGraphql<{
         update_worlds_by_pk: Record<string, any> | null;
@@ -88,8 +89,6 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               id
               name
               description
-              lore
-              image_url
               cover_image_url
               linked_project_id
               organization_id
@@ -98,7 +97,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { worldId, changes }
+        { worldId, changes },
       );
 
       sendJson(res, 200, { world: updated.update_worlds_by_pk });
@@ -114,7 +113,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { worldId }
+        { worldId },
       );
 
       sendJson(res, 200, { success: true });

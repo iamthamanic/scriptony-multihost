@@ -1,0 +1,37 @@
+{
+  "$id": "projects",
+  "databaseId": "scriptony",
+  "name": "projects",
+  "enabled": true,
+  "documentSecurity": false,
+  "attributes": [
+    { "key": "organization_id", "type": "string", "size": 64, "required": false, "default": null },
+    { "key": "user_id", "type": "string", "size": 64, "required": false, "default": null },
+    { "key": "title", "type": "string", "size": 1024, "required": false, "default": null },
+    { "key": "type", "type": "string", "size": 128, "required": false, "default": null },
+    { "key": "logline", "type": "string", "size": 16385, "required": false, "default": null },
+    { "key": "genre", "type": "string", "size": 16385, "required": false, "default": null },
+    { "key": "duration", "type": "string", "size": 128, "required": false, "default": null },
+    { "key": "world_id", "type": "string", "size": 64, "required": false, "default": null },
+    { "key": "cover_image_url", "type": "string", "size": 1024, "required": false, "format": "url", "default": null },
+    { "key": "is_deleted", "type": "boolean", "required": false, "default": null },
+    { "key": "narrative_structure", "type": "string", "size": 512, "required": false, "default": null },
+    { "key": "beat_template", "type": "string", "size": 512, "required": false, "default": null },
+    { "key": "episode_layout", "type": "string", "size": 512, "required": false, "default": null },
+    { "key": "season_engine", "type": "string", "size": 512, "required": false, "default": null },
+    { "key": "description", "type": "string", "size": 16385, "required": false, "default": null },
+    { "key": "status", "type": "string", "size": 128, "required": false, "default": null },
+    { "key": "slug", "type": "string", "size": 256, "required": false, "default": null },
+    { "key": "template_id", "type": "string", "size": 128, "required": false, "default": null },
+    { "key": "format", "type": "string", "size": 128, "required": false, "default": null },
+    { "key": "concept_blocks", "type": "string", "size": 50000, "required": false, "default": null },
+    { "key": "target_pages", "type": "integer", "required": false, "min": 0, "default": null },
+    { "key": "words_per_page", "type": "integer", "required": false, "min": 0, "default": null },
+    { "key": "reading_speed_wpm", "type": "integer", "required": false, "min": 0, "default": null }
+  ],
+  "indexes": [
+    { "key": "idx_organization_id", "type": "key", "attributes": ["organization_id"], "orders": ["asc"] },
+    { "key": "idx_user_id", "type": "key", "attributes": ["user_id"], "orders": ["asc"] },
+    { "key": "idx_world_id", "type": "key", "attributes": ["world_id"], "orders": ["asc"] }
+  ]
+}

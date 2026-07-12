@@ -1,0 +1,37 @@
+{
+  "mcpServers": {
+    "appwrite-local": {
+      "name": "Appwrite Local (Self-Hosted)",
+      "command": "uvx",
+      "args": [
+        "mcp-server-appwrite",
+        "--all"
+      ],
+      "env": {
+        "APPWRITE_ENDPOINT": "http://localhost:8080/v1",
+        "APPWRITE_PROJECT_ID": "default",
+        "APPWRITE_API_KEY": "${LOCAL_APPWRITE_API_KEY}"
+      }
+    },
+    "appwrite-remote": {
+      "name": "Appwrite Remote (Production)",
+      "command": "uvx",
+      "args": [
+        "mcp-server-appwrite",
+        "--all"
+      ],
+      "env": {
+        "APPWRITE_ENDPOINT": "http://72.61.84.64:8080/v1",
+        "APPWRITE_PROJECT_ID": "69c04993003de8ff42aa",
+        "APPWRITE_API_KEY": "${APPWRITE_API_KEY}"
+      }
+    },
+    "appwrite-docs": {
+      "name": "Appwrite Documentation",
+      "command": "uvx",
+      "args": [
+        "mcp-server-appwrite-docs"
+      ]
+    }
+  }
+}

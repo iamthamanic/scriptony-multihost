@@ -1,26 +1,32 @@
 /**
- * Legacy project listing endpoint used by a few admin/debug tools.
+ * @deprecated T17 LEGACY_DO_NOT_EXTEND — Nicht in build-appwrite-deploy.mjs registriert.
+ *          Nicht deployed. Keine Frontend-Aufrufer. Keine Execution-Logs.
+ *          Verbleibt als Archiv bis zur vollstaendigen T17-Entfernung.
+ *          Ersatz: scriptony-projects (project listing), Appwrite Console (migrations).
  */
 
 import { requireUserBootstrap } from "../../_shared/auth";
 import { requestGraphql } from "../../_shared/graphql-compat";
 import {
-  sendJson,
-  sendMethodNotAllowed,
-  sendUnauthorized,
-  sendServerError,
   type RequestLike,
   type ResponseLike,
+  sendJson,
+  sendMethodNotAllowed,
+  sendServerError,
+  sendUnauthorized,
 } from "../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   if (req.method !== "GET") {
     sendMethodNotAllowed(res, ["GET"]);
     return;
   }
 
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -60,7 +66,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       {
         organizationId: bootstrap.organizationId,
         userId: bootstrap.user.id,
-      }
+      },
     );
 
     sendJson(res, 200, data.projects);

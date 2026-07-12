@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+.rag/venv/
+.yarn/
+functions/**/node_modules/
+
+# Generated bundles (esbuild output)
+functions/**/index.js
+functions/**/index.d.ts
+
+# Build artefacts
+dist/
+build/
+*.min.js
+*.min.css
+
+# Config/secrets
+infra/appwrite/.env
+local-bridge/.env
+
+# Archive / legacy
+docs/archive/
+backend/auth/
+
+# Scripts that are intentionally dev-only and not deployed
+scripts/rag-full-index.py
+scripts/rag-reindex.py
+
+# Temporary / generated
+.rag/
+
+# Ignore all files in functions/scriptony-audio-story except routes/ - index.js is bundled
+tests/
+coverage/
+
+# Ignore local bridge test files
+local-bridge/__tests__/
+
+# Tools that are not part of deployed runtime
+tools/blender/addon/api.py

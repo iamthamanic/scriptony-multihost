@@ -1,24 +1,42 @@
 /**
- * Timeline node stats route for the Scriptony HTTP API.
+ * T16 — Timeline node stats (legacy Next.js API Route).
+ *
+ * Ziel: `scriptony-observability` (Appwrite Function).
+ * Status: read-only. Keine Business Writes.
+ * Aggregation: read-only. Nutzt _shared/observability.ts (multi-Collection).
+ * T18: Fachliche Aggregation wird in Ziel-Function extrahiert.
+ * Security: BROKEN — Kein Node-Zugriffscheck. Jeder authentifizierte User kann Daten
+ *          zu jedem Node abfragen, wenn er die nodeId kennt. Fix in T18-Ziel-Function.
+ *
+ * @deprecated T16 BROKEN — Wird in `scriptony-observability` konsolidiert.
+ * Neue Stats-Features duerfen hier nicht ergaenzt werden.
  */
 
-import { requireUserBootstrap } from "../../../../../_shared/auth";
-import { requestGraphql } from "../../../../../_shared/graphql-compat";
-import { toDurationSeconds } from "../../../../../_shared/observability";
+import { requireUserBootstrap } from "../../../../_shared/auth";
+import { requestGraphql } from "../../../../_shared/graphql-compat";
 import {
   getParam,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
-} from "../../../../../_shared/http";
-import { getAllProjectNodes, getNodeById, getShotById, getShots } from "../../../../../_shared/timeline";
+  sendUnauthorized,
+} from "../../../../_shared/http";
+import { toDurationSeconds } from "../../../../_shared/observability";
+import {
+  getAllProjectNodes,
+  getNodeById,
+  getShotById,
+  getShots,
+} from "../../../../_shared/timeline";
 
-function collectDescendants(nodes: Array<Record<string, any>>, rootId: string): Array<Record<string, any>> {
+function collectDescendants(
+  nodes: Array<Record<string, any>>,
+  rootId: string,
+): Array<Record<string, any>> {
   const byParent = new Map<string | null, Array<Record<string, any>>>();
   for (const node of nodes) {
     const key = node.parent_id ?? null;
@@ -36,9 +54,12 @@ function collectDescendants(nodes: Array<Record<string, any>>, rootId: string): 
   return result;
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -64,7 +85,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       }
 
       sendJson(res, 200, {
-        characters: Array.isArray(shot.shot_characters) ? shot.shot_characters.length : 0,
+        characters: Array.isArray(shot.shot_characters)
+          ? shot.shot_characters.length
+          : 0,
         duration: toDurationSeconds(shot),
         has_dialog: Boolean(shot.dialog),
         has_notes: Boolean(shot.notes),
@@ -93,9 +116,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         ? [node]
         : descendants.filter((entry) => entry.level === 3);
     const shots = descendantScenes.length
-      ? await Promise.all(descendantScenes.map((scene) => getShots({ sceneId: scene.id }))).then((rows) =>
-          rows.flat()
-        )
+      ? await Promise.all(
+          descendantScenes.map((scene) => getShots({ sceneId: scene.id })),
+        ).then((rows) => rows.flat())
       : [];
 
     const durations = shots.map(toDurationSeconds);
@@ -118,7 +141,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         scenes: descendants.filter((entry) => entry.level === 3).length,
         shots: shots.length,
         total_duration: totalDuration,
-        average_duration: shots.length ? Math.round(totalDuration / shots.length) : 0,
+        average_duration: shots.length
+          ? Math.round(totalDuration / shots.length)
+          : 0,
         created_at: node.created_at,
         updated_at: node.updated_at,
       });
@@ -136,14 +161,18 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { shotIds: shots.map((shot) => shot.id) }
+        { shotIds: shots.map((shot) => shot.id) },
       );
 
       sendJson(res, 200, {
         shots: shots.length,
         total_duration: totalDuration,
-        average_duration: shots.length ? Math.round(totalDuration / shots.length) : 0,
-        characters: new Set(characters.shot_characters.map((entry) => entry.character_id)).size,
+        average_duration: shots.length
+          ? Math.round(totalDuration / shots.length)
+          : 0,
+        characters: new Set(
+          characters.shot_characters.map((entry) => entry.character_id),
+        ).size,
         created_at: node.created_at,
         updated_at: node.updated_at,
       });

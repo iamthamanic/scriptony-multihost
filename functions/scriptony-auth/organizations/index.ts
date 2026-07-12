@@ -6,22 +6,28 @@ import { requireUserBootstrap } from "../../_shared/auth";
 import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
 
 function buildSlug(name: string): string {
-  return `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}-${Date.now()}`;
+  return `${name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")}-${Date.now()}`;
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -45,7 +51,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { userId: bootstrap.user.id }
+        { userId: bootstrap.user.id },
       );
 
       sendJson(res, 200, {
@@ -81,7 +87,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             slug: body.slug || buildSlug(body.name),
             owner_id: bootstrap.user.id,
           },
-        }
+        },
       );
 
       await requestGraphql(
@@ -98,7 +104,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             user_id: bootstrap.user.id,
             role: "owner",
           },
-        }
+        },
       );
 
       sendJson(res, 200, {

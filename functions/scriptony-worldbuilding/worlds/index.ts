@@ -6,19 +6,22 @@ import { requireUserBootstrap } from "../../_shared/auth";
 import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
-import { normalizeWorldInput } from "../../_shared/scriptony";
+import { worldsInsertPayload } from "../../_shared/scriptony";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -37,8 +40,6 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               id
               name
               description
-              lore
-              image_url
               cover_image_url
               linked_project_id
               organization_id
@@ -47,17 +48,17 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { organizationId: bootstrap.organizationId }
+        { organizationId: bootstrap.organizationId },
       );
-
       sendJson(res, 200, { worlds: data.worlds });
       return;
     }
 
     if (req.method === "POST") {
       const body = await readJsonBody<Record<string, any>>(req);
-      const worldInput = normalizeWorldInput(body);
-      if (!worldInput.name) {
+      const insertPayload = worldsInsertPayload(body, bootstrap.organizationId);
+      const name = insertPayload.name;
+      if (name == null || String(name).trim() === "") {
         sendBadRequest(res, "name is required");
         return;
       }
@@ -71,8 +72,6 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               id
               name
               description
-              lore
-              image_url
               cover_image_url
               linked_project_id
               organization_id
@@ -82,11 +81,8 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
           }
         `,
         {
-          object: {
-            ...worldInput,
-            organization_id: bootstrap.organizationId,
-          },
-        }
+          object: insertPayload,
+        },
       );
 
       sendJson(res, 201, { world: created.insert_worlds_one });

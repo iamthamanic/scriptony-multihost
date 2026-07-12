@@ -2,22 +2,27 @@
  * Timeline node path routes for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../../_shared/auth";
+import { requireUserBootstrap } from "../../../_shared/auth";
 import {
   getParam,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
+  sendNotFound,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
-} from "../../../../_shared/http";
-import { buildNodePath } from "../../../../_shared/timeline";
+  sendUnauthorized,
+} from "../../../_shared/http";
+import { buildNodePath, getNodeById } from "../../../_shared/timeline";
+import { requireProjectAccess } from "../../../_shared/scriptony";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -33,6 +38,19 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       sendBadRequest(res, "id is required");
       return;
     }
+
+    const node = await getNodeById(nodeId);
+    if (!node) {
+      sendNotFound(res, "Node not found");
+      return;
+    }
+
+    const _project = await requireProjectAccess(
+      String(node.project_id),
+      bootstrap.user.id,
+      res,
+    );
+    if (!_project) return;
 
     const path = await buildNodePath(nodeId);
     sendJson(res, 200, { path });

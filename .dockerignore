@@ -1,0 +1,14 @@
+node_modules
+build
+dist
+.env
+.env.*
+*.local
+.git
+*.md
+.blender-addon
+local-bridge/node_modules
+local-bridge/dist
+infra
+scripts
+.claude

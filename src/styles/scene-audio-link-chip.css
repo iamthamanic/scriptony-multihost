@@ -1,0 +1,83 @@
+/**
+ * Scene/shot audio link chips — uses theme vars; dark pink matches scene lane UI.
+ * Loaded from main.tsx (Tailwind bundle omits several pink bg utilities).
+ */
+
+.scene-audio-link-chip {
+  --chip-bg: var(--scene-pink-light);
+  --chip-border: var(--scene-pink);
+  --chip-fg: var(--scene-pink);
+  border: 1px solid var(--chip-border);
+  background-color: var(--chip-bg);
+  color: var(--chip-fg);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
+}
+
+:is(.dark *) .scene-audio-link-chip {
+  --chip-bg: #331a2a;
+  --chip-border: #5c2d48;
+  --chip-fg: #f472b6;
+}
+
+.shot-audio-link-chip {
+  --chip-bg: var(--color-yellow-100);
+  --chip-border: var(--color-yellow-500);
+  --chip-fg: var(--color-yellow-900);
+  border: 1px solid var(--chip-border);
+  background-color: var(--chip-bg);
+  color: var(--chip-fg);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);
+}
+
+:is(.dark *) .shot-audio-link-chip {
+  --chip-bg: #3d3418;
+  --chip-border: var(--color-yellow-600);
+  --chip-fg: var(--color-yellow-300);
+}
+
+/* Scene title pill: white label; must beat .scene-audio-link-chip dark --chip-fg. */
+.scene-audio-link-chip.scene-audio-title-pill,
+:is(.dark *) .scene-audio-link-chip.scene-audio-title-pill {
+  --chip-fg: #ffffff;
+  color: #ffffff;
+}
+
+.shot-audio-title-pill {
+  --chip-fg: #ffffff;
+}
+
+:is(.dark *) .shot-audio-link-chip.shot-audio-title-pill {
+  --chip-fg: #ffffff;
+  color: #ffffff;
+}
+
+.scene-audio-link-chip-icon-only {
+  justify-content: center;
+  gap: 0;
+  min-width: 1.125rem;
+  min-height: 1.125rem;
+  padding: 0.125rem;
+}
+
+.scene-audio-photo-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  border: 1px dashed #5c2d48;
+  border-radius: 0.25rem;
+  background-color: rgb(51 26 42 / 0.55);
+  color: rgb(255 255 255 / 0.75);
+  transition: opacity 0.15s ease;
+}
+
+.scene-audio-photo-placeholder:hover {
+  opacity: 0.9;
+}
+
+:is(.dark *) .scene-audio-photo-placeholder {
+  border-color: #5c2d48;
+  background-color: rgb(51 26 42 / 0.85);
+  color: rgb(255 255 255 / 0.85);
+}

@@ -1,24 +1,33 @@
 /**
  * Direct shot lookup route for the Scriptony HTTP API.
+ *
+ * T13 TIMELINE DOMAIN: Shot-CRUD.
  */
 
-import { requireUserBootstrap } from "../../../../_shared/auth";
+import { requireUserBootstrap } from "../../../_shared/auth";
 import {
   getParam,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
-} from "../../../../_shared/http";
-import { getShotById, mapShot } from "../../../../_shared/timeline";
+  sendUnauthorized,
+} from "../../../_shared/http";
+import {
+  getAccessibleProject,
+  getUserOrganizationIds,
+} from "../../../_shared/scriptony";
+import { getShotById, mapShot } from "../../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -38,6 +47,18 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     const shot = await getShotById(shotId);
     if (!shot) {
       sendNotFound(res, "Shot not found");
+      return;
+    }
+
+    const projectId = String(shot.project_id || "");
+    const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
+    const project = await getAccessibleProject(
+      projectId,
+      bootstrap.user.id,
+      organizationIds,
+    );
+    if (!project) {
+      sendJson(res, 403, { error: "Project not found or access denied" });
       return;
     }
 

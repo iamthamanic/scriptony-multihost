@@ -3,42 +3,142 @@
  * Collection IDs and attribute keys match the legacy SQL-style model (snake_case).
  */
 
-import { Query, ID } from "node-appwrite";
+import { ID, Query } from "node-appwrite";
 import {
   C,
+  countDocuments,
   createDocument,
-  updateDocument,
   deleteDocument,
   getDocument,
   listDocumentsFull,
-  countDocuments,
+  updateDocument,
 } from "../appwrite-db";
-import { queriesForUserProjects, hydrateShot, hydrateShots } from "./helpers";
+import { hydrateShot, hydrateShots, queriesForUserProjects } from "./helpers";
+import {
+  parseRipplePersistPatches,
+  persistRippleTransactional,
+} from "../ripple-persist";
 
 type V = Record<string, unknown>;
 type Op = (v: V) => Promise<unknown>;
 
-async function upsertUser(object: Record<string, unknown>): Promise<{ insert_users_one: { id: string } }> {
+function readListLimit(envValue: string | undefined, fallback: number): number {
+  const parsed = Number(envValue ?? fallback);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  return Math.max(1, Math.min(Math.trunc(parsed), 5000));
+}
+
+const PROJECTS_LIST_LIMIT = readListLimit(
+  process.env.SCRIPTONY_PROJECTS_LIST_LIMIT,
+  5000,
+);
+const WORLDS_LIST_LIMIT = readListLimit(
+  process.env.SCRIPTONY_WORLDS_LIST_LIMIT,
+  5000,
+);
+
+/**
+ * Writable attributes on `ai_chat_settings` — must match provision-appwrite-schema.mjs.
+ * Stops stray keys / null payloads from reaching Appwrite ("Unknown attribute" / invalid structure).
+ */
+const AI_CHAT_SETTINGS_WRITABLE = new Set([
+  "user_id",
+  "provider",
+  "model",
+  "settings_json",
+  "temperature",
+  "system_prompt_default",
+  "openai_api_key",
+  "anthropic_api_key",
+  "google_api_key",
+  "openrouter_api_key",
+  "deepseek_api_key",
+  "ollama_base_url",
+  "ollama_api_key",
+  "ollama_image_api_key",
+  "active_provider",
+  "active_model",
+  "system_prompt",
+  "max_tokens",
+  "use_rag",
+]);
+
+const AI_CHAT_API_KEY_FIELDS = new Set([
+  "openai_api_key",
+  "anthropic_api_key",
+  "google_api_key",
+  "openrouter_api_key",
+  "deepseek_api_key",
+  "ollama_api_key",
+  "ollama_image_api_key",
+]);
+
+function sanitizeAiChatSettingsInsert(
+  data: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (!AI_CHAT_SETTINGS_WRITABLE.has(k)) continue;
+    if (v === null || v === undefined) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
+function sanitizeAiChatSettingsUpdate(
+  data: Record<string, unknown>,
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(data)) {
+    if (!AI_CHAT_SETTINGS_WRITABLE.has(k)) continue;
+    if (v === undefined) continue;
+    if (v === null && AI_CHAT_API_KEY_FIELDS.has(k)) {
+      out[k] = "";
+      continue;
+    }
+    if (v === null) continue;
+    out[k] = v;
+  }
+  return out;
+}
+
+async function upsertUser(
+  object: Record<string, unknown>,
+): Promise<{ insert_users_one: { id: string } }> {
   const id = object.id as string;
   const { id: _drop, ...rest } = object;
   const ex = await getDocument(C.users, id);
   if (ex) {
     await updateDocument(C.users, id, rest);
   } else {
-    await createDocument(C.users, id, object);
+    await createDocument(C.users, id, rest);
   }
   return { insert_users_one: { id } };
 }
 
-async function listShotAudioForOrg(organizationId: string): Promise<
+async function listShotAudioForOrg(
+  organizationId: string,
+): Promise<
   Array<{ file_name: string; file_size: number | null; created_at: string }>
 > {
-  const projects = await listDocumentsFull(C.projects, [Query.equal("organization_id", organizationId)]);
-  const out: Array<{ file_name: string; file_size: number | null; created_at: string }> = [];
+  const projects = await listDocumentsFull(C.projects, [
+    Query.equal("organization_id", organizationId),
+  ]);
+  const out: Array<{
+    file_name: string;
+    file_size: number | null;
+    created_at: string;
+  }> = [];
   for (const p of projects) {
-    const shots = await listDocumentsFull(C.shots, [Query.equal("project_id", p.id as string)]);
+    const shots = await listDocumentsFull(C.shots, [
+      Query.equal("project_id", p.id as string),
+    ]);
     for (const s of shots) {
-      const aud = await listDocumentsFull(C.shot_audio, [Query.equal("shot_id", s.id as string)]);
+      const aud = await listDocumentsFull(C.shot_audio, [
+        Query.equal("shot_id", s.id as string),
+      ]);
       for (const a of aud) {
         out.push({
           file_name: a.file_name as string,
@@ -51,28 +151,61 @@ async function listShotAudioForOrg(organizationId: string): Promise<
   return out;
 }
 
+/** `ai_chat_messages` schema only has `metadata_json` for model/provider/tokens; expand for GraphQL-shaped clients. */
+function enrichAiChatMessageRow(
+  row: Record<string, unknown>,
+): Record<string, unknown> {
+  let meta: Record<string, unknown> = {};
+  try {
+    const mj = row.metadata_json;
+    if (typeof mj === "string" && mj.trim()) {
+      meta = JSON.parse(mj) as Record<string, unknown>;
+    } else if (mj && typeof mj === "object" && !Array.isArray(mj)) {
+      meta = mj as Record<string, unknown>;
+    }
+  } catch {
+    /* ignore */
+  }
+  return {
+    ...row,
+    model: meta.model ?? row.model,
+    provider: meta.provider ?? row.provider,
+    tokens_used: meta.tokens_used ?? row.tokens_used,
+    tool_calls: meta.tool_calls ?? row.tool_calls,
+  };
+}
+
 export const allHandlers: Record<string, Op> = {
   GetProjects: async (v) => ({
     projects: await listDocumentsFull(
       C.projects,
-      queriesForUserProjects(v.organizationId as string, v.userId as string)
+      queriesForUserProjects(v.organizationId as string, v.userId as string),
+      PROJECTS_LIST_LIMIT,
     ),
   }),
 
   CreateProject: async (v) => ({
-    insert_projects_one: await createDocument(C.projects, ID.unique(), v.object as Record<string, unknown>),
+    insert_projects_one: await createDocument(
+      C.projects,
+      ID.unique(),
+      v.object as Record<string, unknown>,
+    ),
   }),
 
   UpdateProject: async (v) => ({
     update_projects_by_pk: await updateDocument(
       C.projects,
       v.projectId as string,
-      v.changes as Record<string, unknown>
+      v.changes as Record<string, unknown>,
     ),
   }),
 
   SoftDeleteProject: async (v) => ({
-    update_projects_by_pk: await updateDocument(C.projects, v.projectId as string, { is_deleted: true }),
+    update_projects_by_pk: await updateDocument(
+      C.projects,
+      v.projectId as string,
+      { is_deleted: true },
+    ),
   }),
 
   UpdateProjectCoverImage: async (v) => ({
@@ -84,12 +217,15 @@ export const allHandlers: Record<string, Op> = {
   LegacyProjectsList: async (v) => ({
     projects: await listDocumentsFull(
       C.projects,
-      queriesForUserProjects(v.organizationId as string, v.userId as string)
+      queriesForUserProjects(v.organizationId as string, v.userId as string),
+      PROJECTS_LIST_LIMIT,
     ),
   }),
 
   ProjectsHealthcheck: async () => ({
-    projects_aggregate: { aggregate: { count: await countDocuments(C.projects) } },
+    projects_aggregate: {
+      aggregate: { count: await countDocuments(C.projects) },
+    },
   }),
 
   GetUserOrganizations: async (v) => ({
@@ -116,10 +252,10 @@ export const allHandlers: Record<string, Op> = {
   },
 
   GetUserByIntegrationToken: async (v) => ({
-    user_integration_tokens: await listDocumentsFull(C.user_integration_tokens, [
-      Query.equal("token_hash", v.tokenHash as string),
-      Query.limit(1),
-    ]),
+    user_integration_tokens: await listDocumentsFull(
+      C.user_integration_tokens,
+      [Query.equal("token_hash", v.tokenHash as string), Query.limit(1)],
+    ),
   }),
 
   GetUserProfile: async (v) => ({
@@ -138,7 +274,7 @@ export const allHandlers: Record<string, Op> = {
     insert_organizations_one: await createDocument(
       C.organizations,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
@@ -146,7 +282,7 @@ export const allHandlers: Record<string, Op> = {
     insert_organization_members_one: await createDocument(
       C.organization_members,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
@@ -154,7 +290,7 @@ export const allHandlers: Record<string, Op> = {
     insert_organization_members_one: await createDocument(
       C.organization_members,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
@@ -166,7 +302,10 @@ export const allHandlers: Record<string, Op> = {
     ]);
     const organization_members = [];
     for (const m of memberships) {
-      const org = await getDocument(C.organizations, m.organization_id as string);
+      const org = await getDocument(
+        C.organizations,
+        m.organization_id as string,
+      );
       organization_members.push({
         role: m.role,
         organizations: org,
@@ -188,7 +327,7 @@ export const allHandlers: Record<string, Op> = {
     update_organizations_by_pk: await updateDocument(
       C.organizations,
       v.orgId as string,
-      v.changes as Record<string, unknown>
+      v.changes as Record<string, unknown>,
     ),
   }),
 
@@ -202,26 +341,36 @@ export const allHandlers: Record<string, Op> = {
   }),
 
   UpdateProfile: async (v) => ({
-    update_users_by_pk: await updateDocument(C.users, v.userId as string, v.changes as Record<string, unknown>),
+    update_users_by_pk: await updateDocument(
+      C.users,
+      v.userId as string,
+      v.changes as Record<string, unknown>,
+    ),
   }),
 
   ListIntegrationTokens: async (v) => ({
-    user_integration_tokens: await listDocumentsFull(C.user_integration_tokens, [
-      Query.equal("user_id", v.userId as string),
-      Query.orderDesc("$createdAt"),
-    ]),
+    user_integration_tokens: await listDocumentsFull(
+      C.user_integration_tokens,
+      [
+        Query.equal("user_id", v.userId as string),
+        Query.orderDesc("$createdAt"),
+      ],
+    ),
   }),
 
   CreateIntegrationToken: async (v) => ({
     insert_user_integration_tokens_one: await createDocument(
       C.user_integration_tokens,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
   GetIntegrationToken: async (v) => ({
-    user_integration_tokens_by_pk: await getDocument(C.user_integration_tokens, v.id as string),
+    user_integration_tokens_by_pk: await getDocument(
+      C.user_integration_tokens,
+      v.id as string,
+    ),
   }),
 
   DeleteIntegrationToken: async (v) => {
@@ -230,30 +379,55 @@ export const allHandlers: Record<string, Op> = {
   },
 
   AuthHealthcheck: async () => ({
-    organizations_aggregate: { aggregate: { count: await countDocuments(C.organizations) } },
+    organizations_aggregate: {
+      aggregate: { count: await countDocuments(C.organizations) },
+    },
   }),
 
-  GetWorlds: async (v) => ({
-    worlds: await listDocumentsFull(C.worlds, [
-      Query.equal("organization_id", v.organizationId as string),
-      Query.orderDesc("created_at"),
-    ]),
-  }),
+  GetWorlds: async (v) => {
+    const worlds = await listDocumentsFull(
+      C.worlds,
+      [
+        Query.equal("organization_id", v.organizationId as string),
+        Query.orderDesc("$createdAt"),
+      ],
+      WORLDS_LIST_LIMIT,
+    );
+    return { worlds };
+  },
 
   CreateWorld: async (v) => ({
-    insert_worlds_one: await createDocument(C.worlds, ID.unique(), v.object as Record<string, unknown>),
+    insert_worlds_one: await createDocument(
+      C.worlds,
+      ID.unique(),
+      v.object as Record<string, unknown>,
+    ),
   }),
 
   GetWorld: async (v) => ({
     worlds: await listDocumentsFull(C.worlds, [
-      Query.equal("id", v.worldId as string),
+      // Document id is Appwrite `$id`; collection may also define attribute `id` (often null) — do not query on `id`.
+      Query.equal("$id", v.worldId as string),
+      Query.equal("organization_id", v.organizationId as string),
+      Query.limit(1),
+    ]),
+  }),
+
+  /** Alias for RAG context loader query name. */
+  RagWorld: async (v) => ({
+    worlds: await listDocumentsFull(C.worlds, [
+      Query.equal("$id", v.worldId as string),
       Query.equal("organization_id", v.organizationId as string),
       Query.limit(1),
     ]),
   }),
 
   UpdateWorld: async (v) => ({
-    update_worlds_by_pk: await updateDocument(C.worlds, v.worldId as string, v.changes as Record<string, unknown>),
+    update_worlds_by_pk: await updateDocument(
+      C.worlds,
+      v.worldId as string,
+      v.changes as Record<string, unknown>,
+    ),
   }),
 
   DeleteWorld: async (v) => {
@@ -282,22 +456,26 @@ export const allHandlers: Record<string, Op> = {
     insert_world_categories_one: await createDocument(
       C.world_categories,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
   GetWorldItems: async (v) => ({
-    world_items: await listDocumentsFull(C.world_items, [Query.equal("world_id", v.worldId as string)]),
+    world_items: await listDocumentsFull(C.world_items, [
+      Query.equal("world_id", v.worldId as string),
+    ]),
   }),
 
   GetWorldbuildingCharacters: async (v) => {
-    const q: string[] = [Query.equal("organization_id", v.organizationId as string)];
+    const q: string[] = [
+      Query.equal("organization_id", v.organizationId as string),
+    ];
     if (v.worldId) {
       q.push(Query.equal("world_id", v.worldId as string));
     } else {
       q.push(Query.isNull("world_id"));
     }
-    q.push(Query.orderDesc("created_at"));
+    q.push(Query.orderDesc("$createdAt"));
     return { characters: await listDocumentsFull(C.characters, q) };
   },
 
@@ -310,7 +488,10 @@ export const allHandlers: Record<string, Op> = {
   }),
 
   GetTimelineNode: async (v) => ({
-    timeline_nodes_by_pk: await getDocument(C.timeline_nodes, v.nodeId as string),
+    timeline_nodes_by_pk: await getDocument(
+      C.timeline_nodes,
+      v.nodeId as string,
+    ),
   }),
 
   GetTimelineChildren: async (v) => ({
@@ -330,7 +511,7 @@ export const allHandlers: Record<string, Op> = {
   GetCharactersByProject: async (v) => ({
     characters: await listDocumentsFull(C.characters, [
       Query.equal("project_id", v.projectId as string),
-      Query.orderDesc("created_at"),
+      Query.orderDesc("$createdAt"),
     ]),
   }),
 
@@ -343,7 +524,7 @@ export const allHandlers: Record<string, Op> = {
       await listDocumentsFull(C.shots, [
         Query.equal("project_id", v.projectId as string),
         Query.orderAsc("order_index"),
-      ])
+      ]),
     ),
   }),
 
@@ -352,7 +533,7 @@ export const allHandlers: Record<string, Op> = {
       await listDocumentsFull(C.shots, [
         Query.equal("scene_id", v.sceneId as string),
         Query.orderAsc("order_index"),
-      ])
+      ]),
     ),
   }),
 
@@ -368,11 +549,19 @@ export const allHandlers: Record<string, Op> = {
     ]),
   }),
 
+  /** Alias for RAG context loader query name. */
+  RagStoryBeats: async (v) => ({
+    story_beats: await listDocumentsFull(C.story_beats, [
+      Query.equal("project_id", v.projectId as string),
+      Query.orderAsc("order_index"),
+    ]),
+  }),
+
   CreateBeat: async (v) => ({
     insert_story_beats_one: await createDocument(
       C.story_beats,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
@@ -384,7 +573,7 @@ export const allHandlers: Record<string, Op> = {
     update_story_beats_by_pk: await updateDocument(
       C.story_beats,
       v.beatId as string,
-      v.changes as Record<string, unknown>
+      v.changes as Record<string, unknown>,
     ),
   }),
 
@@ -394,14 +583,16 @@ export const allHandlers: Record<string, Op> = {
   },
 
   BeatsHealthcheck: async () => ({
-    story_beats_aggregate: { aggregate: { count: await countDocuments(C.story_beats) } },
+    story_beats_aggregate: {
+      aggregate: { count: await countDocuments(C.story_beats) },
+    },
   }),
 
   CreateTimelineNode: async (v) => ({
     insert_timeline_nodes_one: await createDocument(
       C.timeline_nodes,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
@@ -409,7 +600,7 @@ export const allHandlers: Record<string, Op> = {
     update_timeline_nodes_by_pk: await updateDocument(
       C.timeline_nodes,
       v.id as string,
-      v.changes as Record<string, unknown>
+      v.changes as Record<string, unknown>,
     ),
   }),
 
@@ -419,10 +610,29 @@ export const allHandlers: Record<string, Op> = {
   },
 
   ReorderTimelineNode: async (v) => ({
-    update_timeline_nodes_by_pk: await updateDocument(C.timeline_nodes, v.id as string, {
-      order_index: v.orderIndex,
-    }),
+    update_timeline_nodes_by_pk: await updateDocument(
+      C.timeline_nodes,
+      v.id as string,
+      {
+        order_index: v.orderIndex,
+      },
+    ),
   }),
+
+  PersistRipple: async (v) => {
+    const projectId = String(v.projectId ?? "").trim();
+    if (!projectId) {
+      throw new Error("PersistRipple requires projectId");
+    }
+    const { clip_patches, timeline_node_patches } =
+      parseRipplePersistPatches(v);
+    const result = await persistRippleTransactional(
+      projectId,
+      clip_patches,
+      timeline_node_patches,
+    );
+    return { persistRipple: result };
+  },
 
   BulkCreateTimelineNodes: async (v) => {
     const objects = v.objects as Record<string, unknown>[];
@@ -443,11 +653,19 @@ export const allHandlers: Record<string, Op> = {
   },
 
   CreateShot: async (v) => ({
-    insert_shots_one: await createDocument(C.shots, ID.unique(), v.object as Record<string, unknown>),
+    insert_shots_one: await createDocument(
+      C.shots,
+      ID.unique(),
+      v.object as Record<string, unknown>,
+    ),
   }),
 
   UpdateShot: async (v) => ({
-    update_shots_by_pk: await updateDocument(C.shots, v.id as string, v.changes as Record<string, unknown>),
+    update_shots_by_pk: await updateDocument(
+      C.shots,
+      v.id as string,
+      v.changes as Record<string, unknown>,
+    ),
   }),
 
   DeleteShot: async (v) => {
@@ -470,10 +688,14 @@ export const allHandlers: Record<string, Op> = {
   }),
 
   AddShotCharacter: async (v) => ({
-    insert_shot_characters_one: await createDocument(C.shot_characters, ID.unique(), {
-      shot_id: v.shotId,
-      character_id: v.characterId,
-    }),
+    insert_shot_characters_one: await createDocument(
+      C.shot_characters,
+      ID.unique(),
+      {
+        shot_id: v.shotId,
+        character_id: v.characterId,
+      },
+    ),
   }),
 
   RemoveShotCharacter: async (v) => {
@@ -489,14 +711,18 @@ export const allHandlers: Record<string, Op> = {
   },
 
   CreateCharacter: async (v) => ({
-    insert_characters_one: await createDocument(C.characters, ID.unique(), v.object as Record<string, unknown>),
+    insert_characters_one: await createDocument(
+      C.characters,
+      ID.unique(),
+      v.object as Record<string, unknown>,
+    ),
   }),
 
   UpdateCharacter: async (v) => ({
     update_characters_by_pk: await updateDocument(
       C.characters,
       v.id as string,
-      v.changes as Record<string, unknown>
+      v.changes as Record<string, unknown>,
     ),
   }),
 
@@ -509,12 +735,14 @@ export const allHandlers: Record<string, Op> = {
     insert_shot_audio_one: await createDocument(
       C.shot_audio,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
   GetShotAudio: async (v) => ({
-    shot_audio: await listDocumentsFull(C.shot_audio, [Query.equal("shot_id", v.shotId as string)]),
+    shot_audio: await listDocumentsFull(C.shot_audio, [
+      Query.equal("shot_id", v.shotId as string),
+    ]),
   }),
 
   GetShotAudioFile: async (v) => ({
@@ -525,7 +753,7 @@ export const allHandlers: Record<string, Op> = {
     update_shot_audio_by_pk: await updateDocument(
       C.shot_audio,
       v.id as string,
-      v.changes as Record<string, unknown>
+      v.changes as Record<string, unknown>,
     ),
   }),
 
@@ -539,7 +767,10 @@ export const allHandlers: Record<string, Op> = {
     const rows: Record<string, unknown>[] = [];
     for (const sid of shotIds) {
       rows.push(
-        ...(await listDocumentsFull(C.shot_audio, [Query.equal("shot_id", sid), Query.orderAsc("$createdAt")]))
+        ...(await listDocumentsFull(C.shot_audio, [
+          Query.equal("shot_id", sid),
+          Query.orderAsc("$createdAt"),
+        ])),
       );
     }
     return { shot_audio: rows };
@@ -552,11 +783,36 @@ export const allHandlers: Record<string, Op> = {
     ]),
   }),
 
+  /** Alias used by scriptony-image cover generation settings lookup. */
+  GetImageSettings: async (v) => ({
+    ai_chat_settings: await listDocumentsFull(C.ai_chat_settings, [
+      Query.equal("user_id", v.userId as string),
+      Query.limit(1),
+    ]),
+  }),
+
+  /** Alias used by scriptony-image image-settings route. */
+  CreateImageSettings: async (v) => ({
+    insert_ai_chat_settings_one: await createDocument(
+      C.ai_chat_settings,
+      ID.unique(),
+      sanitizeAiChatSettingsInsert(v.object as Record<string, unknown>),
+    ),
+  }),
+
+  /** Used by `scriptony-assistant/ai/models.ts` to load keys/settings for dynamic model listing. */
+  GetAiModelsContext: async (v) => ({
+    ai_chat_settings: await listDocumentsFull(C.ai_chat_settings, [
+      Query.equal("user_id", v.userId as string),
+      Query.limit(1),
+    ]),
+  }),
+
   CreateAiSettings: async (v) => ({
     insert_ai_chat_settings_one: await createDocument(
       C.ai_chat_settings,
       ID.unique(),
-      v.object as Record<string, unknown>
+      sanitizeAiChatSettingsInsert(v.object as Record<string, unknown>),
     ),
   }),
 
@@ -564,7 +820,16 @@ export const allHandlers: Record<string, Op> = {
     update_ai_chat_settings_by_pk: await updateDocument(
       C.ai_chat_settings,
       v.id as string,
-      v.changes as Record<string, unknown>
+      sanitizeAiChatSettingsUpdate(v.changes as Record<string, unknown>),
+    ),
+  }),
+
+  /** Alias used by scriptony-image image-settings route. */
+  UpdateImageSettings: async (v) => ({
+    update_ai_chat_settings_by_pk: await updateDocument(
+      C.ai_chat_settings,
+      v.id as string,
+      sanitizeAiChatSettingsUpdate(v.changes as Record<string, unknown>),
     ),
   }),
 
@@ -586,21 +851,26 @@ export const allHandlers: Record<string, Op> = {
     insert_ai_conversations_one: await createDocument(
       C.ai_conversations,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
-  GetConversationMessages: async (v) => ({
-    ai_chat_messages: await listDocumentsFull(C.ai_chat_messages, [
+  GetConversationMessages: async (v) => {
+    const rows = await listDocumentsFull(C.ai_chat_messages, [
       Query.equal("conversation_id", v.conversationId as string),
-      Query.orderAsc("created_at"),
-    ]),
-  }),
+      Query.orderAsc("$createdAt"),
+    ]);
+    return { ai_chat_messages: rows.map((r) => enrichAiChatMessageRow(r)) };
+  },
 
   UpdateConversationPrompt: async (v) => ({
-    update_ai_conversations_by_pk: await updateDocument(C.ai_conversations, v.id as string, {
-      system_prompt: v.systemPrompt,
-    }),
+    update_ai_conversations_by_pk: await updateDocument(
+      C.ai_conversations,
+      v.id as string,
+      {
+        system_prompt: v.systemPrompt,
+      },
+    ),
   }),
 
   GetChatSettings: async (v) => ({
@@ -614,31 +884,49 @@ export const allHandlers: Record<string, Op> = {
     insert_ai_conversations_one: await createDocument(
       C.ai_conversations,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
   CreateChatMessages: async (v) => {
     const objects = v.objects as Record<string, unknown>[];
-    const returning = [];
+    const returning: Record<string, unknown>[] = [];
     for (const o of objects) {
-      returning.push(await createDocument(C.ai_chat_messages, ID.unique(), o));
+      const payload: Record<string, unknown> = {
+        conversation_id: o.conversation_id,
+        role: o.role,
+        content: o.content,
+      };
+      if (typeof o.metadata_json === "string") {
+        payload.metadata_json = o.metadata_json;
+      }
+      returning.push(
+        await createDocument(C.ai_chat_messages, ID.unique(), payload),
+      );
     }
-    return { insert_ai_chat_messages: { returning } };
+    return {
+      insert_ai_chat_messages: {
+        returning: returning.map((r) => enrichAiChatMessageRow(r)),
+      },
+    };
   },
 
   TouchConversation: async (v) => ({
-    update_ai_conversations_by_pk: await updateDocument(C.ai_conversations, v.id as string, {
-      message_count: v.messageCount,
-      last_message_at: v.lastMessageAt,
-    }),
+    update_ai_conversations_by_pk: await updateDocument(
+      C.ai_conversations,
+      v.id as string,
+      {
+        message_count: v.messageCount,
+        last_message_at: v.lastMessageAt,
+      },
+    ),
   }),
 
   QueueRagSync: async (v) => ({
     insert_rag_sync_queue_one: await createDocument(
       C.rag_sync_queue,
       ID.unique(),
-      v.object as Record<string, unknown>
+      v.object as Record<string, unknown>,
     ),
   }),
 
@@ -646,7 +934,7 @@ export const allHandlers: Record<string, Op> = {
     activity_logs: await listDocumentsFull(C.activity_logs, [
       Query.equal("entity_type", v.entityType as string),
       Query.equal("entity_id", v.entityId as string),
-      Query.orderDesc("created_at"),
+      Query.orderDesc("$createdAt"),
       Query.limit(v.limit as number),
     ]),
   }),
@@ -654,7 +942,7 @@ export const allHandlers: Record<string, Op> = {
   GetProjectLogs: async (v) => ({
     activity_logs: await listDocumentsFull(C.activity_logs, [
       Query.equal("project_id", v.projectId as string),
-      Query.orderDesc("created_at"),
+      Query.orderDesc("$createdAt"),
       Query.limit(v.limit as number),
     ]),
   }),
@@ -665,17 +953,30 @@ export const allHandlers: Record<string, Op> = {
     const timeline_nodes = await listDocumentsFull(C.timeline_nodes, [
       Query.equal("project_id", projectId),
     ]);
-    const shots = await listDocumentsFull(C.shots, [Query.equal("project_id", projectId)]);
-    const characters = await listDocumentsFull(C.characters, [Query.equal("project_id", projectId)]);
-    const worlds = await listDocumentsFull(C.worlds, [Query.equal("linked_project_id", projectId)]);
+    const shots = await listDocumentsFull(C.shots, [
+      Query.equal("project_id", projectId),
+    ]);
+    const characters = await listDocumentsFull(C.characters, [
+      Query.equal("project_id", projectId),
+    ]);
+    const worlds = await listDocumentsFull(C.worlds, [
+      Query.equal("linked_project_id", projectId),
+    ]);
     return { projects_by_pk, timeline_nodes, shots, characters, worlds };
   },
 
   GetShotCharacterCounts: async (v) => {
-    const shots = await listDocumentsFull(C.shots, [Query.equal("project_id", v.projectId as string)]);
-    const links: Array<{ character_id: string; character: { name: string } | null }> = [];
+    const shots = await listDocumentsFull(C.shots, [
+      Query.equal("project_id", v.projectId as string),
+    ]);
+    const links: Array<{
+      character_id: string;
+      character: { name: string } | null;
+    }> = [];
     for (const s of shots) {
-      const sc = await listDocumentsFull(C.shot_characters, [Query.equal("shot_id", s.id as string)]);
+      const sc = await listDocumentsFull(C.shot_characters, [
+        Query.equal("shot_id", s.id as string),
+      ]);
       for (const l of sc) {
         const ch = await getDocument(C.characters, l.character_id as string);
         links.push({
@@ -699,10 +1000,17 @@ export const allHandlers: Record<string, Op> = {
     const id = v.id as string;
     const node = await getDocument(C.timeline_nodes, id);
     if (!node) {
-      return { timeline_nodes_by_pk: null, timeline_nodes: [], shots: [], shot_characters: [] };
+      return {
+        timeline_nodes_by_pk: null,
+        timeline_nodes: [],
+        shots: [],
+        shot_characters: [],
+      };
     }
     const projectId = node.project_id as string;
-    const allNodes = await listDocumentsFull(C.timeline_nodes, [Query.equal("project_id", projectId)]);
+    const allNodes = await listDocumentsFull(C.timeline_nodes, [
+      Query.equal("project_id", projectId),
+    ]);
     const byParent = new Map<string | null, Array<Record<string, any>>>();
     for (const n of allNodes) {
       const key = (n.parent_id as string | null) ?? null;
@@ -721,12 +1029,18 @@ export const allHandlers: Record<string, Op> = {
     for (const d of desc) {
       if ((d.level as number) === 3) sceneIds.add(d.id as string);
     }
-    const allShots = await listDocumentsFull(C.shots, [Query.equal("project_id", projectId)]);
-    const relevantShots = allShots.filter((s) => sceneIds.has(s.scene_id as string));
+    const allShots = await listDocumentsFull(C.shots, [
+      Query.equal("project_id", projectId),
+    ]);
+    const relevantShots = allShots.filter((s) =>
+      sceneIds.has(s.scene_id as string),
+    );
     const shot_characters: Record<string, unknown>[] = [];
     for (const s of relevantShots) {
       shot_characters.push(
-        ...(await listDocumentsFull(C.shot_characters, [Query.equal("shot_id", s.id as string)]))
+        ...(await listDocumentsFull(C.shot_characters, [
+          Query.equal("shot_id", s.id as string),
+        ])),
       );
     }
     return {
@@ -741,24 +1055,33 @@ export const allHandlers: Record<string, Op> = {
     const shotIds = v.shotIds as string[];
     const rows: Array<{ character_id: string }> = [];
     for (const sid of shotIds) {
-      const sc = await listDocumentsFull(C.shot_characters, [Query.equal("shot_id", sid)]);
+      const sc = await listDocumentsFull(C.shot_characters, [
+        Query.equal("shot_id", sid),
+      ]);
       for (const l of sc) rows.push({ character_id: l.character_id as string });
     }
     return { shot_characters: rows };
   },
 
   GetProjectAudioCount: async (v) => {
-    const shots = await listDocumentsFull(C.shots, [Query.equal("project_id", v.projectId as string)]);
+    const shots = await listDocumentsFull(C.shots, [
+      Query.equal("project_id", v.projectId as string),
+    ]);
     let n = 0;
     for (const s of shots) {
-      const aud = await listDocumentsFull(C.shot_audio, [Query.equal("shot_id", s.id as string)]);
+      const aud = await listDocumentsFull(C.shot_audio, [
+        Query.equal("shot_id", s.id as string),
+      ]);
       n += aud.length;
     }
     return { shot_audio_aggregate: { aggregate: { count: n } } };
   },
 
   GetSuperadminUsers: async () => ({
-    users: await listDocumentsFull(C.users, [Query.orderDesc("created_at"), Query.limit(500)]),
+    users: await listDocumentsFull(C.users, [
+      Query.orderDesc("$createdAt"),
+      Query.limit(500),
+    ]),
   }),
 
   GetSuperadminStats: async () => {
@@ -766,7 +1089,10 @@ export const allHandlers: Record<string, Op> = {
       countDocuments(C.users),
       countDocuments(C.organizations),
       countDocuments(C.projects, [
-        Query.or([Query.equal("is_deleted", false), Query.isNull("is_deleted")]),
+        Query.or([
+          Query.equal("is_deleted", false),
+          Query.isNull("is_deleted"),
+        ]),
       ]),
       countDocuments(C.worlds),
     ]);
@@ -780,10 +1106,13 @@ export const allHandlers: Record<string, Op> = {
 
   GetSuperadminOrganizations: async () => {
     const organizations = await listDocumentsFull(C.organizations, [
-      Query.orderDesc("created_at"),
+      Query.orderDesc("$createdAt"),
       Query.limit(500),
     ]);
-    const organization_members = await listDocumentsFull(C.organization_members, [Query.limit(5000)]);
+    const organization_members = await listDocumentsFull(
+      C.organization_members,
+      [Query.limit(5000)],
+    );
     const projects = await listDocumentsFull(C.projects, [
       Query.or([Query.equal("is_deleted", false), Query.isNull("is_deleted")]),
       Query.limit(5000),
@@ -791,7 +1120,9 @@ export const allHandlers: Record<string, Op> = {
     const worlds = await listDocumentsFull(C.worlds, [Query.limit(5000)]);
     return {
       organizations,
-      organization_members: organization_members.map((m) => ({ organization_id: m.organization_id })),
+      organization_members: organization_members.map((m) => ({
+        organization_id: m.organization_id,
+      })),
       projects: projects.map((p) => ({ organization_id: p.organization_id })),
       worlds: worlds.map((w) => ({ organization_id: w.organization_id })),
     };
@@ -800,10 +1131,13 @@ export const allHandlers: Record<string, Op> = {
   GetSuperadminAnalytics: async () => {
     const totalEvents = await countDocuments(C.activity_logs);
     const activity_logs = await listDocumentsFull(C.activity_logs, [
-      Query.orderDesc("created_at"),
+      Query.orderDesc("$createdAt"),
       Query.limit(500),
     ]);
-    const organization_members = await listDocumentsFull(C.organization_members, [Query.limit(2000)]);
+    const organization_members = await listDocumentsFull(
+      C.organization_members,
+      [Query.limit(2000)],
+    );
     return {
       activity_logs_aggregate: { aggregate: { count: totalEvents } },
       activity_logs,
@@ -814,19 +1148,208 @@ export const allHandlers: Record<string, Op> = {
   GetStorageUsage: async (v) => {
     const organizationId = v.organizationId as string;
     const shot_audio = await listShotAudioForOrg(organizationId);
-    const projects = await listDocumentsFull(C.projects, [Query.equal("organization_id", organizationId)]);
-    const worlds = await listDocumentsFull(C.worlds, [Query.equal("organization_id", organizationId)]);
+    const projects = await listDocumentsFull(C.projects, [
+      Query.equal("organization_id", organizationId),
+    ]);
+    const worlds = await listDocumentsFull(C.worlds, [
+      Query.equal("organization_id", organizationId),
+    ]);
     const allShots: Record<string, unknown>[] = [];
     for (const p of projects) {
       allShots.push(
-        ...(await listDocumentsFull(C.shots, [Query.equal("project_id", p.id as string)]))
+        ...(await listDocumentsFull(C.shots, [
+          Query.equal("project_id", p.id as string),
+        ])),
       );
     }
     return {
       shot_audio,
       projects: projects.map((p) => ({ cover_image_url: p.cover_image_url })),
       worlds: worlds.map((w) => ({ cover_image_url: w.cover_image_url })),
-      shots: allShots.map((s) => ({ image_url: s.image_url, storyboard_url: s.storyboard_url })),
+      shots: allShots.map((s) => ({
+        image_url: s.image_url,
+        storyboard_url: s.storyboard_url,
+      })),
     };
   },
+
+  // Project Inspirations
+  GetProjectInspirations: async (v) => ({
+    project_inspirations: await listDocumentsFull(C.project_inspirations, [
+      Query.equal("project_id", v.projectId as string),
+      Query.orderAsc("order_index"),
+    ]),
+  }),
+
+  DeleteProjectInspirations: async (v) => {
+    const rows = await listDocumentsFull(C.project_inspirations, [
+      Query.equal("project_id", v.projectId as string),
+    ]);
+    let affected_rows = 0;
+    for (const r of rows) {
+      const docId = r.$id || r.id;
+      if (docId) {
+        await deleteDocument(C.project_inspirations, docId as string);
+        affected_rows++;
+      }
+    }
+    return { delete_project_inspirations: { affected_rows } };
+  },
+
+  InsertProjectInspirations: async (v) => {
+    const objects = v.objects as Record<string, unknown>[];
+    const created = [];
+    for (const o of objects) {
+      created.push(
+        await createDocument(C.project_inspirations, ID.unique(), o),
+      );
+    }
+    return { insert_project_inspirations: { affected_rows: created.length } };
+  },
+
+  // ============================================================================
+  // scriptony-audio-story: Audio Tracks, Sessions, Voice Assignments
+  // ============================================================================
+
+  GetAudioTracks: async (v) => ({
+    scene_audio_tracks: await listDocumentsFull(
+      C.scene_audio_tracks,
+      [
+        Query.equal("scene_id", v.sceneId as string),
+        Query.orderAsc("start_time"),
+      ],
+      500,
+    ),
+  }),
+
+  CreateAudioTrack: async (v) => ({
+    insert_scene_audio_tracks_one: await createDocument(
+      C.scene_audio_tracks,
+      ID.unique(),
+      v.object as Record<string, unknown>,
+    ),
+  }),
+
+  GetTrackProject: async (v) => ({
+    scene_audio_tracks_by_pk: await getDocument(
+      C.scene_audio_tracks,
+      v.id as string,
+    ),
+  }),
+
+  UpdateAudioTrack: async (v) => ({
+    update_scene_audio_tracks_by_pk: await updateDocument(
+      C.scene_audio_tracks,
+      v.id as string,
+      v.set as Record<string, unknown>,
+    ),
+  }),
+
+  GetSceneClipsInfo: async (v) => {
+    const sceneId = v.sceneId as string;
+    const allClips = await listDocumentsFull(
+      C.audio_clips,
+      [Query.equal("scene_id", sceneId), Query.orderDesc("end_sec")],
+      500,
+    );
+    const count = allClips.length;
+    const lastClip = allClips.length > 0 ? allClips[0] : null;
+    // T29: return aggregate + last clip (matches GraphQL shape)
+    return {
+      audio_clips_aggregate: { aggregate: { count } },
+      audio_clips: lastClip ? [{ end_sec: lastClip.end_sec ?? 0 }] : [],
+    };
+  },
+
+  // Alias for T29 track time update (same as UpdateAudioTrack)
+  UpdateTrackTime: async (v) => ({
+    update_scene_audio_tracks_by_pk: await updateDocument(
+      C.scene_audio_tracks,
+      v.id as string,
+      v.set as Record<string, unknown>,
+    ),
+  }),
+
+  DeleteAudioTrack: async (v) => {
+    await deleteDocument(C.scene_audio_tracks, v.id as string);
+    return { delete_scene_audio_tracks_by_pk: { id: v.id } };
+  },
+
+  // ── Audio Clips (T28) ──────────────────────────────────────────────
+
+  GetAudioClips: async (v) => ({
+    audio_clips: await listDocumentsFull(
+      C.audio_clips,
+      [
+        Query.equal("scene_id", v.sceneId as string),
+        Query.orderAsc("lane_index"),
+        Query.orderAsc("order_index"),
+      ],
+      500,
+    ),
+  }),
+
+  CreateAudioClip: async (v) => ({
+    insert_audio_clips_one: await createDocument(
+      C.audio_clips,
+      ID.unique(),
+      v.object as Record<string, unknown>,
+    ),
+  }),
+
+  GetAudioClip: async (v) => ({
+    audio_clips_by_pk: await getDocument(C.audio_clips, v.id as string),
+  }),
+
+  UpdateAudioClip: async (v) => ({
+    update_audio_clips_by_pk: await updateDocument(
+      C.audio_clips,
+      v.id as string,
+      v.set as Record<string, unknown>,
+    ),
+  }),
+
+  DeleteAudioClip: async (v) => {
+    await deleteDocument(C.audio_clips, v.id as string);
+    return { delete_audio_clips_by_pk: { id: v.id } };
+  },
+
+  GetAudioSessions: async (v) => ({
+    audio_sessions: await listDocumentsFull(
+      C.audio_sessions,
+      [
+        Query.equal("scene_id", v.sceneId as string),
+        Query.orderDesc("$createdAt"),
+      ],
+      500,
+    ),
+  }),
+
+  CreateAudioSession: async (v) => ({
+    insert_audio_sessions_one: await createDocument(
+      C.audio_sessions,
+      ID.unique(),
+      v.object as Record<string, unknown>,
+    ),
+  }),
+
+  GetAudioSession: async (v) => ({
+    audio_sessions_by_pk: await getDocument(C.audio_sessions, v.id as string),
+  }),
+
+  GetVoiceAssignments: async (v) => ({
+    character_voice_assignments: await listDocumentsFull(
+      C.character_voice_assignments,
+      [Query.equal("project_id", v.projectId as string)],
+      500,
+    ),
+  }),
+
+  AssignVoice: async (v) => ({
+    insert_character_voice_assignments_one: await createDocument(
+      C.character_voice_assignments,
+      ID.unique(),
+      v.object as Record<string, unknown>,
+    ),
+  }),
 };

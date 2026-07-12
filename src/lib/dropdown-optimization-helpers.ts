@@ -1,13 +1,19 @@
 /**
  * 🚀 DROPDOWN OPTIMIZATION HELPERS
- * 
+ *
  * Performance utilities for FilmDropdown and BookDropdown
  * - Memoization helpers
  * - Lazy loading utilities
  * - Debouncing functions
  */
 
-import { useRef, useEffect, useCallback } from 'react';
+import {
+  useRef,
+  useEffect,
+  useCallback,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 
 /**
  * 🎯 Debounced state setter
@@ -15,7 +21,7 @@ import { useRef, useEffect, useCallback } from 'react';
  */
 export function useDebouncedCallback<T extends (...args: any[]) => any>(
   callback: T,
-  delay: number
+  delay: number,
 ): T {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const callbackRef = useRef(callback);
@@ -25,15 +31,18 @@ export function useDebouncedCallback<T extends (...args: any[]) => any>(
     callbackRef.current = callback;
   }, [callback]);
 
-  return useCallback(((...args: any[]) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+  return useCallback(
+    ((...args: any[]) => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
 
-    timeoutRef.current = setTimeout(() => {
-      callbackRef.current(...args);
-    }, delay);
-  }) as T, [delay]);
+      timeoutRef.current = setTimeout(() => {
+        callbackRef.current(...args);
+      }, delay);
+    }) as T,
+    [delay],
+  );
 }
 
 /**
@@ -42,7 +51,7 @@ export function useDebouncedCallback<T extends (...args: any[]) => any>(
  */
 export function useIntersectionObserver(
   callback: () => void,
-  options?: IntersectionObserverInit
+  options?: IntersectionObserverInit,
 ) {
   const targetRef = useRef<HTMLDivElement>(null);
   const callbackRef = useRef(callback);
@@ -63,7 +72,7 @@ export function useIntersectionObserver(
           }
         });
       },
-      { threshold: 0.1, rootMargin: '100px', ...options }
+      { threshold: 0.1, rootMargin: "100px", ...options },
     );
 
     observer.observe(target);
@@ -106,8 +115,9 @@ export class SmartCache<T> {
   set(key: string, value: T): void {
     // Evict oldest entry if cache is full
     if (this.cache.size >= this.maxSize) {
-      const oldestKey = Array.from(this.cache.entries())
-        .sort((a, b) => a[1].timestamp - b[1].timestamp)[0]?.[0];
+      const oldestKey = Array.from(this.cache.entries()).sort(
+        (a, b) => a[1].timestamp - b[1].timestamp,
+      )[0]?.[0];
       if (oldestKey) {
         this.cache.delete(oldestKey);
       }
@@ -126,7 +136,10 @@ export class SmartCache<T> {
  * Groups multiple setState calls into one render
  */
 export function batchUpdates<T>(
-  updates: Array<{ setter: (prev: T) => T; updater: (current: T) => T }>
+  updates: Array<{
+    setter: Dispatch<SetStateAction<T>>;
+    updater: (current: T) => T;
+  }>,
 ): void {
   updates.forEach(({ setter, updater }) => {
     setter((prev) => updater(prev));
@@ -142,7 +155,7 @@ const filterCache = new SmartCache<any[]>(30000, 50);
 export function memoizedFilter<T>(
   array: T[],
   predicate: (item: T) => boolean,
-  cacheKey: string
+  cacheKey: string,
 ): T[] {
   const cached = filterCache.get(cacheKey);
   if (cached && cached.length === array.filter(predicate).length) {
@@ -160,7 +173,7 @@ export function memoizedFilter<T>(
  */
 export function createOptimisticUpdate<T>(
   initialState: T[],
-  setState: (state: T[]) => void
+  setState: (state: T[]) => void,
 ) {
   const previousState = [...initialState];
 

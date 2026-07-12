@@ -1,5 +1,19 @@
 /**
- * Shared observability helpers for stats, logs, and admin compatibility routes.
+ * T16/T18 — Shared observability helpers for stats, logs, and admin compatibility routes.
+ *
+ * Status: Business-Logik fuer Next.js API Routes (legacy).
+ *          Wird NICHT von Appwrite Functions genutzt.
+ * Ziel-Function: `scriptony-observability` (Stats/Logs) und `scriptony-admin` (Admin).
+ * Extraction-Plan T18:
+ *   - `getProjectStatsPayload` → `scriptony-observability/handlers/project-stats.ts`
+ *   - `getShotCharacterCounts` → `scriptony-observability/handlers/character-stats.ts`
+ *   - `getNodeContext` → `scriptony-observability/handlers/node-stats.ts`
+ *   - `toDurationSeconds`, `countBy` → `scriptony-observability/_shared/stat-utils.ts`
+ * Verboten: Neue fachliche Observability-Logik hier hinzufuegen.
+ *
+ * @deprecated T18 — FIXED: `getNodeContext` non-shot Branch `data` zugewiesen (Zeile 242).
+ *                     Trotzdem deprecated — Fachliche Aggregation wird in Domain-Functions extrahiert.
+ *                     Primitive _shared helpers (auth, http, db) bleiben zentral.
  */
 
 import { requestGraphql } from "./graphql-compat";
@@ -29,7 +43,11 @@ export function toDurationSeconds(shot: JsonRecord): number {
   return (shot.shotlength_minutes || 0) * 60 + (shot.shotlength_seconds || 0);
 }
 
-export function countBy(items: JsonRecord[], field: string, fallback: string): Record<string, number> {
+export function countBy(
+  items: JsonRecord[],
+  field: string,
+  fallback: string,
+): Record<string, number> {
   return items.reduce<Record<string, number>>((acc, item) => {
     const key = item[field] || fallback;
     acc[key] = (acc[key] || 0) + 1;
@@ -94,7 +112,7 @@ export async function getProjectStatsPayload(projectId: string): Promise<{
         }
       }
     `,
-    { projectId }
+    { projectId },
   );
 
   return {
@@ -106,7 +124,9 @@ export async function getProjectStatsPayload(projectId: string): Promise<{
   };
 }
 
-export async function getShotCharacterCounts(projectId: string): Promise<JsonRecord[]> {
+export async function getShotCharacterCounts(
+  projectId: string,
+): Promise<JsonRecord[]> {
   const data = await requestGraphql<{
     shot_characters: Array<{
       character_id: string;
@@ -123,10 +143,13 @@ export async function getShotCharacterCounts(projectId: string): Promise<JsonRec
         }
       }
     `,
-    { projectId }
+    { projectId },
   );
 
-  const counts = new Map<string, { character_id: string; name: string; shot_count: number }>();
+  const counts = new Map<
+    string,
+    { character_id: string; name: string; shot_count: number }
+  >();
   for (const entry of data.shot_characters) {
     const current = counts.get(entry.character_id) || {
       character_id: entry.character_id,
@@ -137,10 +160,15 @@ export async function getShotCharacterCounts(projectId: string): Promise<JsonRec
     counts.set(entry.character_id, current);
   }
 
-  return Array.from(counts.values()).sort((a, b) => b.shot_count - a.shot_count);
+  return Array.from(counts.values()).sort(
+    (a, b) => b.shot_count - a.shot_count,
+  );
 }
 
-export async function getNodeContext(nodeType: string, id: string): Promise<{
+export async function getNodeContext(
+  nodeType: string,
+  id: string,
+): Promise<{
   sequences?: number;
   scenes?: number;
   shots?: number;
@@ -187,7 +215,7 @@ export async function getNodeContext(nodeType: string, id: string): Promise<{
           }
         }
       `,
-      { id }
+      { id },
     );
 
     const shot = data.shots_by_pk;
@@ -211,7 +239,7 @@ export async function getNodeContext(nodeType: string, id: string): Promise<{
     };
   }
 
-  const node = await requestGraphql<{
+  const data = await requestGraphql<{
     timeline_nodes_by_pk: JsonRecord | null;
     timeline_nodes: JsonRecord[];
     shots: JsonRecord[];
@@ -242,20 +270,26 @@ export async function getNodeContext(nodeType: string, id: string): Promise<{
         }
       }
     `,
-    { id }
+    { id },
   );
 
   const durations = data.shots.map(toDurationSeconds);
   const totalDuration = durations.reduce((sum, value) => sum + value, 0);
-  const uniqueCharacters = new Set(data.shot_characters.map((entry) => entry.character_id));
+  const uniqueCharacters = new Set(
+    data.shot_characters.map((entry) => entry.character_id),
+  );
 
   return {
     sequences: data.timeline_nodes.filter((entry) => entry.level === 2).length,
-    scenes: data.timeline_nodes.filter((entry) => entry.level === 3).length + (nodeType === "scene" ? 1 : 0),
+    scenes:
+      data.timeline_nodes.filter((entry) => entry.level === 3).length +
+      (nodeType === "scene" ? 1 : 0),
     shots: data.shots.length,
     characters: uniqueCharacters.size,
     total_duration: totalDuration,
-    average_duration: data.shots.length ? Math.round(totalDuration / data.shots.length) : 0,
+    average_duration: data.shots.length
+      ? Math.round(totalDuration / data.shots.length)
+      : 0,
     created_at: data.timeline_nodes_by_pk?.created_at ?? null,
     updated_at: data.timeline_nodes_by_pk?.updated_at ?? null,
   };

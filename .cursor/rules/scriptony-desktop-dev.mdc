@@ -1,0 +1,43 @@
+---
+description: Tauri desktop-first — local runtime, dev:desktop, no Appwrite unless hybrid/cloud ticket
+alwaysApply: true
+---
+
+# Scriptony desktop-first (default)
+
+Unless the user or ticket explicitly asks for **cloud**, **web browser**, **Appwrite deploy**, or **Docker full stack**:
+
+## Start
+
+```bash
+docker stop scriptony-frontend 2>/dev/null || true
+npm run dev:desktop
+```
+
+- Port **3000** is Vite for the **Tauri WebView** (HMR), not “open the web app in a browser”.
+- Do **not** suggest `npm run dev` (Docker) for routine desktop work.
+
+## Runtime
+
+- Tauri default: **`local`** (`src/runtime/detect-runtime.ts`).
+- `.env.local`: `VITE_SCRIPTONY_RUNTIME=local` (see `.env.local.example`).
+- User must pick **workspace folder** and open a **`.scriptony`** project for `LocalBackend`.
+- Full guide: `docs/DESKTOP_FIRST_DEV.md`, `docs/LOCAL_PROJECT_FORMAT.md`.
+
+## Code
+
+- New data paths: `src/lib/api-adapter/` + `dispatchByRuntime` — not new `apiGet` from components.
+- Cloud-only APIs listed in `docs/DESKTOP_FIRST_DEV.md` — extend local adapters / `LocalBackend`, do not only deploy Functions.
+
+## Checks
+
+```bash
+@ecc-check
+# or: npm run verify -- --frontend
+```
+
+Legacy shim (deploy/release): `npm run checks`. Skip function deploy and `verify:test-env` unless cloud/hybrid/backend.
+
+## Cloud / Appwrite
+
+When the ticket **is** cloud or deploy: use `.cursor/rules/appwrite-scriptony-dev.mdc` and `docs/GETTING_STARTED.md` Options A/B.

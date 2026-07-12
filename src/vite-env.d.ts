@@ -1,10 +1,19 @@
 /// <reference types="vite/client" />
 
+declare module "*.wasm?url" {
+  const url: string;
+  export default url;
+}
+
 interface ImportMetaEnv {
   readonly VITE_APP_WEB_URL?: string;
   readonly VITE_BACKEND_API_BASE_URL?: string;
   /** Optional override when functions live on a different origin than the Appwrite endpoint. */
   readonly VITE_APPWRITE_FUNCTIONS_BASE_URL?: string;
+  /** One-line JSON: { "scriptony-projects": "https://…", … } — Appwrite function HTTP domains from the console. */
+  readonly VITE_BACKEND_FUNCTION_DOMAIN_MAP?: string;
+  /** Dev: function HTTP origin — when set, Vite proxies scriptony-assistant and the app uses same-origin URLs (no CORS). */
+  readonly VITE_DEV_PROXY_SCRIPTONY_ASSISTANT_TARGET?: string;
   readonly VITE_BACKEND_PUBLIC_TOKEN?: string;
   readonly VITE_APPWRITE_ENDPOINT?: string;
   readonly VITE_APPWRITE_PROJECT_ID?: string;
@@ -13,6 +22,10 @@ interface ImportMetaEnv {
   readonly VITE_CAPACITOR_APP_ID?: string;
   readonly VITE_CAPACITOR_URL_SCHEME?: string;
   readonly VITE_CAPACITOR_CALLBACK_HOST?: string;
+  /** Runtime profile override: local | cloud | selfHosted */
+  readonly VITE_SCRIPTONY_RUNTIME?: "local" | "cloud" | "selfHosted";
+  /** Dev-only: allow local mode in browser when "1" (auth bypass — never production) */
+  readonly VITE_SCRIPTONY_ALLOW_BROWSER_LOCAL?: string;
 }
 
 interface ImportMeta {

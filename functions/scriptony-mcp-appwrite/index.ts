@@ -1,0 +1,175 @@
+/**
+ * Thin Appwrite host: auth → runtime context → scriptony-runtime orchestrator.
+ * Capability definitions live in src/scriptony-mcp; orchestration in src/scriptony-runtime.
+ */
+
+import "../_shared/fetch-polyfill";
+import { createAppwriteHandler } from "../_shared/appwrite-handler";
+import { requireUserBootstrap } from "../_shared/auth";
+import {
+  readJsonBody,
+  type RequestLike,
+  type ResponseLike,
+  sendBadRequest,
+  sendJson,
+  sendMethodNotAllowed,
+  sendServerError,
+  sendUnauthorized,
+} from "../_shared/http";
+import { createDefaultCapabilityRegistry } from "../../src/scriptony-mcp/tools/project-capabilities";
+import { createProviderRouterFromSummary } from "../../src/scriptony-runtime/provider-router";
+import {
+  type OrchestratorRequest,
+  runMcpOrchestrator,
+} from "../../src/scriptony-runtime/orchestrator";
+import { createScriptonyInfra } from "./create-infra";
+import { loadAssistantProfileSummary } from "./provider-context";
+
+const registry = createDefaultCapabilityRegistry();
+
+function getPathname(req: RequestLike): string {
+  const direct =
+    (typeof req?.path === "string" && req.path) ||
+    (typeof req?.url === "string" && req.url) ||
+    "/";
+  try {
+    if (direct.startsWith("http://") || direct.startsWith("https://")) {
+      return new URL(direct).pathname || "/";
+    }
+  } catch {
+    /* fallback */
+  }
+  const q = direct.indexOf("?");
+  return q >= 0 ? direct.slice(0, q) : direct;
+}
+
+async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
+  try {
+    const pathname = getPathname(req);
+
+    if (pathname === "/" || pathname === "/health") {
+      sendJson(res, 200, {
+        status: "ok",
+        service: "scriptony-mcp-appwrite",
+        provider: "appwrite",
+        note: "assistant_profile is included on authenticated POST /invoke responses only.",
+        timestamp: new Date().toISOString(),
+      });
+      return;
+    }
+
+    // T11: MCP Tool Registry (von scriptony-assistant migriert)
+    if (pathname === "/tools" || pathname === "/tools/") {
+      const bootstrap = await requireUserBootstrap(req);
+      if (!bootstrap) {
+        sendUnauthorized(res);
+        return;
+      }
+      if (req.method === "GET") {
+        sendJson(res, 200, {
+          version: "0.1",
+          tools: [
+            {
+              name: "list_projects",
+              description:
+                "List projects for the authenticated user (HTTP: GET /projects)",
+              input_schema: { type: "object", properties: {} },
+            },
+            {
+              name: "get_shots_by_scene",
+              description:
+                "List shots for a scene (HTTP: GET /shots/by-scene/:sceneId)",
+              input_schema: {
+                type: "object",
+                properties: { scene_id: { type: "string" } },
+                required: ["scene_id"],
+              },
+            },
+            {
+              name: "ai_chat",
+              description:
+                "Send a message to Scriptony Assistant (HTTP: POST /ai/chat)",
+              input_schema: {
+                type: "object",
+                properties: { message: { type: "string" } },
+                required: ["message"],
+              },
+            },
+          ],
+          note: "Invoke the same operations via Appwrite HTTP routes; MCP server can mirror this registry.",
+        });
+        return;
+      }
+      sendMethodNotAllowed(res, ["GET"]);
+      return;
+    }
+
+    if (pathname !== "/invoke" && pathname !== "/invoke/") {
+      sendBadRequest(res, `Unknown route: ${pathname}`);
+      return;
+    }
+
+    if (req.method !== "POST") {
+      sendMethodNotAllowed(res, ["POST"]);
+      return;
+    }
+
+    const bootstrap = await requireUserBootstrap(req);
+    if (!bootstrap) {
+      sendUnauthorized(res);
+      return;
+    }
+
+    const body = await readJsonBody<Record<string, unknown>>(req);
+    const actionRaw = typeof body.action === "string" ? body.action.trim() : "";
+    if (actionRaw !== "list_tools" && actionRaw !== "invoke") {
+      sendBadRequest(res, 'Body "action" must be "list_tools" or "invoke"');
+      return;
+    }
+
+    const tool = typeof body.tool === "string" ? body.tool.trim() : undefined;
+    const input = body.input;
+    const approved = body.approved === true;
+    const projectId =
+      typeof body.project_id === "string" ? body.project_id.trim() : undefined;
+
+    if (actionRaw === "invoke" && !tool) {
+      sendBadRequest(res, 'invoke requires string "tool"');
+      return;
+    }
+
+    const orchReq: OrchestratorRequest = {
+      action: actionRaw,
+      tool,
+      input,
+      approved,
+    };
+
+    const profile = await loadAssistantProfileSummary(bootstrap.user.id);
+    const router = createProviderRouterFromSummary(profile);
+
+    const infra = createScriptonyInfra(bootstrap);
+    const out = await runMcpOrchestrator(
+      registry,
+      router,
+      {
+        user: {
+          id: bootstrap.user.id,
+          email: bootstrap.user.email,
+          displayName: bootstrap.user.displayName,
+        },
+        organizationId: bootstrap.organizationId,
+        projectId,
+        infra,
+        requestPath: pathname,
+      },
+      orchReq,
+    );
+
+    sendJson(res, 200, out);
+  } catch (error) {
+    sendServerError(res, error);
+  }
+}
+
+export default createAppwriteHandler(dispatch);

@@ -2,19 +2,20 @@
  * Project initialization route for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../_shared/auth";
-import { requestGraphql } from "../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../_shared/auth";
+import { requestGraphql } from "../_shared/graphql-compat";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
-} from "../../_shared/http";
-import { mapNode } from "../../_shared/timeline";
+  sendUnauthorized,
+} from "../_shared/http";
+import { getTimelineNodes, mapNode } from "../_shared/timeline";
+import { requireProjectAccess } from "../_shared/scriptony";
 
 interface PredefinedNodeInput {
   number: number;
@@ -22,9 +23,12 @@ interface PredefinedNodeInput {
   description?: string;
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -48,9 +52,36 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
-    const levelOneCount = Number(structure.level_1_count ?? predefinedLevelOne.length ?? 0);
+    const _project = await requireProjectAccess(
+      projectId,
+      bootstrap.user.id,
+      res,
+    );
+    if (!_project) return;
+
+    const levelOneCount = Number(
+      structure.level_1_count ?? predefinedLevelOne.length ?? 0,
+    );
     if (levelOneCount <= 0) {
       sendBadRequest(res, "structure.level_1_count must be greater than zero");
+      return;
+    }
+
+    // Idempotent: same template already has level-1 acts → return them (no second insert).
+    // Prevents duplicate acts when clients retry or race after the first batch committed.
+    const existingLevel1 = await getTimelineNodes({
+      projectId,
+      level: 1,
+      parentId: null,
+    });
+    const sameTemplate = existingLevel1.filter(
+      (n) => String(n.template_id ?? n.templateId ?? "") === String(templateId),
+    );
+    if (sameTemplate.length > 0) {
+      const sorted = [...sameTemplate].sort(
+        (a, b) => (Number(a.order_index) || 0) - (Number(b.order_index) || 0),
+      );
+      sendJson(res, 200, { nodes: sorted.map(mapNode) });
       return;
     }
 
@@ -61,12 +92,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         template_id: templateId,
         level: 1,
         parent_id: null,
-        node_number: predefined?.number ?? index + 1,
         title: predefined?.title ?? `Act ${index + 1}`,
-        description: predefined?.description ?? null,
-        color: null,
+        summary: predefined?.description ?? null,
         order_index: index,
-        metadata: {},
+        metadata_json: JSON.stringify({}),
       };
     });
 
@@ -82,22 +111,24 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               template_id
               level
               parent_id
-              node_number
               title
-              description
-              color
+              summary
               order_index
-              metadata
+              node_type
+              scene_id
+              metadata_json
               created_at
               updated_at
             }
           }
         }
       `,
-      { objects }
+      { objects },
     );
 
-    sendJson(res, 201, { nodes: created.insert_timeline_nodes.returning.map(mapNode) });
+    sendJson(res, 201, {
+      nodes: created.insert_timeline_nodes.returning.map(mapNode),
+    });
   } catch (error) {
     sendServerError(res, error);
   }

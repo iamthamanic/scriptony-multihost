@@ -1,21 +1,18 @@
 /**
- * Root endpoint for the Scriptony auth service.
- *
- * Keeps the `scriptony-auth` base path alive for routing probes.
+ * @deprecated T17 — Unwired old entrypoint. Aktiver Entrypoint ist appwrite-entry.ts.
+ *          Nicht in build-appwrite-deploy.mjs registriert. Nicht deployed.
+ *          Verbleibt als Archiv-Referenz bis zur vollstaendigen Entfernung.
  */
 
-import { sendJson, sendMethodNotAllowed, type RequestLike, type ResponseLike } from "../_shared/http";
+import { createAppwriteHandler } from "../_shared/appwrite-handler";
+import { type RequestLike, type ResponseLike, sendJson } from "../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
-  if (req.method !== "GET") {
-    sendMethodNotAllowed(res, ["GET"]);
-    return;
-  }
-
-  sendJson(res, 200, {
-    status: "ok",
-    service: "scriptony-auth",
-    provider: "appwrite",
+async function dispatch(req: RequestLike, res: ResponseLike): Promise<void> {
+  sendJson(res, 410, {
+    status: "gone",
+    message: "scriptony-auth/index.ts ist deprecated. Nutze appwrite-entry.ts.",
     timestamp: new Date().toISOString(),
   });
 }
+
+export default createAppwriteHandler(dispatch);

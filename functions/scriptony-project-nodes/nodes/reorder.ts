@@ -2,22 +2,28 @@
  * Timeline node reorder route for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../_shared/auth";
-import { requestGraphql } from "../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../_shared/auth";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
+  sendNotFound,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
-} from "../../../_shared/http";
+  sendUnauthorized,
+} from "../../_shared/http";
+import { getNodeById } from "../../_shared/timeline";
+import { requireProjectAccess } from "../../_shared/scriptony";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -35,6 +41,18 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       return;
     }
 
+    const firstNode = await getNodeById(nodeIds[0]);
+    if (!firstNode?.project_id) {
+      sendNotFound(res, "Node not found");
+      return;
+    }
+    const _project = await requireProjectAccess(
+      String(firstNode.project_id),
+      bootstrap.user.id,
+      res,
+    );
+    if (!_project) return;
+
     await Promise.all(
       nodeIds.map((id, index) =>
         requestGraphql(
@@ -48,9 +66,9 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               }
             }
           `,
-          { id, orderIndex: index }
-        )
-      )
+          { id, orderIndex: index },
+        ),
+      ),
     );
 
     sendJson(res, 200, { success: true });

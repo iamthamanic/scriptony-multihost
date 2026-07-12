@@ -2,25 +2,33 @@
  * Timeline node item routes for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../_shared/auth";
-import { requestGraphql } from "../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../_shared/auth";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
-} from "../../../_shared/http";
-import { getNodeById, mapNode, normalizeNodeInput } from "../../../_shared/timeline";
+  sendUnauthorized,
+} from "../../_shared/http";
+import {
+  getNodeById,
+  mapNode,
+  normalizeNodeInput,
+} from "../../_shared/timeline";
+import { requireProjectAccess } from "../../_shared/scriptony";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -39,6 +47,13 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         return;
       }
 
+      const _project = await requireProjectAccess(
+        String(node.project_id),
+        bootstrap.user.id,
+        res,
+      );
+      if (!_project) return;
+
       sendJson(res, 200, { node: mapNode(node) });
       return;
     }
@@ -49,6 +64,13 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         sendNotFound(res, "Node not found");
         return;
       }
+
+      const _project = await requireProjectAccess(
+        String(existing.project_id),
+        bootstrap.user.id,
+        res,
+      );
+      if (!_project) return;
 
       const body = await readJsonBody<Record<string, any>>(req);
       const updates = normalizeNodeInput(body);
@@ -68,12 +90,12 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               template_id
               level
               parent_id
-              node_number
               title
-              description
-              color
+              summary
               order_index
-              metadata
+              node_type
+              scene_id
+              metadata_json
               created_at
               updated_at
             }
@@ -82,14 +104,29 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           id: nodeId,
           changes: updates,
-        }
+        },
       );
 
-      sendJson(res, 200, { node: mapNode(updated.update_timeline_nodes_by_pk || existing) });
+      sendJson(res, 200, {
+        node: mapNode(updated.update_timeline_nodes_by_pk || existing),
+      });
       return;
     }
 
     if (req.method === "DELETE") {
+      const node = await getNodeById(nodeId);
+      if (!node) {
+        sendNotFound(res, "Node not found");
+        return;
+      }
+
+      const _project = await requireProjectAccess(
+        String(node.project_id),
+        bootstrap.user.id,
+        res,
+      );
+      if (!_project) return;
+
       await requestGraphql(
         `
           mutation DeleteTimelineNode($id: uuid!) {
@@ -98,7 +135,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { id: nodeId }
+        { id: nodeId },
       );
 
       sendJson(res, 200, { success: true });

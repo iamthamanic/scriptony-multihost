@@ -1,6 +1,6 @@
 # Hostinger VPS — alle Befehle (Nhost → Appwrite, Ubuntu + Docker)
 
-Einmaliger Ablauf per SSH (als **root** oder mit `sudo` wo nötig). Repo: **[iamthamanic/scriptony-appwrite](https://github.com/iamthamanic/scriptony-appwrite)**.
+Einmaliger Ablauf per SSH (als **root** oder mit `sudo` wo nötig). Repo: **[iamthamanic/scriptony-multihost](https://github.com/iamthamanic/scriptony-multihost)**.
 
 **Voraussetzungen:** Auf dem Server ist **Docker** + **Docker Compose v2** installiert; für `git clone` per SSH ist ein **[Deploy-Key](https://docs.github.com/en/authentication/connecting-to-github-with-ssh)** mit Lesezugriff auf das Repo bei GitHub hinterlegt.
 
@@ -53,7 +53,7 @@ test -d /root/Scriptonyapp && mv /root/Scriptonyapp "/root/Scriptonyapp.bak.$(da
 
 ```bash
 cd /root
-test -d scriptony-prod/.git || git clone -b main "git@github.com:iamthamanic/scriptony-appwrite.git" scriptony-prod
+test -d scriptony-prod/.git || git clone -b main "git@github.com:iamthamanic/scriptony-multihost.git" scriptony-prod
 cd /root/scriptony-prod
 git fetch origin
 git checkout main

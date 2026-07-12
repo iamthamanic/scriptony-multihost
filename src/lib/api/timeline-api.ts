@@ -1,22 +1,27 @@
 /**
  * Timeline API Client
- * 
+ *
  * 🚀 MIGRATED TO V2 NODES API
- * 
+ *
  * This file now wraps the V2 Nodes API and provides backward-compatible
  * functions for Acts, Sequences, and Scenes using the generic Nodes system.
- * 
+ *
  * The Nodes API works with ALL templates (Film, Serie, Buch, Theater, Game)
  * without requiring backend changes for new templates!
  */
 
-import * as NodesAPI from './timeline-api-v2';
-import type { Act, Sequence, Scene } from '../types';
-import type { TimelineNode } from './timeline-api-v2';
+import * as NodesAPI from "./timeline-api-v2";
+import type { Act, Sequence, Scene } from "../types";
+import type { TimelineNode } from "./timeline-api-v2";
+import { normalizeSceneImageStoragePath } from "@/lib/local-asset-display-url";
 
 // Re-export V2 types and functions for new code
-export type { TimelineNode, CreateNodeRequest, UpdateNodeRequest } from './timeline-api-v2';
-export { 
+export type {
+  TimelineNode,
+  CreateNodeRequest,
+  UpdateNodeRequest,
+} from "./timeline-api-v2";
+export {
   getNodes,
   getNode,
   getNodeChildren,
@@ -31,7 +36,7 @@ export {
   flattenNodeTree,
   getAllProjectNodes,
   getRootNodes,
-} from './timeline-api-v2';
+} from "./timeline-api-v2";
 
 // =============================================================================
 // HELPER FUNCTIONS - Node to Legacy Type Conversion
@@ -46,8 +51,9 @@ export function nodeToAct(node: TimelineNode): Act {
     projectId: node.projectId,
     actNumber: node.nodeNumber,
     title: node.title,
-    description: node.description || '',
+    description: node.description || "",
     orderIndex: node.orderIndex,
+    metadata: node.metadata,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
   };
@@ -63,9 +69,10 @@ export function nodeToSequence(node: TimelineNode): Sequence {
     actId: node.parentId!,
     sequenceNumber: node.nodeNumber,
     title: node.title,
-    description: node.description || '',
+    description: node.description || "",
     color: node.color,
     orderIndex: node.orderIndex,
+    metadata: node.metadata,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
   };
@@ -81,13 +88,15 @@ export function nodeToScene(node: TimelineNode): Scene {
     sequenceId: node.parentId!,
     sceneNumber: node.nodeNumber,
     title: node.title,
-    description: node.description || '',
+    description: node.description || "",
     color: node.color,
     orderIndex: node.orderIndex,
     location: node.metadata?.location,
     timeOfDay: node.metadata?.timeOfDay,
     characters: node.metadata?.characters || [],
-    content: node.metadata?.content, // 📚 Support for book content
+    content: node.metadata?.content,
+    imageUrl: node.metadata?.imageUrl,
+    metadata: node.metadata,
     createdAt: node.createdAt,
     updatedAt: node.updatedAt,
   };
@@ -97,7 +106,10 @@ export function nodeToScene(node: TimelineNode): Scene {
 // ACTS - Backward Compatible Wrapper Functions
 // =============================================================================
 
-export async function getActs(projectId: string, token?: string): Promise<Act[]> {
+export async function getActs(
+  projectId: string,
+  token?: string,
+): Promise<Act[]> {
   const nodes = await NodesAPI.getActs(projectId);
   return nodes.map(nodeToAct);
 }
@@ -105,33 +117,40 @@ export async function getActs(projectId: string, token?: string): Promise<Act[]>
 export async function createAct(
   projectId: string,
   actData: Partial<Act>,
-  token?: string
+  token?: string,
 ): Promise<Act> {
   const node = await NodesAPI.createNode({
     projectId,
-    templateId: 'film-3-act', // TODO: Get from project
+    templateId: "film-3-act", // TODO: Get from project
     level: 1,
     parentId: null,
-    nodeNumber: actData.actNumber!,
-    title: actData.title || `Akt ${actData.actNumber}`,
+    nodeNumber: actData.actNumber ?? 1,
+    title: actData.title || `Akt ${actData.actNumber ?? 1}`,
     description: actData.description,
   });
-  
+
   return nodeToAct(node);
 }
 
 export async function updateAct(
   actId: string,
   updates: Partial<Act>,
-  token: string
+  token: string,
 ): Promise<Act> {
+  const currentNode = await NodesAPI.getNode(actId);
+  const metadata: Record<string, any> = { ...(currentNode.metadata || {}) };
+  if (updates.metadata) {
+    Object.assign(metadata, updates.metadata);
+  }
+
   const node = await NodesAPI.updateNode(actId, {
     nodeNumber: updates.actNumber,
     title: updates.title,
     description: updates.description,
     orderIndex: updates.orderIndex,
+    metadata,
   });
-  
+
   return nodeToAct(node);
 }
 
@@ -142,7 +161,7 @@ export async function deleteAct(actId: string, token: string): Promise<void> {
 export async function reorderActs(
   projectId: string,
   actIds: string[],
-  token: string
+  token: string,
 ): Promise<void> {
   await NodesAPI.reorderNodes(actIds);
 }
@@ -151,7 +170,10 @@ export async function reorderActs(
 // SEQUENCES - Backward Compatible Wrapper Functions
 // =============================================================================
 
-export async function getSequences(actId: string, token: string): Promise<Sequence[]> {
+export async function getSequences(
+  actId: string,
+  token: string,
+): Promise<Sequence[]> {
   const nodes = await NodesAPI.getNodeChildren(actId);
   return nodes.map(nodeToSequence);
 }
@@ -159,30 +181,36 @@ export async function getSequences(actId: string, token: string): Promise<Sequen
 export async function createSequence(
   actId: string,
   sequenceData: Partial<Sequence>,
-  token: string
+  token: string,
 ): Promise<Sequence> {
   // Get act to get projectId
   const act = await NodesAPI.getNode(actId);
-  
+
   const node = await NodesAPI.createNode({
     projectId: act.projectId,
     templateId: act.templateId,
     level: 2,
     parentId: actId,
-    nodeNumber: sequenceData.sequenceNumber!,
-    title: sequenceData.title || `Sequenz ${sequenceData.sequenceNumber}`,
+    nodeNumber: sequenceData.sequenceNumber ?? 1,
+    title: sequenceData.title || `Sequenz ${sequenceData.sequenceNumber ?? 1}`,
     description: sequenceData.description,
     color: sequenceData.color,
   });
-  
+
   return nodeToSequence(node);
 }
 
 export async function updateSequence(
   sequenceId: string,
   updates: Partial<Sequence>,
-  token: string
+  token: string,
 ): Promise<Sequence> {
+  const currentNode = await NodesAPI.getNode(sequenceId);
+  const metadata: Record<string, any> = { ...(currentNode.metadata || {}) };
+  if (updates.metadata) {
+    Object.assign(metadata, updates.metadata);
+  }
+
   const node = await NodesAPI.updateNode(sequenceId, {
     nodeNumber: updates.sequenceNumber,
     title: updates.title,
@@ -190,19 +218,23 @@ export async function updateSequence(
     color: updates.color,
     orderIndex: updates.orderIndex,
     parentId: updates.actId, // Support moving to different Act
+    metadata,
   });
-  
+
   return nodeToSequence(node);
 }
 
-export async function deleteSequence(sequenceId: string, token: string): Promise<void> {
+export async function deleteSequence(
+  sequenceId: string,
+  token: string,
+): Promise<void> {
   await NodesAPI.deleteNode(sequenceId);
 }
 
 export async function reorderSequences(
   actId: string,
   sequenceIds: string[],
-  token: string
+  token: string,
 ): Promise<void> {
   await NodesAPI.reorderNodes(sequenceIds);
 }
@@ -211,7 +243,10 @@ export async function reorderSequences(
 // SCENES - Backward Compatible Wrapper Functions
 // =============================================================================
 
-export async function getScenes(sequenceId: string, token: string): Promise<Scene[]> {
+export async function getScenes(
+  sequenceId: string,
+  token: string,
+): Promise<Scene[]> {
   const nodes = await NodesAPI.getNodeChildren(sequenceId);
   return nodes.map(nodeToScene);
 }
@@ -219,18 +254,18 @@ export async function getScenes(sequenceId: string, token: string): Promise<Scen
 export async function createScene(
   sequenceId: string,
   sceneData: Partial<Scene>,
-  token: string
+  token: string,
 ): Promise<Scene> {
   // Get sequence to get projectId
   const sequence = await NodesAPI.getNode(sequenceId);
-  
+
   const node = await NodesAPI.createNode({
     projectId: sequence.projectId,
     templateId: sequence.templateId,
     level: 3,
     parentId: sequenceId,
-    nodeNumber: sceneData.sceneNumber!,
-    title: sceneData.title || `Szene ${sceneData.sceneNumber}`,
+    nodeNumber: sceneData.sceneNumber ?? 1,
+    title: sceneData.title || `Szene ${sceneData.sceneNumber ?? 1}`,
     description: sceneData.description,
     color: sceneData.color,
     metadata: {
@@ -240,24 +275,33 @@ export async function createScene(
       content: sceneData.content, // 📚 Support for book content
     },
   });
-  
-  return nodeToScene(node);
+
+  const scene = nodeToScene(node);
+  return { ...scene, sequenceId: scene.sequenceId ?? sequenceId };
 }
 
 export async function updateScene(
   sceneId: string,
   updates: Partial<Scene>,
-  token: string
+  token: string,
 ): Promise<Scene> {
   // Get current scene to preserve metadata
   const currentNode = await NodesAPI.getNode(sceneId);
-  
+
   const metadata: any = { ...currentNode.metadata };
   if (updates.location !== undefined) metadata.location = updates.location;
   if (updates.timeOfDay !== undefined) metadata.timeOfDay = updates.timeOfDay;
-  if (updates.characters !== undefined) metadata.characters = updates.characters;
-  if (updates.content !== undefined) metadata.content = updates.content; // 📚 Support for book content
-  
+  if (updates.characters !== undefined)
+    metadata.characters = updates.characters;
+  if (updates.content !== undefined) metadata.content = updates.content;
+  if (updates.imageUrl !== undefined) {
+    metadata.imageUrl =
+      normalizeSceneImageStoragePath(updates.imageUrl) ?? updates.imageUrl;
+  }
+  if (updates.metadata) {
+    Object.assign(metadata, updates.metadata);
+  }
+
   const node = await NodesAPI.updateNode(sceneId, {
     nodeNumber: updates.sceneNumber,
     title: updates.title,
@@ -268,18 +312,21 @@ export async function updateScene(
     metadata,
     wordCount: updates.wordCount, // 📊 Pass word count to database
   });
-  
+
   return nodeToScene(node);
 }
 
-export async function deleteScene(sceneId: string, token: string): Promise<void> {
+export async function deleteScene(
+  sceneId: string,
+  token: string,
+): Promise<void> {
   await NodesAPI.deleteNode(sceneId);
 }
 
 export async function reorderScenes(
   sequenceId: string,
   sceneIds: string[],
-  token: string
+  token: string,
 ): Promise<void> {
   await NodesAPI.reorderNodes(sceneIds);
 }
@@ -293,7 +340,7 @@ export async function reorderScenes(
  */
 export async function getAllSequencesByProject(
   projectId: string,
-  token: string
+  token: string,
 ): Promise<Sequence[]> {
   const nodes = await NodesAPI.getNodes({ projectId, level: 2 });
   return nodes.map(nodeToSequence);
@@ -304,7 +351,7 @@ export async function getAllSequencesByProject(
  */
 export async function getAllScenesByProject(
   projectId: string,
-  token: string
+  token: string,
 ): Promise<Scene[]> {
   const nodes = await NodesAPI.getNodes({ projectId, level: 3 });
   return nodes.map(nodeToScene);

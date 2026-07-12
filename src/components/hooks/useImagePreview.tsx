@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 interface ImagePreviewPosition {
   top: number;
@@ -9,38 +9,42 @@ interface ImagePreviewPosition {
 
 export function useImagePreview() {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [previewPosition, setPreviewPosition] = useState<ImagePreviewPosition | null>(null);
+  const [previewPosition, setPreviewPosition] =
+    useState<ImagePreviewPosition | null>(null);
   const [currentImage, setCurrentImage] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleMouseEnter = (e: React.MouseEvent<HTMLElement>, imageUrl: string) => {
+  const handleMouseEnter = (
+    e: React.MouseEvent<HTMLElement>,
+    imageUrl: string,
+  ) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    
+
     // Maximale Größe für das Vorschaubild
     const maxWidth = Math.min(400, viewportWidth - 32);
     const maxHeight = Math.min(400, viewportHeight - 32);
-    
+
     // Position berechnen (versuche rechts vom Element zu positionieren)
     let left = rect.right + 12;
     let top = rect.top;
-    
+
     // Wenn nicht genug Platz rechts, zeige links
     if (left + maxWidth > viewportWidth - 16) {
       left = rect.left - maxWidth - 12;
     }
-    
+
     // Wenn nicht genug Platz links, zentriere horizontal
     if (left < 16) {
       left = Math.max(16, (viewportWidth - maxWidth) / 2);
     }
-    
+
     // Vertikale Position anpassen wenn nötig
     if (top + maxHeight > viewportHeight - 16) {
       top = Math.max(16, viewportHeight - maxHeight - 16);
     }
-    
+
     // Kleine Verzögerung für bessere UX
     timeoutRef.current = setTimeout(() => {
       setCurrentImage(imageUrl);
@@ -69,6 +73,23 @@ export function useImagePreview() {
         clearTimeout(timeoutRef.current);
       }
     };
+  }, []);
+
+  /** Programmatic preview (e.g. map pins) — centers in the viewport. */
+  const openPreview = useCallback((imageUrl: string) => {
+    if (typeof window === "undefined") return;
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const maxWidth = Math.min(400, viewportWidth - 32);
+    const maxHeight = Math.min(400, viewportHeight - 32);
+    setCurrentImage(imageUrl);
+    setPreviewPosition({
+      top: Math.max(16, (viewportHeight - maxHeight) / 2),
+      left: Math.max(16, (viewportWidth - maxWidth) / 2),
+      width: maxWidth,
+      height: maxHeight,
+    });
+    setIsPreviewOpen(true);
   }, []);
 
   const ImagePreviewOverlay = () => {
@@ -102,6 +123,7 @@ export function useImagePreview() {
   return {
     handleMouseEnter,
     handleMouseLeave,
+    openPreview,
     ImagePreviewOverlay,
     isPreviewOpen,
   };

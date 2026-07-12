@@ -3,23 +3,33 @@
  *
  * Redirects the user to the storage provider's OAuth consent page.
  * Query: provider (google_drive | dropbox | onedrive | kdrive), redirect_uri (frontend URL to return to).
+ *
+ * @deprecated T24 — Ziel T20 (`scriptony-storage`): **Storage-Provider-OAuth** (z. B. Google Drive),
+ *          nicht Scriptony-User-Login. Compat-Route bis Migration.
+ *          Siehe `docs/backend-domain-map.md` (T20 Abschnitt „Storage-Provider-OAuth vs. Login“).
  */
 
+import { Buffer } from "node:buffer";
 import { getOptionalEnv } from "../../../_shared/env";
-import { isRedirectUriAllowed } from "../../../_shared/oauth-redirect";
 import {
   getQuery,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendMethodNotAllowed,
   sendRedirect,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
 } from "../../../_shared/http";
+import { isRedirectUriAllowed } from "../../../_shared/oauth-redirect";
 
 const PROVIDERS: Record<
   string,
-  { authUrl: string; scope: string; clientIdEnv: string; extraParams?: Record<string, string> }
+  {
+    authUrl: string;
+    scope: string;
+    clientIdEnv: string;
+    extraParams?: Record<string, string>;
+  }
 > = {
   google_drive: {
     authUrl: "https://accounts.google.com/o/oauth2/v2/auth",
@@ -46,10 +56,16 @@ const PROVIDERS: Record<
 };
 
 function buildState(redirectUri: string, provider: string): string {
-  return Buffer.from(JSON.stringify({ redirect_uri: redirectUri, provider }), "utf8").toString("base64url");
+  return Buffer.from(
+    JSON.stringify({ redirect_uri: redirectUri, provider }),
+    "utf8",
+  ).toString("base64url");
 }
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   if (req.method !== "GET") {
     sendMethodNotAllowed(res, ["GET"]);
     return;

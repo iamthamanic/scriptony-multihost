@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Scriptony Desktop herunterladen — offenes Produktionssystem für Filme, Serien, Bücher und Hörbücher."
+    />
+    <title>Scriptony — Desktop herunterladen</title>
+    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/iamthamanic/scriptony-multihost/main/src/assets/scriptony-logo.png" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0d12;
+        --surface: #141821;
+        --surface-hover: #1a2030;
+        --border: #2a3142;
+        --text: #eef1f7;
+        --muted: #9aa3b5;
+        --accent: #5b8cff;
+        --accent-hover: #7aa2ff;
+        --success: #3ecf8e;
+        --radius: 14px;
+        --shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        background:
+          radial-gradient(1200px 600px at 50% -10%, rgba(91, 140, 255, 0.18), transparent),
+          var(--bg);
+        color: var(--text);
+        line-height: 1.5;
+      }
+
+      .wrap {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 48px 20px 64px;
+      }
+
+      header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+
+      .logo {
+        width: 88px;
+        height: 88px;
+        border-radius: 22px;
+        box-shadow: var(--shadow);
+      }
+
+      h1 {
+        margin: 20px 0 8px;
+        font-size: clamp(1.8rem, 4vw, 2.4rem);
+        letter-spacing: -0.02em;
+      }
+
+      .tagline {
+        margin: 0;
+        color: var(--muted);
+        font-size: 1.05rem;
+      }
+
+      .version-badge {
+        display: inline-block;
+        margin-top: 16px;
+        padding: 6px 12px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 24px;
+        margin-bottom: 16px;
+        box-shadow: var(--shadow);
+      }
+
+      .card h2 {
+        margin: 0 0 6px;
+        font-size: 1.1rem;
+      }
+
+      .card p {
+        margin: 0 0 16px;
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+
+      .recommended {
+        border-color: rgba(91, 140, 255, 0.55);
+        box-shadow:
+          0 0 0 1px rgba(91, 140, 255, 0.15),
+          var(--shadow);
+      }
+
+      .recommended-label {
+        display: inline-block;
+        margin-bottom: 12px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: rgba(91, 140, 255, 0.15);
+        color: var(--accent-hover);
+        font-size: 0.78rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+      }
+
+      .buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      a.btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 44px;
+        padding: 0 18px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--surface-hover);
+        color: var(--text);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.95rem;
+        transition:
+          background 0.15s ease,
+          border-color 0.15s ease,
+          transform 0.15s ease;
+      }
+
+      a.btn:hover {
+        background: #222a3a;
+        border-color: #3a4358;
+        transform: translateY(-1px);
+      }
+
+      a.btn.primary {
+        background: var(--accent);
+        border-color: transparent;
+        color: #fff;
+      }
+
+      a.btn.primary:hover {
+        background: var(--accent-hover);
+      }
+
+      a.btn[disabled],
+      a.btn.disabled {
+        opacity: 0.45;
+        pointer-events: none;
+      }
+
+      .status {
+        text-align: center;
+        color: var(--muted);
+        padding: 32px 0;
+      }
+
+      .status.error {
+        color: #ff8f8f;
+      }
+
+      footer {
+        margin-top: 28px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      footer a {
+        color: var(--accent-hover);
+        text-decoration: none;
+      }
+
+      footer a:hover {
+        text-decoration: underline;
+      }
+
+      .note {
+        margin-top: 12px;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+
+      .mac-help {
+        border-color: rgba(255, 180, 80, 0.45);
+        background: rgba(255, 180, 80, 0.08);
+      }
+
+      .mac-help h2 {
+        color: #ffd699;
+      }
+
+      .mac-help ol {
+        margin: 0;
+        padding-left: 1.2rem;
+        color: var(--text);
+      }
+
+      .mac-help li {
+        margin-bottom: 8px;
+      }
+
+      .mac-help code,
+      .mac-help .terminal-cmd {
+        display: block;
+        margin-top: 8px;
+        padding: 12px 14px;
+        font-size: 0.9rem;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        color: #fff;
+        user-select: all;
+      }
+
+      .mac-help .terminal-label {
+        display: block;
+        margin-top: 12px;
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <img
+          class="logo"
+          src="https://raw.githubusercontent.com/iamthamanic/scriptony-multihost/main/src/assets/scriptony-logo.png"
+          alt="Scriptony Logo"
+          width="88"
+          height="88"
+        />
+        <h1>Scriptony Desktop</h1>
+        <p class="tagline">
+          Offenes Produktionssystem für Filme, Serien, Bücher und Hörbücher.
+        </p>
+        <span class="version-badge" id="version-badge">Lade Version…</span>
+      </header>
+
+      <div id="content">
+        <p class="status" id="loading">Downloads werden geladen…</p>
+      </div>
+
+      <footer>
+        <p>
+          <a id="release-notes-link" href="https://github.com/iamthamanic/scriptony-multihost/releases/latest">
+            Release Notes &amp; alle Plattformen
+          </a>
+          ·
+          <a href="https://github.com/iamthamanic/scriptony-multihost">Quellcode auf GitHub</a>
+        </p>
+        <p class="note">
+          Nach der Installation: Updates automatisch unter Einstellungen → System.
+        </p>
+      </footer>
+    </div>
+
+    <script>
+      const REPO = "iamthamanic/scriptony-multihost";
+
+      function pickAsset(assets, predicate) {
+        return assets.find(predicate);
+      }
+
+      function detectRecommendedPlatform() {
+        const ua = navigator.userAgent;
+        const platform = navigator.platform || "";
+        if (/Mac|iPhone|iPad|iPod/.test(platform) || /Mac OS X/.test(ua)) {
+          return "mac";
+        }
+        if (/Win/.test(platform)) return "windows";
+        if (/Linux/.test(platform)) return "linux";
+        return null;
+      }
+
+      function renderDownloads(release) {
+        const assets = release.assets || [];
+        const version = release.tag_name.replace(/^app-v?/, "v");
+        document.getElementById("version-badge").textContent = `Version ${version}`;
+        document.getElementById("release-notes-link").href = release.html_url;
+
+        const macArm = pickAsset(
+          assets,
+          (a) => /\.dmg$/i.test(a.name) && /aarch64|arm64|universal/i.test(a.name),
+        );
+        const macIntel = pickAsset(
+          assets,
+          (a) => /\.dmg$/i.test(a.name) && /x64|x86_64/i.test(a.name),
+        );
+        const winExe = pickAsset(
+          assets,
+          (a) => /\.exe$/i.test(a.name) && !/\.sig$/i.test(a.name),
+        );
+        const winMsi = pickAsset(
+          assets,
+          (a) => /\.msi$/i.test(a.name) && !/\.sig$/i.test(a.name),
+        );
+        const linuxAppImage = pickAsset(assets, (a) => /\.appimage$/i.test(a.name));
+        const linuxDeb = pickAsset(assets, (a) => /\.deb$/i.test(a.name));
+
+        const recommended = detectRecommendedPlatform();
+        const content = document.getElementById("content");
+        content.innerHTML = "";
+
+        function section(title, description, key, buttons) {
+          const card = document.createElement("section");
+          card.className = "card" + (recommended === key ? " recommended" : "");
+          const label =
+            recommended === key
+              ? '<span class="recommended-label">Empfohlen für dein Gerät</span>'
+              : "";
+          card.innerHTML = `
+            ${label}
+            <h2>${title}</h2>
+            <p>${description}</p>
+            <div class="buttons"></div>
+          `;
+          const row = card.querySelector(".buttons");
+          for (const btn of buttons) {
+            const link = document.createElement("a");
+            link.className = "btn" + (btn.primary ? " primary" : "");
+            link.href = btn.href || "#";
+            link.textContent = btn.label;
+            if (!btn.href) link.classList.add("disabled");
+            if (btn.href) {
+              link.setAttribute("download", "");
+              link.rel = "noopener noreferrer";
+            }
+            row.appendChild(link);
+          }
+          content.appendChild(card);
+        }
+
+        section("macOS", "Apple Silicon (M-Chip) oder Intel — als .dmg-Installer. Nach dem Download bitte die Installation unten beachten.", "mac", [
+          {
+            label: "Apple Silicon (M1/M2/M3/M4)",
+            href: macArm?.browser_download_url,
+            primary: recommended === "mac",
+          },
+          {
+            label: "Intel Mac",
+            href: macIntel?.browser_download_url,
+          },
+        ]);
+
+        appendMacInstallHelp(content);
+
+        section("Windows", "Installer für Windows 10/11.", "windows", [
+          {
+            label: "Setup (.exe)",
+            href: winExe?.browser_download_url,
+            primary: recommended === "windows",
+          },
+          {
+            label: "MSI",
+            href: winMsi?.browser_download_url,
+          },
+        ]);
+
+        const linuxButtons = [];
+        if (linuxAppImage) {
+          linuxButtons.push({
+            label: "AppImage",
+            href: linuxAppImage.browser_download_url,
+            primary: recommended === "linux",
+          });
+        }
+        if (linuxDeb) {
+          linuxButtons.push({
+            label: "Debian (.deb)",
+            href: linuxDeb.browser_download_url,
+          });
+        }
+        if (linuxButtons.length === 0) {
+          linuxButtons.push({
+            label: "Noch nicht verfügbar",
+            href: null,
+          });
+        }
+
+        section(
+          "Linux",
+          "AppImage oder Debian-Paket — falls im Release enthalten.",
+          "linux",
+          linuxButtons,
+        );
+      }
+
+      function appendMacInstallHelp(container) {
+        const help = document.createElement("section");
+        help.className = "card mac-help";
+        help.innerHTML = `
+          <h2>macOS — Installation (einmalig nötig)</h2>
+          <p>
+            Scriptony ist aktuell noch nicht Apple-signiert. macOS blockiert deshalb
+            den Start nach dem Browser-Download oft mit <strong>„App ist beschädigt“</strong>.
+            Die DMG ist in Ordnung — du musst einmal kurz das Terminal nutzen:
+          </p>
+          <ol>
+            <li>DMG öffnen und <strong>Scriptony.app</strong> nach <strong>Programme</strong> ziehen.</li>
+            <li>
+              <strong>Terminal</strong> öffnen (Spotlight: „Terminal“) und diesen Befehl ausführen:
+              <span class="terminal-label">Befehl kopieren und in Terminal einfügen, dann Enter:</span>
+              <code class="terminal-cmd">xattr -cr /Applications/Scriptony.app</code>
+            </li>
+            <li>Scriptony aus <strong>Programme</strong> starten.</li>
+          </ol>
+          <p class="note">
+            Alternative beim ersten Start: Rechtsklick auf Scriptony → <strong>Öffnen</strong> → erneut <strong>Öffnen</strong>.
+            Sobald ein Apple-Developer-Zertifikat hinterlegt ist, entfällt dieser Schritt.
+          </p>
+        `;
+        container.appendChild(help);
+      }
+
+      async function loadRelease() {
+        const loading = document.getElementById("loading");
+        try {
+          const res = await fetch(
+            `https://api.github.com/repos/${REPO}/releases/latest`,
+          );
+          if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+          const release = await res.json();
+          loading.remove();
+          renderDownloads(release);
+        } catch (err) {
+          loading.className = "status error";
+          loading.textContent =
+            "Downloads konnten nicht geladen werden. Bitte direkt auf GitHub Releases wechseln.";
+          console.error(err);
+        }
+      }
+
+      loadRelease();
+    </script>
+  </body>
+</html>

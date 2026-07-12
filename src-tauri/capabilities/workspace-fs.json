@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "workspace-fs",
+  "description": "Workspace listing — paths are restricted by Rust allow_directory() after folder pick",
+  "windows": ["main"],
+  "permissions": [
+    "fs:allow-read-dir",
+    "fs:allow-read-text-file",
+    "fs:allow-exists"
+  ]
+}

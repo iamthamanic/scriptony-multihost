@@ -1,0 +1,328 @@
+# Backend Domain Map
+
+Stand: 2026-05-05  
+Verifizierungsmarker: ARCH-REF-T01-DONE · **T20:** `ARCH-REF-T20-DONE` · **T21:** `ARCH-REF-T21-DONE` (Collaboration-Zielmodell, Access-Helper-Vertrag, Shim-Gate bestanden)
+
+## Zweck
+
+Diese Domain Map ist die verbindliche Zuordnung fuer neue Features.
+Wenn ein Feature nicht eindeutig zugeordnet werden kann, muss vor der Implementierung
+die Map erweitert oder eine Ticket-Diskussion gefuehrt werden.
+
+---
+
+## Legende
+
+| Status | Bedeutung |
+|--------|-----------|
+| `keep` | Function bleibt wie ist, Ziel-Function = aktuelle Function. |
+| `rename` | Function wird umbenannt, Verantwortung bleibt gleich. |
+| `split` | Function wird in mehrere Ziel-Functions aufgeteilt. |
+| `merge` | Function wird in eine andere Ziel-Function eingegliedert. |
+| `new` | Ziel-Function existiert noch nicht, muss neu gebaut werden. |
+| `legacy` | Function darf nicht mehr erweitert werden. |
+| `unclear` | Grenze muss spaeter geklaert werden. |
+
+---
+
+## Aktuelle Functions → Ziel-Functions
+
+### Core
+
+| Aktuelle Function | Ziel-Function | Status | Erlaubte Verantwortung | Verbotene Verantwortung | Owned Datenmodelle | Read Datenmodelle | Externe Provider | Migrationsnotizen |
+|---|---|---|---|---|---|---|---|---|
+| `scriptony-auth` | `scriptony-auth` | `keep` | Identitaet, Signup, Login, Account Basics, JWT | Storage-OAuth, Projektfreigaben, Orgs/Members | `users`, `accounts`, `sessions` | — | — | Storage-/OAuth-Code nach `scriptony-storage` wandern (T10/T20) |
+| `scriptony-projects` | `scriptony-projects` | `keep` | Projekt-CRUD, Projekt-Metadaten, Owner-Verwaltung | Projekt-Members, Einladungen, Orgs | `projects` | — | — | `created_by` muss zu `owner_type`/`owner_id` werden (T21) |
+| `scriptony-project-nodes` | `scriptony-structure` | `rename` | Template Engine, Nodes, Node-Hierarchie, Node-Metadaten | Charaktere, Shots, Assets, Script-Text | `nodes`, `node_types` | `projects` | — | Umbenennung, keine neue Logik in project-nodes (T01) |
+| `scriptony-script` | `scriptony-script` | `new` | Script-CRUD, Block-CRUD, Reorder, Script-Text als Source of Truth | Audio, Assets, Timeline | `scripts`, `script_blocks` | `projects`, `characters` | — | Neu bauen (T03/T04) |
+| `scriptony-characters` | `scriptony-characters` | `keep` | Charakter-CRUD, Charakter-Attribute, Timeline-Charaktere | Script-Text, Shots, Assets | `characters`, `character_attributes` | `projects` | — | — |
+| `scriptony-worldbuilding` | `scriptony-worldbuilding` | `keep` | Orte, Welten, Worldbuilding-Metadaten | Script, Audio, Assets | `worlds`, `locations` | `projects` | — | — |
+| `scriptony-timeline-v2` | — | `legacy` | — | — | — | — | — | Leere API-Definition (kein Deployment, 0 Executions, keine Frontend-Referenzen). T17: entfernen. |
+| `scriptony-shots` | `scriptony-timeline` | `merge` | Shot-CRUD, Shot-Reihenfolge, Shot-Metadaten | Audio-Assets, Script-Text | `shots` | `projects`, `nodes` | — | T13: Timeline-Domain. Keine `timeline_items` (not needed yet). Siehe `docs/timeline-domain-decision.md` |
+| `scriptony-clips` | `scriptony-timeline` | `merge` | Clip-CRUD, Clip-Timing, NLE-Segmente | Audio-Assets | `clips` | `projects`, `shots` | — | T13: Timeline-Domain. Keine `timeline_items` (not needed yet). Siehe `docs/timeline-domain-decision.md` |
+| `scriptony-editor-readmodel` | `scriptony-editor-readmodel` | `new` | Read-only Aggregation: Project, Structure, Characters, Script Blocks, Shots, Clips, Assets, Audio Tracks, Style Summary | Schreiboperationen, Provider Calls, Job-Erstellung | *(read-only)* | `projects`, `nodes`, `characters`, `script_blocks`, `shots`, `clips`, `assets`, `scene_audio_tracks` | — | Neu bauen (T12) |
+| `scriptony-inspiration` | `scriptony-inspiration` | `keep` | Projekt-Inspirationen, Moodboards, Source-Links | — | `project_inspirations` | `projects` | — | API-only Function (kein Repo-Code, keine Frontend-Route). Laeuft in Appwrite. |
+
+### Media
+
+| Aktuelle Function | Ziel-Function | Status | Erlaubte Verantwortung | Verbotene Verantwortung | Owned Datenmodelle | Read Datenmodelle | Externe Provider | Migrationsnotizen |
+|---|---|---|---|---|---|---|---|---|
+| `scriptony-assets` | `scriptony-assets` | `new` | Asset-Metadaten, Upload, Link, Query, Owner-Verknuepfung | Physische Storage, OAuth, Provider-Tokens | `assets` | `projects` | — | Neu bauen (T05/T06) |
+| `scriptony-audio` | `scriptony-audio` | `keep` | TTS, STT, Voice Discovery | Shot-Audio-Uploads, Audio-Production-Planung | `tts_requests`, `stt_requests`, `voice_configs` | `projects` | OpenAI (TTS), ElevenLabs (TTS), Google (TTS), Whisper (STT), Ollama | Shot-Audio-Routen als legacy/compat markieren (T09) |
+| `scriptony-image` | `scriptony-image` | `keep` | Bildgenerierung, Bild-Tasks, Segmentierung | AI Settings, Key Validation, Stage Render | `image_tasks` | `projects` | OpenAI (DALL-E), Midjourney, Stability AI, Google (Imagen) | AI Settings nach `scriptony-ai` (T10) |
+| `scriptony-video` | `scriptony-video` | `keep` | Video-Generierung, Export | — | `video_tasks` | `projects` | Runway, Pika, OpenAI (Sora) | Aktuell keine Frontend-Route; muss geprueft werden |
+| `scriptony-media-worker` | `scriptony-media-worker` | `new` | Worker-Orchestration: Mix, Render, Export, Conversion, Palette, Normalisierung | Job-Source-of-Truth, Produktentscheidungen | *(worker payloads)* | `jobs` | FFmpeg, Blender | Neu bauen (T15) |
+
+### Workflows
+
+| Aktuelle Function | Ziel-Function | Status | Erlaubte Verantwortung | Verbotene Verantwortung | Owned Datenmodelle | Read Datenmodelle | Externe Provider | Migrationsnotizen |
+|---|---|---|---|---|---|---|---|---|
+| `scriptony-audio-story` | `scriptony-audio-production` | `rename` | Audio-Sessions, Tracks, Voice-Casting, Mixing-Orchestration | TTS/STT Engine, Script-Text als Source of Truth | `audio_sessions`, `scene_audio_tracks`, `character_voice_assignments` | `script_blocks`, `projects` | — | Umbenennen; TTS bleibt bei `scriptony-audio` (T07/T08) |
+| `scriptony-stage` | `scriptony-stage` | `keep` | Render-Job Orchestrator, Accept/Reject/Complete | 2D/3D Engine, Style-Profile-Logik | `render_jobs` | `projects`, `shots` | — | — |
+| `scriptony-stage2d` | `scriptony-stage2d` | `keep` | 2D Layer & Repair Endpoints | Orchestration, Produktentscheidungen | `layer_states` | `projects`, `render_jobs` | — | Puppet-Layer |
+| `scriptony-stage3d` | `scriptony-stage3d` | `keep` | 3D View-State Endpoints | Orchestration, Produktentscheidungen | `view_states` | `projects`, `render_jobs` | Three.js, Babylon.js | Puppet-Layer |
+| `scriptony-style` | `scriptony-style` | `keep` | Style-Profile CRUD, Apply | Bildgenerierung, Render-Engine | `style_profiles` | `projects`, `shots` | — | Puppet-Layer |
+| `scriptony-style-guide` | `scriptony-style-guide` | `keep` | Project Visual Style, Style-Items | — | `project_visual_styles`, `style_items` | `projects` | — | — |
+| `scriptony-sync` | `scriptony-sync` | `keep` | Blender Ingress (nur Metadaten) | Produktentscheidungen, Schreiboperationen | `sync_metadata` | `projects` | Blender | Keine Produktlogik hier (T16) |
+| `scriptony-gym` | `scriptony-gym` | `keep` | Exercises, Progress, Achievements, Daily Challenge | — | `exercises`, `progress`, `achievements` | `projects`, `users` | — | — |
+| `scriptony-beats` | `scriptony-beats` | `keep` | Storybeat-Planung (Save the Cat, Hero's Journey), prozentuale Timeline-Position, Template-Zuweisung | Audioproduktion, Asset-Upload, Node-CRUD | `story_beats` | `projects`, `nodes` | — | Bruecken-Service zwischen Structure und Timeline; 1014-Zeilen-Frontend-Component (CapCut-style Ripple Editing) |
+
+### Platform
+
+| Aktuelle Function | Ziel-Function | Status | Erlaubte Verantwortung | Verbotene Verantwortung | Owned Datenmodelle | Read Datenmodelle | Externe Provider | Migrationsnotizen |
+|---|---|---|---|---|---|---|---|---|
+| `scriptony-ai` | `scriptony-ai` | `keep` | Provider Registry, Feature Routing, API Keys, Model Config | Chat, Conversations, Generierung | `ai_providers`, `ai_features`, `api_keys` | `projects` | OpenAI, Anthropic, Google, DeepSeek, OpenRouter, Ollama | — |
+| `scriptony-assistant` | `scriptony-assistant` | `keep` | Chat, Conversations, Messages, Prompt Handling, RAG | AI Settings, Gym, MCP | `conversations`, `messages`, `rag_chunks` | `projects` | OpenAI, Anthropic, Google, DeepSeek, OpenRouter, Ollama | — |
+| `scriptony-jobs` | `scriptony-jobs` | `keep` | Job-Status, Retry, Cancel, Cleanup, Result-Struktur | Worker-Execution, Produktlogik | `jobs` | `projects` | — | T14: Active Control-Plane. Schema: docs/job-schema.md. |
+| `jobs-handler` | `scriptony-jobs` / `legacy` | `legacy` | — | — | — | — | — | T14 LEGACY_DO_NOT_EXTEND — Deno-only, nicht deployed, nicht Node-kompatibel. Siehe docs/job-schema.md. |
+| `scriptony-observability` | `scriptony-observability` | `new` | Stats, Logs, Health-Checks (read-only) | Admin-Schreiboperationen | *(read-only views)* | `projects`, `functions` | — | Neu bauen; `scriptony-stats` + `scriptony-logs` konsolidieren (T16) |
+| `scriptony-admin` | `scriptony-admin` | `new` | Superadmin, Globale Kennzahlen, Benutzerverwaltung | Produktlogik, Observability | `admin_logs` | `users`, `projects`, `organizations` | — | Neu bauen; `scriptony-superadmin` konsolidieren (T16) |
+| `scriptony-mcp-appwrite` | `scriptony-mcp-appwrite` | `keep` | MCP Tool Registry, Thin HTTP Entry | AI Control, Chat | `mcp_tools` | `projects` | — | — |
+| `scriptony-storage` | `scriptony-storage` | `new` | Storage Provider, OAuth, Connections, Targets, Objects, Sync, Import, Export | Asset-Metadaten (bleiben bei `scriptony-assets`) | `storage_connections`, `storage_targets`, `storage_objects` | `projects`, `assets` | AWS S3, Google Cloud Storage, Dropbox, OneDrive, Appwrite Storage | Neu bauen (T20) |
+| `scriptony-collaboration` | `scriptony-collaboration` | `new` | Projektfreigaben, Members, Rollen, Einladungen, Orgs, Access-Checks | Identitaet, Login, Signup | `project_members`, `project_invites`, `organization_members`, `organization_invites` | `projects`, `users` | — | Neu bauen (T21) |
+
+---
+
+## Legacy Functions (nicht erweitern)
+
+Diese Functions existieren im Repo oder auf dem Server, duerfen aber **nicht**
+mehr erweitert werden. Neue Features gehoeren in die Ziel-Domain aus der
+obigen Map.
+
+| Aktuelle Function | Ziel-Domain | Status | Warum legacy |
+|---|---|---|---|
+| `make-server-3b52693b` | — | `legacy` | Unified-Server-Wrapper; nur Health-Endpoint aktiv; Rest in anderen Functions verschoben. Keine eigenen Geschaeftslogik-Dateien. |
+| `scriptony-logs` | `scriptony-observability` | `legacy` | Keine eigenen Implementierungsdateien. Wird in T16 in `scriptony-observability` konsolidiert. |
+| `scriptony-stats` | `scriptony-observability` | `legacy` | Keine eigenen Implementierungsdateien. Wird in T16 in `scriptony-observability` konsolidiert. |
+| `scriptony-superadmin` | `scriptony-admin` | `legacy` | Kein klarer Entrypoint; Admin-Oberflaeche. Wird in T16 in `scriptony-admin` konsolidiert. |
+| `scriptony-timeline-v2` | — | `legacy` | Leere API-Definition (kein Deployment, 0 Executions, keine Frontend-Referenzen). T17: entfernen. |
+| `jobs-handler` | `scriptony-jobs` | `legacy` | Duplikat zu `scriptony-jobs-handler`. T14 konsolidiert. |
+
+---
+
+## Storage-/OAuth-Grenze
+
+| Aktuelle Location | Ziel-Domain | Status | Beispiele |
+|---|---|---|---|
+| `scriptony-auth` (Storage-Provider-OAuth) | `scriptony-storage` | `future` | `storage-providers`, `integration-tokens` |
+| `scriptony-auth` (Organisationen) | `scriptony-collaboration` | `future` | **Heute:** `GET/POST /organizations`, `GET/PATCH /organizations/:id` in `scriptony-auth` (Listen/Erstellen/Settings). **Ziel:** Mitgliedschaft, Einladungen, projektbezogene Access-Checks unter `scriptony-collaboration`; Auth bleibt Login/Identitaet. |
+
+### T20 — Storage-Provider-OAuth vs. Login
+
+**Google Drive / Dropbox / OneDrive OAuth** unter `scriptony-auth/storage-providers/oauth/*` dient der **Kopplung eines Storage-Provider-Kontos** (Dateizugriff, `drive.file` o.ä.), **nicht** dem primären **User-Login** von Scriptony (Sessions/JWT bleiben bei `scriptony-auth`).
+
+- **Heute:** Routen bleiben unter `scriptony-auth` (Compat), siehe JSDoc in den betroffenen Handlers.
+- **Ziel:** Gleiche OAuth-Flows laufen unter `scriptony-storage` (`storage_connections`); `scriptony-auth` kennt dann keine Provider-Redirect-URLs mehr.
+
+### Storage-Adapter (`scriptony-assets`)
+
+Physische Bytes (Upload in Appwrite Storage, Bucket-Wahl) gehen über die schmale Nahtstelle **`functions/scriptony-assets/_shared/storage-adapter.ts`** (`StorageAdapter`, derzeit Appwrite-only). **Fachliche** Asset-Metadaten (`assets`-Collection, Owner/Purpose) bleiben ausschließlich in `scriptony-assets`.
+
+- **Ziel (T20):** `scriptony-storage` liefert pro `storage_target` die konkrete Schreib-/Lese-Implementierung; `scriptony-assets` ruft nur noch abstrahierte Storage-Operationen auf (kein OAuth, keine Provider-Tokens).
+
+### Appwrite Buckets (Kompatibilität)
+
+Die heute provisionierten Buckets und `SCRIPTONY_STORAGE_BUCKET_*` Overrides (`functions/_shared/env.ts`, `provision-appwrite-buckets.mjs`) bleiben **gültig**. `scriptony-storage` ergänzt später **zusätzliche** Ziele (externe IDs, Pfade), ohne bestehende Bucket-IDs zu invalidieren.
+
+---
+
+## Asset Owner/Purpose-Matrix
+
+`assets` ist der zentrale Metadaten-Container fuer Dateien. Owner und Purpose verhindern unkontrollierte Ablage.
+
+> **Single Source of Truth:** Die vollstaendige Owner/Purpose-Matrix lebt in
+> `functions/scriptony-assets/_shared/validation.ts` (`PURPOSES_BY_OWNER`,
+> `PURPOSES_BY_MEDIA`, `isValidCombination()`).
+> Dokumentationen verweisen darauf; die Matrix wird nirgendwo sonst
+> dupliziert, um Drift zu vermeiden.
+
+**Uebersicht (read-only, fuer schnelle Orientierung):**
+
+- **owner_type:** project, shot, script, script_block, world, world_item, character, style_guide, stage, scene
+- **media_type:** image, audio, video, document
+- **purpose:** je nach Matrix-Kombination (z.B. cover, backdrop, reference, storyboard, dialogue_audio, attachment, export_pdf, ...)
+
+**Validierung:** API prueft `owner_type` + `media_type` + `purpose` gegen die
+Matrix in `validation.ts`. Appwrite speichert sie als Freitext (kein Enum-Constraint).
+
+**Delete Policy:** `DELETE /assets/:id` entfernt nur Metadaten. Physische Datei bleibt in Storage (Verantwortung: `scriptony-storage` / Cleanup-Job).
+
+**Bucket-Defaults:** Provisioniert in `functions/tools/provision-appwrite-buckets.mjs`:
+- `general`, `project-images`, `world-images`, `shots`, `audio-files`, `stage-documents`
+- Override via Env: `SCRIPTONY_STORAGE_BUCKET_*` in `functions/_shared/env.ts`
+
+---
+
+## Audio Production / Technical Audio Boundary
+
+**`scriptony-audio-production`** (zurzeit `scriptony-audio-story`) =  
+Orchestration: Audio-Sessions, Tracks, Voice-Casting, Mixing-Orchestration, Export-Job-Erstellung.
+
+**`scriptony-audio`** = Technische Engine:  
+TTS, STT, Voice Discovery, Audio-Uploads, technische Audio-Processing.
+
+### Regeln
+
+| Regel | Details |
+|---|---|
+| R1 | `scriptony-audio-production` darf keine TTS/STT-Provider-Engine-Logik enthalten. TTS-Aufrufe gehen an `scriptony-audio` (oder dessen Service-Abstraktion). |
+| R2 | `scriptony-audio-production` darf Script-Text nicht als Source of Truth kopieren; es liest `script_blocks` und referenziert sie per `script_block_id`. |
+| R3 | `scriptony-audio` darf keine Audio-Production-Planung (Sessions, Tracks, Mixing-Orchestration) enthalten. |
+| R4 | Generierte Audio-Dateien werden uber `scriptony-assets` gespeichert/verlinkt (Metadaten), nicht als Inline-Binary in `audio_sessions`/`scene_audio_tracks`. |
+| R5 | Mix/Export erzeugt `jobs`-Eintrage (Status/Referenz), keine Fake-Ergebnisse. Echte Ausfuhrung liegt bei `scriptony-media-worker` oder `scriptony-audio`. |
+
+### Routes: Zuordnung und Migration
+
+| Route | Aktuell in | Ziel-Domain | Status |
+|---|---|---|---|
+| `/sessions` | `scriptony-audio-story` | `scriptony-audio-production` | Keep |
+| `/tracks` | `scriptony-audio-story` | `scriptony-audio-production` | Keep |
+| `/voices` (Voice Casting) | `scriptony-audio-story` | `scriptony-audio-production` | Keep |
+| `/voices/tts/voices` | `scriptony-audio-story` | `scriptony-audio` | **T07 MIGRATE** |
+| `/mixing/preview` | `scriptony-audio-story` | `scriptony-audio-production` | Keep — Orchestration |
+| `/mixing/export` | `scriptony-audio-story` | `scriptony-audio-production` | Keep — Orchestration |
+| `/tts` | `scriptony-audio` | `scriptony-audio` | Keep — technisch |
+| `/stt` | `scriptony-audio` | `scriptony-audio` | Keep — technisch |
+| `/shots/:id/upload-audio` | `scriptony-audio` | `scriptony-audio` | Legacy — T09 |
+| `/shots/:id/audio` | `scriptony-audio` | `scriptony-audio` | Legacy — T09 |
+
+### Owned Models
+
+| Collection | Besitzer | Lesende Domains |
+|---|---|---|
+| `audio_sessions` | `scriptony-audio-production` | `scriptony-editor-readmodel` |
+| `scene_audio_tracks` | `scriptony-audio-production` | `scriptony-editor-readmodel` |
+| `character_voice_assignments` | `scriptony-audio-production` | `scriptony-editor-readmodel` |
+| `tts_requests` | `scriptony-audio` | `scriptony-audio-production` |
+| `stt_requests` | `scriptony-audio` | `scriptony-audio-production` |
+
+---
+
+## Access-Helper Konzept
+
+```typescript
+async function canReadProject(userId: string, projectId: string): Promise<boolean>
+async function canEditProject(userId: string, projectId: string): Promise<boolean>
+async function canManageProject(userId: string, projectId: string): Promise<boolean>
+```
+
+**Regel (neue Domain-Functions):** Alle Projekt-Zugriffsentscheidungen laufen **nur** ueber diese drei Helper (pro Function als `_shared/access.ts` oder spaeter zentral in `functions/_shared/` — Konvergenz ist separates Refactor-Ticket). **Keine** `created_by`/`user_id`-Vergleiche in Route-Handlern; die Helper duerfen das intern tun.
+
+**Initiale Implementierung (Single-User / Compat):**
+```typescript
+async function canEditProject(userId: string, projectId: string): Promise<boolean> {
+  const project = await getProject(projectId);
+  return project.created_by === userId;
+}
+```
+
+**Ziel-Implementierung (Multi-User inkl. Direct Share + optionale Orgs):**
+```typescript
+async function canEditProject(userId: string, projectId: string): Promise<boolean> {
+  const project = await getProject(projectId);
+  return (
+    (project.owner_type === 'user' && project.owner_id === userId) ||
+    (project.owner_type === 'organization' && await isOrgMemberWithEdit(userId, project.owner_id)) ||
+    (await hasProjectRole(userId, projectId, ['owner', 'editor', 'admin']))
+  );
+}
+```
+
+Heute existieren Helper-Duplikate in mehreren Functions (z. B. `scriptony-assets`, `scriptony-script`, `scriptony-audio-story`); die Logik konvergiert bei Bedarf auf eine gemeinsame Implementierung, sobald `scriptony-collaboration` live ist.
+
+**Capability-Matrix und RBAC-Zielbild** (Rollen, keine Manage→Read-Delegation): **`docs/architecture-refactor-domains.md`** Abschnitt **scriptony-collaboration** (Tabellen *RBAC*, *Einladungen*).
+
+**Konvergenz / `created_by` — Referenz-Fahrplan (nicht binding Ticket-fuer-Ticket, aber Roadmap):**
+
+| Phase | Inhalt |
+|-------|--------|
+| 1 | `projects`: `owner_type`, `owner_id` ergaenzen; Default aus `user_id`/`created_by` |
+| 2 | Zentrale oder generierte Access-Module unter `functions/_shared/` (oder `scriptony-collaboration` nur fuer Checks); **Zod**-Validierung fuer IDs am Helper-Eingang |
+| 3 | Domain-Functions nacheinander auf gemeinsame Helper / Collaboration-Service umstellen |
+| 4 | Direkte `created_by`-Fallbacks in Helpern entfernen, wenn `project_members`/`organization_members` vollstaendig |
+
+**Invite-Security (Ziel-API):** `expires_at`, einmaliger Token, **Rate-Limit** fuer POST Einladungen — siehe `architecture-refactor-domains.md`.
+
+---
+
+## T21 — Collaboration-Zielmodell (`scriptony-collaboration`)
+
+**Platform-Domain:** `scriptony-collaboration` (siehe Tabelle Platform). Verbindliche Detail-Skizze der Collections und von `projects.owner_type`: **`docs/architecture-refactor-domains.md`** Abschnitt **scriptony-collaboration**.
+
+| Geplantes Datenmodell | Zweck |
+|---|---|
+| `project_members` | Direktes Teilen: wer hat welche Rolle auf dem Projekt |
+| `project_invites` | Einladungen per E-Mail/Token fuer Projekt-Zugang |
+| `organization_members` | Mitgliedschaft und Rolle in einer Organisation/Workspace |
+| `organization_invites` | Einladungen in eine Organisation |
+
+**`projects` (Ziel):** `owner_type: 'user' \| 'organization'` und `owner_id` (Referenz auf User oder Organisation). Ergaenzt Legacy-Felder wie `created_by` / `user_id` bis Migration abgeschlossen ist.
+
+**Direct Project Sharing** ist Pflicht: Ein Nutzer kann ein Projekt mit einer anderen Person teilen **ohne** Organisation. Organisationen/Workspaces sind **optionaler** Owner-Kontext und koennen spaeter Projekte besitzen.
+
+---
+
+## Direct Project Sharing (Kurzskizze)
+
+```typescript
+// project_members (fuer Direct Sharing)
+{
+  id: string,
+  project_id: string,
+  user_id: string,
+  role: 'owner' | 'editor' | 'viewer',
+  status: 'active' | 'pending',
+  invited_by: string,
+  created_at: datetime
+}
+```
+
+---
+
+## Datenmodell-Ownership-Matrix
+
+| Datenmodell | Owner | Leser | Verboten |
+|---|---|---|---|
+| `users`, `accounts` | `scriptony-auth` | `scriptony-collaboration` | — |
+| `projects` | `scriptony-projects` | Alle Core | — |
+| `nodes` | `scriptony-structure` | `scriptony-editor-readmodel` | `scriptony-audio-production` |
+| `scripts`, `script_blocks` | `scriptony-script` | `scriptony-audio-production`, `scriptony-editor-readmodel` | `scriptony-audio` |
+| `characters` | `scriptony-characters` | `scriptony-script`, `scriptony-audio-production`, `scriptony-editor-readmodel` | — |
+| `worlds`, `locations` | `scriptony-worldbuilding` | `scriptony-editor-readmodel` | — |
+| `shots`, `clips` | `scriptony-timeline` | `scriptony-stage`, `scriptony-editor-readmodel` | `scriptony-assets` |
+| `assets` | `scriptony-assets` | Alle Media, Workflows, Core | `scriptony-storage` (nur physische Dateien) |
+| `audio_sessions`, `scene_audio_tracks` | `scriptony-audio-production` | `scriptony-editor-readmodel` | `scriptony-audio` |
+| `tts_requests`, `stt_requests` | `scriptony-audio` | `scriptony-audio-production` | — |
+| `render_jobs` | `scriptony-stage` | `scriptony-stage2d`, `scriptony-stage3d` | — |
+| `jobs` | `scriptony-jobs` | `scriptony-media-worker`, `scriptony-stage` | — |
+| `storage_connections`, `storage_targets`, `storage_objects` | `scriptony-storage` | `scriptony-assets` | — |
+| `project_members`, `project_invites`, `organization_members`, `organization_invites` | `scriptony-collaboration` | `scriptony-auth` (Login/Identitaet), alle Domains (Read ueber Helper) | — |
+
+---
+
+## Migrationsplan (High-Level)
+
+| Phase | Tickets | Ziel |
+|---|---|---|
+| Phase 0 | T00 | Inventarisierung ✅ |
+| Phase 1 | T01, T02 | Domain Map + Shim-Gate ✅/In Arbeit |
+| Phase 2 | T03, T04 | `scriptony-script` bauen |
+| Phase 3 | T05, T06 | `scriptony-assets` bauen |
+| Phase 4 | T07, T08 | Audio-Production abgrenzen |
+| Phase 5 | T09 | `scriptony-audio` bereinigen |
+| Phase 6 | T10, T11 | `scriptony-image` + `scriptony-assistant` bereinigen |
+| Phase 7 | T12 | `scriptony-editor-readmodel` bauen |
+| Phase 8 | T13 | Timeline konsolidieren |
+| Phase 9 | T14, T15 | Jobs + Media-Worker |
+| Phase 10 | T16 | Observability + Admin |
+| Phase 11 | T17 | Legacy entfernen |
+| Laufend | T18-T21 | Shared Logic, UI-Checks, Storage, Collaboration |
+
+---
+
+## Querreferenzen
+
+- `docs/appwrite-function-inventory.md` — Deployments, Entry Points, Runtimes
+- `docs/scriptony-architecture-refactor-master.md` — Shimwrappercheck Gates, Zielarchitektur
+- `docs/architecture-refactor-domains.md` — Ziel-Domaenen (Storage, Collaboration)
+- `docs/architecture-refactor-done-reports.md` — Done Reports aller Phasen

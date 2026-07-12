@@ -1,0 +1,63 @@
+{
+  "epicSlug": "mve-voice-studio-0.4",
+  "designPath": ".qa/design/mve-voice-studio-0.4.md",
+  "defaultLabels": [],
+  "issues": [
+    {
+      "title": "MVE 0.4: Schema VoiceConsent + Voice-Operation-Typen",
+      "featureSlug": "mve-04-schema-consent",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": [],
+      "body": "## Intent\nZod-Schemas und lokale Persistenz für VoiceConsent sowie strukturierte Inputs für Generate, Clone und Tune — Grundlage für Voice Studio 0.4.\n\n## User Journey\n1. Entwickler importiert Typen aus `src/lib/multi-voice-engine/schema/`.\n2. Clone/Generate/Tune-Services validieren Payloads gegen Zod.\n3. Consent-Records werden pro VoiceProfile in SQLite gespeichert.\n\n## Problem\n`MveVoiceProfile` hat `consentStatus` und Typen `cloned`/`tuned`/`generated`, aber kein `VoiceConsent`-Objekt, keine Operation-Input-Typen und keine SQLite-Tabelle für Consent (PRD §8.4, §20).\n\n## Solution\n- `src/lib/multi-voice-engine/schema/voice-consent.ts` — `VoiceConsent` (id, voiceId, consentTextVersion, consentConfirmedAt, sourceAudioHash, commercialUseAllowed)\n- `src/lib/multi-voice-engine/schema/voice-operations.ts` — `GenerateVoiceInput`, `CloneVoiceInput`, `TuneVoiceInput`\n- SQLite-Migration: `mve_voice_consents` (+ optional `mve_voice_requests` für processing status)\n- `LocalMveVoiceConsentRepository` + Erweiterung `mve-adapter` / `ScriptonyBackend`\n- Vitest mit PRD-Beispielpayloads\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n| Appwrite Functions | no |\n\n## Edge Cases\n- Consent rejected → VoiceProfile `status=blocked`\n- Mehrfach-Consent pro Voice → neueste verified gewinnt\n- `not_required` für default/generated ohne Upload\n\n## Acceptance\n- [ ] Zod-Schemas exportiert und getestet\n- [ ] SQLite CRUD VoiceConsent lokal\n- [ ] Kein React/TTS in schema/\n- [ ] api-adapter dispatchByRuntime für Consent-Reads\n\n## Design\nEpic: `.qa/design/mve-voice-studio-0.4.md`\n\n## Blockers\nDepends on #3 (MVE Schema)\nDepends on #4 (MVE Local SQLite)"
+    },
+    {
+      "title": "MVE 0.4: Stimme aus Beschreibung (Attribute Matching)",
+      "featureSlug": "mve-04-generate-voice",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["MVE 0.4: Schema VoiceConsent + Voice-Operation-Typen"],
+      "body": "## Intent\nNutzer beschreibt eine Figur in natürlicher Sprache; System extrahiert VoiceAttributes und wählt die passendste Basisstimme aus dem Kokoro-Katalog (PRD §6.2 MVP-Strategie).\n\n## User Journey\n1. User öffnet Charakterstimme-Modal und tippt Beschreibung (z. B. „ruhige deutsche Ermittlerin, Mitte 30“).\n2. Klick **Stimme vorschlagen** → Attribute werden extrahiert (regelbasiert; optional LLM mit Cloud-Session).\n3. System erstellt/aktualisiert VoiceProfile `type=generated`, `status=ready` und weist Kokoro-`engine`-Voice zu.\n4. User hört Preview-Satz mit neuer Stimme.\n\n## Problem\nBeschreibungsfeld existiert (`VoiceProfileEditorForm`), aber Generate ist in `VoiceProfileFutureSections` gesperrt; kein Casting/Matching-Service.\n\n## Solution\n- `src/lib/mve/casting/match-voice-from-description.ts` — rules-based scoring gegen `useLocalVoices`-Katalog\n- Optional Cloud: LLM structured output → `MveVoiceAttributes` (Pattern wie Enhance-Script)\n- Service erstellt VoiceProfile via `mve-adapter` (`type=generated`, `attributes`, `engine=kokoro`)\n- **Kein** echtes Prompt-to-Voice — nur Matching (PRD MVP)\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes (rules + Kokoro) |\n| Cloud session | optional LLM extract |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Kein Katalog-Match → DE-Hinweis + nächstbeste Stimme\n- Leere Beschreibung → disabled\n- Kokoro sidecar offline → Toast, kein Crash\n\n## Acceptance\n- [ ] Beschreibung → valide `MveVoiceAttributes`\n- [ ] Matcher wählt Kokoro-Voice und persistiert `type=generated`\n- [ ] Unit tests für Matcher (mind. 3 Fixtures)\n- [ ] Preview nutzt neue Voice via `resolveMveTtsVoiceId`\n\n## Design\nEpic: `.qa/design/mve-voice-studio-0.4.md`\n\n## Blockers\nDepends on #3\nDepends on #4"
+    },
+    {
+      "title": "MVE 0.4: Consent-Flow + Referenz-Audio-Upload",
+      "featureSlug": "mve-04-consent-upload",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["MVE 0.4: Schema VoiceConsent + Voice-Operation-Typen"],
+      "body": "## Intent\nPflicht-Consent und sicherer Referenz-Audio-Upload für Voice Cloning (PRD §6.3, §20).\n\n## User Journey\n1. User wählt im Modal **Stimme klonen** und lädt WAV/MP3 hoch (30s–5min MVP-Grenze).\n2. System zeigt versionierten Consent-Text; User bestätigt Checkbox + optional kommerzielle Nutzung.\n3. Datei landet in `.scriptony/assets/voice-refs/`; SHA-256 wird in VoiceConsent gespeichert.\n4. VoiceProfile `consentStatus=verified`, `referenceAudioUrl` gesetzt — Clone-Request kann starten.\n\n## Problem\nKein Consent-UI, kein dedizierter Voice-Ref-Upload; Clone ohne Safety-Layer verboten (PRD §20).\n\n## Solution\n- `src/lib/mve/safety/consent-text.ts` — `CONSENT_TEXT_VERSION`\n- Upload via `LocalStorageService` / Pattern `persistClipAudioFile` → `assets/voice-refs/`\n- `VoiceStudioConsentForm.tsx` — Checkbox, version display, DE copy\n- Guard: `consentStatus` blocked/rejected → Clone disabled; später Render-Block (0.2)\n- Cloud hybrid: optional Upload-Route in `scriptony-audio-story` wenn Session aktiv\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | optional upload |\n| Appwrite Functions | optional |\n\n## Edge Cases\n- Upload zu groß / falsches Format → DE-Fehler\n- Consent widerrufen → `status=blocked`\n- Referenz-Audio nicht öffentlich ausliefern (local paths only)\n\n## Acceptance\n- [ ] Consent-Record mit version + hash persistiert\n- [ ] Upload validiert Format/Größe\n- [ ] Ohne verified Consent kein Clone-Start\n- [ ] Unit test hash + consent state machine\n\n## Design\nEpic: `.qa/design/mve-voice-studio-0.4.md`\n\n## Blockers\nDepends on #3\nDepends on #4"
+    },
+    {
+      "title": "MVE 0.4: Voice Clone Request",
+      "featureSlug": "mve-04-clone-voice",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": [
+        "MVE 0.4: Schema VoiceConsent + Voice-Operation-Typen",
+        "MVE 0.4: Consent-Flow + Referenz-Audio-Upload"
+      ],
+      "body": "## Intent\nVoice Clone als Request-Flow: nach Consent + Upload wird ein VoiceProfile `type=cloned` erzeugt und optional an Cloud-Clone-API geschickt (PRD MVP 0.4).\n\n## User Journey\n1. User hat Referenz-Audio + verified Consent (Issue Consent-Upload).\n2. Klick **Klonen starten** → VoiceProfile `status=processing`.\n3. Mit Cloud-Session: `POST` an `scriptony-audio-story` Clone-Route; lokal: Request-Record + Stub bis OpenVoice-Eval (T65).\n4. Bei Erfolg: `status=ready`, Test-Preview abspielbar; bei Fehler: `status=failed` + DE-Toast.\n\n## Problem\nKein Clone-Endpunkt, kein Request-Lifecycle; PRD erlaubt „Clone-Adapter optional später“ — MVP = Request + Profile, nicht Pflicht-Engine.\n\n## Solution\n- `functions/scriptony-audio-story/routes/voices-clone.ts` — Zod-Input, Consent-Check, optional ElevenLabs wenn konfiguriert\n- Local: mark profile processing → ready mit Referenz als Basis (Stub) oder queued request row\n- `VoiceEngineAdapter.cloneVoice?` Interface-Skizze in `src/lib/multi-voice-engine/adapters/types.ts` (keine Engine-Pflicht)\n- VoiceProfile: `type=cloned`, `referenceAudioUrl`, `consentStatus=verified`\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | request + stub |\n| Cloud session | hybrid clone API |\n| Appwrite Functions | yes |\n\n## Edge Cases\n- Consent nicht verified → 403 / DE-Hinweis\n- Cloud ohne Provider → local stub only\n- Doppel-Clone gleiche Datei → neue Profile-Version\n\n## Acceptance\n- [ ] Clone startet nur mit verified Consent\n- [ ] VoiceProfile `type=cloned` persistiert mit lifecycle status\n- [ ] Cloud-Route validiert Input (Functions build check)\n- [ ] Local path ohne Crash wenn kein Clone-Provider\n\n## Design\nEpic: `.qa/design/mve-voice-studio-0.4.md`\n\n## Blockers\nDepends on #3\nDepends on #4\nDepends on #6 (Characters-Panel / Modal Einstieg)"
+    },
+    {
+      "title": "MVE 0.4: Voice Tune (non-destructive Preset)",
+      "featureSlug": "mve-04-tune-voice",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["MVE 0.4: Schema VoiceConsent + Voice-Operation-Typen"],
+      "body": "## Intent\nNutzer erzeugt abgeleitete Stimme aus Basis-VoiceProfile ohne Original zu überschreiben (PRD §6.4).\n\n## User Journey\n1. User hat Basis-Stimme (default, generated oder cloned).\n2. User beschreibt Anpassung (z. B. „tiefer, ruhiger, seriöser“) oder nutzt Preset-Slider (pitch/pace/energy).\n3. System erstellt **neues** VoiceProfile: `type=tuned`, `baseVoiceId=<original>`, merged `attributes` / `defaultSettings`.\n4. Charakter kann auf getunte Stimme umgestellt werden; Original bleibt in Library.\n\n## Problem\nTune-Platzhalter gesperrt; kein Derived-Voice-Modell in Services.\n\n## Solution\n- `src/lib/mve/tune/create-tuned-voice-profile.ts` — merge attributes, bump version, new id\n- Optional: regelbasierte Text→Attribute-Deltas (gleiche Extraktion wie Generate)\n- Naming: `{baseName} — tuned` oder User-Label\n- Kein destructives PATCH auf base profile\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Tune ohne baseVoiceId → Fehler\n- base `status=blocked` → Tune disabled\n- Tiefe Ketten (tune of tune) → max 1 level MVP (Dokumentation)\n\n## Acceptance\n- [ ] Neues Profile `type=tuned` mit `baseVoiceId`\n- [ ] Original-Profile unverändert\n- [ ] Preview nutzt getunte Settings\n- [ ] Unit test merge logic\n\n## Design\nEpic: `.qa/design/mve-voice-studio-0.4.md`\n\n## Blockers\nDepends on #3\nDepends on #4"
+    },
+    {
+      "title": "MVE 0.4: Voice Studio UI aktivieren (Generate / Clone / Tune)",
+      "featureSlug": "mve-04-voice-studio-ui",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": [
+        "MVE 0.4: Stimme aus Beschreibung (Attribute Matching)",
+        "MVE 0.4: Consent-Flow + Referenz-Audio-Upload",
+        "MVE 0.4: Voice Clone Request",
+        "MVE 0.4: Voice Tune (non-destructive Preset)"
+      ],
+      "body": "## Intent\nErsetzt gesperrte `VoiceProfileFutureSections` durch funktionale Generate-, Clone- und Tune-Abschnitte im bestehenden Charakterstimme-Modal (PRD §13.4).\n\n## User Journey\n1. User öffnet **Charakterstimme** aus Characters-Panel (`VoiceProfileEditorModal`).\n2. Drei Abschnitte sichtbar: **Aus Beschreibung**, **Klonen**, **Tunen** (Accordion oder Tabs).\n3. Jeder Abschnitt ruft die Services aus Issues Generate/Consent/Clone/Tune auf.\n4. Loading/empty/error DE; Performance Reference bleibt disabled (0.5).\n\n## Problem\n`VoiceProfileFutureSections.tsx` zeigt nur Lock-Icons — 0.4-Features sind nicht erreichbar trotz Backend-Services.\n\n## Solution\n- `VoiceStudioGenerateSection.tsx`, `VoiceStudioCloneSection.tsx`, `VoiceStudioTuneSection.tsx`\n- `VoiceProfileEditorForm.tsx` — ersetzt `VoiceProfileFutureSections`\n- Hooks: `useGenerateMveVoice`, `useCloneMveVoice`, `useTuneMveVoice` (dünn, Logik in lib/mve)\n- E2E/verify: `.qa/runs/mve-6b-voice-ui.spec.ts` anpassen (0.4 enabled)\n- **Kein** neues Top-Level-Screen\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | Clone/LLM gated |\n| Appwrite Functions | via Clone slice |\n\n## Edge Cases\n- Services noch nicht ready → Abschnitt disabled mit Hinweis\n- Modal auf kleinem Viewport → scroll\n- Speichern schließt Modal nur bei Basis-Feldern, nicht mitten in Clone-Upload\n\n## Acceptance\n- [ ] Generate/Clone/Tune im Modal nutzbar (local)\n- [ ] `VoiceProfileFutureSections` entfernt oder ersetzt\n- [ ] DE loading/empty/error\n- [ ] Snippet frontend checks grün\n- [ ] Verify-Spec: 0.4-Sections nicht mehr „disabled only“\n\n## Design\nEpic: `.qa/design/mve-voice-studio-0.4.md`\n\n## Blockers\nDepends on #6 (Characters-Panel)"
+    }
+  ]
+}

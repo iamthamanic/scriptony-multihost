@@ -1,26 +1,82 @@
 /**
  * Shot audio item routes for the Scriptony HTTP API.
+ *
+ * T09 LEGACY: Shot-Audio-Verwaltung ist Asset-/Timeline-Kontext,
+ * keine technische Audiofaehigkeit.
+ * Neue Shot-Audio-Uploads sollten ueber scriptony-assets laufen.
+ *
+ * T09 Schema-Mismatch (dokumentiert):
+ *   Appwrite-Schema (provision-appwrite-schema.mjs):
+ *     shot_id, file_name, file_size, bucket_file_id, mime_type, duration_ms,
+ *     user_id, storage_path
+ *   GraphQL-Schema (Route-Handler):
+ *     file_url, start_time, end_time, fade_in, fade_out, waveform_data,
+ *     audio_duration
+ *   → Fast keine gemeinsamen Felder. Beide Schemas existieren parallel.
+ *
+ * T09 Delegation:
+ *   Synchronisiert Aenderungen/Loeschungen mit dem zugehoerigen
+ *   Asset-Dokument in scriptony-assets.
  */
 
-import { requireUserBootstrap } from "../../../../../_shared/auth";
-import { requestGraphql } from "../../../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../../_shared/auth";
+import { getDatabases, dbId, C } from "../../../_shared/appwrite-db";
+import { requestGraphql } from "../../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
-} from "../../../../../_shared/http";
-import { deleteStorageFileByUrl } from "../../../../../_shared/storage";
-import { mapShotAudio } from "../../../../../_shared/timeline";
+  sendUnauthorized,
+} from "../../../_shared/http";
+import {
+  deleteStorageFileByUrl,
+  extractStorageFileId,
+} from "../../../_shared/storage";
+import { mapShotAudio } from "../../../_shared/timeline";
+import { Query } from "node-appwrite";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+async function syncAssetFromUrl(
+  fileUrl: string | null | undefined,
+  updates: Record<string, unknown>,
+): Promise<void> {
+  const fileId = extractStorageFileId(fileUrl);
+  if (!fileId) return;
+  const database = await getDatabases();
+  const { documents } = await database.listDocuments(dbId(), C.assets, [
+    Query.equal("file_id", fileId),
+    Query.limit(1),
+  ]);
+  if (documents.length > 0) {
+    await database.updateDocument(dbId(), C.assets, documents[0].$id, updates);
+  }
+}
+
+async function deleteAssetFromUrl(
+  fileUrl: string | null | undefined,
+): Promise<void> {
+  const fileId = extractStorageFileId(fileUrl);
+  if (!fileId) return;
+  const database = await getDatabases();
+  const { documents } = await database.listDocuments(dbId(), C.assets, [
+    Query.equal("file_id", fileId),
+    Query.limit(1),
+  ]);
+  if (documents.length > 0) {
+    await database.deleteDocument(dbId(), C.assets, documents[0].$id);
+  }
+}
+
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -45,7 +101,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       };
 
       const cleanedChanges = Object.fromEntries(
-        Object.entries(changes).filter(([, value]) => value !== undefined)
+        Object.entries(changes).filter(([, value]) => value !== undefined),
       );
 
       const updated = await requestGraphql<{
@@ -74,10 +130,25 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           id: audioId,
           changes: cleanedChanges,
-        }
+        },
       );
 
-      sendJson(res, 200, { audio: updated.update_shot_audio_by_pk ? mapShotAudio(updated.update_shot_audio_by_pk) : null });
+      // T09: Asset-Metadaten synchronisieren
+      void syncAssetFromUrl(updated.update_shot_audio_by_pk?.file_url, {
+        updated_at: new Date().toISOString(),
+        metadata: JSON.stringify({
+          ...cleanedChanges,
+          updated_by: "legacy-patch",
+        }),
+      }).catch((err) => {
+        console.error("[Shot Audio] Asset sync failed:", err);
+      });
+
+      sendJson(res, 200, {
+        audio: updated.update_shot_audio_by_pk
+          ? mapShotAudio(updated.update_shot_audio_by_pk)
+          : null,
+      });
       return;
     }
 
@@ -93,7 +164,7 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { id: audioId }
+        { id: audioId },
       );
 
       await requestGraphql(
@@ -104,10 +175,16 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { id: audioId }
+        { id: audioId },
       );
 
-      await deleteStorageFileByUrl(existing.shot_audio_by_pk?.file_url);
+      const fileUrl = existing.shot_audio_by_pk?.file_url;
+      await deleteStorageFileByUrl(fileUrl);
+
+      // T09: zugehoeriges Asset loeschen
+      void deleteAssetFromUrl(fileUrl).catch((err) => {
+        console.error("[Shot Audio] Asset delete failed:", err);
+      });
 
       sendJson(res, 200, { success: true });
       return;

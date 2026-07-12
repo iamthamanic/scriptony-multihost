@@ -8,6 +8,7 @@ supabase/backups/*.dump
 .env.local
 .env.migration
 .env.*.local
+.env.shim.local
 scripts/.env
 scripts/.env.migration
 
@@ -15,7 +16,45 @@ scripts/.env.migration
 build/
 node_modules/
 functions/node_modules/
+# Bundled Appwrite function entries (build artifacts — rebuild via: npm --prefix functions run build:appwrite-deploy → outputs to .appwrite-deploy/)
+functions/*/index.js
+.appwrite-deploy/
+functions/.deploy-staging/
+starter-for-react/
+deno.lock
+functions/deno.lock
+repo-visualization*.html
 
 # OS
 .DS_Store
 .vercel
+
+# shimwrappercheck
+.shimwrapper/
+.shim/
+
+# Local IDE / agent caches (not part of the app)
+.pi/
+**/.pi-lens/
+
+# Tauri updater signing key (public key lives in tauri.conf.json)
+.tauri/*.key
+.tauri/apple-certificate-base64.txt
+
+# LightRAG index data (local only)
+.rag/
+
+# Understand Anything — local scratch only (graph JSON may be committed intentionally)
+.understand-anything/intermediate/
+.understand-anything/diff-overlay.json
+scriptony-blender-addon.zip
+scriptony_blender_addon.zip
+scriptony_blender_extension.zip
+# Blender build artifacts
+tools/blender/dist/*
+
+# Kokoro Python sidecar virtualenv + cache
+tools/kokoro-server/.venv/
+tools/kokoro-server/__pycache__/
+tools/kokoro-server/**/*.pyc
+eslint-fix.mjs

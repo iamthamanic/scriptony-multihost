@@ -2,18 +2,22 @@
  * Token counting route for the Scriptony HTTP API.
  */
 
-import { requireUserBootstrap } from "../../../_shared/auth";
+import { requireUserBootstrap } from "../../_shared/auth";
+import { estimateTokens } from "../../_shared/estimate-tokens";
 import {
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendJson,
   sendMethodNotAllowed,
   sendUnauthorized,
-  type RequestLike,
-  type ResponseLike,
-} from "../../../_shared/http";
+} from "../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
-  const bootstrap = await requireUserBootstrap(req.headers.authorization);
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
+  const bootstrap = await requireUserBootstrap(req);
   if (!bootstrap) {
     sendUnauthorized(res);
     return;
@@ -24,11 +28,14 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     return;
   }
 
-  const body = await readJsonBody<{ text?: string; messages?: Array<{ content?: string }> }>(req);
+  const body = await readJsonBody<{
+    text?: string;
+    messages?: Array<{ content?: string }>;
+  }>(req);
   const messageText = Array.isArray(body.messages)
     ? body.messages.map((entry) => entry.content || "").join(" ")
     : body.text || "";
-  const tokens = messageText.trim() ? messageText.trim().split(/\s+/).length : 0;
+  const tokens = estimateTokens(messageText);
 
   sendJson(res, 200, {
     token_count: tokens,

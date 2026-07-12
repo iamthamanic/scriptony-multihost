@@ -1,84 +1,72 @@
 /**
  * Legacy API Wrapper - Backwards Compatibility Layer
- * 
+ *
  * This file maintains the old API interface for existing code.
  * New code should use /lib/api-client.ts directly.
- * 
+ *
  * @deprecated Use /lib/api-client.ts instead
  */
 
 // Import directly from api-client to avoid dependency on formatters
-import { apiGet, apiPost, apiPut, apiDelete, unwrapApiResult } from "../lib/api-client";
+import {
+  apiGet,
+  apiPost,
+  apiPut,
+  apiDelete,
+  unwrapApiResult,
+} from "../lib/api-client";
+import { API_CONFIG } from "../lib/config";
+import {
+  projectsApiAdapter,
+  worldsApiAdapter,
+  categoriesApiAdapter,
+  itemsApiAdapter,
+} from "../lib/api-adapter";
 
 /**
  * @deprecated Use apiGet, apiPost, etc. from /lib/api-client.ts
  */
-async function apiFetch(endpoint: string, options: { method?: string; body?: any } = {}) {
-  const { method = "GET", body } = options;
+async function apiFetch(
+  endpoint: string,
+  options: { method?: string; body?: any; timeout?: number } = {},
+) {
+  const { method = "GET", body, timeout } = options;
+  const requestOptions = typeof timeout === "number" ? { timeout } : undefined;
 
   let result;
-  
+
   switch (method.toUpperCase()) {
-    case 'GET':
-      result = await apiGet(endpoint);
+    case "GET":
+      result = requestOptions
+        ? await apiGet(endpoint, requestOptions)
+        : await apiGet(endpoint);
       break;
-    case 'POST':
-      result = await apiPost(endpoint, body);
+    case "POST":
+      result = requestOptions
+        ? await apiPost(endpoint, body, requestOptions)
+        : await apiPost(endpoint, body);
       break;
-    case 'PUT':
-      result = await apiPut(endpoint, body);
+    case "PUT":
+      result = requestOptions
+        ? await apiPut(endpoint, body, requestOptions)
+        : await apiPut(endpoint, body);
       break;
-    case 'DELETE':
-      result = await apiDelete(endpoint, body);
+    case "DELETE":
+      result = requestOptions
+        ? await apiDelete(endpoint, body, requestOptions)
+        : await apiDelete(endpoint, body);
       break;
     default:
       throw new Error(`Unsupported HTTP method: ${method}`);
   }
-  
+
   // Unwrap result (throw on error to maintain backward compatibility)
   return unwrapApiResult(result);
 }
 
-// ==================== PROJECTS ====================
+// ==================== PROJECTS (runtime-aware via api-adapter) ====================
 
-export const projectsApi = {
-  getAll: async () => {
-    const data = await apiFetch("/projects");
-    // Server returns array directly, not { projects: [...] }
-    return Array.isArray(data) ? data : (data?.projects || []);
-  },
-
-  getOne: async (id: string) => {
-    const data = await apiFetch(`/projects/${id}`);
-    // Server returns object directly, not { project: {...} }
-    return data?.project || data;
-  },
-
-  create: async (project: any) => {
-    const data = await apiFetch("/projects", {
-      method: "POST",
-      body: project,
-    });
-    // Server returns object directly, not { project: {...} }
-    return data?.project || data;
-  },
-
-  update: async (id: string, project: any) => {
-    const data = await apiFetch(`/projects/${id}`, {
-      method: "PUT",
-      body: project,
-    });
-    // Server returns object directly, not { project: {...} }
-    return data?.project || data;
-  },
-
-  delete: async (id: string, password: string) => {
-    await apiFetch(`/projects/${id}`, { 
-      method: "DELETE",
-      body: { password }
-    });
-  },
-};
+export const projectsApi = projectsApiAdapter;
 
 // ==================== SCENES ====================
 
@@ -134,110 +122,14 @@ export const charactersApi = {
   },
 
   delete: async (projectId: string, id: string) => {
-    await apiFetch(`/projects/${projectId}/characters/${id}`, { method: "DELETE" });
-  },
-};
-
-// ==================== WORLDS ====================
-
-export const worldsApi = {
-  getAll: async () => {
-    const data = await apiFetch("/worlds");
-    // Server returns array directly, not { worlds: [...] }
-    return Array.isArray(data) ? data : (data?.worlds || []);
-  },
-
-  getOne: async (id: string) => {
-    const data = await apiFetch(`/worlds/${id}`);
-    // Server returns object directly, not { world: {...} }
-    return data?.world || data;
-  },
-
-  create: async (world: any) => {
-    const data = await apiFetch("/worlds", {
-      method: "POST",
-      body: world,
-    });
-    // Server returns object directly, not { world: {...} }
-    return data?.world || data;
-  },
-
-  update: async (id: string, world: any) => {
-    const data = await apiFetch(`/worlds/${id}`, {
-      method: "PUT",
-      body: world,
-    });
-    // Server returns object directly, not { world: {...} }
-    return data?.world || data;
-  },
-
-  delete: async (id: string, password: string) => {
-    await apiFetch(`/worlds/${id}`, { 
+    await apiFetch(`/projects/${projectId}/characters/${id}`, {
       method: "DELETE",
-      body: { password }
     });
   },
 };
 
-// ==================== CATEGORIES ====================
+// ==================== WORLDS / CATEGORIES / ITEMS (runtime-aware) ====================
 
-export const categoriesApi = {
-  getAll: async (worldId: string) => {
-    const data = await apiFetch(`/worlds/${worldId}/categories`);
-    return data.categories;
-  },
-
-  create: async (worldId: string, category: any) => {
-    const data = await apiFetch(`/worlds/${worldId}/categories`, {
-      method: "POST",
-      body: category,
-    });
-    return data.category;
-  },
-
-  update: async (worldId: string, id: string, category: any) => {
-    const data = await apiFetch(`/worlds/${worldId}/categories/${id}`, {
-      method: "PUT",
-      body: category,
-    });
-    return data.category;
-  },
-
-  delete: async (worldId: string, id: string) => {
-    await apiFetch(`/worlds/${worldId}/categories/${id}`, { method: "DELETE" });
-  },
-};
-
-// ==================== ITEMS ====================
-
-export const itemsApi = {
-  getAll: async (worldId: string, categoryId: string) => {
-    const data = await apiFetch(`/worlds/${worldId}/categories/${categoryId}/items`);
-    return data.items;
-  },
-
-  getAllForWorld: async (worldId: string) => {
-    const data = await apiFetch(`/worlds/${worldId}/items`);
-    return data.items;
-  },
-
-  create: async (worldId: string, categoryId: string, item: any) => {
-    const data = await apiFetch(`/worlds/${worldId}/categories/${categoryId}/items`, {
-      method: "POST",
-      body: item,
-    });
-    return data.item;
-  },
-
-  update: async (worldId: string, categoryId: string, id: string, item: any) => {
-    const data = await apiFetch(`/worlds/${worldId}/categories/${categoryId}/items/${id}`, {
-      method: "PUT",
-      body: item,
-    });
-    return data.item;
-  },
-
-  delete: async (worldId: string, categoryId: string, id: string) => {
-    await apiFetch(`/worlds/${worldId}/categories/${categoryId}/items/${id}`, { method: "DELETE" });
-  },
-};
+export const worldsApi = worldsApiAdapter;
+export const categoriesApi = categoriesApiAdapter;
+export const itemsApi = itemsApiAdapter;

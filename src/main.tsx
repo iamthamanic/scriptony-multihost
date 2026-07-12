@@ -1,18 +1,35 @@
+import { createRoot } from "react-dom/client";
+import App from "./App.tsx";
+import "./index.css";
+import "./styles/scene-audio-link-chip.css";
+import "./styles/safe-area.css";
+import { installShellAuthListeners } from "./lib/shell/install-shell-auth-listeners";
+import { client } from "./lib/appwrite/appwrite";
+import { detectRuntime } from "./runtime/detect-runtime";
 
-  import { createRoot } from "react-dom/client";
-  import App from "./App.tsx";
-  import "./index.css";
-  import {
-    hydrateNativeSessionStorage,
-    installCapacitorUrlListener,
-  } from "./lib/capacitor/platform";
+// Render immediately — never block on async setup
+createRoot(document.getElementById("root")!).render(<App />);
 
-  async function bootstrap() {
-    await hydrateNativeSessionStorage();
-    await installCapacitorUrlListener();
-
-    createRoot(document.getElementById("root")!).render(<App />);
+// Run non-critical async setup in the background
+void (async () => {
+  try {
+    await installShellAuthListeners();
+  } catch {
+    // Non-critical — app works without these
   }
+})();
 
-  void bootstrap();
-  
+// Health check: only for cloud / self-hosted; skip in local mode
+if (detectRuntime().profile !== "local") {
+  client
+    .ping()
+    .then(() => {
+      console.log("[Appwrite] ping OK — SDK reachability check passed.");
+    })
+    .catch((err: unknown) => {
+      console.warn(
+        "[Appwrite] ping failed (check endpoint / CORS / network):",
+        err,
+      );
+    });
+}

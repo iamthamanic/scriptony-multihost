@@ -1,34 +1,58 @@
 /**
  * Shot collection routes for the Scriptony HTTP API.
+ *
+ * T13 TIMELINE DOMAIN: Shot-CRUD und Reorder.
+ *   Neue Timeline-Features nur mit expliziter Zielentscheidung.
+ *   Legacy: Character-Audio-Routen sind Asset/Audio-Domain, nicht hier.
+ *   Siehe docs/timeline-domain-decision.md
  */
 
-import { requireUserBootstrap } from "../../../_shared/auth";
-import { requestGraphql } from "../../../_shared/graphql-compat";
+import { requireUserBootstrap } from "../../_shared/auth";
+import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getQuery,
+  type RequestLike,
+  type ResponseLike,
   readJsonBody,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
-} from "../../../_shared/http";
-import { getShots, mapShot, normalizeShotInput } from "../../../_shared/timeline";
+  sendUnauthorized,
+} from "../../_shared/http";
+import {
+  getAccessibleProject,
+  getUserOrganizationIds,
+} from "../../_shared/scriptony";
+import { getShots, mapShot, normalizeShotInput } from "../../_shared/timeline";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
     }
 
     if (req.method === "GET") {
-      const projectId = getQuery(req, "project_id") || getQuery(req, "projectId");
+      const projectId =
+        getQuery(req, "project_id") || getQuery(req, "projectId");
       if (!projectId) {
         sendBadRequest(res, "project_id is required");
+        return;
+      }
+
+      const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
+      const project = await getAccessibleProject(
+        projectId,
+        bootstrap.user.id,
+        organizationIds,
+      );
+      if (!project) {
+        sendJson(res, 403, { error: "Project not found or access denied" });
         return;
       }
 
@@ -41,8 +65,26 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       const body = await readJsonBody<Record<string, any>>(req);
       const shotInput = normalizeShotInput(body);
 
-      if (!shotInput.scene_id || !shotInput.project_id || !shotInput.shot_number) {
-        sendBadRequest(res, "scene_id, project_id, and shot_number are required");
+      if (
+        !shotInput.scene_id ||
+        !shotInput.project_id ||
+        !(shotInput.title || shotInput.shot_number)
+      ) {
+        sendBadRequest(
+          res,
+          "scene_id, project_id, and shot_number are required",
+        );
+        return;
+      }
+
+      const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
+      const project = await getAccessibleProject(
+        shotInput.project_id,
+        bootstrap.user.id,
+        organizationIds,
+      );
+      if (!project) {
+        sendJson(res, 403, { error: "Project not found or access denied" });
         return;
       }
 
@@ -115,11 +157,19 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         `,
         {
           object: {
-            ...shotInput,
+            // Keep only attributes that exist in the Appwrite shots collection schema.
+            scene_id: shotInput.scene_id,
+            project_id: shotInput.project_id,
+            title: shotInput.title ?? shotInput.shot_number,
+            description: shotInput.description ?? null,
+            image_url: shotInput.image_url ?? null,
+            storyboard_url: shotInput.storyboard_url ?? null,
+            dialog: shotInput.dialog ?? null,
+            notes: shotInput.notes ?? null,
             user_id: bootstrap.user.id,
             order_index: shotInput.order_index ?? 0,
           },
-        }
+        },
       );
 
       sendJson(res, 201, { shot: mapShot(created.insert_shots_one) });

@@ -7,20 +7,31 @@ import { requestGraphql } from "../../_shared/graphql-compat";
 import {
   getParam,
   readJsonBody,
+  type RequestLike,
+  type ResponseLike,
   sendBadRequest,
   sendJson,
   sendMethodNotAllowed,
   sendNotFound,
-  sendUnauthorized,
   sendServerError,
-  type RequestLike,
-  type ResponseLike,
+  sendUnauthorized,
 } from "../../_shared/http";
-import { getAccessibleProject, getUserOrganizationIds, normalizeProjectInput } from "../../_shared/scriptony";
+import {
+  deleteProjectInspirations,
+  getAccessibleProject,
+  getUserOrganizationIds,
+  hydrateProjectRow,
+  hydrateProjectWithInspirations,
+  normalizeProjectInput,
+  setProjectInspirations,
+} from "../../_shared/scriptony";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   try {
-    const bootstrap = await requireUserBootstrap(req.headers.authorization);
+    const bootstrap = await requireUserBootstrap(req);
     if (!bootstrap) {
       sendUnauthorized(res);
       return;
@@ -33,14 +44,21 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
     }
 
     const organizationIds = await getUserOrganizationIds(bootstrap.user.id);
-    const project = await getAccessibleProject(projectId, bootstrap.user.id, organizationIds);
+    const project = await getAccessibleProject(
+      projectId,
+      bootstrap.user.id,
+      organizationIds,
+    );
     if (!project) {
       sendNotFound(res, "Project not found or access denied");
       return;
     }
 
     if (req.method === "GET") {
-      sendJson(res, 200, { project });
+      const projectWithInspirations = await hydrateProjectWithInspirations(
+        hydrateProjectRow(project),
+      );
+      sendJson(res, 200, { project: projectWithInspirations });
       return;
     }
 
@@ -50,9 +68,18 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
       if (typeof body.is_deleted === "boolean") {
         changes.is_deleted = body.is_deleted;
       }
-      if (typeof body.organization_id === "string" && body.organization_id.trim()) {
+      if (
+        typeof body.organization_id === "string" &&
+        body.organization_id.trim()
+      ) {
         changes.organization_id = body.organization_id.trim();
       }
+
+      // Extract inspirations separately - they go into a different collection
+      const inspirations = body.inspirations;
+
+      // Remove inspirations from changes (not in projects collection schema)
+      delete (changes as Record<string, any>).inspirations;
 
       const updated = await requestGraphql<{
         update_projects_by_pk: Record<string, any> | null;
@@ -72,6 +99,10 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
               beat_template
               episode_layout
               season_engine
+              concept_blocks
+              target_pages
+              words_per_page
+              reading_speed_wpm
               organization_id
               user_id
               created_at
@@ -82,10 +113,25 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
         {
           projectId,
           changes,
-        }
+        },
       );
 
-      sendJson(res, 200, { project: updated.update_projects_by_pk });
+      // Update inspirations separately if provided
+      if (updated.update_projects_by_pk?.id && inspirations !== undefined) {
+        await setProjectInspirations(
+          projectId,
+          Array.isArray(inspirations) ? inspirations : [],
+        );
+      }
+
+      // Fetch updated inspirations to include in response
+      const projectWithInspirations = await hydrateProjectWithInspirations(
+        hydrateProjectRow(updated.update_projects_by_pk),
+      );
+
+      sendJson(res, 200, {
+        project: projectWithInspirations,
+      });
       return;
     }
 
@@ -101,8 +147,11 @@ export default async function handler(req: RequestLike, res: ResponseLike): Prom
             }
           }
         `,
-        { projectId }
+        { projectId },
       );
+
+      // Also delete inspirations when project is soft-deleted
+      await deleteProjectInspirations(projectId);
 
       sendJson(res, 200, { success: true });
       return;

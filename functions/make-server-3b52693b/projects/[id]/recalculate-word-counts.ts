@@ -1,13 +1,23 @@
 /**
- * Legacy word-count recalculation endpoint.
- *
- * Historical no-op: book scene word counts were once recalculated server-side.
- * This endpoint remains so older admin UI calls do not hard-fail until ported.
+ * @deprecated T17 LEGACY_DO_NOT_EXTEND — Nicht in build-appwrite-deploy.mjs registriert.
+ *          Nicht deployed. Keine Frontend-Aufrufer. Keine Execution-Logs.
+ *          Verbleibt als Archiv bis zur vollstaendigen T17-Entfernung.
+ *          Ersatz: scriptony-projects (project listing), Appwrite Console (migrations).
  */
 
-import { getParam, sendBadRequest, sendJson, sendMethodNotAllowed, type RequestLike, type ResponseLike } from "../../../_shared/http";
+import {
+  getParam,
+  type RequestLike,
+  type ResponseLike,
+  sendBadRequest,
+  sendJson,
+  sendMethodNotAllowed,
+} from "../../../_shared/http";
 
-export default async function handler(req: RequestLike, res: ResponseLike): Promise<void> {
+export default async function handler(
+  req: RequestLike,
+  res: ResponseLike,
+): Promise<void> {
   if (req.method !== "POST") {
     sendMethodNotAllowed(res, ["POST"]);
     return;

@@ -1,0 +1,130 @@
+{
+  "$id": "audio_clips",
+  "name": "audio_clips",
+  "databaseId": "scriptony",
+  "enabled": true,
+  "documentSecurity": false,
+  "attributes": [
+    {
+      "key": "track_id",
+      "type": "string",
+      "required": true,
+      "size": 255
+    },
+    {
+      "key": "scene_id",
+      "type": "string",
+      "required": true,
+      "size": 255
+    },
+    {
+      "key": "project_id",
+      "type": "string",
+      "required": true,
+      "size": 255
+    },
+    {
+      "key": "start_sec",
+      "type": "double",
+      "required": true
+    },
+    {
+      "key": "end_sec",
+      "type": "double",
+      "required": true
+    },
+    {
+      "key": "lane_index",
+      "type": "integer",
+      "required": true,
+      "min": 0,
+      "max": 99
+    },
+    {
+      "key": "order_index",
+      "type": "integer",
+      "required": true,
+      "min": 0
+    },
+    {
+      "key": "audio_file_id",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "waveform_data",
+      "type": "string",
+      "required": false,
+      "size": 50000
+    },
+    {
+      "key": "cross_scene",
+      "type": "boolean",
+      "required": true
+    },
+    {
+      "key": "fx_preset_id",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "track_type",
+      "type": "string",
+      "required": false,
+      "size": 20
+    },
+    {
+      "key": "content",
+      "type": "string",
+      "required": false,
+      "size": 10000
+    },
+    {
+      "key": "character_id",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "created_by",
+      "type": "string",
+      "required": false,
+      "size": 255
+    },
+    {
+      "key": "updated_by",
+      "type": "string",
+      "required": false,
+      "size": 255
+    }
+  ],
+  "indexes": [
+    {
+      "key": "track_id_idx",
+      "type": "key",
+      "attributes": ["track_id"]
+    },
+    {
+      "key": "scene_id_idx",
+      "type": "key",
+      "attributes": ["scene_id"]
+    },
+    {
+      "key": "project_id_idx",
+      "type": "key",
+      "attributes": ["project_id"]
+    },
+    {
+      "key": "lane_index_idx",
+      "type": "key",
+      "attributes": ["lane_index"]
+    },
+    {
+      "key": "scene_lane_order_idx",
+      "type": "key",
+      "attributes": ["scene_id", "lane_index", "order_index"]
+    }
+  ]
+}
