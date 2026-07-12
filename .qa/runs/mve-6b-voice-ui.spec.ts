@@ -70,7 +70,11 @@ test("MVE voice row and editor modal with 0.4 sections", async ({ page }) => {
   await expect(page.getByTestId("voice-studio-generate")).toBeVisible();
   await expect(page.getByTestId("voice-studio-clone")).toBeVisible();
   await expect(page.getByTestId("voice-studio-tune")).toBeVisible();
-  await expect(page.getByText("Stimme vorschlagen")).toBeVisible();
+  await expect(
+    page
+      .getByTestId("voice-studio-generate")
+      .getByRole("button", { name: "Stimme vorschlagen" }),
+  ).toBeVisible();
   await expect(page.getByText("Stimme klonen")).toBeVisible();
   await expect(page.getByText("Stimme tunen")).toBeVisible();
   await expect(page.getByTestId("voice-studio-locked")).toContainText(
