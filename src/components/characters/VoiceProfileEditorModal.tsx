@@ -136,7 +136,13 @@ export function VoiceProfileEditorModal({
     resolveVoiceProviderId(profile?.engine),
   );
   const providerSyncKeyRef = useRef<string | null>(null);
+  const editorInitKeyRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
+
+  const buildEditorInitKey = useCallback(
+    () => `${characterId}:${profile?.id ?? "none"}`,
+    [characterId, profile?.id],
+  );
 
   const localVoices = useTtsVoiceProfiles({
     projectDir,
@@ -163,33 +169,39 @@ export function VoiceProfileEditorModal({
   useEffect(() => {
     if (!open) {
       providerSyncKeyRef.current = null;
+      editorInitKeyRef.current = null;
       return;
+    }
+
+    const initKey = buildEditorInitKey();
+    const shouldInitialize = editorInitKeyRef.current !== initKey;
+    if (shouldInitialize) {
+      editorInitKeyRef.current = initKey;
+      setActiveProfile(profile ?? null);
+      setPreviewText(
+        profile?.previewText ?? mveDefaultPreviewForCharacter(characterName),
+      );
+      setDescription(clampVoiceDesignBasePrompt(profile?.description ?? ""));
+      setDesignSpec(profile?.designSpec ?? emptyVoiceDesignSpec());
+      setDesignPreviewSession(null);
+      designPreviewSessionRef.current = null;
+      setCandidateSynthesisProgress({});
+      setSaveCandidate(null);
+      setSaveDialogOpen(false);
+      setRegeneratingCandidateId(null);
+      setSpeed(profile?.defaultSettings?.speed ?? 1);
+      setGenerateHint(undefined);
+      setLatestConsent(null);
+      setTuneSourceProfile(null);
     }
 
     const syncKey = characterId;
     const shouldSyncProvider = providerSyncKeyRef.current !== syncKey;
     providerSyncKeyRef.current = syncKey;
-
-    setActiveProfile(profile ?? null);
-    setPreviewText(
-      profile?.previewText ?? mveDefaultPreviewForCharacter(characterName),
-    );
-    setDescription(clampVoiceDesignBasePrompt(profile?.description ?? ""));
-    setDesignSpec(profile?.designSpec ?? emptyVoiceDesignSpec());
-    setDesignPreviewSession(null);
-    designPreviewSessionRef.current = null;
-    setCandidateSynthesisProgress({});
-    setSaveCandidate(null);
-    setSaveDialogOpen(false);
-    setRegeneratingCandidateId(null);
-    setSpeed(profile?.defaultSettings?.speed ?? 1);
-    setGenerateHint(undefined);
-    setLatestConsent(null);
-    setTuneSourceProfile(null);
     if (shouldSyncProvider) {
       setVoiceProvider(resolveVoiceProviderId(profile?.engine));
     }
-  }, [open, profile, characterName, characterId]);
+  }, [open, profile, characterName, characterId, buildEditorInitKey]);
 
   useEffect(() => {
     if (!open || !projectDir) return;
