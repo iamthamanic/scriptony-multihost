@@ -28,6 +28,7 @@ export interface VoiceProfileFutureSectionsProps {
   designDisabled?: boolean;
   onDesignFromDescription?: () => void;
   designCandidates?: VoiceDesignCandidate[];
+  previewText?: string;
   playingCandidateId?: string | null;
   savingCandidateId?: string | null;
   onPlayDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
@@ -60,6 +61,7 @@ export function VoiceProfileFutureSections({
   designDisabled,
   onDesignFromDescription,
   designCandidates = [],
+  previewText = "",
   playingCandidateId,
   savingCandidateId,
   onPlayDesignCandidate,
@@ -93,6 +95,7 @@ export function VoiceProfileFutureSections({
 
       <VoiceDesignCandidateList
         candidates={designCandidates}
+        previewText={previewText}
         playingCandidateId={playingCandidateId}
         savingCandidateId={savingCandidateId}
         disabled={generateBusy}

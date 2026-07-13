@@ -42,7 +42,8 @@ import type {
   VoiceDesignCandidate,
   VoiceDesignPreviewSession,
 } from "@/lib/mve/casting/voice-design-candidate";
-import { playVoiceDesignCandidateAudio } from "@/lib/mve/play-voice-design-candidate";
+import { usePersistMvePreviewText } from "@/hooks/usePersistMvePreviewText";
+import { playVoiceDesignCandidateLive } from "@/lib/mve/play-voice-design-candidate";
 import { createTunedVoiceProfile } from "@/lib/mve/tune/create-tuned-voice-profile";
 import {
   createMveVoiceProfile,
@@ -141,6 +142,17 @@ export function VoiceProfileEditorModal({
   const { playPreview, isPlaying } = useMveVoicePreview();
   const { runWithProgress } = useGlobalLoadingProgress();
   const { saveVoiceProfile, isSaving } = useSaveVoiceProfile(refreshSaved);
+
+  const handlePreviewTextPersisted = useCallback((text: string) => {
+    setActiveProfile((prev) => (prev ? { ...prev, previewText: text } : prev));
+  }, []);
+
+  usePersistMvePreviewText({
+    profileId: activeProfile?.id,
+    previewText,
+    enabled: open,
+    onPersisted: handlePreviewTextPersisted,
+  });
 
   useEffect(() => {
     if (!open) {
@@ -348,13 +360,32 @@ export function VoiceProfileEditorModal({
 
   const handlePlayDesignCandidate = useCallback(
     async (candidate: VoiceDesignCandidate) => {
-      if (!candidate.previewAudioPath) {
-        toast.error("Für diesen Kandidaten liegt noch keine Vorschau vor.");
+      if (!projectDir) {
+        toast.error("Lokales Projekt erforderlich für Voicebox.");
         return;
       }
+      const text = previewText.trim();
+      if (!text) {
+        toast.error("Bitte einen Standard-Satz für die Vorschau eingeben.");
+        return;
+      }
+
       setPlayingCandidateId(candidate.id);
       try {
-        await playVoiceDesignCandidateAudio(candidate.previewAudioPath);
+        await runWithProgress({
+          id: `voice-design-play-${candidate.id}`,
+          title: `Kandidat ${candidate.label} anhören`,
+          initialMessage: "Vorschau wird mit aktuellem Satz erzeugt…",
+          initialPercent: 12,
+          run: (report) =>
+            playVoiceDesignCandidateLive({
+              voiceboxProfileId: candidate.voiceboxProfileId,
+              previewText: text,
+              projectDir,
+              speed,
+              onProgress: report,
+            }),
+        });
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Vorschau fehlgeschlagen.",
@@ -363,7 +394,7 @@ export function VoiceProfileEditorModal({
         setPlayingCandidateId(null);
       }
     },
-    [],
+    [previewText, projectDir, runWithProgress, speed],
   );
 
   const handleSaveDesignCandidateClick = useCallback(

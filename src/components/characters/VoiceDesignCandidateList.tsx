@@ -9,6 +9,7 @@ import type { VoiceDesignCandidate } from "@/lib/mve/casting/voice-design-candid
 
 export interface VoiceDesignCandidateListProps {
   candidates: VoiceDesignCandidate[];
+  previewText?: string;
   playingCandidateId?: string | null;
   savingCandidateId?: string | null;
   disabled?: boolean;
@@ -18,6 +19,7 @@ export interface VoiceDesignCandidateListProps {
 
 export function VoiceDesignCandidateList({
   candidates,
+  previewText = "",
   playingCandidateId,
   savingCandidateId,
   disabled,
@@ -34,11 +36,15 @@ export function VoiceDesignCandidateList({
       <p className="text-xs font-semibold text-foreground">
         Stimm-Kandidaten — anhören und speichern
       </p>
+      <p className="text-[10px] text-muted-foreground leading-snug">
+        „Anhören“ nutzt den aktuellen Standard-Satz oben — Satz ändern und
+        erneut abspielen.
+      </p>
       <ul className="space-y-2">
         {candidates.map((candidate) => {
           const isPlaying = playingCandidateId === candidate.id;
           const isSaving = savingCandidateId === candidate.id;
-          const canPlay = Boolean(candidate.previewAudioPath) && !disabled;
+          const canPlay = Boolean(previewText.trim()) && !disabled;
           return (
             <li
               key={candidate.id}

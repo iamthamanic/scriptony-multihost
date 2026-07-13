@@ -40,7 +40,7 @@ describe("previewVoiceDesignCandidates", () => {
     vi.clearAllMocks();
   });
 
-  it("creates three ephemeral designed profiles with preview audio", async () => {
+  it("creates three ephemeral designed profiles without eager TTS", async () => {
     const session = await previewVoiceDesignCandidates({
       characterName: "Max",
       basicDescription: "warme Erzählerstimme",
@@ -50,12 +50,11 @@ describe("previewVoiceDesignCandidates", () => {
     expect(createDesignedVoiceboxProfile).toHaveBeenCalledTimes(
       VOICE_DESIGN_PREVIEW_COUNT,
     );
-    expect(generateVoiceboxSpeech).toHaveBeenCalledTimes(
-      VOICE_DESIGN_PREVIEW_COUNT,
-    );
+    expect(generateVoiceboxSpeech).not.toHaveBeenCalled();
     expect(session.candidates).toHaveLength(VOICE_DESIGN_PREVIEW_COUNT);
     expect(session.candidates[0]?.label).toBe("A");
     expect(session.candidates[2]?.label).toBe("C");
+    expect(session.candidates[0]?.previewAudioPath).toBeUndefined();
     expect(session.designPrompt).toContain("warme Erzählerstimme");
   });
 

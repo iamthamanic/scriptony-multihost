@@ -197,6 +197,7 @@ export function VoiceProfileEditorForm({
         designDisabled={designVoiceDisabled}
         onDesignFromDescription={onDesignFromDescription}
         designCandidates={designCandidates}
+        previewText={previewText}
         playingCandidateId={playingCandidateId}
         savingCandidateId={savingCandidateId}
         onPlayDesignCandidate={onPlayDesignCandidate}

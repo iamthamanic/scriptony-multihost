@@ -12,9 +12,11 @@ const evidenceDir = path.join(
 );
 
 let profilePostCount = 0;
+let generatePostCount = 0;
 
 async function mockVoiceboxForPreview(page: Page) {
   profilePostCount = 0;
+  generatePostCount = 0;
 
   await page.addInitScript(() => {
     (window as unknown as { __TAURI__: unknown }).__TAURI__ = {
@@ -63,6 +65,7 @@ async function mockVoiceboxForPreview(page: Page) {
   });
 
   await page.route(/\/__voicebox\/generate$/, async (route) => {
+    generatePostCount += 1;
     await route.fulfill({
       contentType: "application/json",
       json: {
@@ -123,6 +126,7 @@ test("design creates three preview candidates", async ({ page }) => {
   await expect(page.getByTestId("voice-design-candidate-2")).toBeVisible();
 
   expect(profilePostCount).toBeGreaterThanOrEqual(3);
+  expect(generatePostCount).toBe(0);
 
   await page.screenshot({
     path: path.join(evidenceDir, "01-three-candidates.png"),

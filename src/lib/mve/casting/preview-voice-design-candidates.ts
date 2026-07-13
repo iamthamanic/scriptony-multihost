@@ -7,7 +7,6 @@ import {
   createDesignedVoiceboxProfile,
   deleteVoiceboxProfile,
   ensureVoiceboxSidecar,
-  generateVoiceboxSpeech,
 } from "@/lib/api/voicebox-api";
 import type { LoadingProgressReporter } from "@/lib/loading/global-loading-progress";
 import type { MveVoiceDesignSpec } from "@/lib/multi-voice-engine/schema/voice-design-spec";
@@ -20,7 +19,6 @@ import {
   type VoiceDesignCandidate,
   type VoiceDesignPreviewSession,
 } from "./voice-design-candidate";
-import { mveDefaultPreviewForCharacter } from "../default-preview-text";
 
 export interface PreviewVoiceDesignCandidatesParams {
   characterName: string;
@@ -56,15 +54,12 @@ export async function previewVoiceDesignCandidates(
 
   const sessionId = crypto.randomUUID();
   const count = params.count ?? VOICE_DESIGN_PREVIEW_COUNT;
-  const previewText =
-    params.previewText?.trim() ||
-    mveDefaultPreviewForCharacter(params.characterName);
 
   const candidates: VoiceDesignCandidate[] = [];
 
   for (let index = 0; index < count; index += 1) {
     params.onProgress?.({
-      percent: 10 + Math.round((index / count) * 70),
+      percent: 10 + Math.round((index / count) * 80),
       message: `Kandidat ${index + 1}/${count} wird erzeugt…`,
       phase: "voice-design",
     });
@@ -76,28 +71,11 @@ export async function previewVoiceDesignCandidates(
       description: designPrompt.slice(0, 500),
     });
 
-    let previewAudioPath: string | undefined;
-    try {
-      const generated = await generateVoiceboxSpeech({
-        text: previewText,
-        profileId: profile.id,
-        language: "de",
-        projectDir,
-        engine: "qwen_custom_voice",
-        seed: 1000 + index,
-        onProgress: params.onProgress,
-      });
-      previewAudioPath = generated.audioPath;
-    } catch {
-      // Preview audio optional — candidate still selectable
-    }
-
     candidates.push({
       id: `${sessionId}-${index}`,
       voiceboxProfileId: profile.id,
       index: index as 0 | 1 | 2,
       label: voiceDesignCandidateLabel(index),
-      previewAudioPath,
     });
   }
 

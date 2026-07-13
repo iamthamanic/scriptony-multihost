@@ -15,11 +15,14 @@ describe("voice-design-field-presets", () => {
     const keys = Object.keys(VOICE_DESIGN_FIELD_PRESETS);
     expect(keys.length).toBeGreaterThanOrEqual(20);
     for (const key of keys) {
-      expect(
+      const list =
         VOICE_DESIGN_FIELD_PRESETS[
           key as keyof typeof VOICE_DESIGN_FIELD_PRESETS
-        ].length,
-      ).toBeGreaterThan(0);
+        ];
+      expect(list.length).toBeGreaterThan(0);
+      for (const preset of list) {
+        expect(preset.hint.length).toBeGreaterThan(10);
+      }
     }
   });
 
