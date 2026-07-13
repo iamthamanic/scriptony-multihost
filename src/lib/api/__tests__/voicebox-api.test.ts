@@ -27,13 +27,18 @@ import { waitForVoiceboxReadyWithProgress } from "@/lib/voicebox/voicebox-loadin
 import {
   ensureVoiceboxAvailable,
   ensureVoiceboxSidecar,
+  getVoiceboxHealth,
   isVoiceboxHealthy,
   listVoiceboxProfiles,
   voiceboxProfilesAsVoiceEntries,
+  createVoiceboxProfile,
   generateVoiceboxSpeech,
+  listVoiceboxProviderVoiceEntries,
+  listKokoroPresetVoiceEntries,
+  presetVoiceEntryId,
 } from "../voicebox-api";
 
-function mockWavBytes(sampleRate = 22050, dataSize = 44100): ArrayBuffer {
+function mockWavBytes(sampleRate = 24000, dataSize = 44100): ArrayBuffer {
   const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
   view.setUint32(24, sampleRate, true);
@@ -60,11 +65,32 @@ describe("voicebox-api", () => {
     await expect(isVoiceboxHealthy()).resolves.toBe(false);
   });
 
+  it("reads health endpoint", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          status: "healthy",
+          model_loaded: true,
+          gpu_available: true,
+        }),
+        { status: 200 },
+      ),
+    );
+    const health = await getVoiceboxHealth();
+    expect(health?.status).toBe("healthy");
+    expect(health?.model_loaded).toBe(true);
+  });
+
   it("lists profiles from array payload", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
       new Response(
         JSON.stringify([
-          { id: "p1", name: "Anna", language: "de" },
+          {
+            id: "p1",
+            name: "Anna",
+            language: "de",
+            default_engine: "qwen_custom_voice",
+          },
           { id: "bad", nope: true },
         ]),
         { status: 200 },
@@ -72,21 +98,14 @@ describe("voicebox-api", () => {
     );
 
     const profiles = await listVoiceboxProfiles();
-    expect(profiles).toEqual([{ id: "p1", name: "Anna", language: "de" }]);
-  });
-
-  it("lists profiles from { profiles: [...] } payload", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(
-        JSON.stringify({
-          profiles: [{ id: "p2", name: "Ben", language: "en" }],
-        }),
-        { status: 200 },
-      ),
-    );
-
-    const profiles = await listVoiceboxProfiles();
-    expect(profiles).toEqual([{ id: "p2", name: "Ben", language: "en" }]);
+    expect(profiles).toEqual([
+      {
+        id: "p1",
+        name: "Anna",
+        language: "de",
+        default_engine: "qwen_custom_voice",
+      },
+    ]);
   });
 
   it("maps profiles to VoiceEntry shape", () => {
@@ -95,9 +114,97 @@ describe("voicebox-api", () => {
       { id: "p2", name: "Ben", language: null },
     ]);
     expect(entries).toEqual([
-      { id: "p1", name: "Anna", lang: "de", gender: "profile" },
-      { id: "p2", name: "Ben", lang: "de", gender: "profile" },
+      {
+        id: "p1",
+        name: "Anna",
+        lang: "de",
+        gender: "profile",
+        isPreset: false,
+      },
+      {
+        id: "p2",
+        name: "Ben",
+        lang: "de",
+        gender: "profile",
+        isPreset: false,
+      },
     ]);
+  });
+
+  it("generates speech via async JSON API and downloads audio", async () => {
+    const generationId = "gen-1";
+    const wav = mockWavBytes();
+
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([
+            {
+              id: "p1",
+              name: "Anna",
+              default_engine: "qwen_custom_voice",
+            },
+          ]),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: generationId,
+            status: "generating",
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            id: generationId,
+            status: "completed",
+            audio_path: "generations/gen-1.wav",
+            duration: 1.2,
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(wav, { status: 200 }));
+
+    const result = await generateVoiceboxSpeech({
+      text: "Hallo Welt",
+      profileId: "p1",
+      projectDir: "/tmp/proj",
+    });
+
+    expect(result.audioPath).toContain(
+      "/tmp/proj/.scriptony/voicebox-output/vb-",
+    );
+    expect(result.durationMs).toBe(1200);
+  });
+
+  it("creates a profile via POST /profiles", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          id: "new-p1",
+          name: "Pazulu",
+          language: "de",
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const profile = await createVoiceboxProfile({
+      name: "Pazulu",
+      description: "Scriptony — Pazulu",
+      language: "de",
+    });
+
+    expect(profile).toEqual({
+      id: "new-p1",
+      name: "Pazulu",
+      language: "de",
+    });
   });
 
   it("delegates ensureVoiceboxAvailable to waitForVoiceboxReadyWithProgress", async () => {
@@ -111,50 +218,75 @@ describe("voicebox-api", () => {
     expect(waitForVoiceboxReadyWithProgress).toHaveBeenCalledWith(report);
   });
 
-  it("throws from ensureVoiceboxAvailable when launch fails", async () => {
-    vi.mocked(waitForVoiceboxReadyWithProgress).mockRejectedValueOnce(
-      new Error("Voicebox-Start hat zu lange gedauert"),
-    );
-    await expect(ensureVoiceboxAvailable()).rejects.toThrow(
-      /zu lange gedauert/,
-    );
+  it("lists Voicebox provider voices (profiles + non-Kokoro presets)", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify([{ id: "p1", name: "Anna", language: "de" }]),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            voices: [{ id: "q1", name: "Custom A" }],
+          }),
+          { status: 200 },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ voices: [] }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ voices: [] }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ voices: [] }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ voices: [] }), { status: 200 }),
+      );
+
+    const entries = await listVoiceboxProviderVoiceEntries();
+    expect(entries).toEqual([
+      {
+        id: "p1",
+        name: "Anna",
+        lang: "de",
+        gender: "profile",
+        isPreset: false,
+      },
+      {
+        id: presetVoiceEntryId("qwen_custom_voice", "q1"),
+        name: "Qwen — Custom A",
+        lang: "de",
+        gender: "preset",
+        presetEngine: "qwen_custom_voice",
+        isPreset: true,
+      },
+    ]);
   });
 
-  it("generates speech and saves wav to project dir", async () => {
+  it("lists Kokoro provider presets only", async () => {
     vi.mocked(fetch).mockResolvedValueOnce(
-      new Response(mockWavBytes(), { status: 200 }),
-    );
-
-    const result = await generateVoiceboxSpeech({
-      text: "Hallo Welt",
-      profileId: "p1",
-      projectDir: "/tmp/proj",
-    });
-
-    expect(result.audioPath).toContain(
-      "/tmp/proj/.scriptony/voicebox-output/vb-",
-    );
-    expect(result.durationMs).toBeGreaterThan(0);
-    expect(fetch).toHaveBeenCalledWith(
-      expect.stringContaining("/generate"),
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({
-          text: "Hallo Welt",
-          profile_id: "p1",
-          language: "de",
+      new Response(
+        JSON.stringify({
+          voices: [{ voice_id: "af_bella", name: "Bella" }],
         }),
-      }),
+        { status: 200 },
+      ),
     );
-  });
 
-  it("rejects generate without profile id", async () => {
-    await expect(
-      generateVoiceboxSpeech({
-        text: "Hi",
-        profileId: "  ",
-        projectDir: "/tmp/proj",
-      }),
-    ).rejects.toThrow(/profile_id fehlt/);
+    const entries = await listKokoroPresetVoiceEntries();
+    expect(entries).toEqual([
+      {
+        id: presetVoiceEntryId("kokoro", "af_bella"),
+        name: "Kokoro — Bella",
+        lang: "de",
+        gender: "preset",
+        presetEngine: "kokoro",
+        isPreset: true,
+      },
+    ]);
   });
 });

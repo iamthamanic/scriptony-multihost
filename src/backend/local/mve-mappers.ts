@@ -74,6 +74,7 @@ export function mapMveVoiceProfileRow(
       ? String(row.reference_audio_url)
       : undefined,
     description: row.description != null ? String(row.description) : undefined,
+    designSpec: parseJson(row.design_spec_json, "design_spec_json"),
     attributes: parseJson(row.attributes_json, "attributes_json"),
     defaultSettings: parseJson(row.default_settings_json, "default_settings_json"),
     consentStatus: row.consent_status ?? "not_required",

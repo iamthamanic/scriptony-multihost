@@ -66,7 +66,7 @@ export interface UseTimelineAddAudioOptions {
     clip: AudioClip,
     characterId?: string,
   ) => Promise<unknown>;
-  /** MVE: Kokoro/cloud voice id for dialog lane TTS. */
+  /** MVE: Voicebox/cloud voice id for dialog lane TTS. */
   getVoiceIdForLane?: (laneIndex: number) => string | undefined;
   /** MVE: reason Generate is blocked (dialog lanes without voice). */
   getGenerateBlockReason?: (laneIndex: number) => string | undefined;

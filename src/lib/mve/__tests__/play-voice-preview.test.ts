@@ -9,9 +9,8 @@ vi.mock("@/runtime/detect-runtime", () => ({
   isDesktopShell: vi.fn(() => false),
 }));
 
-vi.mock("@/lib/api/local-tts-api", () => ({
-  ensureKokoroSidecar: vi.fn(),
-  synthesizeLocal: vi.fn(),
+vi.mock("@/lib/api/voicebox-api", () => ({
+  ensureVoiceboxAvailable: vi.fn(),
 }));
 
 import { isDesktopShell } from "@/runtime/detect-runtime";

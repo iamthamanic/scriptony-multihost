@@ -1,0 +1,47 @@
+{
+  "epicSlug": "mve-voice-design-studio",
+  "designPath": ".qa/design/mve-voice-design-studio.md",
+  "defaultLabels": ["P1"],
+  "issues": [
+    {
+      "title": "Voicebox API spike: 3 design variations strategy",
+      "featureSlug": "mve-voice-design-api-spike",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": [],
+      "body": "## Intent\nVoicebox OpenAPI prüfen und Variation-Strategie für 3 Design-Kandidaten festlegen.\n\n## Solution\n- OpenAPI 0.5.0: kein Candidates-Endpoint → Strategie A2 (3× designed profiles)\n- Dokumentation in `.qa/design/mve-voice-design-studio.md` § Variation Strategy\n\n## Acceptance\n- [ ] API-Entscheidung dokumentiert\n- [ ] DELETE/PUT Profile bestätigt\n\n## Design\nEpic: `.qa/design/mve-voice-design-studio.md`"
+    },
+    {
+      "title": "Preview workflow: 3 candidates, play, save with name",
+      "featureSlug": "mve-voice-design-preview",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": ["Voicebox API spike: 3 design variations strategy"],
+      "body": "## Intent\nStimme erzeugen zeigt 3 Kandidaten mit Play; Speichern mit Namen weist Charakter zu.\n\n## User Journey\n1. Beschreibung eingeben → Stimme erzeugen\n2. 3 Varianten A/B/C mit Play\n3. Speichern → Name → Dropdown + MVE\n\n## Solution\n- `preview-voice-design-candidates.ts`, `save-voice-design-candidate.ts`\n- `VoiceDesignCandidateList`, `VoiceDesignSaveDialog`\n- `deleteVoiceboxProfile`, `updateVoiceboxProfile` in voicebox-api\n\n## Acceptance\n- [ ] 3 Kandidaten ohne sofortige Zuweisung\n- [ ] Play + Save mit Name\n- [ ] Temp-Profile cleanup\n- [ ] Playwright spec grün\n\n## Design\nEpic: `.qa/design/mve-voice-design-studio.md`"
+    },
+    {
+      "title": "Basic/Advanced tabs + voice design compiler + tooltips",
+      "featureSlug": "mve-voice-design-advanced-prompt",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["Preview workflow: 3 candidates, play, save with name"],
+      "body": "## Intent\nBasic-Freitext und Advanced-Template mit Tooltips; Compiler erzeugt design_prompt.\n\n## Solution\n- `MveVoiceDesignSpec`, `compile-voice-design-prompt.ts`\n- `VoiceDesignDescriptionPanel` mit Tabs\n- `voice-design-field-help.ts`\n\n## Acceptance\n- [ ] Tabs Basic/Advanced\n- [ ] Compiler Golden-Tests\n- [ ] Tooltips pro Feld\n\n## Design\nEpic: `.qa/design/mve-voice-design-studio.md`"
+    },
+    {
+      "title": "design_spec_json migration + description roundtrip",
+      "featureSlug": "mve-voice-design-roundtrip",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["Basic/Advanced tabs + voice design compiler + tooltips"],
+      "body": "## Intent\nAdvanced-Spec und Beschreibung in SQLite; beim Voice-Select zurückladen.\n\n## Solution\n- Schema v7: `design_spec_json`\n- Save persistiert designSpec\n- Modal lädt bei Voice-Wechsel\n\n## Acceptance\n- [ ] Migration v7\n- [ ] Roundtrip Unit-Test\n- [ ] Playwright: Beschreibung nach Select\n\n## Design\nEpic: `.qa/design/mve-voice-design-studio.md`"
+    },
+    {
+      "title": "Provider prompt compiler + render params (deferred)",
+      "featureSlug": "mve-voice-prompt-compiler",
+      "priority": "P2",
+      "labels": ["P2"],
+      "dependsOn": ["design_spec_json migration + description roundtrip"],
+      "body": "## Intent\nUniverselles DesignSpec → provider-spezifische Prompts und technische Render-Parameter.\n\n## Solution\n- `voice-prompt-compiler.ts`, `provider-voice-capabilities.ts`\n- Erweiterte `MveVoiceRenderSettings`\n- Voicebox adapter `supportsVoiceGenerationFromPrompt: true`\n\n## Acceptance\n- [ ] compileForProvider Tests\n- [ ] Technisch-Accordion im Advanced-Tab\n\n## Design\nEpic: `.qa/design/mve-voice-design-studio.md`"
+    }
+  ]
+}

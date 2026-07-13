@@ -41,6 +41,10 @@ import {
   StructureTimelineAudioSectionFooter,
   StructureTimelineAudioSectionHeader,
 } from "./StructureTimelineAudioSectionChrome";
+import { useQueryClient } from "@tanstack/react-query";
+import { updateClip } from "@/lib/api-adapter/clips-adapter";
+import { decodeLocalAudioToPeaks } from "@/lib/mve/decode-local-audio-to-peaks";
+import { queryKeys } from "@/lib/react-query";
 import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
 
 export interface StructureTimelineAudioLanesProps {
@@ -72,7 +76,9 @@ export function useStructureTimelineAudioLanes(
   const mveLaneLinks = useMveLaneLinks(props.projectId);
   const mveVoices = useMveVoiceProfiles(props.projectId);
   const metronome = useMetronomeSettings(props.projectId);
+  const queryClient = useQueryClient();
   const backfilledClipIds = useRef(new Set<string>());
+  const backfilledWaveformClipIds = useRef(new Set<string>());
 
   useEffect(() => {
     if (!mve.enabled || mve.isLoading) return;
@@ -106,6 +112,34 @@ export function useStructureTimelineAudioLanes(
     mve.ensureForClip,
     lanes.characterLanes,
   ]);
+
+  useEffect(() => {
+    if (!isLocalProfile()) return;
+    void (async () => {
+      for (const clip of lanes.allClips) {
+        if (backfilledWaveformClipIds.current.has(clip.id)) continue;
+        if (!clip.audioFileId || clip.waveformData?.length) {
+          if (clip.audioFileId) backfilledWaveformClipIds.current.add(clip.id);
+          continue;
+        }
+        const trackType = clip.trackType ?? "dialog";
+        if (trackType !== "dialog" && trackType !== "narrator") continue;
+
+        backfilledWaveformClipIds.current.add(clip.id);
+        try {
+          const decoded = await decodeLocalAudioToPeaks(clip.audioFileId, 64);
+          if (decoded.peaks.length === 0) continue;
+          await updateClip(clip.id, { waveformData: decoded.peaks });
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.timeline.audioByProject(props.projectId),
+          });
+        } catch (err) {
+          backfilledWaveformClipIds.current.delete(clip.id);
+          console.warn("[MVE] Waveform backfill failed:", clip.id, err);
+        }
+      }
+    })();
+  }, [lanes.allClips, props.projectId, queryClient]);
 
   const getMveRenderBlockReason = useCallback(
     (line: MveLine) => {

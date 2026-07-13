@@ -43,6 +43,10 @@ export interface ResizeSceneForContentInput {
 export interface ResizeSceneForContentResult {
   deltaSec: number;
   resized: boolean;
+  blocked?: boolean;
+  blockReason?: string;
+  requiredEndSec?: number;
+  sceneEndSec?: number;
 }
 
 export function computeSceneResizeDelta(
@@ -50,6 +54,17 @@ export function computeSceneResizeDelta(
   requiredEndSec: number,
 ): number {
   return requiredEndSec - currentSceneEndSec;
+}
+
+/** Changed clip end for scene-grow ripple (must not cap to old scene end). */
+export function rippleClipsForSceneGrow(
+  clipId: string,
+  requiredEndSec: number,
+  allClips: RippleClip[],
+): RippleClip[] {
+  return allClips.map((c) =>
+    c.id === clipId ? { ...c, endSec: requiredEndSec } : c,
+  );
 }
 
 function resolveBaseProjectDurationSec(timelineData: TimelineData): number {
@@ -127,7 +142,12 @@ export async function resizeSceneForContent(
   const sceneItem = tree.items.get(sceneId);
   if (!sceneItem || sceneItem.kind !== "scene") {
     console.warn("[resizeSceneForContent] scene not found:", sceneId);
-    return { deltaSec: 0, resized: false };
+    return {
+      deltaSec: 0,
+      resized: false,
+      blocked: true,
+      blockReason: "scene_not_found",
+    };
   }
 
   const sceneEndSec = frameToSec(sceneItem.endFrame, tree.frameRate);
@@ -136,7 +156,12 @@ export async function resizeSceneForContent(
   const deltaSec = computeSceneResizeDelta(sceneEndSec, targetEndSec);
 
   if (Math.abs(deltaSec) < FRAME_EPS_SEC) {
-    return { deltaSec: 0, resized: false };
+    return {
+      deltaSec: 0,
+      resized: false,
+      requiredEndSec: targetEndSec,
+      sceneEndSec,
+    };
   }
 
   const structureResult = resizeStructureItem({
@@ -153,7 +178,14 @@ export async function resizeSceneForContent(
       "[resizeSceneForContent] structure ripple blocked:",
       structureResult.blockReason,
     );
-    return { deltaSec: 0, resized: false };
+    return {
+      deltaSec: 0,
+      resized: false,
+      blocked: true,
+      blockReason: structureResult.blockReason,
+      requiredEndSec: targetEndSec,
+      sceneEndSec,
+    };
   }
 
   const patches = diffTreeToPatches(
@@ -181,9 +213,7 @@ export async function resizeSceneForContent(
     clipRipple = calculateRipple({
       changedClipId: clipId,
       newEndSec: requiredEndSec,
-      allClips: rippleClips.map((c) =>
-        c.id === clipId ? { ...c, endSec: Math.min(c.endSec, sceneEndSec) } : c,
-      ),
+      allClips: rippleClipsForSceneGrow(clipId, requiredEndSec, rippleClips),
       allScenes: containersBefore.scenes,
       allSequences: containersBefore.sequences,
       allActs: containersBefore.acts,
@@ -197,10 +227,20 @@ export async function resizeSceneForContent(
   }
 
   if (patches.length === 0) {
-    return { deltaSec: 0, resized: false };
+    return {
+      deltaSec: 0,
+      resized: false,
+      requiredEndSec: targetEndSec,
+      sceneEndSec,
+    };
   }
 
   await persistAudioRippleWithRollback(patches, clips, clipRipple);
 
-  return { deltaSec, resized: true };
+  return {
+    deltaSec,
+    resized: true,
+    requiredEndSec: targetEndSec,
+    sceneEndSec,
+  };
 }

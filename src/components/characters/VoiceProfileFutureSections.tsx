@@ -4,7 +4,9 @@
  */
 
 import { Lock } from "lucide-react";
+import type { VoiceDesignCandidate } from "@/lib/mve/casting/voice-design-candidate";
 import { VoiceStudioGenerateSection } from "./VoiceStudioGenerateSection";
+import { VoiceDesignCandidateList } from "./VoiceDesignCandidateList";
 import { VoiceStudioCloneSection } from "./VoiceStudioCloneSection";
 import {
   VoiceStudioTuneSection,
@@ -22,11 +24,21 @@ export interface VoiceProfileFutureSectionsProps {
   generateBusy?: boolean;
   generateDisabled?: boolean;
   generateHint?: string;
+  showDesign?: boolean;
+  designDisabled?: boolean;
+  onDesignFromDescription?: () => void;
+  designCandidates?: VoiceDesignCandidate[];
+  playingCandidateId?: string | null;
+  savingCandidateId?: string | null;
+  onPlayDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
+  onSaveDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
   cloneBusy?: boolean;
   cloneDisabled?: boolean;
   cloneStartBusy?: boolean;
   tuneBusy?: boolean;
   tuneDisabled?: boolean;
+  /** Clone UI only for Eigene Stimmen (voicebox profile provider). */
+  showClone?: boolean;
   onSuggestFromDescription?: () => void;
   onCloneSubmit?: (
     file: File,
@@ -44,11 +56,20 @@ export function VoiceProfileFutureSections({
   generateBusy = false,
   generateDisabled,
   generateHint,
+  showDesign,
+  designDisabled,
+  onDesignFromDescription,
+  designCandidates = [],
+  playingCandidateId,
+  savingCandidateId,
+  onPlayDesignCandidate,
+  onSaveDesignCandidate,
   cloneBusy = false,
   cloneDisabled,
   cloneStartBusy = false,
   tuneBusy = false,
   tuneDisabled,
+  showClone = true,
   onSuggestFromDescription,
   onCloneSubmit,
   onCloneRevoke,
@@ -64,19 +85,33 @@ export function VoiceProfileFutureSections({
         isBusy={generateBusy}
         disabled={generateDisabled}
         hint={generateHint}
+        showDesign={showDesign}
+        designDisabled={designDisabled}
+        onDesign={onDesignFromDescription}
         onSuggest={() => onSuggestFromDescription?.()}
       />
 
-      <VoiceStudioCloneSection
-        profile={profile}
-        latestConsent={latestConsent}
-        isBusy={cloneBusy}
-        disabled={cloneDisabled}
-        onSubmit={(file, options) => onCloneSubmit?.(file, options)}
-        onRevoke={onCloneRevoke}
-        onStartClone={onCloneStart}
-        isStartBusy={cloneStartBusy}
+      <VoiceDesignCandidateList
+        candidates={designCandidates}
+        playingCandidateId={playingCandidateId}
+        savingCandidateId={savingCandidateId}
+        disabled={generateBusy}
+        onPlay={(c) => onPlayDesignCandidate?.(c)}
+        onSave={(c) => onSaveDesignCandidate?.(c)}
       />
+
+      {showClone ? (
+        <VoiceStudioCloneSection
+          profile={profile}
+          latestConsent={latestConsent}
+          isBusy={cloneBusy}
+          disabled={cloneDisabled}
+          onSubmit={(file, options) => onCloneSubmit?.(file, options)}
+          onRevoke={onCloneRevoke}
+          onStartClone={onCloneStart}
+          isStartBusy={cloneStartBusy}
+        />
+      ) : null}
 
       <VoiceStudioTuneSection
         baseProfile={tuneBaseProfile}

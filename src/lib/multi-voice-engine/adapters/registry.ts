@@ -18,9 +18,10 @@ export class VoiceEngineRegistry {
 
   resolve(engine: string | undefined | null): VoiceEngineAdapter {
     const key = engine?.trim() || DEFAULT_ENGINE;
-    const adapter = this.adapters.get(key);
+    const normalized = key === "kokoro" ? "voicebox" : key;
+    const adapter = this.adapters.get(normalized);
     if (!adapter) {
-      throw new UnknownVoiceEngineError(key);
+      throw new UnknownVoiceEngineError(normalized);
     }
     return adapter;
   }

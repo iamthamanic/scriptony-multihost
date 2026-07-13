@@ -81,4 +81,22 @@ describe("schema-migrations", () => {
     expect(requests?.name).toBe(TABLE.MVE_VOICE_REQUESTS);
     await db.close();
   });
+
+  it("migrateLocalDb adds design_spec_json column at v7", async () => {
+    const db = await LocalDb.createInMemory();
+    await migrateLocalDb(db);
+
+    const column = await db.all(
+      `PRAGMA table_info(${TABLE.MVE_VOICE_PROFILES})`,
+    );
+    const names = column.map((c) => String(c.name));
+    expect(names).toContain("design_spec_json");
+    expect(
+      Number(
+        (await db.get(`SELECT value FROM schema_meta WHERE key = 'version'`))
+          ?.value,
+      ),
+    ).toBe(SCHEMA_VERSION);
+    await db.close();
+  });
 });

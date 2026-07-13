@@ -76,6 +76,7 @@ export function AudioTimelineMveDialogSegment({
     clip.endSec,
     pxPerSec,
     sceneBlock,
+    { allowPastSceneEnd: true },
   );
   const overlapping =
     allClips &&

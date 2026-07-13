@@ -94,6 +94,8 @@ export function MveDialogClipCard({
   const [textareaFocused, setTextareaFocused] = useState(false);
   const hasScene = Boolean(audioMenu?.selectedSceneId ?? sceneId);
   const hasAudioClip = Boolean(line.audioClipId);
+  const showAudioDurationInHeader =
+    hasAudioClip && audioDurationSec != null && audioDurationSec > 0;
 
   const wpmDurationLabel = useMemo(() => {
     const draft = editor.text.trim();
@@ -107,13 +109,21 @@ export function MveDialogClipCard({
   }, [editor.text, readingSpeedWpm]);
 
   const headerDurationChip = useMemo(() => {
-    if (compact || !wpmDurationLabel) return null;
+    if (compact) return null;
+    if (showAudioDurationInHeader) {
+      return {
+        label: formatDurationHms(audioDurationSec!),
+        variant: "audio" as const,
+        testId: "mve-dialog-clip-audio-duration",
+      };
+    }
+    if (!wpmDurationLabel) return null;
     return {
       label: wpmDurationLabel,
       variant: "estimate" as const,
       testId: "mve-dialog-clip-wpm-duration",
     };
-  }, [compact, wpmDurationLabel]);
+  }, [compact, showAudioDurationInHeader, audioDurationSec, wpmDurationLabel]);
 
   const handleTextareaFocus = useCallback(() => {
     setTextareaFocused(true);
@@ -288,6 +298,7 @@ export function MveDialogClipCard({
         waveformData={waveformData}
         hasAudioClip={hasAudioClip}
         audioDurationSec={audioDurationSec}
+        showDurationChip={!showAudioDurationInHeader}
       />
     </div>
   );

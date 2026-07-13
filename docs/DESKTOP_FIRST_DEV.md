@@ -70,25 +70,28 @@ UI (pages/hooks)
 | Project open / SQLite | `LocalBackend`, `LocalProjectOpenGuard`, `src/local/` |
 | Assets on disk | `src/local/` + Tauri FS capabilities |
 | Jobs (optional) | Sidecar `VITE_SCRIPTONY_SIDECAR_PORT` (default 3765) |
-| Local TTS (MVE + scenes) | **Voicebox** default (`http://127.0.0.1:17493`) — auto-launches on macOS via `open -a`; Kokoro via `VITE_DEFAULT_VOICE_ENGINE=kokoro` |
+| Local TTS (MVE + scenes) | **Voicebox** (`http://127.0.0.1:17493`) — auto-launches on macOS via `open -a`; Kokoro-Stimmen nur als Voicebox-Presets |
 
 Facade: `src/utils/api.tsx` delegates `projectsApi`, `worldsApi`, `categoriesApi`, `itemsApi` to adapters.
 
-### Local TTS (Voicebox / Kokoro)
+### Local TTS (Voicebox)
 
-Desktop MVE and scene TTS use **`Voicebox`** by default when the [Voicebox](https://github.com/jamiepine/voicebox) app is running on port **17493**. On **macOS**, Scriptony attempts to launch Voicebox automatically (`open -a Voicebox`) when the API is unreachable — with global loading progress, same UX pattern as Kokoro sidecar boot.
+**Product rule:** Voicebox is a **headless TTS backend** only. Users configure voices, preview, and generate **entirely in Scriptony** — never in the Voicebox UI. Scriptony auto-starts the service in the background on macOS (`open -gj`). Kokoro-Stimmen laufen **nur** als Voicebox-Presets (`GET /profiles/presets/kokoro`) — kein eigenes Kokoro-Sidecar mehr in Scriptony.
+
+Install once (macOS): `./scripts/install-voicebox-macos.sh` → `/Applications/Voicebox.app`
 
 ```bash
 # .env.local (optional)
 VITE_DEFAULT_VOICE_ENGINE=voicebox   # default when unset
-VITE_VOICEBOX_BASE_URL=http://127.0.0.1:17493
-# When the app bundle name differs from "Voicebox":
-# VITE_VOICEBOX_APP_NAME=Voicebox
-# Kokoro fallback:
-# VITE_DEFAULT_VOICE_ENGINE=kokoro
+VITE_VOICEBOX_BASE_URL=http://127.0.0.1:17493   # Vite dev proxies via /__voicebox (same-origin CORS)
+VITE_VOICEBOX_APP_PATH=/Applications/Voicebox.app
 ```
 
-Kokoro still auto-starts its Python sidecar when selected. Non-macOS desktop: start Voicebox manually. See `src/lib/config/voice-engine.ts` and `docs/multi-voice-engine.md`.
+**Scriptony UI today:** list/create profiles via REST (`GET/POST /profiles`), assign to characters, preview, scene/MVE TTS via `/generate`. Kokoro-Presets erscheinen in der Stimmenliste wie normale Voicebox-Stimmen.
+
+**Still to build in Scriptony** (API exists, UI stub): clone samples upload (`POST /profiles/{id}/samples`), model download status, tuned voices — see Voicebox OpenAPI at `http://127.0.0.1:17493/docs`.
+
+See `src/lib/config/voice-engine.ts`.
 
 ---
 

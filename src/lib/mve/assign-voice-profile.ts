@@ -1,5 +1,5 @@
 /**
- * Upsert MVE VoiceProfile for a project character (local Kokoro MVP).
+ * Upsert MVE VoiceProfile for a project character (local Voicebox).
  * Location: src/lib/mve/assign-voice-profile.ts
  */
 

@@ -57,12 +57,23 @@ export function resolveMveLineStackWidthPx(
 }
 
 /** Pixel width capped to assigned scene bounds (WPM/default must not exceed parent scene). */
+export interface ResolveMveDialogClipWidthOptions {
+  /** Audio-bound clips may extend past scene shell until structure sync runs. */
+  allowPastSceneEnd?: boolean;
+}
+
 export function resolveMveDialogClipWidthPx(
   startSec: number,
   endSec: number,
   pxPerSec: number,
   sceneBlock?: MveDialogClipSceneBounds | null,
+  options?: ResolveMveDialogClipWidthOptions,
 ): number {
+  if (options?.allowPastSceneEnd) {
+    const durationPx = Math.max(endSec - startSec, 0.1) * pxPerSec;
+    return Math.max(durationPx, MVE_TEXT_BLOCK_MIN_WIDTH_PX);
+  }
+
   let cappedStart = startSec;
   let cappedEnd = endSec;
   if (sceneBlock) {

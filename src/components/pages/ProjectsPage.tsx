@@ -188,10 +188,6 @@ import { useMveVoiceProfiles } from "@/hooks/useMveVoiceProfiles";
 import { canUseCloudSession } from "@/lib/auth/cloud-session";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
-import {
-  DEFAULT_VOICE_ENGINE,
-  localVoiceEngineLabel,
-} from "@/lib/config/voice-engine";
 
 const StructureBeatsSection = lazy(() =>
   import("../StructureBeatsSection").then((module) => ({
@@ -7763,13 +7759,6 @@ function ProjectDetail({
 
           <CollapsibleContent>
             <ProjectSectionFrame>
-              {showCharacterVoiceSection && cloudSession === false && (
-                <p className="text-xs text-muted-foreground mb-3 rounded border border-dashed border-border px-3 py-2">
-                  Lokale Stimmen über{" "}
-                  {localVoiceEngineLabel(DEFAULT_VOICE_ENGINE)} (App muss
-                  laufen). Cloud-TTS erfordert Cloud-Login.
-                </p>
-              )}
               <div className="space-y-3">
                 {charactersState.map((character) => (
                   <CharacterCard

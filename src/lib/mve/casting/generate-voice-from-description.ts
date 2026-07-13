@@ -7,7 +7,7 @@ import {
   createMveVoiceProfile,
   updateMveVoiceProfile,
 } from "@/lib/api-adapter/mve-adapter";
-import type { VoiceEntry } from "@/lib/api/local-tts-api";
+import type { VoiceEntry } from "@/lib/api/voice-entry";
 import {
   DEFAULT_VOICE_ENGINE,
   localVoiceEngineLabel,
@@ -22,6 +22,7 @@ export interface GenerateVoiceFromDescriptionParams {
   characterName: string;
   description: string;
   voices: VoiceEntry[];
+  providerLabel?: string;
   existingProfile?: MveVoiceProfile | null;
   previewText?: string;
 }
@@ -41,8 +42,11 @@ export async function generateVoiceFromDescription(
     throw new Error("Bitte zuerst eine Stimmbeschreibung eingeben.");
   }
   if (params.voices.length === 0) {
+    const catalogLabel =
+      params.providerLabel?.trim() ||
+      localVoiceEngineLabel(DEFAULT_VOICE_ENGINE);
     throw new Error(
-      `Kein ${localVoiceEngineLabel(DEFAULT_VOICE_ENGINE)}-Stimmenkatalog verfügbar — Engine starten oder erneut versuchen.`,
+      `Kein Stimmenkatalog für „${catalogLabel}“ — Provider wählen oder TTS-Dienst erneut verbinden.`,
     );
   }
 
@@ -60,8 +64,8 @@ export async function generateVoiceFromDescription(
     mveDefaultPreviewForCharacter(params.characterName);
 
   const hint = match.weakMatch
-    ? `Kein exakter Treffer — nächstbeste ${localVoiceEngineLabel(DEFAULT_VOICE_ENGINE)}-Stimme wurde gewählt.`
-    : undefined;
+    ? `Kein exakter Treffer im Katalog „${params.providerLabel?.trim() || localVoiceEngineLabel(DEFAULT_VOICE_ENGINE)}“ — nächstbeste Stimme wurde gewählt.`
+    : `Treffer im Katalog „${params.providerLabel?.trim() || localVoiceEngineLabel(DEFAULT_VOICE_ENGINE)}“.`;
 
   const patch = {
     name: `${params.characterName.trim() || "Charakter"} — generiert`,

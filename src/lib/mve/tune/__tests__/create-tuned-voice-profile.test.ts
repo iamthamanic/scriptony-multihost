@@ -43,7 +43,7 @@ describe("createTunedVoiceProfile guards", () => {
     expect(voiceTuneBlockedReason(tuned)).toMatch(/Tune-Ebene/);
   });
 
-  it("blocks when base has no Kokoro mapping", () => {
+  it("blocks when base has no voice mapping", () => {
     const noVoice: MveVoiceProfile = {
       ...baseProfile,
       baseVoiceId: undefined,

@@ -11,7 +11,7 @@ import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-prof
 
 export function minimalVoiceProfile(
   voiceId: string,
-  engine: LocalVoiceEngineId = DEFAULT_VOICE_ENGINE,
+  engine: LocalVoiceEngineId | string = DEFAULT_VOICE_ENGINE,
   speed?: number,
 ): MveVoiceProfile {
   const now = new Date().toISOString();

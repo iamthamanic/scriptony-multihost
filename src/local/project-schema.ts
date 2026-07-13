@@ -15,7 +15,7 @@
  * Current schema version. Bumped when tables or columns are added/changed.
  * Migrations run from the current version to SCHEMA_VERSION.
  */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 /** Table holding schema version metadata inside each local database. */
 export const SCHEMA_META_TABLE = "schema_meta";
@@ -82,6 +82,7 @@ export const MVE_SCHEMA_STATEMENTS: readonly string[] = [
   base_voice_id         TEXT,
   reference_audio_url   TEXT,
   description           TEXT,
+  design_spec_json      TEXT,
   attributes_json       TEXT,
   default_settings_json TEXT,
   consent_status        TEXT NOT NULL DEFAULT 'not_required',
@@ -145,6 +146,11 @@ export const MVE_VOICE_STUDIO_SCHEMA_STATEMENTS: readonly string[] = [
 )`,
   `CREATE INDEX IF NOT EXISTS idx_mve_voice_requests_project ON ${TABLE.MVE_VOICE_REQUESTS}(project_id)`,
   `CREATE INDEX IF NOT EXISTS idx_mve_voice_requests_voice ON ${TABLE.MVE_VOICE_REQUESTS}(voice_profile_id)`,
+];
+
+/** Schema v7 — structured voice design spec on MVE voice profiles. */
+export const MIGRATION_V7_STATEMENTS: readonly string[] = [
+  `ALTER TABLE ${TABLE.MVE_VOICE_PROFILES} ADD COLUMN design_spec_json TEXT`,
 ];
 
 /** Idempotent DDL for schema v5 (MVE render jobs + takes). */

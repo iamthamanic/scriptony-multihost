@@ -69,8 +69,10 @@ export function useMveTextBlockUploadRecord({
         const persisted = await persistClipAudioFile(file);
         const updated = await updateClip(clip.id, {
           audioFileId: persisted.storagePath,
-          startSec: 0,
-          endSec: persisted.durationSec,
+          startSec: clip.startSec,
+          endSec: clip.startSec + persisted.durationSec,
+          waveformData:
+            persisted.peaks.length > 0 ? persisted.peaks : undefined,
         });
         await cacheAndBind(updated);
         await syncClipIfProject();

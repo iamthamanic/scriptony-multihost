@@ -1,0 +1,31 @@
+{
+  "epicSlug": "mve-prompt-to-voice",
+  "designPath": ".qa/design/mve-prompt-to-voice.md",
+  "defaultLabels": ["P1"],
+  "issues": [
+    {
+      "title": "Voicebox API: designed profile + designVoiceFromPrompt service",
+      "featureSlug": "mve-prompt-to-voice-api",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": [],
+      "body": "## Intent\nEchten Prompt-to-Voice-Pfad über Voicebox anbinden: `POST /profiles` mit `voice_type=designed` und `design_prompt`, danach MVE-Charakterprofil zuweisen.\n\n## User Journey\n1. Nutzer beschreibt eine Stimme im Charakter-Modal (späterer UI-Slice).\n2. System erstellt ein Voicebox-Designed-Profil mit dem Prompt.\n3. System speichert `baseVoiceId` am MVE VoiceProfile des Charakters.\n\n## Problem\n`createVoiceboxProfile` unterstützt `voiceType: designed` ohne `design_prompt`. `generateVoiceFromDescription` macht nur Katalog-Matching.\n\n## Solution\n- Erweitere [`src/lib/api/voicebox-api.ts`](src/lib/api/voicebox-api.ts): `createDesignedVoiceboxProfile({ name, designPrompt, language, personality?, defaultEngine })`\n- Neu [`src/lib/mve/casting/design-voice-from-prompt.ts`](src/lib/mve/casting/design-voice-from-prompt.ts): Orchestrierung + `assignMveVoiceToCharacter`\n- Unit-Tests (vitest) mit fetch-Mocks\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Voicebox offline → strukturierter Fehler\n- Leerer Prompt → Validation vor API\n- Erstes Generate lädt TTS-Modell (Hinweis an UI-Slice)\n\n## Acceptance\n- [ ] `createDesignedVoiceboxProfile` sendet `design_prompt` + `default_engine=qwen_custom_voice`\n- [ ] `designVoiceFromPrompt` weist Charakter zu und gibt `MveVoiceProfile` zurück\n- [ ] Unit-Tests grün\n\n## Design\nEpic: `.qa/design/mve-prompt-to-voice.md`\n\n## Runner\nLabels: P0\nFeature slug: `mve-prompt-to-voice-api`"
+    },
+    {
+      "title": "UI: Stimme erzeugen (Prompt-to-Voice) im Voice Studio",
+      "featureSlug": "mve-prompt-to-voice-ui",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["Voicebox API: designed profile + designVoiceFromPrompt service"],
+      "body": "## Intent\nIm bestehenden Voice-Editor-Modal zwei getrennte Aktionen: Katalog vorschlagen vs. neue Stimme erzeugen.\n\n## User Journey\n1. Nutzer öffnet Charakterstimme bearbeiten.\n2. Nutzer gibt Beschreibung ein.\n3. Nutzer klickt **Stimme erzeugen** (nicht nur vorschlagen).\n4. Global Loading zeigt Fortschritt; danach erscheint die neue Stimme im Dropdown (Eigene Stimmen).\n5. Nutzer kann Vorschau abspielen.\n\n## Problem\nUI sagt „kein Prompt-to-Voice“; nur Button „Stimme vorschlagen“.\n\n## Solution\n- [`VoiceStudioGenerateSection.tsx`](src/components/characters/VoiceStudioGenerateSection.tsx): Button „Stimme erzeugen\" + Copy\n- [`VoiceProfileEditorModal.tsx`](src/components/characters/VoiceProfileEditorModal.tsx): `handleDesignFromDescription` + `runWithProgress`\n- Provider-Hinweis: Erzeugen erfordert Voicebox; nach Erfolg ggf. Provider auf Eigene Stimmen setzen\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Beschreibung leer → Button disabled\n- Parallel busy (suggest vs design) → beide disabled\n- TTS-Modell noch nicht im RAM → bestehende Orange-Hints\n\n## Acceptance\n- [ ] Zwei Buttons mit klarer DE-Unterscheidung\n- [ ] Erzeugen ruft `designVoiceFromPrompt` auf\n- [ ] Erfolg-Toast + Dropdown zeigt neues Profil\n- [ ] Global Loading bei >5s\n\n## Design\nEpic: `.qa/design/mve-prompt-to-voice.md`\n\n## Blockers\nDepends on Slice 1 (API/service)\n\n## Runner\nLabels: P1\nFeature slug: `mve-prompt-to-voice-ui`"
+    },
+    {
+      "title": "Tests und Acceptance: MVE Prompt-to-Voice E2E",
+      "featureSlug": "mve-prompt-to-voice-verify",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["UI: Stimme erzeugen (Prompt-to-Voice) im Voice Studio"],
+      "body": "## Intent\nAcceptance-Artefakt und Playwright-Spec für den Design-Voice-Flow absichern.\n\n## User Journey\n1. QA öffnet `#qa-mve-voice` mit Mock-Voicebox.\n2. Nutzer klickt Stimme erzeugen mit Beschreibung.\n3. Mock `POST /__voicebox/profiles` mit `voice_type=designed` wird getroffen.\n4. UI zeigt neues Profil.\n\n## Problem\nKein automatisierter Test für P2V; Regression riskiert Rückfall auf nur Katalog-Matching.\n\n## Solution\n- `.qa/acceptance/mve-prompt-to-voice.md`\n- `.qa/runs/<date>-mve-prompt-to-voice.spec.ts` mit `/__voicebox` routes\n- `npm run verify -- --frontend`\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes (Playwright) |\n| Cloud session | skip |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Voicebox POST 422 → Fehlertext sichtbar\n\n## Acceptance\n- [ ] Playwright spec grün\n- [ ] Acceptance-Checkboxen dokumentiert\n- [ ] verify frontend grün\n\n## Design\nEpic: `.qa/design/mve-prompt-to-voice.md`\n\n## Blockers\nDepends on UI slice\n\n## Runner\nLabels: P1\nFeature slug: `mve-prompt-to-voice-verify`"
+    }
+  ]
+}

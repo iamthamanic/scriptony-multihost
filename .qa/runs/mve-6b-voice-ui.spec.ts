@@ -11,37 +11,62 @@ const evidenceDir = path.join(
   ".qa/evidence/mve-characters-voice-panel",
 );
 
-const MOCK_VOICES = {
-  voices: [
-    {
-      id: "af_bella",
-      name: "Bella",
-      lang: "de",
-      gender: "female",
-    },
-  ],
-};
+const MOCK_PROFILES = [
+  {
+    id: "vb-p1",
+    name: "Bella",
+    language: "de",
+    default_engine: "kokoro",
+  },
+];
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     (window as unknown as { __TAURI__: unknown }).__TAURI__ = {
       core: {
         invoke: async (cmd: string) => {
-          if (cmd === "kokoro_health") return true;
-          if (cmd === "start_kokoro_sidecar") return "ok";
+          if (cmd === "start_voicebox_app") return "launched";
           return null;
         },
       },
     };
   });
 
-  await page.route("http://127.0.0.1:8080/voices", async (route) => {
-    await route.fulfill({ contentType: "application/json", json: MOCK_VOICES });
-  });
-  await page.route("http://127.0.0.1:8080/health", async (route) => {
+  await page.route(/\/__voicebox\/health$/, async (route) => {
     await route.fulfill({
       contentType: "application/json",
-      json: { status: "ok", kokoro_ready: true },
+      json: {
+        status: "healthy",
+        model_loaded: true,
+        gpu_available: true,
+      },
+    });
+  });
+
+  await page.route(/\/__voicebox\/profiles$/, async (route) => {
+    if (route.request().method() === "GET") {
+      await route.fulfill({
+        contentType: "application/json",
+        json: MOCK_PROFILES,
+      });
+      return;
+    }
+    await route.continue();
+  });
+
+  await page.route(/\/__voicebox\/profiles\/presets\/kokoro$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      json: {
+        voices: [
+          {
+            id: "af_bella",
+            name: "Bella",
+            language: "de",
+            gender: "female",
+          },
+        ],
+      },
     });
   });
 });

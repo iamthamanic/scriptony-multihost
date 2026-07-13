@@ -39,6 +39,7 @@ describe("MveDialogClipWaveformFooter", () => {
         waveformData={[0.1, 0.5, 0.9]}
         hasAudioClip
         audioDurationSec={5}
+        showDurationChip
       />,
     );
     expect(container.querySelector("svg")).toBeTruthy();
@@ -47,6 +48,21 @@ describe("MveDialogClipWaveformFooter", () => {
       container.querySelector("[data-testid='mve-dialog-clip-audio-duration']"),
     ).toBeTruthy();
     expect(container.textContent).toContain("00:00:05");
+  });
+
+  it("hides footer duration chip when showDurationChip is false", () => {
+    const { container } = render(
+      <MveDialogClipWaveformFooter
+        clipWidthPx={100}
+        waveformData={[0.1, 0.5, 0.9]}
+        hasAudioClip
+        audioDurationSec={5}
+        showDurationChip={false}
+      />,
+    );
+    expect(
+      container.querySelector("[data-testid='mve-dialog-clip-audio-duration']"),
+    ).toBeNull();
   });
 
   it("shows audio duration chip when clip bound without peaks", () => {

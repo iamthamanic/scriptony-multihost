@@ -1,5 +1,5 @@
 /**
- * Local voice clone request lifecycle (MVP 0.4 stub — no engine adapter yet).
+ * Local voice clone request lifecycle — wires Voicebox sample upload when engine=voicebox.
  * Location: src/lib/mve/clone/request-voice-clone.ts
  */
 
@@ -14,6 +14,13 @@ import {
   canStartVoiceClone,
   voiceCloneBlockedReason,
 } from "@/lib/mve/safety/can-start-voice-clone";
+import { readVoiceRefAudioFromProject } from "@/lib/mve/safety/read-voice-ref-audio";
+import {
+  createVoiceboxProfile,
+  ensureVoiceboxAvailable,
+  uploadVoiceboxProfileSample,
+} from "@/lib/api/voicebox-api";
+import { resolveVoiceEngineId } from "@/lib/config/voice-engine";
 import type { MveVoiceConsent } from "@/lib/multi-voice-engine/schema/voice-consent";
 import {
   MveCloneVoiceInputSchema,
@@ -48,6 +55,40 @@ export function buildCloneVoiceInput(
     consentId: consent.id,
     commercialUseAllowed: consent.commercialUseAllowed,
   });
+}
+
+async function runVoiceboxClone(profile: MveVoiceProfile): Promise<string> {
+  await ensureVoiceboxAvailable();
+
+  let voiceboxProfileId = profile.baseVoiceId?.trim();
+  if (!voiceboxProfileId) {
+    const created = await createVoiceboxProfile({
+      name: profile.name,
+      description: profile.description,
+      language: profile.language,
+      voiceType: "cloned",
+    });
+    voiceboxProfileId = created.id;
+  }
+
+  if (!profile.referenceAudioUrl?.trim()) {
+    throw new Error("Referenz-Audio fehlt für Voicebox Clone.");
+  }
+
+  const { bytes, fileName } = await readVoiceRefAudioFromProject(
+    profile.referenceAudioUrl,
+  );
+  const referenceText =
+    profile.previewText?.trim() || profile.description?.trim() || profile.name;
+
+  await uploadVoiceboxProfileSample({
+    profileId: voiceboxProfileId,
+    file: new Blob([new Uint8Array(bytes)]),
+    fileName,
+    referenceText,
+  });
+
+  return voiceboxProfileId;
 }
 
 export async function requestVoiceClone(
@@ -86,6 +127,17 @@ export async function requestVoiceClone(
   });
 
   try {
+    const engine = resolveVoiceEngineId(profile.engine);
+    let baseVoiceId = profile.baseVoiceId;
+
+    if (engine === "voicebox") {
+      baseVoiceId = await runVoiceboxClone(profile);
+    } else {
+      throw new Error(
+        `Voice Clone für Engine „${engine}“ ist noch nicht implementiert.`,
+      );
+    }
+
     const completedRequest = await updateMveVoiceRequest(request.id, {
       status: "completed",
     });
@@ -93,6 +145,8 @@ export async function requestVoiceClone(
     const readyProfile = await updateMveVoiceProfile(params.voiceProfileId, {
       status: "ready",
       type: "cloned",
+      engine,
+      baseVoiceId,
       version: (profile.version ?? 1) + 1,
     });
 

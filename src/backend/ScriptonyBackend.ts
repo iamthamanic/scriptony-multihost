@@ -306,6 +306,7 @@ import type {
   MveAudioJobStatus,
   MveTakeStatus,
 } from "@/lib/multi-voice-engine/schema/enums";
+import type { MveVoiceDesignSpec } from "@/lib/multi-voice-engine/schema/voice-design-spec";
 import type {
   MveVoiceAttributes,
   MveVoiceProfile,
@@ -379,6 +380,7 @@ export interface MveVoiceProfileCreatePayload {
   baseVoiceId?: string;
   referenceAudioUrl?: string;
   description?: string;
+  designSpec?: MveVoiceDesignSpec | null;
   attributes?: MveVoiceAttributes;
   defaultSettings?: MveVoiceRenderSettings;
   consentStatus?: MveConsentStatus;
@@ -397,6 +399,7 @@ export interface MveVoiceProfileUpdatePayload {
   baseVoiceId?: string | null;
   referenceAudioUrl?: string | null;
   description?: string | null;
+  designSpec?: MveVoiceDesignSpec | null;
   attributes?: MveVoiceAttributes | null;
   defaultSettings?: MveVoiceRenderSettings | null;
   consentStatus?: MveConsentStatus;

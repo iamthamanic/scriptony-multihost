@@ -19,6 +19,7 @@ export type AudioClipUpdatePayload = Partial<
     | "fxSlots"
     | "fxChainEnabled"
     | "audioFileId"
+    | "waveformData"
   >
 >;
 

@@ -16,6 +16,8 @@ export interface MveDialogClipWaveformFooterProps {
   hasAudioClip?: boolean;
   /** Bound audio clip length in seconds (shown when hasAudioClip). */
   audioDurationSec?: number;
+  /** When false, duration chip lives in header (bound audio). Default true. */
+  showDurationChip?: boolean;
 }
 
 function AudioDurationChipOverlay({
@@ -38,6 +40,7 @@ export function MveDialogClipWaveformFooter({
   waveformData,
   hasAudioClip,
   audioDurationSec,
+  showDurationChip = true,
 }: MveDialogClipWaveformFooterProps) {
   const peaks = waveformData?.length
     ? waveformData.length > MAX_WAVEFORM_SAMPLES
@@ -45,7 +48,10 @@ export function MveDialogClipWaveformFooter({
       : waveformData
     : null;
   const showAudioDurationChip =
-    hasAudioClip && audioDurationSec != null && audioDurationSec > 0;
+    showDurationChip &&
+    hasAudioClip &&
+    audioDurationSec != null &&
+    audioDurationSec > 0;
 
   if (!peaks && !hasAudioClip) {
     return (

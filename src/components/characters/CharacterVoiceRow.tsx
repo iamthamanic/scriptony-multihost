@@ -8,8 +8,10 @@ import { Loader2, Pencil, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMveVoicePreview } from "@/hooks/useMveVoicePreview";
 import { useTtsVoiceProfiles } from "@/hooks/useTtsVoiceProfiles";
+import { resolveVoiceProviderId } from "@/lib/config/voice-providers";
 import { mveDefaultPreviewForCharacter } from "@/lib/mve/default-preview-text";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
+import { resolveAssignedVoiceLabel } from "@/lib/mve/resolve-assigned-voice-label";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 import { VoiceProfileEditorModal } from "./VoiceProfileEditorModal";
 
@@ -36,18 +38,24 @@ export function CharacterVoiceRow({
   const { data: voicesData } = useTtsVoiceProfiles({
     enabled: Boolean(projectDir),
     projectDir,
+    provider: resolveVoiceProviderId(profile?.engine),
   });
   const voices = voicesData?.voices ?? [];
-
-  const voiceId = resolveMveTtsVoiceId(profile);
-  const selectedVoice = voices.find((v) => v.id === voiceId);
+  const engineError = voicesData?.engineError;
+  const engineReady = voicesData?.engineReady ?? false;
   const previewText =
     profile?.previewText ?? mveDefaultPreviewForCharacter(characterName);
-  const voiceLabel = selectedVoice
-    ? selectedVoice.name
-    : voiceId
-      ? "Stimme zugewiesen"
-      : "nicht zugewiesen";
+
+  const voiceId = resolveMveTtsVoiceId(profile);
+  const voiceLabel = voiceId
+    ? resolveAssignedVoiceLabel({ voiceId, voices, profile })
+    : "nicht zugewiesen";
+  const voiceLabelWithConnection =
+    voiceId && !voices.find((v) => v.id === voiceId) && !engineReady
+      ? engineError
+        ? "TTS-Dienst nicht erreichbar"
+        : `${voiceLabel} (TTS wird verbunden…)`
+      : voiceLabel;
 
   return (
     <>
@@ -56,7 +64,7 @@ export function CharacterVoiceRow({
           Charakterstimme
         </span>
         <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-          {voiceLabel}
+          {voiceLabelWithConnection}
         </span>
         <Button
           type="button"
@@ -71,6 +79,7 @@ export function CharacterVoiceRow({
               characterName,
               previewText,
               speed: profile?.defaultSettings?.speed,
+              engine: profile?.engine,
             })
           }
           aria-label="Charakterstimme abspielen"

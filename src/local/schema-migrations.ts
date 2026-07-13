@@ -13,6 +13,7 @@ import {
   MVE_SCHEMA_STATEMENTS,
   MVE_RENDER_SCHEMA_STATEMENTS,
   MVE_VOICE_STUDIO_SCHEMA_STATEMENTS,
+  MIGRATION_V7_STATEMENTS,
 } from "./project-schema";
 
 /** Idempotent DDL for schema v2 (story_beats). */
@@ -120,6 +121,29 @@ export async function ensureMveVoiceStudioTables(db: LocalDb): Promise<void> {
   }
 }
 
+async function columnExists(
+  db: LocalDb,
+  tableName: string,
+  columnName: string,
+): Promise<boolean> {
+  const columns = await db.all(`PRAGMA table_info(${tableName})`);
+  return columns.some((c) => String(c.name) === columnName);
+}
+
+/** Repair DBs stamped v7 before design_spec_json existed on fresh CREATE TABLE. */
+export async function ensureMveVoiceProfileDesignSpecColumn(
+  db: LocalDb,
+): Promise<void> {
+  const hasProfiles = await tableExists(db, TABLE.MVE_VOICE_PROFILES);
+  if (!hasProfiles) return;
+  if (await columnExists(db, TABLE.MVE_VOICE_PROFILES, "design_spec_json")) {
+    return;
+  }
+  for (const stmt of MIGRATION_V7_STATEMENTS) {
+    await db.run(stmt);
+  }
+}
+
 /** Apply pending migrations up to SCHEMA_VERSION. */
 export async function migrateLocalDb(db: LocalDb): Promise<void> {
   let version = await readSchemaVersion(db);
@@ -174,6 +198,12 @@ export async function migrateLocalDb(db: LocalDb): Promise<void> {
   }
 
   await ensureMveVoiceStudioTables(db);
+  await ensureMveVoiceProfileDesignSpecColumn(db);
+
+  if (version < 7) {
+    version = 7;
+    await setSchemaVersion(db, version);
+  }
 
   if (version < SCHEMA_VERSION) {
     await setSchemaVersion(db, SCHEMA_VERSION);

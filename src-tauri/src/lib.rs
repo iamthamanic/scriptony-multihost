@@ -27,13 +27,6 @@ pub fn run() {
       commands::sidecar::spawn_sidecar,
       commands::sidecar::stop_sidecar,
       commands::sidecar::sidecar_health,
-      commands::kokoro::start_kokoro_sidecar,
-      commands::kokoro::stop_kokoro_sidecar,
-      commands::kokoro::kokoro_health,
-      commands::kokoro::kokoro_server_health,
-      commands::kokoro::list_kokoro_voices,
-      commands::kokoro::synthesize_kokoro,
-      commands::kokoro::kokoro_server_status,
       commands::voicebox::start_voicebox_app,
       commands::voicebox::voicebox_server_health,
     ])

@@ -17,6 +17,7 @@ export function useAssignMveVoice(onSuccess?: () => void) {
       characterId: string;
       characterName: string;
       voiceId: string;
+      engine?: string;
       previewText?: string;
       existingProfile?: MveVoiceProfile | null;
     }): Promise<MveVoiceProfile | null> => {

@@ -11,7 +11,10 @@ import type {
   TimelinePlaybackStrategy,
   TimelineSceneBlock,
 } from "./timeline-playback-types";
-import { useTimelinePlaybackAudioEngine } from "./useTimelinePlaybackAudioEngine";
+import {
+  findActiveAudioClips,
+  useTimelinePlaybackAudioEngine,
+} from "./useTimelinePlaybackAudioEngine";
 import {
   useTimelinePlaybackBookEngine,
   type UseTimelinePlaybackBookEngineOptions,
@@ -125,11 +128,27 @@ export function useTimelinePlayback(options: UseTimelinePlaybackOptions) {
       return;
     }
 
+    if (canPlayReason) {
+      toast.info(canPlayReason);
+    } else if (isAudioProject) {
+      const hasAnyAudio = audioClips.some((clip) => Boolean(clip.audioFileId));
+      if (
+        hasAnyAudio &&
+        findActiveAudioClips(audioClips, positionSecRef.current).length === 0
+      ) {
+        toast.info(
+          "An dieser Playhead-Position ist kein Audio-Clip aktiv — nur der Playhead läuft.",
+        );
+      }
+    }
+
     play();
   }, [
     buildContext,
     canPlay,
     canPlayReason,
+    audioClips,
+    isAudioProject,
     isBookProject,
     pause,
     play,

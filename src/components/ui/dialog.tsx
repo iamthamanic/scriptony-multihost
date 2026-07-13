@@ -59,28 +59,63 @@ const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     /** Merged onto the backdrop; z-index per Overlay-Konstante, sonst `style`/`overlayClassName`. */
     overlayClassName?: string;
+    /** When true (default), backdrop click and Escape do not close — use X or explicit actions. */
+    preventDismissOnOutside?: boolean;
   }
->(({ className, overlayClassName, children, style, ...props }, ref) => (
-  <DialogPortal data-slot="dialog-portal">
-    <DialogOverlay className={overlayClassName} />
-    <DialogPrimitive.Content
-      ref={ref}
-      data-slot="dialog-content"
-      style={{ zIndex: Z_DIALOG_CONTENT, ...style }}
-      className={cn(
-        "bg-card data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-xl duration-200 sm:max-w-lg",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-      <DialogPrimitive.Close className="size-[31px] rounded-[10px] bg-primary flex items-center justify-center hover:bg-primary/90 transition-colors active:scale-95 absolute top-4 right-4 focus:ring-2 focus:ring-primary focus:outline-hidden disabled:pointer-events-none">
-        <XIcon className="size-[14px] text-white" />
-        <span className="sr-only">Close</span>
-      </DialogPrimitive.Close>
-    </DialogPrimitive.Content>
-  </DialogPortal>
-));
+>(
+  (
+    {
+      className,
+      overlayClassName,
+      children,
+      style,
+      preventDismissOnOutside = true,
+      onPointerDownOutside,
+      onInteractOutside,
+      onEscapeKeyDown,
+      ...props
+    },
+    ref,
+  ) => (
+    <DialogPortal data-slot="dialog-portal">
+      <DialogOverlay className={overlayClassName} />
+      <DialogPrimitive.Content
+        ref={ref}
+        data-slot="dialog-content"
+        style={{ zIndex: Z_DIALOG_CONTENT, ...style }}
+        className={cn(
+          "bg-card data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-xl duration-200 sm:max-w-lg",
+          className,
+        )}
+        onPointerDownOutside={(event) => {
+          if (preventDismissOnOutside) {
+            event.preventDefault();
+          }
+          onPointerDownOutside?.(event);
+        }}
+        onInteractOutside={(event) => {
+          if (preventDismissOnOutside) {
+            event.preventDefault();
+          }
+          onInteractOutside?.(event);
+        }}
+        onEscapeKeyDown={(event) => {
+          if (preventDismissOnOutside) {
+            event.preventDefault();
+          }
+          onEscapeKeyDown?.(event);
+        }}
+        {...props}
+      >
+        {children}
+        <DialogPrimitive.Close className="size-[31px] rounded-[10px] bg-primary flex items-center justify-center hover:bg-primary/90 transition-colors active:scale-95 absolute top-4 right-4 focus:ring-2 focus:ring-primary focus:outline-hidden disabled:pointer-events-none">
+          <XIcon className="size-[14px] text-white" />
+          <span className="sr-only">Close</span>
+        </DialogPrimitive.Close>
+      </DialogPrimitive.Content>
+    </DialogPortal>
+  ),
+);
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {

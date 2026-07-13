@@ -1,13 +1,14 @@
 /**
- * Local Kokoro preview playback for MVE character voice UI.
+ * Local Voicebox preview playback for MVE character voice UI.
  * Location: src/hooks/useMveVoicePreview.ts
  */
 
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import {
-  DEFAULT_VOICE_ENGINE,
-  localVoiceEngineLabel,
+  resolveVoiceEngineId,
+  localVoiceEngineUserLabel,
+  type LocalVoiceEngineId,
 } from "@/lib/config/voice-engine";
 import {
   createVoicePreviewAudioContext,
@@ -27,6 +28,7 @@ export function useMveVoicePreview() {
       characterName: string;
       previewText: string;
       speed?: number;
+      engine?: LocalVoiceEngineId | string;
     }) => {
       if (!params.voiceId) {
         toast.info("Bitte zuerst eine Stimme zuweisen.");
@@ -37,13 +39,14 @@ export function useMveVoicePreview() {
         return;
       }
 
+      const engine = resolveVoiceEngineId(params.engine);
       const audioContext = createVoicePreviewAudioContext();
       setIsPlaying(true);
 
       void runWithProgress({
-        id: `voice-preview-${DEFAULT_VOICE_ENGINE}-${params.voiceId}`,
-        title: `${localVoiceEngineLabel(DEFAULT_VOICE_ENGINE)} Vorschau`,
-        initialMessage: `${localVoiceEngineLabel(DEFAULT_VOICE_ENGINE)} wird gestartet…`,
+        id: `voice-preview-${engine}-${params.voiceId}`,
+        title: `${localVoiceEngineUserLabel(engine)} Vorschau`,
+        initialMessage: `${localVoiceEngineUserLabel(engine)} wird verbunden…`,
         initialPercent: 5,
         run: async (report) => {
           await playLocalVoicePreview({
@@ -53,6 +56,7 @@ export function useMveVoicePreview() {
               params.previewText.trim() ||
               mveDefaultPreviewForCharacter(params.characterName),
             speed: params.speed,
+            engine,
             audioContext,
             onProgress: report,
           });

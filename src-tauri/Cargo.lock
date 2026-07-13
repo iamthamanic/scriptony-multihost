@@ -5504,9 +5504,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-visual-editor"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3285c8eed67aa8d68edb4386d921667cb8756e89174234154824d314c16bfa2"
+checksum = "8190bbca1d1ec3606d5628688fde318f51960ed7261dbe33e0ee4a50a794d61d"
 dependencies = [
  "arboard",
  "base64 0.22.1",
@@ -5525,9 +5525,9 @@ dependencies = [
 
 [[package]]
 name = "tauri-plugin-visual-editor-core"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebb5710919d57c22be0e9f4f497f9171c4803ff4addc9eb1a649e79aadb06be2"
+checksum = "4f0e5d794fdf23f26027fc2ba5aa1520e492885b7e25ecd3673439e7e0d24a79"
 dependencies = [
  "serde",
 ]

@@ -45,6 +45,16 @@ describe("mve-dialog-clip-layout", () => {
     const sceneBlock = { startSec: 600, endSec: 700 };
     expect(resolveMveDialogClipWidthPx(0, 10, pxPerSec, sceneBlock)).toBe(1000);
   });
+
+  it("extends past scene end when allowPastSceneEnd is set", () => {
+    const pxPerSec = 100;
+    const sceneBlock = { startSec: 10, endSec: 14 };
+    expect(
+      resolveMveDialogClipWidthPx(10, 37, pxPerSec, sceneBlock, {
+        allowPastSceneEnd: true,
+      }),
+    ).toBe(2700);
+  });
 });
 
 describe("resolveMveLineVisualSpanMap", () => {

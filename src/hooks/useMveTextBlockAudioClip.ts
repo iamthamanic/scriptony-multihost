@@ -12,12 +12,12 @@ import { useRuntime } from "@/runtime";
 import { createAudioTrack } from "@/lib/api-adapter/audio-story-adapter";
 import { updateClip } from "@/lib/api-adapter/clips-adapter";
 import { persistClipAudioFile } from "@/lib/local-project-audio";
-import { addClipToAudioTimelineCache } from "@/lib/audio-timeline-cache";
+import { upsertClipInAudioTimelineCache } from "@/lib/audio-timeline-cache";
 import { queryKeys } from "@/lib/react-query";
 import { estimateDurationSec } from "@/lib/audio-utils";
 import { requireLocalBackend } from "@/lib/api-adapter/runtime-dispatch";
 import { syncClipWithSelectedTake } from "@/lib/mve/sync-clip-with-selected-take";
-import { extendSceneForAudio } from "@/lib/structure/extend-scene-for-audio";
+import { SCENE_CONTENT_DURATION_EPS_SEC } from "@/lib/mve/sync-scene-duration-for-mve-content";
 import { resizeSceneForContent } from "@/lib/structure/resize-scene-for-content";
 import { isContentDrivenSceneDuration } from "@/lib/mve/scene-duration-policy";
 import type { AudioClip } from "@/lib/types";
@@ -105,34 +105,53 @@ export function useMveTextBlockAudioClip({
 
       try {
         if (isContentDrivenSceneDuration(projectType)) {
-          const { resized } = await resizeSceneForContent({
+          const result = await resizeSceneForContent({
             projectId,
             sceneId: effectiveSceneId,
             requiredEndSec: clip.endSec,
             clipId: clip.id,
           });
-          if (resized) {
+          const needsGrow =
+            result.sceneEndSec != null &&
+            clip.endSec > result.sceneEndSec + SCENE_CONTENT_DURATION_EPS_SEC;
+          if (result.resized) {
             void queryClient.invalidateQueries({
               queryKey: queryKeys.timeline.byProject(projectId),
             });
             void queryClient.invalidateQueries({
               queryKey: queryKeys.timeline.audioByProject(projectId),
             });
+          } else if (needsGrow) {
+            console.warn(
+              "[MVE] Szene konnte nicht verlängert werden:",
+              effectiveSceneId,
+              {
+                requiredEndSec: clip.endSec,
+                sceneEndSec: result.sceneEndSec,
+                blockReason: result.blockReason,
+              },
+            );
+            toast.warning("Szene konnte nicht verlängert werden");
           }
         } else {
-          const { extended } = await extendSceneForAudio({
+          const result = await resizeSceneForContent({
             projectId,
             sceneId: effectiveSceneId,
+            requiredEndSec: clip.endSec,
             clipId: clip.id,
-            clipEndSec: clip.endSec,
           });
-          if (extended) {
+          const needsGrow =
+            result.sceneEndSec != null &&
+            clip.endSec > result.sceneEndSec + SCENE_CONTENT_DURATION_EPS_SEC;
+          if (result.resized && result.deltaSec > 0) {
             void queryClient.invalidateQueries({
               queryKey: queryKeys.timeline.byProject(projectId),
             });
             void queryClient.invalidateQueries({
               queryKey: queryKeys.timeline.audioByProject(projectId),
             });
+          } else if (needsGrow) {
+            toast.warning("Szene konnte nicht verlängert werden");
           }
         }
       } catch (err) {
@@ -150,7 +169,7 @@ export function useMveTextBlockAudioClip({
       if (!projectId || !clip.id) {
         throw new Error("Clip konnte nicht erstellt werden.");
       }
-      addClipToAudioTimelineCache(queryClient, projectId, clip);
+      upsertClipInAudioTimelineCache(queryClient, projectId, clip);
       void queryClient.invalidateQueries({
         queryKey: queryKeys.timeline.audioByProject(projectId),
       });
@@ -203,6 +222,7 @@ export function useMveTextBlockAudioClip({
         audioFileId: persisted.storagePath,
         startSec: clip.startSec,
         endSec: clip.startSec + persisted.durationSec,
+        waveformData: persisted.peaks.length > 0 ? persisted.peaks : undefined,
       });
       await cacheAndBind(updated);
       await syncClipIfProject();

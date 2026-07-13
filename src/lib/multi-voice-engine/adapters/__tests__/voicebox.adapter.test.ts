@@ -5,13 +5,18 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/api/voicebox-api", () => ({
-  ensureVoiceboxAvailable: vi.fn(async () => undefined),
-  generateVoiceboxSpeech: vi.fn(async () => ({
-    audioPath: "/tmp/proj/.scriptony/voicebox-output/vb-test.wav",
-    durationMs: 1200,
-  })),
-}));
+vi.mock("@/lib/api/voicebox-api", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/lib/api/voicebox-api")>();
+  return {
+    ...actual,
+    ensureVoiceboxAvailable: vi.fn(async () => undefined),
+    generateVoiceboxSpeech: vi.fn(async () => ({
+      audioPath: "/tmp/proj/.scriptony/voicebox-output/vb-test.wav",
+      durationMs: 1200,
+    })),
+  };
+});
 
 import {
   ensureVoiceboxAvailable,

@@ -94,7 +94,7 @@ describe("AudioTimelineMveDialogSegment", () => {
   it("renders real waveform svg when waveformData present", () => {
     render(
       <AudioTimelineMveDialogSegment
-        clip={clip}
+        clip={{ ...clip, endSec: 12 }}
         line={line}
         pxPerSec={20}
         projectId="proj-1"
@@ -106,7 +106,27 @@ describe("AudioTimelineMveDialogSegment", () => {
     const footer = screen.getByTestId("mve-dialog-clip-waveform");
     expect(footer.querySelector("svg")).toBeTruthy();
     expect(footer.querySelectorAll("rect").length).toBe(3);
+    expect(
+      footer.querySelector("[data-testid='mve-dialog-clip-audio-duration']"),
+    ).toBeNull();
     expect(screen.getByTestId("mve-dialog-clip-audio-duration")).toBeTruthy();
-    expect(screen.getByText("00:00:05")).toBeTruthy();
+    expect(screen.getByText("00:00:12")).toBeTruthy();
+  });
+
+  it("uses full audio width when clip extends past scene shell", () => {
+    render(
+      <AudioTimelineMveDialogSegment
+        clip={{ ...clip, startSec: 10, endSec: 37 }}
+        line={line}
+        pxPerSec={100}
+        projectId="proj-1"
+        sceneBlock={{ startSec: 10, endSec: 14 }}
+        onSaveText={vi.fn().mockResolvedValue(undefined)}
+        onSaveDirection={vi.fn().mockResolvedValue(undefined)}
+      />,
+      { wrapper },
+    );
+    const segment = screen.getByTestId("audio-timeline-mve-dialog-segment");
+    expect(segment.style.width).toBe("2700px");
   });
 });

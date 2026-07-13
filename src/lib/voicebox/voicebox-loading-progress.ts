@@ -7,22 +7,37 @@ import { invoke } from "@tauri-apps/api/core";
 import { isVoiceboxHealthy } from "@/lib/api/voicebox-api";
 import { isDesktopShell } from "@/runtime/detect-runtime";
 import type { LoadingProgressReporter } from "@/lib/loading/global-loading-progress";
+import {
+  clearVoiceboxLaunchFailure,
+  runVoiceboxLaunchOnce,
+} from "./voicebox-launch-guard";
+import {
+  isVoiceboxSessionReady,
+  markVoiceboxSessionReady,
+} from "./voicebox-ready-cache";
 
-const VOICEBOX_BOOT_TIMEOUT_MS = 90_000;
+export const VOICEBOX_BOOT_TIMEOUT_MS = 180_000;
 const POLL_MS = 500;
 
 const VOICEBOX_APP_NAME =
   import.meta.env.VITE_VOICEBOX_APP_NAME?.trim() || undefined;
 
+const VOICEBOX_APP_PATH =
+  import.meta.env.VITE_VOICEBOX_APP_PATH?.trim() || undefined;
+
 const BOOT_PHASES: { afterMs: number; percent: number; message: string }[] = [
-  { afterMs: 0, percent: 10, message: "Voicebox wird gestartet…" },
-  { afterMs: 4_000, percent: 22, message: "Voicebox-App wird geöffnet…" },
-  { afterMs: 10_000, percent: 35, message: "Voicebox-Server startet…" },
-  { afterMs: 20_000, percent: 48, message: "Stimmen-API wird abgefragt…" },
+  { afterMs: 0, percent: 10, message: "Lokaler TTS-Dienst wird gestartet…" },
+  {
+    afterMs: 4_000,
+    percent: 22,
+    message: "TTS-Engine wird im Hintergrund geladen…",
+  },
+  { afterMs: 10_000, percent: 35, message: "Stimmen-API wird verbunden…" },
+  { afterMs: 20_000, percent: 48, message: "Stimmen werden abgefragt…" },
   {
     afterMs: 35_000,
     percent: 58,
-    message: "Voicebox antwortet noch nicht — bitte warten…",
+    message: "TTS antwortet noch nicht — bitte warten…",
   },
 ];
 
@@ -54,25 +69,44 @@ export async function waitForVoiceboxReadyWithProgress(
   if (!isDesktopShell()) return;
 
   if (await isVoiceboxHealthy()) {
-    report?.({ percent: 100, message: "Voicebox bereit", phase: "ready" });
+    clearVoiceboxLaunchFailure();
+    markVoiceboxSessionReady();
+    report?.({ percent: 100, message: "TTS bereit", phase: "ready" });
     return;
   }
 
+  const skipLaunch = isVoiceboxSessionReady();
   const bootStarted = Date.now();
-  await invoke<string>("start_voicebox_app", { appName: VOICEBOX_APP_NAME });
+
+  if (!skipLaunch) {
+    await runVoiceboxLaunchOnce(async () => {
+      await invoke<string>("start_voicebox_app", {
+        appName: VOICEBOX_APP_NAME,
+        appPath: VOICEBOX_APP_PATH,
+      });
+    });
+  } else {
+    report?.({
+      percent: 40,
+      message: "TTS-Verbindung wird wiederhergestellt…",
+      phase: "boot",
+    });
+  }
 
   while (Date.now() - bootStarted < VOICEBOX_BOOT_TIMEOUT_MS) {
     const elapsed = Date.now() - bootStarted;
     report?.(bootProgress(elapsed));
 
     if (await isVoiceboxHealthy()) {
-      report?.({ percent: 100, message: "Voicebox bereit", phase: "ready" });
+      clearVoiceboxLaunchFailure();
+      markVoiceboxSessionReady();
+      report?.({ percent: 100, message: "TTS bereit", phase: "ready" });
       return;
     }
     await sleep(POLL_MS);
   }
 
   throw new Error(
-    "Voicebox-Start hat zu lange gedauert. Bitte die Voicebox-App manuell starten.",
+    "TTS-Dienst antwortet nicht. Scriptony startet ihn automatisch im Hintergrund — bitte erneut versuchen.",
   );
 }
