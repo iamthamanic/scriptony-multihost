@@ -6,6 +6,7 @@
 
 import { isDesktopShell } from "@/runtime/detect-runtime";
 import { VOICE_DESIGN_DESCRIPTION_MAX_LENGTH } from "@/lib/mve/casting/voice-design-field-help";
+import { markVoiceboxTtsSucceeded } from "@/lib/voicebox/voicebox-model-ready-signal";
 import { VOICEBOX_BASE_URL } from "@/lib/config/voice-engine";
 import type { LoadingProgressReporter } from "@/lib/loading/global-loading-progress";
 import { waitForVoiceboxReadyWithProgress } from "@/lib/voicebox/voicebox-loading-progress";
@@ -681,6 +682,8 @@ export async function generateVoiceboxSpeech(params: {
     params.projectDir.trim(),
     wavBytes,
   );
+
+  markVoiceboxTtsSucceeded();
 
   return { audioPath, durationMs };
 }

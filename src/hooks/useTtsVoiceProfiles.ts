@@ -3,6 +3,7 @@
  * Location: src/hooks/useTtsVoiceProfiles.ts
  */
 
+import { useEffect } from "react";
 import {
   useQuery,
   useQueryClient,
@@ -41,6 +42,7 @@ import { isDesktopShell } from "@/runtime/detect-runtime";
 import { queryKeys } from "@/lib/react-query";
 import type { LoadingProgressReporter } from "@/lib/loading/global-loading-progress";
 import { useGlobalLoadingProgress } from "./useGlobalLoadingProgress";
+import { subscribeVoiceboxModelRefresh } from "@/lib/voicebox/voicebox-model-ready-signal";
 
 export interface UseTtsVoiceProfilesOptions {
   enabled?: boolean;
@@ -248,6 +250,13 @@ export function useTtsVoiceProfiles(options: UseTtsVoiceProfilesOptions = {}) {
         ] as const)
       : ttsVoiceProfilesQueryKey(provider, projectDir);
 
+  useEffect(() => {
+    if (!isVoiceboxBackedProvider(provider)) return undefined;
+    return subscribeVoiceboxModelRefresh(() => {
+      void queryClient.invalidateQueries({ queryKey });
+    });
+  }, [provider, queryClient, queryKey]);
+
   return useQuery<TtsVoiceProfilesData, Error>({
     queryKey,
     queryFn: async () => {
@@ -278,6 +287,12 @@ export function useTtsVoiceProfiles(options: UseTtsVoiceProfilesOptions = {}) {
     retry: provider === "elevenlabs" ? 1 : 0,
     retryDelay: 2000,
     refetchOnWindowFocus: isVoiceboxBackedProvider(provider),
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (!data || !isVoiceboxBackedProvider(data.provider)) return false;
+      if (!data.engineReady || data.voiceboxModelLoaded) return false;
+      return 12_000;
+    },
   });
 }
 

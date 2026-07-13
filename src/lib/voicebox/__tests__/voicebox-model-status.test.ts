@@ -2,13 +2,20 @@
  * Tests for Voicebox model status German hints.
  */
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach } from "vitest";
+import {
+  markVoiceboxTtsSucceeded,
+  resetVoiceboxModelReadySignalForTests,
+} from "../voicebox-model-ready-signal";
 import {
   voiceboxModelStatusHint,
   voiceboxModelStatusShort,
 } from "../voicebox-model-status";
 
 describe("voicebox-model-status", () => {
+  beforeEach(() => {
+    resetVoiceboxModelReadySignalForTests();
+  });
   it("returns undefined when model is loaded", () => {
     expect(
       voiceboxModelStatusHint({ modelLoaded: true, modelDownloaded: true }),
@@ -32,5 +39,15 @@ describe("voicebox-model-status", () => {
         modelDownloaded: null,
       }),
     ).toMatch(/TTS-Modell noch nicht im RAM/);
+  });
+
+  it("hides hint after successful TTS in this session", () => {
+    markVoiceboxTtsSucceeded();
+    expect(
+      voiceboxModelStatusHint({
+        modelLoaded: false,
+        modelDownloaded: null,
+      }),
+    ).toBeUndefined();
   });
 });

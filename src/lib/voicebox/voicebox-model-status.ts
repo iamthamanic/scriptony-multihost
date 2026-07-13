@@ -3,6 +3,8 @@
  * Location: src/lib/voicebox/voicebox-model-status.ts
  */
 
+import { shouldHideVoiceboxModelLoadingHint } from "./voicebox-model-ready-signal";
+
 export interface VoiceboxModelStatusInput {
   modelLoaded: boolean;
   modelDownloaded?: boolean | null;
@@ -11,7 +13,8 @@ export interface VoiceboxModelStatusInput {
 export function voiceboxModelStatusHint(
   input: VoiceboxModelStatusInput,
 ): string | undefined {
-  if (input.modelLoaded) return undefined;
+  if (input.modelLoaded || shouldHideVoiceboxModelLoadingHint())
+    return undefined;
   if (input.modelDownloaded === false) {
     return "TTS-Modell wird heruntergeladen — erste Generierung kann dauern.";
   }
