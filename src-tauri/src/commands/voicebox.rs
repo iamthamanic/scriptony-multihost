@@ -1,9 +1,10 @@
-//! Voicebox local TTS app lifecycle (macOS auto-launch).
+//! Voicebox local TTS backend lifecycle (macOS headless auto-launch).
 //!
-//! Voicebox runs as a separate desktop app exposing REST on port 17493.
-//! Scriptony polls GET /profiles for readiness (unlike Kokoro sidecar spawn).
+//! Scriptony starts `voicebox-server` inside Voicebox.app — not the GUI —
+//! so TTS runs headless and does not auto-play in the Voicebox window.
 
-use std::process::Command;
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
 use std::time::Duration;
 
 fn voicebox_port() -> u16 {
@@ -47,7 +48,51 @@ pub fn voicebox_server_health() -> bool {
     voicebox_profiles_reachable()
 }
 
-/// Launch Voicebox app on macOS when not already reachable.
+fn resolve_voicebox_bundle(app_name: &str, app_path: Option<&str>) -> PathBuf {
+    if let Some(path) = app_path.filter(|s| !s.trim().is_empty()) {
+        return PathBuf::from(path);
+    }
+    if let Ok(env_path) = std::env::var("VOICEBOX_APP_PATH") {
+        if !env_path.trim().is_empty() {
+            return PathBuf::from(env_path);
+        }
+    }
+    PathBuf::from(format!("/Applications/{app_name}.app"))
+}
+
+fn resolve_voicebox_server_binary(
+    app_name: &str,
+    app_path: Option<&str>,
+) -> Result<PathBuf, String> {
+    let server = resolve_voicebox_bundle(app_name, app_path)
+        .join("Contents/MacOS/voicebox-server");
+    if server.is_file() {
+        return Ok(server);
+    }
+    Err(format!(
+        "voicebox-server nicht gefunden unter {}. \
+         Einmalig ausführen: ./scripts/install-voicebox-macos.sh",
+        server.display()
+    ))
+}
+
+fn spawn_voicebox_server_headless(
+    app_name: &str,
+    app_path: Option<&str>,
+) -> Result<(), String> {
+    let server = resolve_voicebox_server_binary(app_name, app_path)?;
+    Command::new(&server)
+        .arg("--port")
+        .arg(voicebox_port().to_string())
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("TTS-Server konnte nicht gestartet werden: {e}"))?;
+    Ok(())
+}
+
+/// Launch Voicebox headless server on macOS when not already reachable.
 #[tauri::command]
 pub fn start_voicebox_app(app_name: Option<String>, app_path: Option<String>) -> Result<String, String> {
     if voicebox_profiles_reachable() {
@@ -60,52 +105,37 @@ pub fn start_voicebox_app(app_name: Option<String>, app_path: Option<String>) ->
 
     #[cfg(target_os = "macos")]
     {
-        let resolved_path = app_path
-            .filter(|s| !s.trim().is_empty())
-            .or_else(|| {
-                std::env::var("VOICEBOX_APP_PATH")
-                    .ok()
-                    .filter(|s| !s.trim().is_empty())
-            });
+        let app_path_ref = app_path.as_deref();
+        match spawn_voicebox_server_headless(&name, app_path_ref) {
+            Ok(()) => return Ok("launched".to_string()),
+            Err(headless_err) => {
+                // Fallback: legacy GUI launch if server binary missing (old installs).
+                let resolved_path = resolve_voicebox_bundle(&name, app_path_ref);
+                if !resolved_path.exists() {
+                    return Err(format!(
+                        "Lokaler TTS-Dienst ist nicht installiert. \
+                         Einmalig ausführen: ./scripts/install-voicebox-macos.sh \
+                         ({headless_err})"
+                    ));
+                }
+                let output = Command::new("open")
+                    .arg("-g")
+                    .arg("-j")
+                    .arg(&resolved_path)
+                    .output()
+                    .map_err(|e| format!("TTS-Dienst konnte nicht gestartet werden: {e}"))?;
 
-        let output = if let Some(path) = resolved_path {
-            Command::new("open")
-                .arg("-g")
-                .arg("-j")
-                .arg(&path)
-                .output()
-                .map_err(|e| format!("TTS-Dienst konnte nicht gestartet werden ({path}): {e}"))?
-        } else {
-            Command::new("open")
-                .arg("-g")
-                .arg("-j")
-                .arg("-a")
-                .arg(&name)
-                .output()
-                .map_err(|e| format!("TTS-Dienst konnte nicht gestartet werden ({name}): {e}"))?
-        };
-
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            let hint = if stderr.contains("Unable to find application") {
-                format!(
-                    "Lokaler TTS-Dienst ist nicht installiert. \
-                     Einmalig ausführen: ./scripts/install-voicebox-macos.sh \
-                     (läuft danach im Hintergrund — Einstellungen nur in Scriptony)."
-                )
-            } else {
-                format!(
-                    "Lokaler TTS-Dienst konnte nicht gestartet werden. \
-                     Scriptony startet ihn automatisch im Hintergrund."
-                )
-            };
-            if !stderr.is_empty() {
-                return Err(format!("{hint} ({stderr})"));
+                if !output.status.success() {
+                    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                    return Err(if stderr.is_empty() {
+                        headless_err
+                    } else {
+                        format!("{headless_err} ({stderr})")
+                    });
+                }
+                return Ok("launched_gui_fallback".to_string());
             }
-            return Err(hint);
         }
-
-        Ok("launched".to_string())
     }
 
     #[cfg(not(target_os = "macos"))]

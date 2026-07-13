@@ -21,7 +21,10 @@ import {
   emptyVoiceDesignSpec,
   type MveVoiceDesignSpec,
 } from "@/lib/multi-voice-engine/schema/voice-design-spec";
-import type { VoiceDesignCandidate } from "@/lib/mve/casting/voice-design-candidate";
+import type {
+  VoiceDesignCandidate,
+  VoiceDesignCandidateSynthesisProgress,
+} from "@/lib/mve/casting/voice-design-candidate";
 import { VoiceDesignDescriptionPanel } from "./VoiceDesignDescriptionPanel";
 import { VoiceProfileFutureSections } from "./VoiceProfileFutureSections";
 import type { VoiceTuneSubmitOptions } from "./VoiceStudioTuneSection";
@@ -54,10 +57,16 @@ export interface VoiceProfileEditorFormProps {
   onDescriptionChange: (value: string) => void;
   onDesignSpecChange: (spec: MveVoiceDesignSpec) => void;
   designCandidates?: VoiceDesignCandidate[];
+  candidateSynthesisProgress?: Record<
+    string,
+    VoiceDesignCandidateSynthesisProgress
+  >;
   playingCandidateId?: string | null;
   savingCandidateId?: string | null;
+  regeneratingCandidateId?: string | null;
   onPlayDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
   onSaveDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
+  onRegenerateDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
   onSpeedChange: (value: number) => void;
   onPlayPreview: () => void;
   onVoiceAssignedProfile: (profile: MveVoiceProfile) => void;
@@ -101,10 +110,13 @@ export function VoiceProfileEditorForm({
   onDescriptionChange,
   onDesignSpecChange,
   designCandidates,
+  candidateSynthesisProgress,
   playingCandidateId,
   savingCandidateId,
+  regeneratingCandidateId,
   onPlayDesignCandidate,
   onSaveDesignCandidate,
+  onRegenerateDesignCandidate,
   onSpeedChange,
   onPlayPreview,
   onVoiceAssignedProfile,
@@ -197,11 +209,13 @@ export function VoiceProfileEditorForm({
         designDisabled={designVoiceDisabled}
         onDesignFromDescription={onDesignFromDescription}
         designCandidates={designCandidates}
-        previewText={previewText}
+        candidateSynthesisProgress={candidateSynthesisProgress}
         playingCandidateId={playingCandidateId}
         savingCandidateId={savingCandidateId}
+        regeneratingCandidateId={regeneratingCandidateId}
         onPlayDesignCandidate={onPlayDesignCandidate}
         onSaveDesignCandidate={onSaveDesignCandidate}
+        onRegenerateDesignCandidate={onRegenerateDesignCandidate}
         cloneBusy={cloneBusy}
         cloneDisabled={cloneDisabled}
         cloneStartBusy={cloneStartBusy}

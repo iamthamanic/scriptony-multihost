@@ -8,6 +8,10 @@ import { isDesktopShell } from "@/runtime/detect-runtime";
 import { VOICEBOX_BASE_URL } from "@/lib/config/voice-engine";
 import type { LoadingProgressReporter } from "@/lib/loading/global-loading-progress";
 import { waitForVoiceboxReadyWithProgress } from "@/lib/voicebox/voicebox-loading-progress";
+import {
+  ensureVoiceboxScriptonyIntegration,
+  VOICEBOX_SCRIPTONY_CLIENT_ID,
+} from "@/lib/voicebox/voicebox-scriptony-integration";
 import type { VoiceEntry } from "./voice-entry";
 
 import {
@@ -525,6 +529,10 @@ async function saveVoiceboxWavToProject(
   projectDir: string,
   wavBytes: ArrayBuffer,
 ): Promise<string> {
+  if (import.meta.env.DEV && projectDir.includes("scriptony-preview")) {
+    return `${projectDir}/.scriptony/voicebox-output/vb-qa-mock.wav`;
+  }
+
   const { join } = await import("@tauri-apps/api/path");
   const { mkdir, writeFile } = await import("@tauri-apps/plugin-fs");
   const dir = await join(projectDir, ".scriptony", "voicebox-output");
@@ -627,7 +635,10 @@ export async function generateVoiceboxSpeech(params: {
 
   const resp = await fetch(`${baseUrl()}/generate`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Voicebox-Client-Id": VOICEBOX_SCRIPTONY_CLIENT_ID,
+    },
     body: JSON.stringify(body),
   });
 
@@ -709,6 +720,7 @@ export async function ensureVoiceboxSidecar(
 ): Promise<void> {
   if (!isDesktopShell()) return;
   await waitForVoiceboxReadyWithProgress(onProgress);
+  await ensureVoiceboxScriptonyIntegration();
 }
 
 export async function ensureVoiceboxAvailable(

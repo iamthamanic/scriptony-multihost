@@ -50,6 +50,10 @@ describe("previewVoiceDesignCandidates", () => {
     expect(createDesignedVoiceboxProfile).toHaveBeenCalledTimes(
       VOICE_DESIGN_PREVIEW_COUNT,
     );
+    const calls = vi.mocked(createDesignedVoiceboxProfile).mock.calls;
+    expect(calls[0]?.[0]?.designPrompt).toContain("variant A");
+    expect(calls[1]?.[0]?.designPrompt).toContain("variant B");
+    expect(calls[2]?.[0]?.designPrompt).toContain("variant C");
     expect(generateVoiceboxSpeech).not.toHaveBeenCalled();
     expect(session.candidates).toHaveLength(VOICE_DESIGN_PREVIEW_COUNT);
     expect(session.candidates[0]?.label).toBe("A");

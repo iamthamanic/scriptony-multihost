@@ -13,10 +13,12 @@ const evidenceDir = path.join(
 
 let profilePostCount = 0;
 let generatePostCount = 0;
+let generationSeq = 0;
 
 async function mockVoiceboxForPreview(page: Page) {
   profilePostCount = 0;
   generatePostCount = 0;
+  generationSeq = 0;
 
   await page.addInitScript(() => {
     (window as unknown as { __TAURI__: unknown }).__TAURI__ = {
@@ -66,12 +68,28 @@ async function mockVoiceboxForPreview(page: Page) {
 
   await page.route(/\/__voicebox\/generate$/, async (route) => {
     generatePostCount += 1;
+    generationSeq += 1;
+    const id = `gen-preview-${generationSeq}`;
     await route.fulfill({
       contentType: "application/json",
       json: {
-        audio_path: "/tmp/mock-preview.wav",
-        duration_ms: 1200,
+        id,
+        status: "completed",
+        audio_path: `generations/${id}.wav`,
+        duration: 1.2,
       },
+    });
+  });
+
+  await page.route(/\/__voicebox\/audio\//, async (route) => {
+    const wavHeader = new Uint8Array(44);
+    const view = new DataView(wavHeader.buffer);
+    view.setUint32(24, 24000, true);
+    view.setUint32(40, 1000, true);
+    await route.fulfill({
+      status: 200,
+      contentType: "audio/wav",
+      body: Buffer.from(wavHeader),
     });
   });
 
@@ -126,7 +144,14 @@ test("design creates three preview candidates", async ({ page }) => {
   await expect(page.getByTestId("voice-design-candidate-2")).toBeVisible();
 
   expect(profilePostCount).toBeGreaterThanOrEqual(3);
-  expect(generatePostCount).toBe(0);
+  expect(generatePostCount).toBeGreaterThanOrEqual(3);
+
+  await expect(page.getByTestId("voice-design-play-0")).toBeEnabled({
+    timeout: 60_000,
+  });
+  await expect(
+    page.getByText("Drei Kandidaten bereit — anhören und eine Stimme speichern."),
+  ).toBeVisible();
 
   await page.screenshot({
     path: path.join(evidenceDir, "01-three-candidates.png"),

@@ -12,6 +12,7 @@ import type { LoadingProgressReporter } from "@/lib/loading/global-loading-progr
 import type { MveVoiceDesignSpec } from "@/lib/multi-voice-engine/schema/voice-design-spec";
 import { isDesktopShell } from "@/runtime/detect-runtime";
 import { compileVoiceDesignPrompt } from "./compile-voice-design-prompt";
+import { voiceDesignCandidatePrompt } from "./voice-design-candidate-variation";
 import {
   VOICE_DESIGN_PREVIEW_COUNT,
   VOICE_DESIGN_PREVIEW_NAME_PREFIX,
@@ -66,7 +67,7 @@ export async function previewVoiceDesignCandidates(
 
     const profile = await createDesignedVoiceboxProfile({
       name: `${VOICE_DESIGN_PREVIEW_NAME_PREFIX}${sessionId}-${index}`,
-      designPrompt,
+      designPrompt: voiceDesignCandidatePrompt(designPrompt, index),
       language: "de",
       description: designPrompt.slice(0, 500),
     });

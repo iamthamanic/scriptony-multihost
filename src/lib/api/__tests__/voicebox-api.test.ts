@@ -22,6 +22,11 @@ vi.mock("@/lib/voicebox/voicebox-loading-progress", () => ({
   waitForVoiceboxReadyWithProgress: vi.fn(async () => undefined),
 }));
 
+vi.mock("@/lib/voicebox/voicebox-scriptony-integration", () => ({
+  ensureVoiceboxScriptonyIntegration: vi.fn(async () => undefined),
+  VOICEBOX_SCRIPTONY_CLIENT_ID: "scriptony",
+}));
+
 import { isDesktopShell } from "@/runtime/detect-runtime";
 import { waitForVoiceboxReadyWithProgress } from "@/lib/voicebox/voicebox-loading-progress";
 import {

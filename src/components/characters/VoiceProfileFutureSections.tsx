@@ -4,7 +4,10 @@
  */
 
 import { Lock } from "lucide-react";
-import type { VoiceDesignCandidate } from "@/lib/mve/casting/voice-design-candidate";
+import type {
+  VoiceDesignCandidate,
+  VoiceDesignCandidateSynthesisProgress,
+} from "@/lib/mve/casting/voice-design-candidate";
 import { VoiceStudioGenerateSection } from "./VoiceStudioGenerateSection";
 import { VoiceDesignCandidateList } from "./VoiceDesignCandidateList";
 import { VoiceStudioCloneSection } from "./VoiceStudioCloneSection";
@@ -28,11 +31,16 @@ export interface VoiceProfileFutureSectionsProps {
   designDisabled?: boolean;
   onDesignFromDescription?: () => void;
   designCandidates?: VoiceDesignCandidate[];
-  previewText?: string;
+  candidateSynthesisProgress?: Record<
+    string,
+    VoiceDesignCandidateSynthesisProgress
+  >;
   playingCandidateId?: string | null;
   savingCandidateId?: string | null;
+  regeneratingCandidateId?: string | null;
   onPlayDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
   onSaveDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
+  onRegenerateDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
   cloneBusy?: boolean;
   cloneDisabled?: boolean;
   cloneStartBusy?: boolean;
@@ -61,11 +69,13 @@ export function VoiceProfileFutureSections({
   designDisabled,
   onDesignFromDescription,
   designCandidates = [],
-  previewText = "",
+  candidateSynthesisProgress,
   playingCandidateId,
   savingCandidateId,
+  regeneratingCandidateId,
   onPlayDesignCandidate,
   onSaveDesignCandidate,
+  onRegenerateDesignCandidate,
   cloneBusy = false,
   cloneDisabled,
   cloneStartBusy = false,
@@ -95,12 +105,14 @@ export function VoiceProfileFutureSections({
 
       <VoiceDesignCandidateList
         candidates={designCandidates}
-        previewText={previewText}
+        synthesisProgress={candidateSynthesisProgress}
         playingCandidateId={playingCandidateId}
         savingCandidateId={savingCandidateId}
+        regeneratingCandidateId={regeneratingCandidateId}
         disabled={generateBusy}
         onPlay={(c) => onPlayDesignCandidate?.(c)}
         onSave={(c) => onSaveDesignCandidate?.(c)}
+        onRegenerate={(c) => onRegenerateDesignCandidate?.(c)}
       />
 
       {showClone ? (

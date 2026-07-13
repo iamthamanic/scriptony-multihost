@@ -9,6 +9,18 @@ export const VOICE_DESIGN_PREVIEW_COUNT = 3;
 
 export const VOICE_DESIGN_PREVIEW_NAME_PREFIX = "__preview-";
 
+export type VoiceDesignCandidateSynthesisStatus =
+  | "pending"
+  | "synthesizing"
+  | "ready"
+  | "error";
+
+export interface VoiceDesignCandidateSynthesisProgress {
+  status: VoiceDesignCandidateSynthesisStatus;
+  percent: number;
+  message: string;
+}
+
 export interface VoiceDesignCandidate {
   /** Session-local id (not Voicebox id). */
   id: string;
@@ -16,6 +28,8 @@ export interface VoiceDesignCandidate {
   index: 0 | 1 | 2;
   label: "A" | "B" | "C";
   previewAudioPath?: string;
+  /** Increments on per-candidate regenerate (new Voicebox profile + prompt variant). */
+  variationAttempt?: number;
 }
 
 export interface VoiceDesignPreviewSession {

@@ -10,6 +10,13 @@ export interface VoiceDesignFieldHelp {
   placeholder?: string;
 }
 
+export const VOICE_DESIGN_DESCRIPTION_MAX_LENGTH = 2000;
+
+/** Clamp basic voice description to the MVE generate-voice input limit. */
+export function clampVoiceDesignDescription(value: string): string {
+  return value.slice(0, VOICE_DESIGN_DESCRIPTION_MAX_LENGTH);
+}
+
 export const VOICE_DESIGN_FIELD_HELP = {
   nativeLanguage: {
     label: "Sprache",

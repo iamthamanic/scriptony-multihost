@@ -37,13 +37,16 @@ import {
   discardVoiceDesignPreviewSession,
   previewVoiceDesignCandidates,
 } from "@/lib/mve/casting/preview-voice-design-candidates";
-import { saveVoiceDesignCandidate } from "@/lib/mve/casting/save-voice-design-candidate";
+import { synthesizeVoiceDesignCandidatePreviews } from "@/lib/mve/casting/synthesize-voice-design-candidate-previews";
+import { regenerateVoiceDesignCandidate } from "@/lib/mve/casting/regenerate-voice-design-candidate";
 import type {
   VoiceDesignCandidate,
+  VoiceDesignCandidateSynthesisProgress,
   VoiceDesignPreviewSession,
 } from "@/lib/mve/casting/voice-design-candidate";
 import { usePersistMvePreviewText } from "@/hooks/usePersistMvePreviewText";
-import { playVoiceDesignCandidateLive } from "@/lib/mve/play-voice-design-candidate";
+import { playVoiceDesignCandidateAudio } from "@/lib/mve/play-voice-design-candidate";
+import { saveVoiceDesignCandidate } from "@/lib/mve/casting/save-voice-design-candidate";
 import { createTunedVoiceProfile } from "@/lib/mve/tune/create-tuned-voice-profile";
 import {
   createMveVoiceProfile,
@@ -111,6 +114,12 @@ export function VoiceProfileEditorModal({
   const [savingCandidateId, setSavingCandidateId] = useState<string | null>(
     null,
   );
+  const [regeneratingCandidateId, setRegeneratingCandidateId] = useState<
+    string | null
+  >(null);
+  const [candidateSynthesisProgress, setCandidateSynthesisProgress] = useState<
+    Record<string, VoiceDesignCandidateSynthesisProgress>
+  >({});
   const designPreviewSessionRef = useRef<VoiceDesignPreviewSession | null>(
     null,
   );
@@ -172,8 +181,10 @@ export function VoiceProfileEditorModal({
     setDesignSpec(profile?.designSpec ?? emptyVoiceDesignSpec());
     setDesignPreviewSession(null);
     designPreviewSessionRef.current = null;
+    setCandidateSynthesisProgress({});
     setSaveCandidate(null);
     setSaveDialogOpen(false);
+    setRegeneratingCandidateId(null);
     setSpeed(profile?.defaultSettings?.speed ?? 1);
     setGenerateHint(undefined);
     setLatestConsent(null);
@@ -314,31 +325,82 @@ export function VoiceProfileEditorModal({
       await discardVoiceDesignPreviewSession(designPreviewSessionRef.current);
       designPreviewSessionRef.current = null;
       setDesignPreviewSession(null);
+      setCandidateSynthesisProgress({});
     }
 
     setIsDesigning(true);
     setGenerateHint(undefined);
+    setCandidateSynthesisProgress({});
     try {
-      const session = await runWithProgress({
-        id: `voicebox-design-${characterId}-${projectDir}`,
-        title: "Stimme erzeugen",
-        initialMessage: "Voicebox erstellt Stimm-Kandidaten…",
-        initialPercent: 8,
-        run: (report) =>
-          previewVoiceDesignCandidates({
-            characterName,
-            basicDescription: description,
-            designSpec,
-            previewText,
-            projectDir,
-            onProgress: report,
-          }),
+      const session = await previewVoiceDesignCandidates({
+        characterName,
+        basicDescription: description,
+        designSpec,
+        previewText,
+        projectDir,
       });
+
+      const pendingProgress = Object.fromEntries(
+        session.candidates.map((candidate) => [
+          candidate.id,
+          {
+            status: "pending" as const,
+            percent: 0,
+            message: "Wartet auf Synthese…",
+          },
+        ]),
+      );
+
       designPreviewSessionRef.current = session;
       setDesignPreviewSession(session);
-      setGenerateHint(
-        "Drei Kandidaten bereit — anhören und eine Stimme speichern.",
-      );
+      setCandidateSynthesisProgress(pendingProgress);
+
+      const synthesizedCandidates =
+        await synthesizeVoiceDesignCandidatePreviews({
+          session,
+          characterName,
+          previewText,
+          projectDir,
+          onCandidateProgress: (candidateId, progress) => {
+            setCandidateSynthesisProgress((prev) => ({
+              ...prev,
+              [candidateId]: progress,
+            }));
+          },
+          onCandidateUpdated: (candidate) => {
+            setDesignPreviewSession((prev) => {
+              if (!prev) return prev;
+              const candidates = prev.candidates.map((entry) =>
+                entry.id === candidate.id ? candidate : entry,
+              );
+              const nextSession = { ...prev, candidates };
+              designPreviewSessionRef.current = nextSession;
+              return nextSession;
+            });
+          },
+        });
+
+      const updatedSession: VoiceDesignPreviewSession = {
+        ...session,
+        candidates: synthesizedCandidates,
+      };
+      designPreviewSessionRef.current = updatedSession;
+      setDesignPreviewSession(updatedSession);
+
+      const readyCount = synthesizedCandidates.filter(
+        (c) => c.previewAudioPath,
+      ).length;
+      if (readyCount === synthesizedCandidates.length) {
+        setGenerateHint(
+          "Drei Kandidaten bereit — anhören und eine Stimme speichern.",
+        );
+      } else if (readyCount > 0) {
+        setGenerateHint(
+          `${readyCount} von ${synthesizedCandidates.length} Kandidaten bereit — fehlgeschlagene erneut erzeugen.`,
+        );
+      } else {
+        setGenerateHint("Synthese fehlgeschlagen — bitte erneut versuchen.");
+      }
     } catch (err) {
       toast.error(
         err instanceof Error
@@ -348,44 +410,20 @@ export function VoiceProfileEditorModal({
     } finally {
       setIsDesigning(false);
     }
-  }, [
-    characterId,
-    characterName,
-    description,
-    designSpec,
-    previewText,
-    projectDir,
-    runWithProgress,
-  ]);
+  }, [characterName, description, designSpec, previewText, projectDir]);
 
   const handlePlayDesignCandidate = useCallback(
     async (candidate: VoiceDesignCandidate) => {
-      if (!projectDir) {
-        toast.error("Lokales Projekt erforderlich für Voicebox.");
-        return;
-      }
-      const text = previewText.trim();
-      if (!text) {
-        toast.error("Bitte einen Standard-Satz für die Vorschau eingeben.");
+      if (!candidate.previewAudioPath?.trim()) {
+        toast.error(
+          "Vorschau wird noch synthetisiert oder ist fehlgeschlagen.",
+        );
         return;
       }
 
       setPlayingCandidateId(candidate.id);
       try {
-        await runWithProgress({
-          id: `voice-design-play-${candidate.id}`,
-          title: `Kandidat ${candidate.label} anhören`,
-          initialMessage: "Vorschau wird mit aktuellem Satz erzeugt…",
-          initialPercent: 12,
-          run: (report) =>
-            playVoiceDesignCandidateLive({
-              voiceboxProfileId: candidate.voiceboxProfileId,
-              previewText: text,
-              projectDir,
-              speed,
-              onProgress: report,
-            }),
-        });
+        await playVoiceDesignCandidateAudio(candidate.previewAudioPath);
       } catch (err) {
         toast.error(
           err instanceof Error ? err.message : "Vorschau fehlgeschlagen.",
@@ -394,7 +432,91 @@ export function VoiceProfileEditorModal({
         setPlayingCandidateId(null);
       }
     },
-    [previewText, projectDir, runWithProgress, speed],
+    [],
+  );
+
+  const handleRegenerateDesignCandidate = useCallback(
+    async (candidate: VoiceDesignCandidate) => {
+      if (!designPreviewSession || !projectDir) return;
+
+      setRegeneratingCandidateId(candidate.id);
+      setCandidateSynthesisProgress((prev) => ({
+        ...prev,
+        [candidate.id]: {
+          status: "synthesizing",
+          percent: 4,
+          message: `Kandidat ${candidate.label} wird neu erzeugt…`,
+        },
+      }));
+
+      try {
+        const updated = await regenerateVoiceDesignCandidate({
+          session: designPreviewSession,
+          candidate,
+          characterName,
+          previewText,
+          projectDir,
+          onProgress: (candidateId, progress) => {
+            setCandidateSynthesisProgress((prev) => ({
+              ...prev,
+              [candidateId]: progress,
+            }));
+          },
+        });
+
+        setDesignPreviewSession((prev) => {
+          if (!prev) return prev;
+          const candidates = prev.candidates.map((entry) =>
+            entry.id === updated.id ? updated : entry,
+          );
+          const nextSession = { ...prev, candidates };
+          designPreviewSessionRef.current = nextSession;
+          return nextSession;
+        });
+
+        const sessionCandidates =
+          designPreviewSessionRef.current?.candidates ?? [];
+        const readyCount = sessionCandidates.filter(
+          (c) => c.previewAudioPath,
+        ).length;
+        const total = sessionCandidates.length;
+        if (readyCount === total) {
+          setGenerateHint(
+            "Drei Kandidaten bereit — anhören und eine Stimme speichern.",
+          );
+        } else if (readyCount > 0) {
+          setGenerateHint(
+            `${readyCount} von ${total} Kandidaten bereit — fehlgeschlagene erneut generieren.`,
+          );
+        } else {
+          setGenerateHint("Synthese fehlgeschlagen — bitte erneut versuchen.");
+        }
+
+        if (!updated.previewAudioPath) {
+          toast.error(
+            `Kandidat ${candidate.label} konnte nicht neu generiert werden.`,
+          );
+        }
+      } catch (err) {
+        setCandidateSynthesisProgress((prev) => ({
+          ...prev,
+          [candidate.id]: {
+            status: "error",
+            percent: 0,
+            message:
+              err instanceof Error ? err.message : "Synthese fehlgeschlagen",
+          },
+        }));
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Kandidat konnte nicht neu generiert werden.",
+        );
+      } finally {
+        setRegeneratingCandidateId(null);
+      }
+    },
+    [characterName, designPreviewSession, previewText, projectDir],
   );
 
   const handleSaveDesignCandidateClick = useCallback(
@@ -690,9 +812,14 @@ export function VoiceProfileEditorModal({
           onDescriptionChange={setDescription}
           onDesignSpecChange={setDesignSpec}
           designCandidates={designPreviewSession?.candidates ?? []}
+          candidateSynthesisProgress={candidateSynthesisProgress}
           playingCandidateId={playingCandidateId}
           savingCandidateId={savingCandidateId}
+          regeneratingCandidateId={regeneratingCandidateId}
           onPlayDesignCandidate={(c) => void handlePlayDesignCandidate(c)}
+          onRegenerateDesignCandidate={(c) =>
+            void handleRegenerateDesignCandidate(c)
+          }
           onSaveDesignCandidate={handleSaveDesignCandidateClick}
           onSpeedChange={setSpeed}
           onPlayPreview={() =>

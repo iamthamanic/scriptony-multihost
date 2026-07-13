@@ -8,7 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { compileVoiceDesignPromptFromSpec } from "@/lib/mve/casting/compile-voice-design-prompt";
-import { VOICE_DESIGN_FIELD_HELP } from "@/lib/mve/casting/voice-design-field-help";
+import {
+  clampVoiceDesignDescription,
+  VOICE_DESIGN_DESCRIPTION_MAX_LENGTH,
+  VOICE_DESIGN_FIELD_HELP,
+} from "@/lib/mve/casting/voice-design-field-help";
 import {
   emptyVoiceDesignSpec,
   type MveVoiceDesignSpec,
@@ -31,6 +35,8 @@ export function VoiceDesignDescriptionPanel({
   onDesignSpecChange,
 }: VoiceDesignDescriptionPanelProps) {
   const spec = designSpec ?? emptyVoiceDesignSpec();
+  const charCount = description.length;
+  const atLimit = charCount >= VOICE_DESIGN_DESCRIPTION_MAX_LENGTH;
 
   const patchSpec = (partial: Partial<MveVoiceDesignSpec>) => {
     onDesignSpecChange({ ...spec, ...partial });
@@ -39,8 +45,14 @@ export function VoiceDesignDescriptionPanel({
   const handleTabChange = (tab: string) => {
     if (tab === "basic") {
       const compiled = compileVoiceDesignPromptFromSpec(spec);
-      if (compiled.trim()) onDescriptionChange(compiled);
+      if (compiled.trim()) {
+        onDescriptionChange(clampVoiceDesignDescription(compiled));
+      }
     }
+  };
+
+  const handleDescriptionChange = (value: string) => {
+    onDescriptionChange(clampVoiceDesignDescription(value));
   };
 
   return (
@@ -67,15 +79,42 @@ export function VoiceDesignDescriptionPanel({
             >
               Kurzbeschreibung in Alltagssprache
             </Label>
-            <Textarea
-              id="mve-voice-desc"
-              value={description}
-              onChange={(e) => onDescriptionChange(e.target.value)}
-              rows={3}
-              className="text-sm resize-none"
-              disabled={disabled}
-              placeholder={VOICE_DESIGN_FIELD_HELP.voiceIdentity.placeholder}
-            />
+            <div className="relative">
+              <Textarea
+                id="mve-voice-desc"
+                data-testid="mve-voice-desc"
+                value={description}
+                onChange={(e) => handleDescriptionChange(e.target.value)}
+                rows={3}
+                maxLength={VOICE_DESIGN_DESCRIPTION_MAX_LENGTH}
+                className="resize-none pb-8 text-sm"
+                disabled={disabled}
+                placeholder={VOICE_DESIGN_FIELD_HELP.voiceIdentity.placeholder}
+                aria-describedby={
+                  atLimit ? "mve-voice-desc-limit-hint" : undefined
+                }
+              />
+              <div className="pointer-events-none absolute bottom-2 right-2 flex flex-col items-end gap-0.5">
+                <span
+                  className={`text-[10px] tabular-nums ${
+                    atLimit
+                      ? "font-medium text-destructive"
+                      : "text-muted-foreground"
+                  }`}
+                  data-testid="mve-voice-desc-char-count"
+                >
+                  {charCount} / {VOICE_DESIGN_DESCRIPTION_MAX_LENGTH}
+                </span>
+                {atLimit ? (
+                  <span
+                    id="mve-voice-desc-limit-hint"
+                    className="text-[10px] text-destructive"
+                  >
+                    Maximale Länge erreicht
+                  </span>
+                ) : null}
+              </div>
+            </div>
           </TabsContent>
           <TabsContent value="advanced" className="mt-2">
             <VoiceDesignAdvancedForm
