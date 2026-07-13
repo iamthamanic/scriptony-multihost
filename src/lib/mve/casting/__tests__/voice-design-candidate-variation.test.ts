@@ -8,6 +8,7 @@ import {
   voiceDesignCandidatePrompt,
   voiceDesignCandidateTtsSeed,
 } from "../voice-design-candidate-variation";
+import { VOICE_DESIGN_DESCRIPTION_MAX_LENGTH } from "../voice-design-field-help";
 
 describe("voiceDesignCandidatePrompt", () => {
   it("appends distinct variant blocks for A/B/C", () => {
@@ -26,6 +27,18 @@ describe("voiceDesignCandidatePrompt", () => {
   it("adds retry hint on regeneration attempts", () => {
     const prompt = voiceDesignCandidatePrompt("Base voice.", 1, 2);
     expect(prompt).toContain("Alternate voice identity");
+  });
+
+  it("never exceeds the Voicebox design_prompt limit", () => {
+    const longBase = "x".repeat(VOICE_DESIGN_DESCRIPTION_MAX_LENGTH);
+    for (let index = 0; index < 3; index += 1) {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const prompt = voiceDesignCandidatePrompt(longBase, index, attempt);
+        expect(prompt.length).toBeLessThanOrEqual(
+          VOICE_DESIGN_DESCRIPTION_MAX_LENGTH,
+        );
+      }
+    }
   });
 });
 

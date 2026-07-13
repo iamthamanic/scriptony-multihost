@@ -36,14 +36,17 @@ export function VoiceDesignCandidateList({
 }: VoiceDesignCandidateListProps) {
   if (candidates.length === 0) return null;
 
-  const anySynthesizing = candidates.some((candidate) => {
+  const readyCount = candidates.filter((candidate) =>
+    Boolean(candidate.previewAudioPath),
+  ).length;
+  const synthesizingCount = candidates.filter((candidate) => {
     const synth = synthesisProgress[candidate.id];
     return (
       synth?.status === "pending" ||
       synth?.status === "synthesizing" ||
-      (!candidate.previewAudioPath && synth?.status !== "error")
+      regeneratingCandidateId === candidate.id
     );
-  });
+  }).length;
 
   return (
     <div
@@ -54,9 +57,11 @@ export function VoiceDesignCandidateList({
         Stimm-Kandidaten — anhören und speichern
       </p>
       <p className="text-[10px] text-muted-foreground leading-snug">
-        {anySynthesizing
-          ? "Vorschau-Sätze werden synthetisiert — Anhören ist danach verfügbar."
-          : "A, B und C sind drei unterschiedliche Varianten deiner Beschreibung."}
+        {synthesizingCount > 0
+          ? `${readyCount} bereit — ${synthesizingCount} in Arbeit. Bereite Kandidaten kannst du schon anhören.`
+          : readyCount > 0 && readyCount < candidates.length
+            ? `${readyCount} von ${candidates.length} bereit — fehlgeschlagene erneut erzeugen.`
+            : "A, B und C sind drei unterschiedliche Varianten deiner Beschreibung."}
       </p>
       <ul className="space-y-2">
         {candidates.map((candidate) => {
@@ -64,15 +69,15 @@ export function VoiceDesignCandidateList({
           const isPlaying = playingCandidateId === candidate.id;
           const isSaving = savingCandidateId === candidate.id;
           const isRegenerating = regeneratingCandidateId === candidate.id;
-          const hasError = synth?.status === "error";
+          const hasError =
+            synth?.status === "error" || Boolean(candidate.errorMessage);
           const isSynthesizing =
             isRegenerating ||
             synth?.status === "pending" ||
-            synth?.status === "synthesizing" ||
-            (!candidate.previewAudioPath && !hasError);
+            synth?.status === "synthesizing";
           const isReady = Boolean(candidate.previewAudioPath);
-          const canPlay =
-            isReady && !disabled && !anySynthesizing && !isRegenerating;
+          const canPlay = isReady && !isSynthesizing;
+          const canSave = isReady && !isSynthesizing;
 
           return (
             <li
@@ -138,13 +143,7 @@ export function VoiceDesignCandidateList({
                 variant="default"
                 size="sm"
                 className="h-8"
-                disabled={
-                  disabled ||
-                  isSaving ||
-                  isPlaying ||
-                  !isReady ||
-                  isRegenerating
-                }
+                disabled={isSaving || isPlaying || !canSave || isRegenerating}
                 onClick={() => onSave(candidate)}
                 data-testid={`voice-design-save-${candidate.index}`}
               >

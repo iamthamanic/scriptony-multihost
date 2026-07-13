@@ -33,6 +33,7 @@ import {
 import { voiceboxModelStatusHint } from "@/lib/voicebox/voicebox-model-status";
 import { generateVoiceFromDescription } from "@/lib/mve/casting/generate-voice-from-description";
 import { compileVoiceDesignPrompt } from "@/lib/mve/casting/compile-voice-design-prompt";
+import { clampVoiceDesignBasePrompt } from "@/lib/mve/casting/voice-design-field-help";
 import {
   discardVoiceDesignPreviewSession,
   previewVoiceDesignCandidates,
@@ -177,7 +178,7 @@ export function VoiceProfileEditorModal({
     setPreviewText(
       profile?.previewText ?? mveDefaultPreviewForCharacter(characterName),
     );
-    setDescription(profile?.description ?? "");
+    setDescription(clampVoiceDesignBasePrompt(profile?.description ?? ""));
     setDesignSpec(profile?.designSpec ?? emptyVoiceDesignSpec());
     setDesignPreviewSession(null);
     designPreviewSessionRef.current = null;
@@ -343,11 +344,17 @@ export function VoiceProfileEditorModal({
       const pendingProgress = Object.fromEntries(
         session.candidates.map((candidate) => [
           candidate.id,
-          {
-            status: "pending" as const,
-            percent: 0,
-            message: "Wartet auf Synthese…",
-          },
+          candidate.errorMessage
+            ? {
+                status: "error" as const,
+                percent: 0,
+                message: candidate.errorMessage,
+              }
+            : {
+                status: "pending" as const,
+                percent: 0,
+                message: "Wartet auf Synthese…",
+              },
         ]),
       );
 

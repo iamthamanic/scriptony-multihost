@@ -65,19 +65,43 @@ export async function previewVoiceDesignCandidates(
       phase: "voice-design",
     });
 
-    const profile = await createDesignedVoiceboxProfile({
-      name: `${VOICE_DESIGN_PREVIEW_NAME_PREFIX}${sessionId}-${index}`,
-      designPrompt: voiceDesignCandidatePrompt(designPrompt, index),
-      language: "de",
-      description: designPrompt.slice(0, 500),
-    });
+    const candidateId = `${sessionId}-${index}`;
+    const label = voiceDesignCandidateLabel(index);
 
-    candidates.push({
-      id: `${sessionId}-${index}`,
-      voiceboxProfileId: profile.id,
-      index: index as 0 | 1 | 2,
-      label: voiceDesignCandidateLabel(index),
-    });
+    try {
+      const profile = await createDesignedVoiceboxProfile({
+        name: `${VOICE_DESIGN_PREVIEW_NAME_PREFIX}${sessionId}-${index}`,
+        designPrompt: voiceDesignCandidatePrompt(designPrompt, index),
+        language: "de",
+        description: designPrompt.slice(0, 500),
+      });
+
+      candidates.push({
+        id: candidateId,
+        voiceboxProfileId: profile.id,
+        index: index as 0 | 1 | 2,
+        label,
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Profil konnte nicht erzeugt werden.";
+      candidates.push({
+        id: candidateId,
+        voiceboxProfileId: "",
+        index: index as 0 | 1 | 2,
+        label,
+        errorMessage: message,
+      });
+    }
+  }
+
+  if (!candidates.some((candidate) => candidate.voiceboxProfileId)) {
+    throw new Error(
+      candidates[0]?.errorMessage ??
+        "Keine Stimm-Kandidaten konnten erzeugt werden.",
+    );
   }
 
   params.onProgress?.({
@@ -100,7 +124,9 @@ export async function discardVoiceDesignPreviewSession(
   if (!session?.candidates.length) return;
   await Promise.all(
     session.candidates.map((c) =>
-      deleteVoiceboxProfile(c.voiceboxProfileId).catch(() => undefined),
+      c.voiceboxProfileId
+        ? deleteVoiceboxProfile(c.voiceboxProfileId).catch(() => undefined)
+        : Promise.resolve(),
     ),
   );
 }
@@ -114,7 +140,9 @@ export async function discardVoiceDesignCandidatesExcept(
   );
   await Promise.all(
     toDelete.map((c) =>
-      deleteVoiceboxProfile(c.voiceboxProfileId).catch(() => undefined),
+      c.voiceboxProfileId
+        ? deleteVoiceboxProfile(c.voiceboxProfileId).catch(() => undefined)
+        : Promise.resolve(),
     ),
   );
 }

@@ -55,6 +55,17 @@ export async function synthesizeVoiceDesignCandidatePreviews(
     const candidate = params.session.candidates[index];
     if (!candidate) continue;
 
+    if (!candidate.voiceboxProfileId.trim()) {
+      results.push(candidate);
+      params.onCandidateProgress?.(candidate.id, {
+        status: "error",
+        percent: 0,
+        message:
+          candidate.errorMessage ?? "Profil konnte nicht erzeugt werden.",
+      });
+      continue;
+    }
+
     params.onCandidateProgress?.(candidate.id, {
       status: "synthesizing",
       percent: mapSynthesisPercent(index, count, 8),
@@ -82,11 +93,13 @@ export async function synthesizeVoiceDesignCandidatePreviews(
         message: "Bereit zum Anhören",
       });
     } catch (err) {
-      results.push(candidate);
+      const message =
+        err instanceof Error ? err.message : "Synthese fehlgeschlagen";
+      results.push({ ...candidate, errorMessage: message });
       params.onCandidateProgress?.(candidate.id, {
         status: "error",
         percent: 0,
-        message: err instanceof Error ? err.message : "Synthese fehlgeschlagen",
+        message,
       });
     }
   }

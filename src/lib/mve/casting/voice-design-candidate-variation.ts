@@ -3,6 +3,8 @@
  * Location: src/lib/mve/casting/voice-design-candidate-variation.ts
  */
 
+import { VOICE_DESIGN_DESCRIPTION_MAX_LENGTH } from "./voice-design-field-help";
+
 const CANDIDATE_VARIATIONS = [
   "Candidate variant A: balanced baseline — natural, clear interpretation of the description.",
   "Candidate variant B: distinctly deeper pitch, warmer resonance, slightly more relaxed delivery.",
@@ -11,6 +13,20 @@ const CANDIDATE_VARIATIONS = [
 
 const RETRY_VARIATION_HINT =
   "Alternate voice identity: clearly different from previous attempts — new pitch, timbre, and color.";
+
+function variationSuffix(
+  candidateIndex: number,
+  variationAttempt: number,
+): string {
+  const variantSlot =
+    (candidateIndex + variationAttempt) % CANDIDATE_VARIATIONS.length;
+  const variation =
+    CANDIDATE_VARIATIONS[variantSlot] ?? CANDIDATE_VARIATIONS[0];
+  if (variationAttempt > 0) {
+    return `\n\n${variation}\n${RETRY_VARIATION_HINT}`;
+  }
+  return `\n\n${variation}`;
+}
 
 /** Append English variation block so Voicebox produces distinct designed profiles. */
 export function voiceDesignCandidatePrompt(
@@ -21,15 +37,17 @@ export function voiceDesignCandidatePrompt(
   const base = basePrompt.trim();
   if (!base) return "";
 
-  const variantSlot =
-    (candidateIndex + variationAttempt) % CANDIDATE_VARIATIONS.length;
-  const variation =
-    CANDIDATE_VARIATIONS[variantSlot] ?? CANDIDATE_VARIATIONS[0];
-
-  if (variationAttempt > 0) {
-    return `${base}\n\n${variation}\n${RETRY_VARIATION_HINT}`;
+  const suffix = variationSuffix(candidateIndex, variationAttempt);
+  const combined = `${base}${suffix}`;
+  if (combined.length <= VOICE_DESIGN_DESCRIPTION_MAX_LENGTH) {
+    return combined;
   }
-  return `${base}\n\n${variation}`;
+
+  const maxBaseLength = VOICE_DESIGN_DESCRIPTION_MAX_LENGTH - suffix.length;
+  const trimmedBase = base.slice(0, Math.max(0, maxBaseLength)).trimEnd();
+  if (!trimmedBase)
+    return combined.slice(0, VOICE_DESIGN_DESCRIPTION_MAX_LENGTH);
+  return `${trimmedBase}${suffix}`;
 }
 
 /** TTS seed spread — avoids near-identical playback across candidates. */

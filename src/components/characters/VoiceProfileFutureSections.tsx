@@ -109,7 +109,6 @@ export function VoiceProfileFutureSections({
         playingCandidateId={playingCandidateId}
         savingCandidateId={savingCandidateId}
         regeneratingCandidateId={regeneratingCandidateId}
-        disabled={generateBusy}
         onPlay={(c) => onPlayDesignCandidate?.(c)}
         onSave={(c) => onSaveDesignCandidate?.(c)}
         onRegenerate={(c) => onRegenerateDesignCandidate?.(c)}

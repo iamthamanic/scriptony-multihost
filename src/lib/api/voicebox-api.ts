@@ -5,6 +5,7 @@
  */
 
 import { isDesktopShell } from "@/runtime/detect-runtime";
+import { VOICE_DESIGN_DESCRIPTION_MAX_LENGTH } from "@/lib/mve/casting/voice-design-field-help";
 import { VOICEBOX_BASE_URL } from "@/lib/config/voice-engine";
 import type { LoadingProgressReporter } from "@/lib/loading/global-loading-progress";
 import { waitForVoiceboxReadyWithProgress } from "@/lib/voicebox/voicebox-loading-progress";
@@ -212,7 +213,9 @@ export async function createDesignedVoiceboxProfile(
   }
 
   const name = input.name.trim();
-  const designPrompt = input.designPrompt.trim();
+  const designPrompt = input.designPrompt
+    .trim()
+    .slice(0, VOICE_DESIGN_DESCRIPTION_MAX_LENGTH);
   if (!name) {
     throw new Error("Stimmenname fehlt.");
   }
@@ -242,6 +245,11 @@ export async function createDesignedVoiceboxProfile(
 
   if (!resp.ok) {
     const detail = await resp.text().catch(() => "");
+    if (resp.status === 422 && detail.includes("design_prompt")) {
+      throw new Error(
+        `Design-Prompt zu lang (max. ${VOICE_DESIGN_DESCRIPTION_MAX_LENGTH} Zeichen). Bitte Beschreibung kürzen.`,
+      );
+    }
     throw new Error(
       `Designed-Stimme konnte nicht erzeugt werden (${resp.status})${detail ? `: ${detail}` : ""}`,
     );

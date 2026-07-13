@@ -5,6 +5,7 @@
 
 import type { MveVoiceDesignSpec } from "@/lib/multi-voice-engine/schema/voice-design-spec";
 import { isVoiceDesignSpecEmpty } from "@/lib/multi-voice-engine/schema/voice-design-spec";
+import { clampVoiceDesignBasePrompt } from "./voice-design-field-help";
 
 function line(value: string | undefined): string {
   return value?.trim() ?? "";
@@ -85,7 +86,7 @@ export function compileVoiceDesignPrompt(input: {
   const basic = input.basicDescription?.trim() ?? "";
   if (input.designSpec && !isVoiceDesignSpecEmpty(input.designSpec)) {
     const compiled = compileVoiceDesignPromptFromSpec(input.designSpec);
-    return compiled || basic;
+    return clampVoiceDesignBasePrompt(compiled || basic);
   }
-  return basic;
+  return clampVoiceDesignBasePrompt(basic);
 }

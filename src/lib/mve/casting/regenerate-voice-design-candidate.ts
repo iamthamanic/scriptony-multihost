@@ -52,12 +52,18 @@ export async function regenerateVoiceDesignCandidate(
     message: `Kandidat ${params.candidate.label} wird neu erzeugt…`,
   });
 
-  const oldProfileId = params.candidate.voiceboxProfileId;
-  await deleteVoiceboxProfile(oldProfileId).catch(() => undefined);
+  const oldProfileId = params.candidate.voiceboxProfileId.trim();
+  if (oldProfileId) {
+    await deleteVoiceboxProfile(oldProfileId).catch(() => undefined);
+  }
 
   const profile = await createDesignedVoiceboxProfile({
     name: `${VOICE_DESIGN_PREVIEW_NAME_PREFIX}${params.session.sessionId}-${params.candidate.index}-r${nextVariationAttempt}`,
-    designPrompt,
+    designPrompt: voiceDesignCandidatePrompt(
+      designPrompt,
+      params.candidate.index,
+      nextVariationAttempt,
+    ),
     language: "de",
     description: designPrompt.slice(0, 500),
   });
@@ -66,6 +72,7 @@ export async function regenerateVoiceDesignCandidate(
     ...params.candidate,
     voiceboxProfileId: profile.id,
     previewAudioPath: undefined,
+    errorMessage: undefined,
     variationAttempt: nextVariationAttempt,
   };
 

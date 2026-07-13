@@ -12,9 +12,25 @@ export interface VoiceDesignFieldHelp {
 
 export const VOICE_DESIGN_DESCRIPTION_MAX_LENGTH = 2000;
 
-/** Clamp basic voice description to the MVE generate-voice input limit. */
+/**
+ * Worst-case suffix appended per candidate (A/B/C + retry hint).
+ * Keep in sync with voice-design-candidate-variation.ts.
+ */
+export const VOICE_DESIGN_CANDIDATE_VARIATION_RESERVE = 197;
+
+/** Max user-authored prompt before Scriptony appends candidate variation blocks. */
+export const VOICE_DESIGN_BASE_PROMPT_MAX_LENGTH =
+  VOICE_DESIGN_DESCRIPTION_MAX_LENGTH -
+  VOICE_DESIGN_CANDIDATE_VARIATION_RESERVE;
+
+/** Clamp compiled/basic design prompt before variation suffix is added. */
+export function clampVoiceDesignBasePrompt(value: string): string {
+  return value.slice(0, VOICE_DESIGN_BASE_PROMPT_MAX_LENGTH);
+}
+
+/** @deprecated Use clampVoiceDesignBasePrompt — basic field shares the base limit. */
 export function clampVoiceDesignDescription(value: string): string {
-  return value.slice(0, VOICE_DESIGN_DESCRIPTION_MAX_LENGTH);
+  return clampVoiceDesignBasePrompt(value);
 }
 
 export const VOICE_DESIGN_FIELD_HELP = {

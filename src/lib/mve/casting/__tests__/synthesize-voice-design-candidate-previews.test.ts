@@ -92,6 +92,32 @@ describe("synthesizeVoiceDesignCandidatePreviews", () => {
     });
 
     expect(results[0]?.previewAudioPath).toBeUndefined();
+    expect(results[0]?.errorMessage).toBe("fail");
     expect(results[1]?.previewAudioPath).toBe("/tmp/preview.wav");
+  });
+
+  it("skips candidates without a voicebox profile id", async () => {
+    const brokenSession = {
+      ...session,
+      candidates: [
+        session.candidates[0]!,
+        {
+          ...session.candidates[1]!,
+          voiceboxProfileId: "",
+          errorMessage: "Profil fehlgeschlagen",
+        },
+        session.candidates[2]!,
+      ],
+    };
+
+    const results = await synthesizeVoiceDesignCandidatePreviews({
+      session: brokenSession,
+      characterName: "Max",
+      projectDir: "/proj",
+      onCandidateProgress: () => undefined,
+    });
+
+    expect(synthesizeVoiceDesignCandidatePreview).toHaveBeenCalledTimes(2);
+    expect(results[1]?.errorMessage).toBe("Profil fehlgeschlagen");
   });
 });

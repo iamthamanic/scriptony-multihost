@@ -24,10 +24,13 @@ export interface VoiceDesignCandidateSynthesisProgress {
 export interface VoiceDesignCandidate {
   /** Session-local id (not Voicebox id). */
   id: string;
+  /** Empty when Voicebox profile creation failed for this candidate. */
   voiceboxProfileId: string;
   index: 0 | 1 | 2;
   label: "A" | "B" | "C";
   previewAudioPath?: string;
+  /** Set when profile creation or synthesis failed before audio was ready. */
+  errorMessage?: string;
   /** Increments on per-candidate regenerate (new Voicebox profile + prompt variant). */
   variationAttempt?: number;
 }

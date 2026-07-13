@@ -71,6 +71,33 @@ describe("previewVoiceDesignCandidates", () => {
       }),
     ).rejects.toThrow(/Stimmbeschreibung/);
   });
+
+  it("continues when one profile creation fails", async () => {
+    vi.mocked(createDesignedVoiceboxProfile)
+      .mockResolvedValueOnce({
+        id: "vb-a",
+        name: "a",
+        language: "de",
+      })
+      .mockRejectedValueOnce(new Error("Design-Prompt zu lang"))
+      .mockResolvedValueOnce({
+        id: "vb-c",
+        name: "c",
+        language: "de",
+      });
+
+    const session = await previewVoiceDesignCandidates({
+      characterName: "Max",
+      basicDescription: "warme Erzählerstimme",
+      projectDir: "/proj",
+    });
+
+    expect(session.candidates).toHaveLength(3);
+    expect(session.candidates[0]?.voiceboxProfileId).toBe("vb-a");
+    expect(session.candidates[1]?.voiceboxProfileId).toBe("");
+    expect(session.candidates[1]?.errorMessage).toContain("zu lang");
+    expect(session.candidates[2]?.voiceboxProfileId).toBe("vb-c");
+  });
 });
 
 describe("discardVoiceDesignPreviewSession", () => {
