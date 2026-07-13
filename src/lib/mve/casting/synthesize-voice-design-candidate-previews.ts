@@ -49,14 +49,15 @@ export async function synthesizeVoiceDesignCandidatePreviews(
   await ensureVoiceboxSidecar();
 
   const count = params.session.candidates.length;
-  const results: VoiceDesignCandidate[] = [];
+  const results: VoiceDesignCandidate[] = new Array(count);
+  const synthesizableIndices: number[] = [];
 
   for (let index = 0; index < count; index += 1) {
     const candidate = params.session.candidates[index];
     if (!candidate) continue;
 
     if (!candidate.voiceboxProfileId.trim()) {
-      results.push(candidate);
+      results[index] = candidate;
       params.onCandidateProgress?.(candidate.id, {
         status: "error",
         percent: 0,
@@ -65,6 +66,13 @@ export async function synthesizeVoiceDesignCandidatePreviews(
       });
       continue;
     }
+
+    synthesizableIndices.push(index);
+  }
+
+  const synthesizeAt = async (index: number): Promise<void> => {
+    const candidate = params.session.candidates[index];
+    if (!candidate) return;
 
     params.onCandidateProgress?.(candidate.id, {
       status: "synthesizing",
@@ -85,7 +93,7 @@ export async function synthesizeVoiceDesignCandidatePreviews(
           });
         },
       });
-      results.push(updated);
+      results[index] = updated;
       params.onCandidateUpdated?.(updated);
       params.onCandidateProgress?.(candidate.id, {
         status: "ready",
@@ -95,14 +103,28 @@ export async function synthesizeVoiceDesignCandidatePreviews(
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Synthese fehlgeschlagen";
-      results.push({ ...candidate, errorMessage: message });
+      results[index] = { ...candidate, errorMessage: message };
       params.onCandidateProgress?.(candidate.id, {
         status: "error",
         percent: 0,
         message,
       });
     }
+  };
+
+  if (synthesizableIndices.length === 0) {
+    return params.session.candidates.map(
+      (candidate, index) => results[index] ?? candidate,
+    );
   }
 
-  return results;
+  const [warmupIndex, ...parallelIndices] = synthesizableIndices;
+  await synthesizeAt(warmupIndex);
+  if (parallelIndices.length > 0) {
+    await Promise.all(parallelIndices.map((index) => synthesizeAt(index)));
+  }
+
+  return params.session.candidates.map(
+    (candidate, index) => results[index] ?? candidate,
+  );
 }

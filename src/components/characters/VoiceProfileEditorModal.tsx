@@ -31,6 +31,7 @@ import {
   type VoiceProviderId,
 } from "@/lib/config/voice-providers";
 import { voiceboxModelStatusHint } from "@/lib/voicebox/voicebox-model-status";
+import { warmUpVoiceboxQwenTtsDeduped } from "@/lib/voicebox/voicebox-tts-warmup";
 import { generateVoiceFromDescription } from "@/lib/mve/casting/generate-voice-from-description";
 import { compileVoiceDesignPrompt } from "@/lib/mve/casting/compile-voice-design-prompt";
 import { clampVoiceDesignBasePrompt } from "@/lib/mve/casting/voice-design-field-help";
@@ -137,6 +138,7 @@ export function VoiceProfileEditorModal({
   );
   const providerSyncKeyRef = useRef<string | null>(null);
   const editorInitKeyRef = useRef<string | null>(null);
+  const qwenWarmupAttemptedRef = useRef(false);
   const queryClient = useQueryClient();
 
   const buildEditorInitKey = useCallback(
@@ -170,6 +172,7 @@ export function VoiceProfileEditorModal({
     if (!open) {
       providerSyncKeyRef.current = null;
       editorInitKeyRef.current = null;
+      qwenWarmupAttemptedRef.current = false;
       return;
     }
 
@@ -207,6 +210,56 @@ export function VoiceProfileEditorModal({
     if (!open || !projectDir) return;
     void prefetchAllVoiceboxVoiceProfiles(queryClient, projectDir);
   }, [open, projectDir, queryClient]);
+
+  useEffect(() => {
+    if (
+      !open ||
+      !projectDir ||
+      !isDesktopShell() ||
+      qwenWarmupAttemptedRef.current
+    ) {
+      return;
+    }
+    if (
+      activeProfile?.type === "tuned" &&
+      activeProfile.baseVoiceId &&
+      !tuneSourceProfile
+    ) {
+      return;
+    }
+    qwenWarmupAttemptedRef.current = true;
+
+    const warmupProfileId =
+      resolveMveTtsVoiceId(activeProfile, tuneSourceProfile) ??
+      resolveMveTtsVoiceId(profile, null);
+    let cancelled = false;
+
+    void runWithProgress({
+      id: `voicebox-qwen-warmup-${projectDir}`,
+      title: "Stimme",
+      initialMessage: "Qwen TTS-Modell wird vorbereitet…",
+      initialPercent: 8,
+      run: async (report) => {
+        if (cancelled) return;
+        await warmUpVoiceboxQwenTtsDeduped({
+          projectDir,
+          profileId: warmupProfileId,
+          onProgress: report,
+        });
+      },
+    }).catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+    projectDir,
+    profile,
+    activeProfile,
+    tuneSourceProfile,
+    runWithProgress,
+  ]);
 
   useEffect(() => {
     if (!open || !activeProfile?.id) {

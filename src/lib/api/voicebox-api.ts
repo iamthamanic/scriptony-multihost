@@ -7,6 +7,14 @@
 import { isDesktopShell } from "@/runtime/detect-runtime";
 import { VOICE_DESIGN_DESCRIPTION_MAX_LENGTH } from "@/lib/mve/casting/voice-design-field-help";
 import { markVoiceboxTtsSucceeded } from "@/lib/voicebox/voicebox-model-ready-signal";
+import {
+  isVoiceboxGenerationTimeoutError,
+  VOICEBOX_GENERATION_MAX_ATTEMPTS,
+  VOICEBOX_GENERATION_POLL_MS,
+  VOICEBOX_GENERATION_TIMEOUT_MS,
+  VoiceboxGenerationTimeoutError,
+  voiceboxGenerationProgressMessage,
+} from "@/lib/voicebox/voicebox-tts-generation";
 import { VOICEBOX_BASE_URL } from "@/lib/config/voice-engine";
 import type { LoadingProgressReporter } from "@/lib/loading/global-loading-progress";
 import { waitForVoiceboxReadyWithProgress } from "@/lib/voicebox/voicebox-loading-progress";
@@ -86,8 +94,14 @@ interface VoiceboxGenerationRecord {
   engine?: string | null;
 }
 
-const GENERATION_POLL_MS = 500;
-const GENERATION_TIMEOUT_MS = 120_000;
+const GENERATION_POLL_MS = VOICEBOX_GENERATION_POLL_MS;
+const GENERATION_TIMEOUT_MS = VOICEBOX_GENERATION_TIMEOUT_MS;
+
+export {
+  VOICEBOX_GENERATION_POLL_MS,
+  VOICEBOX_GENERATION_TIMEOUT_MS,
+  VOICEBOX_GENERATION_MAX_ATTEMPTS,
+} from "@/lib/voicebox/voicebox-tts-generation";
 
 function baseUrl(): string {
   return VOICEBOX_BASE_URL.replace(/\/+$/, "");
@@ -564,7 +578,9 @@ function estimateDurationMsFromWav(bytes: ArrayBuffer): number | undefined {
 async function pollVoiceboxGeneration(
   generationId: string,
   onProgress?: LoadingProgressReporter,
+  options?: { modelLikelyCold?: boolean },
 ): Promise<VoiceboxGenerationRecord> {
+  const modelLikelyCold = options?.modelLikelyCold ?? false;
   const started = Date.now();
   while (Date.now() - started < GENERATION_TIMEOUT_MS) {
     const resp = await fetch(
@@ -578,15 +594,16 @@ async function pollVoiceboxGeneration(
       if (record.status === "failed") {
         throw new Error(record.error?.trim() || "Voicebox TTS fehlgeschlagen.");
       }
+      const elapsedMs = Date.now() - started;
       onProgress?.({
-        percent: 55,
-        message: "TTS wird generiert…",
+        percent: Math.min(92, 55 + Math.floor(elapsedMs / 10_000)),
+        message: voiceboxGenerationProgressMessage(elapsedMs, modelLikelyCold),
         phase: "synthesis",
       });
     }
     await sleep(GENERATION_POLL_MS);
   }
-  throw new Error("Voicebox TTS Zeitüberschreitung — bitte erneut versuchen.");
+  throw new VoiceboxGenerationTimeoutError(modelLikelyCold, false);
 }
 
 async function downloadVoiceboxGenerationAudio(
@@ -609,34 +626,20 @@ async function downloadVoiceboxGenerationAudio(
   return bytes;
 }
 
-export async function generateVoiceboxSpeech(params: {
+async function startVoiceboxGeneration(params: {
   text: string;
   profileId: string;
   language?: string;
-  projectDir?: string;
   engine?: string;
   seed?: number;
-  onProgress?: LoadingProgressReporter;
-}): Promise<VoiceboxGenerateResult> {
-  if (!isDesktopShell()) {
-    throw new Error("Voicebox TTS nur in der Desktop-App verfügbar.");
-  }
-
-  const profileId = params.profileId.trim();
-  if (!profileId) {
-    throw new Error("Voicebox profile_id fehlt.");
-  }
-
-  const profile = await getVoiceboxProfile(profileId);
-  const engine = params.engine?.trim() || resolveEngineForProfile(profile);
-
+}): Promise<VoiceboxGenerationRecord> {
   const body: Record<string, unknown> = {
     text: params.text,
-    profile_id: profileId,
-    language: params.language?.trim() || profile?.language?.trim() || "de",
+    profile_id: params.profileId,
+    language: params.language ?? "de",
   };
-  if (engine) {
-    body.engine = engine;
+  if (params.engine) {
+    body.engine = params.engine;
   }
   if (params.seed != null && params.seed >= 0) {
     body.seed = params.seed;
@@ -662,30 +665,108 @@ export async function generateVoiceboxSpeech(params: {
   if (!started.id?.trim()) {
     throw new Error("Voicebox hat keine Generierungs-ID zurückgegeben.");
   }
+  return started;
+}
 
-  let record = started;
-  if (started.status !== "completed" || !started.audio_path) {
-    record = await pollVoiceboxGeneration(started.id, params.onProgress);
+async function resolveVoiceboxGenerationRecord(
+  started: VoiceboxGenerationRecord,
+  onProgress?: LoadingProgressReporter,
+  options?: { modelLikelyCold?: boolean },
+): Promise<VoiceboxGenerationRecord> {
+  if (started.status === "completed" && started.audio_path) {
+    return started;
+  }
+  return pollVoiceboxGeneration(started.id, onProgress, options);
+}
+
+export async function generateVoiceboxSpeech(params: {
+  text: string;
+  profileId: string;
+  language?: string;
+  projectDir?: string;
+  engine?: string;
+  seed?: number;
+  onProgress?: LoadingProgressReporter;
+}): Promise<VoiceboxGenerateResult> {
+  if (!isDesktopShell()) {
+    throw new Error("Voicebox TTS nur in der Desktop-App verfügbar.");
   }
 
-  const wavBytes = await downloadVoiceboxGenerationAudio(record.id);
-  const durationMs =
-    record.duration && record.duration > 0
-      ? Math.round(record.duration * 1000)
-      : estimateDurationMsFromWav(wavBytes);
-
-  if (!params.projectDir?.trim()) {
-    throw new Error("Projektverzeichnis fehlt für Voicebox-Audio-Speicherung.");
+  const profileId = params.profileId.trim();
+  if (!profileId) {
+    throw new Error("Voicebox profile_id fehlt.");
   }
 
-  const audioPath = await saveVoiceboxWavToProject(
-    params.projectDir.trim(),
-    wavBytes,
-  );
+  const profile = await getVoiceboxProfile(profileId);
+  const engine = params.engine?.trim() || resolveEngineForProfile(profile);
+  const language = params.language?.trim() || profile?.language?.trim() || "de";
+  const health = await getVoiceboxHealth();
+  const modelLikelyCold = !health?.model_loaded;
 
-  markVoiceboxTtsSucceeded();
+  let lastError: Error | undefined;
 
-  return { audioPath, durationMs };
+  for (
+    let attempt = 0;
+    attempt < VOICEBOX_GENERATION_MAX_ATTEMPTS;
+    attempt += 1
+  ) {
+    const finalAttempt = attempt >= VOICEBOX_GENERATION_MAX_ATTEMPTS - 1;
+    try {
+      if (attempt > 0) {
+        params.onProgress?.({
+          percent: 52,
+          message: "TTS-Zeitüberschreitung — erneuter Versuch…",
+          phase: "synthesis",
+        });
+      }
+
+      const started = await startVoiceboxGeneration({
+        text: params.text,
+        profileId,
+        language,
+        engine,
+        seed: params.seed,
+      });
+
+      const record = await resolveVoiceboxGenerationRecord(
+        started,
+        params.onProgress,
+        { modelLikelyCold },
+      );
+
+      const wavBytes = await downloadVoiceboxGenerationAudio(record.id);
+      const durationMs =
+        record.duration && record.duration > 0
+          ? Math.round(record.duration * 1000)
+          : estimateDurationMsFromWav(wavBytes);
+
+      if (!params.projectDir?.trim()) {
+        throw new Error(
+          "Projektverzeichnis fehlt für Voicebox-Audio-Speicherung.",
+        );
+      }
+
+      const audioPath = await saveVoiceboxWavToProject(
+        params.projectDir.trim(),
+        wavBytes,
+      );
+
+      markVoiceboxTtsSucceeded();
+
+      return { audioPath, durationMs };
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      const isTimeout = isVoiceboxGenerationTimeoutError(lastError);
+      if (!isTimeout || finalAttempt) {
+        if (isTimeout) {
+          throw new VoiceboxGenerationTimeoutError(modelLikelyCold, true);
+        }
+        throw lastError;
+      }
+    }
+  }
+
+  throw lastError ?? new Error("Voicebox TTS fehlgeschlagen.");
 }
 
 export async function uploadVoiceboxProfileSample(params: {
