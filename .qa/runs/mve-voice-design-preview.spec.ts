@@ -135,6 +135,9 @@ test("advanced tab and basic description panel visible", async ({ page }) => {
 
   await expect(page.getByTestId("voice-design-description-panel")).toBeVisible();
   await expect(page.getByTestId("voice-design-tab-advanced")).toBeVisible();
+  await page.getByTestId("voice-design-tab-advanced").click();
+  await expect(page.getByTestId("voice-design-advanced-form")).toBeVisible();
+  await expect(page.getByTestId("voice-design-pitch-picker")).toBeVisible();
 
   await dialog.screenshot({
     path: path.join(evidenceDir, "02-description-panel.png"),
