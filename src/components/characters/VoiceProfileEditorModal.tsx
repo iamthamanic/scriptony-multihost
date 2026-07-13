@@ -46,7 +46,6 @@ import type {
   VoiceDesignPreviewSession,
 } from "@/lib/mve/casting/voice-design-candidate";
 import { usePersistMvePreviewText } from "@/hooks/usePersistMvePreviewText";
-import { playVoiceDesignCandidateAudio } from "@/lib/mve/play-voice-design-candidate";
 import { saveVoiceDesignCandidate } from "@/lib/mve/casting/save-voice-design-candidate";
 import { createTunedVoiceProfile } from "@/lib/mve/tune/create-tuned-voice-profile";
 import {
@@ -109,9 +108,6 @@ export function VoiceProfileEditorModal({
   const [saveCandidate, setSaveCandidate] =
     useState<VoiceDesignCandidate | null>(null);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [playingCandidateId, setPlayingCandidateId] = useState<string | null>(
-    null,
-  );
   const [savingCandidateId, setSavingCandidateId] = useState<string | null>(
     null,
   );
@@ -418,29 +414,6 @@ export function VoiceProfileEditorModal({
       setIsDesigning(false);
     }
   }, [characterName, description, designSpec, previewText, projectDir]);
-
-  const handlePlayDesignCandidate = useCallback(
-    async (candidate: VoiceDesignCandidate) => {
-      if (!candidate.previewAudioPath?.trim()) {
-        toast.error(
-          "Vorschau wird noch synthetisiert oder ist fehlgeschlagen.",
-        );
-        return;
-      }
-
-      setPlayingCandidateId(candidate.id);
-      try {
-        await playVoiceDesignCandidateAudio(candidate.previewAudioPath);
-      } catch (err) {
-        toast.error(
-          err instanceof Error ? err.message : "Vorschau fehlgeschlagen.",
-        );
-      } finally {
-        setPlayingCandidateId(null);
-      }
-    },
-    [],
-  );
 
   const handleRegenerateDesignCandidate = useCallback(
     async (candidate: VoiceDesignCandidate) => {
@@ -820,10 +793,8 @@ export function VoiceProfileEditorModal({
           onDesignSpecChange={setDesignSpec}
           designCandidates={designPreviewSession?.candidates ?? []}
           candidateSynthesisProgress={candidateSynthesisProgress}
-          playingCandidateId={playingCandidateId}
           savingCandidateId={savingCandidateId}
           regeneratingCandidateId={regeneratingCandidateId}
-          onPlayDesignCandidate={(c) => void handlePlayDesignCandidate(c)}
           onRegenerateDesignCandidate={(c) =>
             void handleRegenerateDesignCandidate(c)
           }

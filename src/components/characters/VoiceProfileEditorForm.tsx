@@ -61,10 +61,8 @@ export interface VoiceProfileEditorFormProps {
     string,
     VoiceDesignCandidateSynthesisProgress
   >;
-  playingCandidateId?: string | null;
   savingCandidateId?: string | null;
   regeneratingCandidateId?: string | null;
-  onPlayDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
   onSaveDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
   onRegenerateDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
   onSpeedChange: (value: number) => void;
@@ -111,10 +109,8 @@ export function VoiceProfileEditorForm({
   onDesignSpecChange,
   designCandidates,
   candidateSynthesisProgress,
-  playingCandidateId,
   savingCandidateId,
   regeneratingCandidateId,
-  onPlayDesignCandidate,
   onSaveDesignCandidate,
   onRegenerateDesignCandidate,
   onSpeedChange,
@@ -210,10 +206,8 @@ export function VoiceProfileEditorForm({
         onDesignFromDescription={onDesignFromDescription}
         designCandidates={designCandidates}
         candidateSynthesisProgress={candidateSynthesisProgress}
-        playingCandidateId={playingCandidateId}
         savingCandidateId={savingCandidateId}
         regeneratingCandidateId={regeneratingCandidateId}
-        onPlayDesignCandidate={onPlayDesignCandidate}
         onSaveDesignCandidate={onSaveDesignCandidate}
         onRegenerateDesignCandidate={onRegenerateDesignCandidate}
         cloneBusy={cloneBusy}

@@ -3,22 +3,24 @@
  * Location: src/components/characters/VoiceDesignCandidateList.tsx
  */
 
-import { Loader2, Play, RefreshCw, Save } from "lucide-react";
+import { useEffect } from "react";
+import { Loader2, RefreshCw, Save } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { useVoiceDesignCandidatePlayback } from "@/hooks/useVoiceDesignCandidatePlayback";
 import type {
   VoiceDesignCandidate,
   VoiceDesignCandidateSynthesisProgress,
 } from "@/lib/mve/casting/voice-design-candidate";
 import { InlineTaskProgress } from "./InlineTaskProgress";
+import { VoiceDesignCandidatePlayer } from "./VoiceDesignCandidatePlayer";
 
 export interface VoiceDesignCandidateListProps {
   candidates: VoiceDesignCandidate[];
   synthesisProgress?: Record<string, VoiceDesignCandidateSynthesisProgress>;
-  playingCandidateId?: string | null;
   savingCandidateId?: string | null;
   regeneratingCandidateId?: string | null;
   disabled?: boolean;
-  onPlay: (candidate: VoiceDesignCandidate) => void;
   onSave: (candidate: VoiceDesignCandidate) => void;
   onRegenerate: (candidate: VoiceDesignCandidate) => void;
 }
@@ -26,14 +28,22 @@ export interface VoiceDesignCandidateListProps {
 export function VoiceDesignCandidateList({
   candidates,
   synthesisProgress = {},
-  playingCandidateId,
   savingCandidateId,
   regeneratingCandidateId,
   disabled,
-  onPlay,
   onSave,
   onRegenerate,
 }: VoiceDesignCandidateListProps) {
+  const playback = useVoiceDesignCandidatePlayback();
+
+  useEffect(() => {
+    for (const candidate of candidates) {
+      const path = candidate.previewAudioPath?.trim();
+      if (!path) continue;
+      void playback.ensureLoaded(candidate.id, path).catch(() => undefined);
+    }
+  }, [candidates, playback.ensureLoaded]);
+
   if (candidates.length === 0) return null;
 
   const readyCount = candidates.filter((candidate) =>
@@ -47,6 +57,18 @@ export function VoiceDesignCandidateList({
       regeneratingCandidateId === candidate.id
     );
   }).length;
+
+  const handleToggle = async (candidate: VoiceDesignCandidate) => {
+    const path = candidate.previewAudioPath?.trim();
+    if (!path) return;
+    try {
+      await playback.togglePlayback(candidate.id, path);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Vorschau fehlgeschlagen.",
+      );
+    }
+  };
 
   return (
     <div
@@ -66,7 +88,6 @@ export function VoiceDesignCandidateList({
       <ul className="space-y-2">
         {candidates.map((candidate) => {
           const synth = synthesisProgress[candidate.id];
-          const isPlaying = playingCandidateId === candidate.id;
           const isSaving = savingCandidateId === candidate.id;
           const isRegenerating = regeneratingCandidateId === candidate.id;
           const hasError =
@@ -76,16 +97,16 @@ export function VoiceDesignCandidateList({
             synth?.status === "pending" ||
             synth?.status === "synthesizing";
           const isReady = Boolean(candidate.previewAudioPath);
-          const canPlay = isReady && !isSynthesizing;
           const canSave = isReady && !isSynthesizing;
+          const playerView = playback.getView(candidate.id);
 
           return (
             <li
               key={candidate.id}
-              className="flex items-center gap-2 rounded-md border border-border/70 bg-background/60 px-2 py-1.5"
+              className="flex items-start gap-2 rounded-md border border-border/70 bg-background/60 px-2 py-1.5"
               data-testid={`voice-design-candidate-${candidate.index}`}
             >
-              <span className="w-6 text-xs font-bold text-muted-foreground">
+              <span className="mt-1.5 w-6 text-xs font-bold text-muted-foreground">
                 {candidate.label}
               </span>
               {isSynthesizing ? (
@@ -119,31 +140,29 @@ export function VoiceDesignCandidateList({
                     Erneut generieren
                   </Button>
                 </div>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-8 flex-1 justify-start"
-                  disabled={!canPlay || isPlaying || isSaving}
-                  onClick={() => onPlay(candidate)}
-                  aria-label={`Kandidat ${candidate.label} abspielen`}
-                  data-testid={`voice-design-play-${candidate.index}`}
-                >
-                  {isPlaying ? (
-                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Play className="mr-2 h-3.5 w-3.5" />
-                  )}
-                  Anhören
-                </Button>
-              )}
+              ) : isReady ? (
+                <VoiceDesignCandidatePlayer
+                  candidateIndex={candidate.index}
+                  candidateLabel={candidate.label}
+                  audioPath={candidate.previewAudioPath!}
+                  view={playerView}
+                  disabled={disabled}
+                  onToggle={() => void handleToggle(candidate)}
+                  onSeek={(ratio) =>
+                    void playback.seek(
+                      candidate.id,
+                      candidate.previewAudioPath!,
+                      ratio,
+                    )
+                  }
+                />
+              ) : null}
               <Button
                 type="button"
                 variant="default"
                 size="sm"
-                className="h-8"
-                disabled={isSaving || isPlaying || !canSave || isRegenerating}
+                className="mt-0.5 h-8 shrink-0"
+                disabled={isSaving || !canSave || isRegenerating}
                 onClick={() => onSave(candidate)}
                 data-testid={`voice-design-save-${candidate.index}`}
               >

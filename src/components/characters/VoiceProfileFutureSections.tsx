@@ -35,10 +35,8 @@ export interface VoiceProfileFutureSectionsProps {
     string,
     VoiceDesignCandidateSynthesisProgress
   >;
-  playingCandidateId?: string | null;
   savingCandidateId?: string | null;
   regeneratingCandidateId?: string | null;
-  onPlayDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
   onSaveDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
   onRegenerateDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
   cloneBusy?: boolean;
@@ -70,10 +68,8 @@ export function VoiceProfileFutureSections({
   onDesignFromDescription,
   designCandidates = [],
   candidateSynthesisProgress,
-  playingCandidateId,
   savingCandidateId,
   regeneratingCandidateId,
-  onPlayDesignCandidate,
   onSaveDesignCandidate,
   onRegenerateDesignCandidate,
   cloneBusy = false,
@@ -106,10 +102,8 @@ export function VoiceProfileFutureSections({
       <VoiceDesignCandidateList
         candidates={designCandidates}
         synthesisProgress={candidateSynthesisProgress}
-        playingCandidateId={playingCandidateId}
         savingCandidateId={savingCandidateId}
         regeneratingCandidateId={regeneratingCandidateId}
-        onPlay={(c) => onPlayDesignCandidate?.(c)}
         onSave={(c) => onSaveDesignCandidate?.(c)}
         onRegenerate={(c) => onRegenerateDesignCandidate?.(c)}
       />
