@@ -53,6 +53,7 @@ export function VoiceDesignPresetPicker({
 
   return (
     <Popover
+      modal
       open={open}
       onOpenChange={(next) => {
         setOpen(next);
