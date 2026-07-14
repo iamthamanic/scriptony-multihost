@@ -11,16 +11,17 @@ vi.mock("@/lib/local/voice-design-sidecar-lifecycle", () => ({
 
 vi.mock("@/lib/api/qwen-voice-design-api", () => ({
   generateQwenVoiceDesignCandidates: vi.fn(),
+  materializeQwenVoiceDesign: vi.fn(),
   QWEN_VOICE_DESIGN_DEFAULT_CANDIDATE_COUNT: 3,
   QWEN_VOICE_DESIGN_MAX_CANDIDATE_COUNT: 4,
 }));
 
-import { generateQwenVoiceDesignCandidates } from "@/lib/api/qwen-voice-design-api";
-import { ensureVoiceDesignSidecarReady } from "@/lib/local/voice-design-sidecar-lifecycle";
 import {
-  qwenVoiceDesignAdapter,
-  QwenVoiceDesignNotImplementedError,
-} from "../qwen-voice-design.adapter";
+  generateQwenVoiceDesignCandidates,
+  materializeQwenVoiceDesign,
+} from "@/lib/api/qwen-voice-design-api";
+import { ensureVoiceDesignSidecarReady } from "@/lib/local/voice-design-sidecar-lifecycle";
+import { qwenVoiceDesignAdapter } from "../qwen-voice-design.adapter";
 
 describe("QwenVoiceDesignAdapter", () => {
   beforeEach(() => {
@@ -30,7 +31,7 @@ describe("QwenVoiceDesignAdapter", () => {
   it("exposes provider id and capabilities", () => {
     expect(qwenVoiceDesignAdapter.providerId).toBe("qwen-voice-design");
     expect(qwenVoiceDesignAdapter.capabilities.supportsVoiceDesign).toBe(true);
-    expect(qwenVoiceDesignAdapter.capabilities.supportsMaterialize).toBe(false);
+    expect(qwenVoiceDesignAdapter.capabilities.supportsMaterialize).toBe(true);
     expect(qwenVoiceDesignAdapter.capabilities.maxCandidateCount).toBe(4);
   });
 
@@ -69,16 +70,38 @@ describe("QwenVoiceDesignAdapter", () => {
     expect(result.candidates[0]?.label).toBe("A");
   });
 
-  it("materialize throws not implemented", async () => {
-    await expect(
-      qwenVoiceDesignAdapter.materialize({
-        sessionId: "vd_sess_test",
-        candidateId: "candidate-1",
-        name: "Test",
-        previewText: "Hi",
-        projectId: "proj_1",
-        projectDir: "/tmp/project.scriptony",
-      }),
-    ).rejects.toThrow(QwenVoiceDesignNotImplementedError);
+  it("materialize ensures sidecar and maps response", async () => {
+    vi.mocked(materializeQwenVoiceDesign).mockResolvedValueOnce({
+      referenceAudioAssetId: "asset_1",
+      referenceAudioUrl: "assets/voice-refs/pazuzu.wav",
+      referenceText: "Natürlich habe ich recht.",
+      identityPrompt: "Weibliche Stimme, jung, hell",
+      voiceProfileDraft: {
+        creationMode: "designed",
+        provider: "qwen",
+        model: "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
+      },
+    });
+
+    const result = await qwenVoiceDesignAdapter.materialize({
+      sessionId: "vd_sess_test",
+      candidateId: "candidate-1",
+      name: "Pazuzu",
+      previewText: "Natürlich habe ich recht.",
+      projectId: "proj_1",
+      projectDir: "/tmp/project.scriptony",
+    });
+
+    expect(ensureVoiceDesignSidecarReady).toHaveBeenCalled();
+    expect(materializeQwenVoiceDesign).toHaveBeenCalledWith({
+      sessionId: "vd_sess_test",
+      candidateId: "candidate-1",
+      name: "Pazuzu",
+      previewText: "Natürlich habe ich recht.",
+      projectId: "proj_1",
+      projectDir: "/tmp/project.scriptony",
+    });
+    expect(result.referenceAudioAssetId).toBe("asset_1");
+    expect(result.identityPrompt).toContain("Weibliche");
   });
 });

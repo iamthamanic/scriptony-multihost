@@ -5,6 +5,7 @@
 
 import {
   generateQwenVoiceDesignCandidates,
+  materializeQwenVoiceDesign,
   QWEN_VOICE_DESIGN_DEFAULT_CANDIDATE_COUNT,
   QWEN_VOICE_DESIGN_MAX_CANDIDATE_COUNT,
 } from "@/lib/api/qwen-voice-design-api";
@@ -17,19 +18,12 @@ import type {
   VoiceCreationAdapter,
 } from "./voice-creation-adapter";
 
-export class QwenVoiceDesignNotImplementedError extends Error {
-  constructor(feature: string) {
-    super(`${feature} folgt in Slice #57 (Materialize).`);
-    this.name = "QwenVoiceDesignNotImplementedError";
-  }
-}
-
 export class QwenVoiceDesignAdapter implements VoiceCreationAdapter {
   readonly providerId = "qwen-voice-design";
 
   readonly capabilities = {
     supportsVoiceDesign: true,
-    supportsMaterialize: false,
+    supportsMaterialize: true,
     maxCandidateCount: QWEN_VOICE_DESIGN_MAX_CANDIDATE_COUNT,
   } as const;
 
@@ -60,9 +54,25 @@ export class QwenVoiceDesignAdapter implements VoiceCreationAdapter {
   }
 
   async materialize(
-    _input: MaterializeVoiceInput,
+    input: MaterializeVoiceInput,
   ): Promise<MaterializeVoiceOutput> {
-    throw new QwenVoiceDesignNotImplementedError("materialize");
+    await ensureVoiceDesignSidecarReady();
+
+    const response = await materializeQwenVoiceDesign({
+      sessionId: input.sessionId,
+      candidateId: input.candidateId,
+      name: input.name,
+      previewText: input.previewText,
+      projectId: input.projectId,
+      projectDir: input.projectDir,
+    });
+
+    return {
+      referenceAudioAssetId: response.referenceAudioAssetId,
+      referenceAudioUrl: response.referenceAudioUrl,
+      referenceText: response.referenceText,
+      identityPrompt: response.identityPrompt,
+    };
   }
 }
 
