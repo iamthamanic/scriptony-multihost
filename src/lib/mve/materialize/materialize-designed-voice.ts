@@ -30,6 +30,8 @@ export interface MaterializeDesignedVoiceParams {
   previewText: string;
   characterId?: string;
   language?: string;
+  /** When set, update this profile instead of creating a duplicate. */
+  existingProfileId?: string;
 }
 
 export interface MaterializeDesignedVoiceResult {
@@ -48,6 +50,7 @@ function assertDesktopProject(): string {
 export async function assertUniqueVoiceNameInProject(
   projectId: string,
   name: string,
+  excludeProfileId?: string,
 ): Promise<void> {
   const trimmed = name.trim();
   if (!trimmed) {
@@ -56,7 +59,11 @@ export async function assertUniqueVoiceNameInProject(
   const normalized = trimmed.toLowerCase();
   const existing = await getMveVoiceProfiles(projectId);
   if (
-    existing.some((profile) => profile.name.trim().toLowerCase() === normalized)
+    existing.some(
+      (profile) =>
+        profile.id !== excludeProfileId &&
+        profile.name.trim().toLowerCase() === normalized,
+    )
   ) {
     throw new Error(
       "Eine Stimme mit diesem Namen existiert bereits im Projekt.",
@@ -101,7 +108,11 @@ export async function materializeDesignedVoice(
   const voiceName = params.name.trim();
   const previewText = params.previewText.trim();
 
-  await assertUniqueVoiceNameInProject(params.projectId, voiceName);
+  await assertUniqueVoiceNameInProject(
+    params.projectId,
+    voiceName,
+    params.existingProfileId,
+  );
 
   const materialized = await qwenVoiceDesignAdapter.materialize({
     sessionId: params.sessionId,
@@ -113,15 +124,15 @@ export async function materializeDesignedVoice(
   });
 
   const language = params.language?.trim() || "de";
-  const draftProfile = await createMveVoiceProfile(params.projectId, {
+  const identityFields = {
     name: voiceName,
     characterId: params.characterId,
     language,
     engine: DEFAULT_VOICE_ENGINE,
-    type: "generated",
-    status: "processing",
-    creationMode: "designed",
-    provider: "qwen",
+    type: "generated" as const,
+    status: "processing" as const,
+    creationMode: "designed" as const,
+    provider: "qwen" as const,
     model: QWEN_VOICE_DESIGN_MODEL,
     identityPrompt: materialized.identityPrompt,
     referenceAudioAssetId: materialized.referenceAudioAssetId,
@@ -129,8 +140,12 @@ export async function materializeDesignedVoice(
     referenceText: materialized.referenceText,
     description: materialized.identityPrompt,
     previewText,
-    consentStatus: "not_required",
-  });
+    consentStatus: "not_required" as const,
+  };
+
+  const draftProfile = params.existingProfileId
+    ? await updateMveVoiceProfile(params.existingProfileId, identityFields)
+    : await createMveVoiceProfile(params.projectId, identityFields);
 
   try {
     const baseVoiceId = await cloneDesignedVoiceViaVoicebox({

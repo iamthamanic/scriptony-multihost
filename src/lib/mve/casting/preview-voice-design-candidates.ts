@@ -1,25 +1,22 @@
 /**
- * Preview voice design candidates (3 ephemeral Voicebox designed profiles).
+ * Preview voice design candidates via Qwen VoiceDesign VoiceCreationAdapter.
  * Location: src/lib/mve/casting/preview-voice-design-candidates.ts
  */
 
-import {
-  createDesignedVoiceboxProfile,
-  deleteVoiceboxProfile,
-  ensureVoiceboxSidecar,
-} from "@/lib/api/voicebox-api";
 import type { LoadingProgressReporter } from "@/lib/loading/global-loading-progress";
+import { resolveVoiceCreationAdapter } from "@/lib/multi-voice-engine/adapters/voice-creation-registry";
 import type { MveVoiceDesignSpec } from "@/lib/multi-voice-engine/schema/voice-design-spec";
 import { isDesktopShell } from "@/runtime/detect-runtime";
 import { compileVoiceDesignPrompt } from "./compile-voice-design-prompt";
-import { voiceDesignCandidatePrompt } from "./voice-design-candidate-variation";
+import { mveDefaultPreviewForCharacter } from "../default-preview-text";
 import {
   VOICE_DESIGN_PREVIEW_COUNT,
-  VOICE_DESIGN_PREVIEW_NAME_PREFIX,
   voiceDesignCandidateLabel,
   type VoiceDesignCandidate,
   type VoiceDesignPreviewSession,
 } from "./voice-design-candidate";
+
+export const QWEN_VOICE_DESIGN_PROVIDER_ID = "qwen-voice-design";
 
 export interface PreviewVoiceDesignCandidatesParams {
   characterName: string;
@@ -48,60 +45,44 @@ export async function previewVoiceDesignCandidates(
 
   const projectDir = params.projectDir.trim();
   if (!projectDir) {
-    throw new Error("Lokales Projekt erforderlich für Voicebox.");
+    throw new Error("Lokales Projekt erforderlich für Voice Design.");
   }
 
-  await ensureVoiceboxSidecar(params.onProgress);
-
-  const sessionId = crypto.randomUUID();
+  const previewText =
+    params.previewText?.trim() ||
+    mveDefaultPreviewForCharacter(params.characterName);
   const count = params.count ?? VOICE_DESIGN_PREVIEW_COUNT;
 
-  const candidates: VoiceDesignCandidate[] = [];
+  params.onProgress?.({
+    percent: 8,
+    message: "Qwen VoiceDesign wird vorbereitet…",
+    phase: "voice-design",
+  });
 
-  for (let index = 0; index < count; index += 1) {
-    params.onProgress?.({
-      percent: 10 + Math.round((index / count) * 80),
-      message: `Kandidat ${index + 1}/${count} wird erzeugt…`,
-      phase: "voice-design",
-    });
+  const adapter = resolveVoiceCreationAdapter(QWEN_VOICE_DESIGN_PROVIDER_ID);
+  const generated = await adapter.generateCandidates({
+    description: designPrompt,
+    previewText,
+    language: "German",
+    candidateCount: count,
+    projectDir,
+  });
 
-    const candidateId = `${sessionId}-${index}`;
-    const label = voiceDesignCandidateLabel(index);
+  const candidates: VoiceDesignCandidate[] = generated.candidates.map(
+    (candidate, index) => ({
+      id: candidate.id,
+      providerSessionId: generated.sessionId,
+      providerCandidateId: candidate.id,
+      index: index as 0 | 1 | 2,
+      label:
+        (candidate.label as VoiceDesignCandidate["label"]) ??
+        voiceDesignCandidateLabel(index),
+      audioUrl: candidate.audioUrl,
+    }),
+  );
 
-    try {
-      const profile = await createDesignedVoiceboxProfile({
-        name: `${VOICE_DESIGN_PREVIEW_NAME_PREFIX}${sessionId}-${index}`,
-        designPrompt: voiceDesignCandidatePrompt(designPrompt, index),
-        language: "de",
-        description: designPrompt.slice(0, 500),
-      });
-
-      candidates.push({
-        id: candidateId,
-        voiceboxProfileId: profile.id,
-        index: index as 0 | 1 | 2,
-        label,
-      });
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Profil konnte nicht erzeugt werden.";
-      candidates.push({
-        id: candidateId,
-        voiceboxProfileId: "",
-        index: index as 0 | 1 | 2,
-        label,
-        errorMessage: message,
-      });
-    }
-  }
-
-  if (!candidates.some((candidate) => candidate.voiceboxProfileId)) {
-    throw new Error(
-      candidates[0]?.errorMessage ??
-        "Keine Stimm-Kandidaten konnten erzeugt werden.",
-    );
+  if (!candidates.some((candidate) => candidate.audioUrl)) {
+    throw new Error("Keine Stimm-Kandidaten konnten erzeugt werden.");
   }
 
   params.onProgress?.({
@@ -111,38 +92,23 @@ export async function previewVoiceDesignCandidates(
   });
 
   return {
-    sessionId,
+    sessionId: generated.sessionId,
     designPrompt,
     designSpec: params.designSpec ?? null,
     candidates,
   };
 }
 
+/** Qwen sessions are ephemeral — no Voicebox profile cleanup required. */
 export async function discardVoiceDesignPreviewSession(
-  session: VoiceDesignPreviewSession | null | undefined,
+  _session: VoiceDesignPreviewSession | null | undefined,
 ): Promise<void> {
-  if (!session?.candidates.length) return;
-  await Promise.all(
-    session.candidates.map((c) =>
-      c.voiceboxProfileId
-        ? deleteVoiceboxProfile(c.voiceboxProfileId).catch(() => undefined)
-        : Promise.resolve(),
-    ),
-  );
+  return;
 }
 
 export async function discardVoiceDesignCandidatesExcept(
-  session: VoiceDesignPreviewSession,
-  keepVoiceboxProfileId: string,
+  _session: VoiceDesignPreviewSession,
+  _keepProviderCandidateId: string,
 ): Promise<void> {
-  const toDelete = session.candidates.filter(
-    (c) => c.voiceboxProfileId !== keepVoiceboxProfileId,
-  );
-  await Promise.all(
-    toDelete.map((c) =>
-      c.voiceboxProfileId
-        ? deleteVoiceboxProfile(c.voiceboxProfileId).catch(() => undefined)
-        : Promise.resolve(),
-    ),
-  );
+  return;
 }

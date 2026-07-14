@@ -11,20 +11,22 @@ const evidenceDir = path.join(
   ".qa/evidence/mve-voice-design-preview",
 );
 
-let profilePostCount = 0;
-let generatePostCount = 0;
-let generationSeq = 0;
+let voiceDesignGenerateCount = 0;
 
-async function mockVoiceboxForPreview(page: Page) {
-  profilePostCount = 0;
-  generatePostCount = 0;
-  generationSeq = 0;
+async function mockVoiceDesignSidecarForPreview(page: Page) {
+  voiceDesignGenerateCount = 0;
 
   await page.addInitScript(() => {
+    sessionStorage.setItem(
+      "scriptony_voice_design_sidecar_token",
+      "playwright-token",
+    );
     (window as unknown as { __TAURI__: unknown }).__TAURI__ = {
       core: {
         invoke: async (cmd: string) => {
           if (cmd === "start_voicebox_app") return "launched";
+          if (cmd === "spawn_voice_design_sidecar") return "playwright-token";
+          if (cmd === "voice_design_sidecar_health") return true;
           return null;
         },
       },
@@ -47,50 +49,7 @@ async function mockVoiceboxForPreview(page: Page) {
       await route.fulfill({ contentType: "application/json", json: [] });
       return;
     }
-    if (route.request().method() === "POST") {
-      profilePostCount += 1;
-      const body = route.request().postDataJSON() as Record<string, string>;
-      expect(body.voice_type).toBe("designed");
-      expect(body.design_prompt).toContain("warme");
-      await route.fulfill({
-        contentType: "application/json",
-        json: {
-          id: `vb-preview-${profilePostCount}`,
-          name: body.name,
-          language: "de",
-          voice_type: "designed",
-        },
-      });
-      return;
-    }
     await route.continue();
-  });
-
-  await page.route(/\/__voicebox\/generate$/, async (route) => {
-    generatePostCount += 1;
-    generationSeq += 1;
-    const id = `gen-preview-${generationSeq}`;
-    await route.fulfill({
-      contentType: "application/json",
-      json: {
-        id,
-        status: "completed",
-        audio_path: `generations/${id}.wav`,
-        duration: 1.2,
-      },
-    });
-  });
-
-  await page.route(/\/__voicebox\/audio\//, async (route) => {
-    const wavHeader = new Uint8Array(44);
-    const view = new DataView(wavHeader.buffer);
-    view.setUint32(24, 24000, true);
-    view.setUint32(40, 1000, true);
-    await route.fulfill({
-      status: 200,
-      contentType: "audio/wav",
-      body: Buffer.from(wavHeader),
-    });
   });
 
   await page.route(
@@ -99,6 +58,48 @@ async function mockVoiceboxForPreview(page: Page) {
       await route.fulfill({
         contentType: "application/json",
         json: { voices: [] },
+      });
+    },
+  );
+
+  await page.route(/127\.0\.0\.1:3767\/health$/, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      json: { ok: true, model: "stub", ready: true, stub: true },
+    });
+  });
+
+  await page.route(/127\.0\.0\.1:3767\/voice-design\/generate$/, async (route) => {
+    voiceDesignGenerateCount += 1;
+    const body = route.request().postDataJSON() as { description?: string };
+    expect(body.description).toContain("warme");
+    await route.fulfill({
+      contentType: "application/json",
+      json: {
+        sessionId: "vd_sess_playwright",
+        candidates: [0, 1, 2].map((index) => ({
+          id: `candidate-${index + 1}`,
+          label: ["A", "B", "C"][index],
+          audioUrl: `local://voice-design/sessions/vd_sess_playwright/candidate-${index + 1}.wav`,
+          description: body.description,
+          durationMs: 1200,
+          sampleRate: 24000,
+        })),
+      },
+    });
+  });
+
+  await page.route(
+    /127\.0\.0\.1:3767\/voice-design\/sessions\/vd_sess_playwright\/candidate-\d+\.wav$/,
+    async (route) => {
+      const wavHeader = new Uint8Array(44);
+      const view = new DataView(wavHeader.buffer);
+      view.setUint32(24, 24000, true);
+      view.setUint32(40, 1000, true);
+      await route.fulfill({
+        status: 200,
+        contentType: "audio/wav",
+        body: Buffer.from(wavHeader),
       });
     },
   );
@@ -121,7 +122,7 @@ async function openVoiceEditorModal(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => {
-  await mockVoiceboxForPreview(page);
+  await mockVoiceDesignSidecarForPreview(page);
 });
 
 test("design creates three preview candidates", async ({ page }) => {
@@ -143,8 +144,7 @@ test("design creates three preview candidates", async ({ page }) => {
   await expect(page.getByTestId("voice-design-candidate-1")).toBeVisible();
   await expect(page.getByTestId("voice-design-candidate-2")).toBeVisible();
 
-  expect(profilePostCount).toBeGreaterThanOrEqual(3);
-  expect(generatePostCount).toBeGreaterThanOrEqual(3);
+  expect(voiceDesignGenerateCount).toBe(1);
 
   await expect(page.getByTestId("voice-design-play-0")).toBeEnabled({
     timeout: 60_000,

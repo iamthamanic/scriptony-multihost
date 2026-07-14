@@ -9,16 +9,16 @@ vi.mock("@/runtime/detect-runtime", () => ({
   isDesktopShell: () => true,
 }));
 
-vi.mock("@/lib/api/voicebox-api", () => ({
-  updateVoiceboxProfile: vi.fn().mockResolvedValue(undefined),
-  deleteVoiceboxProfile: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock("../../assign-voice-profile", () => ({
-  assignMveVoiceToCharacter: vi.fn().mockResolvedValue({
-    id: "mve-1",
-    baseVoiceId: "vb-chosen",
-    engine: "voicebox",
+vi.mock("../../materialize/materialize-designed-voice", () => ({
+  materializeDesignedVoice: vi.fn().mockResolvedValue({
+    profile: {
+      id: "mve-1",
+      baseVoiceId: "vb-cloned-1",
+      engine: "voicebox",
+      creationMode: "designed",
+      provider: "qwen",
+    },
+    baseVoiceId: "vb-cloned-1",
   }),
 }));
 
@@ -26,32 +26,35 @@ vi.mock("@/lib/api-adapter/mve-adapter", () => ({
   updateMveVoiceProfile: vi.fn().mockImplementation(async (id, patch) => ({
     id,
     ...patch,
-    baseVoiceId: "vb-chosen",
+    baseVoiceId: "vb-cloned-1",
     engine: "voicebox",
   })),
 }));
 
-import { updateVoiceboxProfile } from "@/lib/api/voicebox-api";
 import { updateMveVoiceProfile } from "@/lib/api-adapter/mve-adapter";
-import { assignMveVoiceToCharacter } from "../../assign-voice-profile";
+import { materializeDesignedVoice } from "../../materialize/materialize-designed-voice";
 import { saveVoiceDesignCandidate } from "../save-voice-design-candidate";
 
 const session = {
-  sessionId: "sess-1",
+  sessionId: "vd_sess_test",
   designPrompt: "warm narrator",
   designSpec: null,
   candidates: [
     {
-      id: "sess-1-0",
-      voiceboxProfileId: "vb-chosen",
+      id: "candidate-1",
+      providerSessionId: "vd_sess_test",
+      providerCandidateId: "candidate-1",
       index: 0 as const,
       label: "A" as const,
+      audioUrl: "local://voice-design/sessions/vd_sess_test/candidate-1.wav",
     },
     {
-      id: "sess-1-1",
-      voiceboxProfileId: "vb-other",
+      id: "candidate-2",
+      providerSessionId: "vd_sess_test",
+      providerCandidateId: "candidate-2",
       index: 1 as const,
       label: "B" as const,
+      audioUrl: "local://voice-design/sessions/vd_sess_test/candidate-2.wav",
     },
   ],
 };
@@ -61,26 +64,30 @@ describe("saveVoiceDesignCandidate", () => {
     vi.clearAllMocks();
   });
 
-  it("renames voicebox profile, assigns MVE, and cleans up other candidates", async () => {
+  it("materializes via Qwen pipeline and updates MVE profile", async () => {
     const result = await saveVoiceDesignCandidate({
       projectId: "proj-1",
       characterId: "char-1",
       characterName: "Max",
-      voiceName: "Max — warm",
+      voiceName: "warm",
       candidate: session.candidates[0]!,
       session,
       designPrompt: "warm narrator",
       designSpec: { native: { language: "German" } },
     });
 
-    expect(updateVoiceboxProfile).toHaveBeenCalledWith(
-      "vb-chosen",
-      expect.objectContaining({ name: "Max — warm" }),
+    expect(materializeDesignedVoice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: "vd_sess_test",
+        candidateId: "candidate-1",
+        name: "warm",
+        characterId: "char-1",
+      }),
     );
-    expect(assignMveVoiceToCharacter).toHaveBeenCalled();
     expect(updateMveVoiceProfile).toHaveBeenCalledWith(
       "mve-1",
       expect.objectContaining({
+        name: "Max — warm",
         type: "generated",
         consentStatus: "not_required",
         attributes: null,

@@ -394,12 +394,20 @@ export function VoiceProfileEditorModal({
     setGenerateHint(undefined);
     setCandidateSynthesisProgress({});
     try {
-      const session = await previewVoiceDesignCandidates({
-        characterName,
-        basicDescription: description,
-        designSpec,
-        previewText,
-        projectDir,
+      const session = await runWithProgress({
+        id: `voice-design-preview-${characterName}`,
+        title: "Stimme erzeugen",
+        initialMessage: "Qwen VoiceDesign wird vorbereitet…",
+        initialPercent: 6,
+        run: (report) =>
+          previewVoiceDesignCandidates({
+            characterName,
+            basicDescription: description,
+            designSpec,
+            previewText,
+            projectDir,
+            onProgress: report,
+          }),
       });
 
       const pendingProgress = Object.fromEntries(
@@ -414,7 +422,7 @@ export function VoiceProfileEditorModal({
             : {
                 status: "pending" as const,
                 percent: 0,
-                message: "Wartet auf Synthese…",
+                message: "Wartet auf Vorschau…",
               },
         ]),
       );
@@ -478,7 +486,14 @@ export function VoiceProfileEditorModal({
     } finally {
       setIsDesigning(false);
     }
-  }, [characterName, description, designSpec, previewText, projectDir]);
+  }, [
+    characterName,
+    description,
+    designSpec,
+    previewText,
+    projectDir,
+    runWithProgress,
+  ]);
 
   const handleRegenerateDesignCandidate = useCallback(
     async (candidate: VoiceDesignCandidate) => {
@@ -579,9 +594,9 @@ export function VoiceProfileEditorModal({
       setSavingCandidateId(saveCandidate.id);
       try {
         const result = await runWithProgress({
-          id: `voicebox-save-${saveCandidate.voiceboxProfileId}`,
+          id: `voice-design-save-${saveCandidate.id}`,
           title: "Stimme speichern",
-          initialMessage: "Stimme wird dem Charakter zugewiesen…",
+          initialMessage: "Stimme wird materialisiert und geklont…",
           initialPercent: 12,
           run: () =>
             saveVoiceDesignCandidate({

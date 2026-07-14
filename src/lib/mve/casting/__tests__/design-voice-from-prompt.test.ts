@@ -17,8 +17,9 @@ vi.mock("../preview-voice-design-candidates", () => ({
     designSpec: null,
     candidates: [
       {
-        id: "sess-1-0",
-        voiceboxProfileId: "vb-designed-1",
+        id: "candidate-1",
+        providerSessionId: "sess-1",
+        providerCandidateId: "candidate-1",
         index: 0,
         label: "A",
       },
