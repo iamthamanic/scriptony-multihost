@@ -368,7 +368,7 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 
 <!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
 
-- **2026-07-14** — Structure Timeline Audio (#50): DAW-Lanes als Row-Pairs (Header, jede Spur sidebar+content, Footer) statt paralleler Label-/Scroll-Listen (local desktop)
+- **2026-07-14** — Structure Timeline Film (#51): Clip/Musik/SFX als Row-Pairs; parallele Film-Label-Spalte entfernt (local desktop) DAW-Lanes als Row-Pairs (Header, jede Spur sidebar+content, Footer) statt paralleler Label-/Scroll-Listen (local desktop)
 - **2026-07-14** — MVE line render instruct (#59): `compilePerformanceInstruct` kombiniert Voice-Identity + LineDirection; Voicebox `/generate` erhält `instruct` für designed/cloned Profile (local desktop)
 - **2026-07-14** — MVE Voice Materialize (#57): `POST /voice-design/materialize`, WAV → Projekt-Asset, Voicebox Qwen Base Clone, `MveVoiceProfile` Identity-Felder (local desktop)
 - **2026-07-14** — MVE voice design casting (#58): Voice Studio preview/save via Qwen `VoiceCreationAdapter`; keine Voicebox-`designed`-Preview-Profile mehr (local desktop)

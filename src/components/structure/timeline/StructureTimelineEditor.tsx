@@ -7,7 +7,7 @@ import {
   useCallback,
   type RefObject,
 } from "react";
-import { Plus, Magnet, Clapperboard, Crosshair } from "lucide-react";
+import { Plus, Magnet, Crosshair } from "lucide-react";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
 import {
@@ -70,7 +70,7 @@ import { StructureTimelinePreviewPanel } from "./StructureTimelinePreviewPanel";
 import { StructureTimelineToolbar } from "./StructureTimelineToolbar";
 import { StructureTimelineRuler } from "./StructureTimelineRuler";
 import { StructureTimelinePlayheadOverlay } from "./StructureTimelinePlayheadOverlay";
-import { StructureTimelineFilmProductionTracks } from "./StructureTimelineFilmProductionTracks";
+import { StructureTimelineFilmProductionRowPairs } from "./StructureTimelineFilmProductionRowPairs";
 import {
   getPageMarkerInterval,
   shotBlockPreviewUrl,
@@ -5856,143 +5856,45 @@ export function StructureTimelineEditor({
               totalWidthPx={totalWidthPx}
             />
           )}
-          {/* Film production: Clip/Musik/SFX labels | tracks */}
+          {/* Film production: Clip/Musik/SFX as row pairs (#51) */}
           {showFilmProductionTracks && (
-            <div className="flex">
-              <div
-                className={TIMELINE_STICKY_LABEL_CELL_CLASS}
-                style={{ width: `${timelineLabelColumnWidthPx}px` }}
-              >
-                {showEditorialClipTrack && (
-                  <div
-                    data-testid="timeline-label-film-clip"
-                    className="border-b border-border px-1 flex items-center justify-between gap-0.5 bg-muted/20 relative"
-                    style={{ height: `${trackHeights.editorialClip}px` }}
-                    title="Editorial-Clips (NLE): gleiche Spur wie Shot/Musik — nur im Tab „Timeline“"
-                  >
-                    <div className="flex items-center gap-1 min-w-0">
-                      <Clapperboard
-                        className="size-3 shrink-0 text-zinc-600 dark:text-zinc-300"
-                        aria-hidden
-                      />
-                      <span className="text-[9px] text-foreground font-semibold leading-tight truncate">
-                        Clip
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setTrackAutosnap((t) => ({
-                            ...t,
-                            editorialClip: !t.editorialClip,
-                          }))
-                        }
-                        className={cn(
-                          "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
-                          trackAutosnap.editorialClip
-                            ? "text-primary opacity-100"
-                            : "text-muted-foreground opacity-40",
-                        )}
-                        title={
-                          trackAutosnap.editorialClip
-                            ? "Clip: Autosnap an"
-                            : "Clip: Autosnap aus"
-                        }
-                      >
-                        <Crosshair className="size-3.5" strokeWidth={2.25} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setClipMagnets((m) => ({
-                            ...m,
-                            editorialClip: !m.editorialClip,
-                          }))
-                        }
-                        className={cn(
-                          "relative z-10 p-0.5 rounded transition-all hover:scale-110 hover:bg-muted/50",
-                          clipMagnets.editorialClip
-                            ? "text-primary opacity-100"
-                            : "text-muted-foreground opacity-40",
-                        )}
-                        title={
-                          clipMagnets.editorialClip
-                            ? "Clip: Magnet (alle Kanten)"
-                            : "Clip: nur Playhead"
-                        }
-                      >
-                        <Magnet className="size-3.5" strokeWidth={2.25} />
-                      </button>
-                    </div>
-                    <div
-                      className={cn(
-                        "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
-                        resizingTrack === "editorialClip"
-                          ? "border-b-4 border-primary"
-                          : "hover:border-b-4 hover:border-primary",
-                      )}
-                      onMouseDown={(e) => handleResizeStart("editorialClip", e)}
-                    />
-                  </div>
-                )}
-                <div
-                  className="border-b border-border px-2 flex items-center bg-card relative"
-                  style={{ height: `${trackHeights.music}px` }}
-                >
-                  <span className="text-[9px] text-foreground font-medium leading-tight">
-                    Musik
-                  </span>
-                  <div
-                    className={cn(
-                      "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
-                      resizingTrack === "music"
-                        ? "border-b-4 border-primary"
-                        : "hover:border-b-4 hover:border-primary",
-                    )}
-                    onMouseDown={(e) => handleResizeStart("music", e)}
-                  />
-                </div>
-                <div
-                  className="border-b border-border px-2 flex items-center bg-card relative"
-                  style={{ height: `${trackHeights.sfx}px` }}
-                >
-                  <span className="text-[9px] text-foreground font-medium leading-tight">
-                    SFX
-                  </span>
-                  <div
-                    className={cn(
-                      "absolute bottom-0 left-0 right-0 h-1 cursor-ns-resize transition-all",
-                      resizingTrack === "sfx"
-                        ? "border-b-4 border-primary"
-                        : "hover:border-b-4 hover:border-primary",
-                    )}
-                    onMouseDown={(e) => handleResizeStart("sfx", e)}
-                  />
-                </div>
-              </div>
-              <div className="shrink-0" style={{ width: `${totalWidthPx}px` }}>
-                {/* Shot-Spur liegt im Structure-Selection-Stack */}
-                <StructureTimelineFilmProductionTracks
-                  showEditorialClipTrack={showEditorialClipTrack}
-                  trackHeights={{
-                    editorialClip: trackHeights.editorialClip,
-                    music: trackHeights.music,
-                    sfx: trackHeights.sfx,
-                  }}
-                  clipBlocks={clipBlocks}
-                  shotBlocks={shotBlocks}
-                  timelineData={timelineData}
-                  useFilmTreeLayout={useFilmTreeLayout}
-                  canOpenShot={canOpenShot}
-                  blockUnderlyingLanePointerEvents={
-                    blockUnderlyingLanePointerEvents
-                  }
-                  onOpenShot={openShot}
-                  onNleClipPointerDown={handleNleClipPointerDown}
-                />
-              </div>
-            </div>
+            <StructureTimelineFilmProductionRowPairs
+              labelCellClassName={TIMELINE_STICKY_LABEL_CELL_CLASS}
+              labelColumnWidthPx={timelineLabelColumnWidthPx}
+              totalWidthPx={totalWidthPx}
+              showEditorialClipTrack={showEditorialClipTrack}
+              trackHeights={{
+                editorialClip: trackHeights.editorialClip,
+                music: trackHeights.music,
+                sfx: trackHeights.sfx,
+              }}
+              trackAutosnap={trackAutosnap}
+              clipMagnets={clipMagnets}
+              resizingTrack={resizingTrack}
+              onToggleClipAutosnap={() =>
+                setTrackAutosnap((t) => ({
+                  ...t,
+                  editorialClip: !t.editorialClip,
+                }))
+              }
+              onToggleClipMagnet={() =>
+                setClipMagnets((m) => ({
+                  ...m,
+                  editorialClip: !m.editorialClip,
+                }))
+              }
+              onResizeStart={handleResizeStart}
+              clipBlocks={clipBlocks}
+              shotBlocks={shotBlocks}
+              timelineData={timelineData}
+              useFilmTreeLayout={useFilmTreeLayout}
+              canOpenShot={canOpenShot}
+              blockUnderlyingLanePointerEvents={
+                blockUnderlyingLanePointerEvents
+              }
+              onOpenShot={openShot}
+              onNleClipPointerDown={handleNleClipPointerDown}
+            />
           )}
 
           {/* Content origin (t=0 anchor for scrub/zoom/drop) + playhead */}
