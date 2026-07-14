@@ -112,10 +112,20 @@ let _runtimeProfile: "local" | "cloud" | "selfHosted" | null = null;
 /** Default local jobs sidecar port (T43). Override via VITE_SCRIPTONY_SIDECAR_PORT. */
 export const SCRIPTONY_SIDECAR_DEFAULT_PORT = 3765;
 
+/** Default Qwen VoiceDesign sidecar port (#56). Override via VITE_SCRIPTONY_VOICE_DESIGN_SIDECAR_PORT. */
+export const SCRIPTONY_VOICE_DESIGN_SIDECAR_DEFAULT_PORT = 3767;
+
 export function getScriptonySidecarBaseUrl(): string {
   const port =
     validateString(env.VITE_SCRIPTONY_SIDECAR_PORT) ||
     String(SCRIPTONY_SIDECAR_DEFAULT_PORT);
+  return `http://127.0.0.1:${port}`;
+}
+
+export function getQwenVoiceDesignSidecarBaseUrl(): string {
+  const port =
+    validateString(env.VITE_SCRIPTONY_VOICE_DESIGN_SIDECAR_PORT) ||
+    String(SCRIPTONY_VOICE_DESIGN_SIDECAR_DEFAULT_PORT);
   return `http://127.0.0.1:${port}`;
 }
 
