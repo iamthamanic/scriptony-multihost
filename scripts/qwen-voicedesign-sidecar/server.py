@@ -18,6 +18,7 @@ from typing import Any
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field, field_validator
 import uvicorn
 
@@ -363,6 +364,20 @@ def materialize_voice_design(body: MaterializeRequest) -> MaterializeResponse:
         identityPrompt=identity_prompt,
         voiceProfileDraft=VoiceProfileDraft(),
     )
+
+
+@app.get(
+    "/voice-design/sessions/{session_id}/{candidate_file}",
+    dependencies=[Depends(require_auth)],
+)
+def get_session_candidate_audio(session_id: str, candidate_file: str):
+    if not re.fullmatch(r"candidate-[1-4]\.wav", candidate_file):
+        raise HTTPException(status_code=400, detail="Invalid candidate file")
+    session_dir = _resolve_session_dir(session_id)
+    wav_path = session_dir / candidate_file
+    if not wav_path.is_file():
+        raise HTTPException(status_code=404, detail="Candidate audio not found")
+    return FileResponse(wav_path, media_type="audio/wav")
 
 
 def main() -> None:

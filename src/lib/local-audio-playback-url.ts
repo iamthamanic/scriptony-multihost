@@ -30,6 +30,13 @@ export async function resolveLocalAudioPlaybackUrl(
   if (!absPath.trim()) {
     throw new Error("Audio-Pfad fehlt.");
   }
+  if (
+    absPath.startsWith("blob:") ||
+    absPath.startsWith("http://") ||
+    absPath.startsWith("https://")
+  ) {
+    return absPath;
+  }
   if (!isDesktopShell()) {
     throw new Error("Lokale Audio-Wiedergabe nur in der Desktop-App.");
   }

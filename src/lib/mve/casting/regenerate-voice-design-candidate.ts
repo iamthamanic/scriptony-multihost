@@ -1,13 +1,10 @@
 /**
- * Regenerate a single failed or unwanted voice design candidate.
+ * Regenerate a single failed or unwanted voice design candidate via VoiceCreationAdapter.
  * Location: src/lib/mve/casting/regenerate-voice-design-candidate.ts
  */
 
-import {
-  createDesignedVoiceboxProfile,
-  deleteVoiceboxProfile,
-  ensureVoiceboxSidecar,
-} from "@/lib/api/voicebox-api";
+import { resolveVoiceCreationAdapter } from "@/lib/multi-voice-engine/adapters/voice-creation-registry";
+import { mveDefaultPreviewForCharacter } from "../default-preview-text";
 import type {
   VoiceDesignCandidate,
   VoiceDesignCandidateSynthesisProgress,
@@ -15,7 +12,7 @@ import type {
 } from "./voice-design-candidate";
 import { voiceDesignCandidatePrompt } from "./voice-design-candidate-variation";
 import { synthesizeVoiceDesignCandidatePreview } from "./synthesize-voice-design-candidate-preview";
-import { VOICE_DESIGN_PREVIEW_NAME_PREFIX } from "./voice-design-candidate";
+import { QWEN_VOICE_DESIGN_PROVIDER_ID } from "./preview-voice-design-candidates";
 
 export interface RegenerateVoiceDesignCandidateParams {
   session: VoiceDesignPreviewSession;
@@ -34,17 +31,18 @@ export async function regenerateVoiceDesignCandidate(
 ): Promise<VoiceDesignCandidate> {
   const projectDir = params.projectDir.trim();
   if (!projectDir) {
-    throw new Error("Lokales Projekt erforderlich für Voicebox.");
+    throw new Error("Lokales Projekt erforderlich für Voice Design.");
   }
 
-  await ensureVoiceboxSidecar();
-
   const nextVariationAttempt = (params.candidate.variationAttempt ?? 0) + 1;
-  const designPrompt = voiceDesignCandidatePrompt(
+  const variedDescription = voiceDesignCandidatePrompt(
     params.session.designPrompt,
     params.candidate.index,
     nextVariationAttempt,
   );
+  const previewText =
+    params.previewText?.trim() ||
+    mveDefaultPreviewForCharacter(params.characterName);
 
   params.onProgress?.(params.candidate.id, {
     status: "synthesizing",
@@ -52,25 +50,26 @@ export async function regenerateVoiceDesignCandidate(
     message: `Kandidat ${params.candidate.label} wird neu erzeugt…`,
   });
 
-  const oldProfileId = params.candidate.voiceboxProfileId.trim();
-  if (oldProfileId) {
-    await deleteVoiceboxProfile(oldProfileId).catch(() => undefined);
-  }
-
-  const profile = await createDesignedVoiceboxProfile({
-    name: `${VOICE_DESIGN_PREVIEW_NAME_PREFIX}${params.session.sessionId}-${params.candidate.index}-r${nextVariationAttempt}`,
-    designPrompt: voiceDesignCandidatePrompt(
-      designPrompt,
-      params.candidate.index,
-      nextVariationAttempt,
-    ),
-    language: "de",
-    description: designPrompt.slice(0, 500),
+  const adapter = resolveVoiceCreationAdapter(QWEN_VOICE_DESIGN_PROVIDER_ID);
+  const generated = await adapter.generateCandidates({
+    description: variedDescription,
+    previewText,
+    language: "German",
+    candidateCount: 1,
+    projectDir,
   });
+
+  const next = generated.candidates[0];
+  if (!next?.audioUrl) {
+    throw new Error("Kandidat konnte nicht neu erzeugt werden.");
+  }
 
   const candidateBase: VoiceDesignCandidate = {
     ...params.candidate,
-    voiceboxProfileId: profile.id,
+    id: next.id,
+    providerSessionId: generated.sessionId,
+    providerCandidateId: next.id,
+    audioUrl: next.audioUrl,
     previewAudioPath: undefined,
     errorMessage: undefined,
     variationAttempt: nextVariationAttempt,
@@ -80,7 +79,7 @@ export async function regenerateVoiceDesignCandidate(
     const updated = await synthesizeVoiceDesignCandidatePreview({
       candidate: candidateBase,
       characterName: params.characterName,
-      previewText: params.previewText,
+      previewText,
       projectDir,
       variationAttempt: nextVariationAttempt,
       onProgress: (progress) => {
@@ -97,7 +96,7 @@ export async function regenerateVoiceDesignCandidate(
     params.onProgress?.(params.candidate.id, {
       status: "error",
       percent: 0,
-      message: err instanceof Error ? err.message : "Synthese fehlgeschlagen",
+      message: err instanceof Error ? err.message : "Vorschau fehlgeschlagen",
     });
     return candidateBase;
   }

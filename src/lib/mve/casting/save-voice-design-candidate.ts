@@ -1,16 +1,14 @@
 /**
- * Persist a chosen voice design candidate to MVE + Voicebox.
+ * Persist a chosen voice design candidate via materialize + MVE profile update.
  * Location: src/lib/mve/casting/save-voice-design-candidate.ts
  */
 
 import { updateMveVoiceProfile } from "@/lib/api-adapter/mve-adapter";
-import { updateVoiceboxProfile } from "@/lib/api/voicebox-api";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 import type { MveVoiceDesignSpec } from "@/lib/multi-voice-engine/schema/voice-design-spec";
 import { isDesktopShell } from "@/runtime/detect-runtime";
-import { assignMveVoiceToCharacter } from "../assign-voice-profile";
+import { materializeDesignedVoice } from "../materialize/materialize-designed-voice";
 import { mveDefaultPreviewForCharacter } from "../default-preview-text";
-import { discardVoiceDesignCandidatesExcept } from "./preview-voice-design-candidates";
 import type {
   VoiceDesignCandidate,
   VoiceDesignPreviewSession,
@@ -52,35 +50,30 @@ export async function saveVoiceDesignCandidate(
     throw new Error("Design-Prompt fehlt.");
   }
 
-  await updateVoiceboxProfile(params.candidate.voiceboxProfileId, {
-    name: voiceName,
-    designPrompt,
-    description: designPrompt.slice(0, 500),
-    language: "de",
-  });
-
-  await discardVoiceDesignCandidatesExcept(
-    params.session,
-    params.candidate.voiceboxProfileId,
-  );
+  const providerSessionId = params.candidate.providerSessionId.trim();
+  const providerCandidateId = params.candidate.providerCandidateId.trim();
+  if (!providerSessionId || !providerCandidateId) {
+    throw new Error("Kandidaten-Session fehlt — bitte erneut erzeugen.");
+  }
 
   const previewText =
     params.previewText?.trim() ||
     params.existingProfile?.previewText ||
     mveDefaultPreviewForCharacter(params.characterName);
 
-  const assigned = await assignMveVoiceToCharacter({
+  const materialized = await materializeDesignedVoice({
     projectId: params.projectId,
-    characterId: params.characterId,
-    characterName: params.characterName,
-    voiceId: params.candidate.voiceboxProfileId,
-    engine: "voicebox",
+    sessionId: providerSessionId,
+    candidateId: providerCandidateId,
+    name: voiceName,
     previewText,
-    existingProfile: params.existingProfile,
+    characterId: params.characterId,
+    existingProfileId: params.existingProfile?.id,
   });
 
-  const profile = await updateMveVoiceProfile(assigned.id, {
-    name: `${params.characterName.trim() || "Charakter"} — ${voiceName}`,
+  const displayName = `${params.characterName.trim() || "Charakter"} — ${voiceName}`;
+  const profile = await updateMveVoiceProfile(materialized.profile.id, {
+    name: displayName,
     description: designPrompt,
     designSpec: params.designSpec ?? null,
     type: "generated",

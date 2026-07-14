@@ -1,9 +1,8 @@
 /**
- * Synthesize preview audio for voice design candidates (TTS only, no playback).
+ * Prepare preview playback for all voice design candidates (parallel fetch).
  * Location: src/lib/mve/casting/synthesize-voice-design-candidate-previews.ts
  */
 
-import { ensureVoiceboxSidecar } from "@/lib/api/voicebox-api";
 import { mveDefaultPreviewForCharacter } from "../default-preview-text";
 import type {
   VoiceDesignCandidate,
@@ -39,52 +38,47 @@ export async function synthesizeVoiceDesignCandidatePreviews(
 ): Promise<VoiceDesignCandidate[]> {
   const projectDir = params.projectDir.trim();
   if (!projectDir) {
-    throw new Error("Lokales Projekt erforderlich für Voicebox.");
+    throw new Error("Lokales Projekt erforderlich für Voice Design.");
   }
-
-  const previewText =
-    params.previewText?.trim() ||
-    mveDefaultPreviewForCharacter(params.characterName);
-
-  await ensureVoiceboxSidecar();
 
   const count = params.session.candidates.length;
   const results: VoiceDesignCandidate[] = new Array(count);
-  const synthesizableIndices: number[] = [];
+  const loadableIndices: number[] = [];
 
   for (let index = 0; index < count; index += 1) {
     const candidate = params.session.candidates[index];
     if (!candidate) continue;
 
-    if (!candidate.voiceboxProfileId.trim()) {
+    if (!candidate.audioUrl?.trim()) {
       results[index] = candidate;
       params.onCandidateProgress?.(candidate.id, {
         status: "error",
         percent: 0,
         message:
-          candidate.errorMessage ?? "Profil konnte nicht erzeugt werden.",
+          candidate.errorMessage ??
+          "Kandidaten-Audio konnte nicht erzeugt werden.",
       });
       continue;
     }
 
-    synthesizableIndices.push(index);
+    loadableIndices.push(index);
   }
 
-  const synthesizeAt = async (index: number): Promise<void> => {
+  const loadAt = async (index: number): Promise<void> => {
     const candidate = params.session.candidates[index];
     if (!candidate) return;
 
     params.onCandidateProgress?.(candidate.id, {
       status: "synthesizing",
       percent: mapSynthesisPercent(index, count, 8),
-      message: `Kandidat ${candidate.label} wird synthetisiert…`,
+      message: `Kandidat ${candidate.label} wird vorbereitet…`,
     });
 
     try {
       const updated = await synthesizeVoiceDesignCandidatePreview({
         candidate,
         characterName: params.characterName,
-        previewText,
+        previewText: params.previewText,
         projectDir,
         onProgress: (progress) => {
           params.onCandidateProgress?.(candidate.id, {
@@ -102,7 +96,7 @@ export async function synthesizeVoiceDesignCandidatePreviews(
       });
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Synthese fehlgeschlagen";
+        err instanceof Error ? err.message : "Vorschau fehlgeschlagen";
       results[index] = { ...candidate, errorMessage: message };
       params.onCandidateProgress?.(candidate.id, {
         status: "error",
@@ -112,16 +106,16 @@ export async function synthesizeVoiceDesignCandidatePreviews(
     }
   };
 
-  if (synthesizableIndices.length === 0) {
+  if (loadableIndices.length === 0) {
     return params.session.candidates.map(
       (candidate, index) => results[index] ?? candidate,
     );
   }
 
-  const [warmupIndex, ...parallelIndices] = synthesizableIndices;
-  await synthesizeAt(warmupIndex);
+  const [warmupIndex, ...parallelIndices] = loadableIndices;
+  await loadAt(warmupIndex);
   if (parallelIndices.length > 0) {
-    await Promise.all(parallelIndices.map((index) => synthesizeAt(index)));
+    await Promise.all(parallelIndices.map((index) => loadAt(index)));
   }
 
   return params.session.candidates.map(

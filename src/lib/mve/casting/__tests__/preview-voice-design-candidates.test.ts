@@ -9,26 +9,15 @@ vi.mock("@/runtime/detect-runtime", () => ({
   isDesktopShell: () => true,
 }));
 
-vi.mock("@/lib/api/voicebox-api", () => ({
-  ensureVoiceboxSidecar: vi.fn().mockResolvedValue(undefined),
-  createDesignedVoiceboxProfile: vi
-    .fn()
-    .mockImplementation(async ({ name }: { name: string }) => ({
-      id: `vb-${name}`,
-      name,
-      language: "de",
-    })),
-  generateVoiceboxSpeech: vi.fn().mockResolvedValue({
-    audioPath: "/tmp/preview.wav",
+const generateCandidates = vi.fn();
+
+vi.mock("@/lib/multi-voice-engine/adapters/voice-creation-registry", () => ({
+  resolveVoiceCreationAdapter: () => ({
+    providerId: "qwen-voice-design",
+    generateCandidates,
   }),
-  deleteVoiceboxProfile: vi.fn().mockResolvedValue(undefined),
 }));
 
-import {
-  createDesignedVoiceboxProfile,
-  deleteVoiceboxProfile,
-  generateVoiceboxSpeech,
-} from "@/lib/api/voicebox-api";
 import {
   discardVoiceDesignPreviewSession,
   previewVoiceDesignCandidates,
@@ -38,26 +27,52 @@ import { VOICE_DESIGN_PREVIEW_COUNT } from "../voice-design-candidate";
 describe("previewVoiceDesignCandidates", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    generateCandidates.mockResolvedValue({
+      sessionId: "vd_sess_test",
+      candidates: [
+        {
+          id: "candidate-1",
+          label: "A",
+          audioUrl:
+            "local://voice-design/sessions/vd_sess_test/candidate-1.wav",
+          description: "warm",
+        },
+        {
+          id: "candidate-2",
+          label: "B",
+          audioUrl:
+            "local://voice-design/sessions/vd_sess_test/candidate-2.wav",
+          description: "warm",
+        },
+        {
+          id: "candidate-3",
+          label: "C",
+          audioUrl:
+            "local://voice-design/sessions/vd_sess_test/candidate-3.wav",
+          description: "warm",
+        },
+      ],
+    });
   });
 
-  it("creates three ephemeral designed profiles without eager TTS", async () => {
+  it("generates three Qwen candidates without Voicebox designed profiles", async () => {
     const session = await previewVoiceDesignCandidates({
       characterName: "Max",
       basicDescription: "warme Erzählerstimme",
       projectDir: "/proj",
     });
 
-    expect(createDesignedVoiceboxProfile).toHaveBeenCalledTimes(
-      VOICE_DESIGN_PREVIEW_COUNT,
+    expect(generateCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({
+        description: expect.stringContaining("warme Erzählerstimme"),
+        language: "German",
+        candidateCount: VOICE_DESIGN_PREVIEW_COUNT,
+      }),
     );
-    const calls = vi.mocked(createDesignedVoiceboxProfile).mock.calls;
-    expect(calls[0]?.[0]?.designPrompt).toContain("variant A");
-    expect(calls[1]?.[0]?.designPrompt).toContain("variant B");
-    expect(calls[2]?.[0]?.designPrompt).toContain("variant C");
-    expect(generateVoiceboxSpeech).not.toHaveBeenCalled();
     expect(session.candidates).toHaveLength(VOICE_DESIGN_PREVIEW_COUNT);
     expect(session.candidates[0]?.label).toBe("A");
-    expect(session.candidates[2]?.label).toBe("C");
+    expect(session.candidates[0]?.providerSessionId).toBe("vd_sess_test");
+    expect(session.candidates[0]?.audioUrl).toContain("candidate-1.wav");
     expect(session.candidates[0]?.previewAudioPath).toBeUndefined();
     expect(session.designPrompt).toContain("warme Erzählerstimme");
   });
@@ -72,57 +87,41 @@ describe("previewVoiceDesignCandidates", () => {
     ).rejects.toThrow(/Stimmbeschreibung/);
   });
 
-  it("continues when one profile creation fails", async () => {
-    vi.mocked(createDesignedVoiceboxProfile)
-      .mockResolvedValueOnce({
-        id: "vb-a",
-        name: "a",
-        language: "de",
-      })
-      .mockRejectedValueOnce(new Error("Design-Prompt zu lang"))
-      .mockResolvedValueOnce({
-        id: "vb-c",
-        name: "c",
-        language: "de",
-      });
-
-    const session = await previewVoiceDesignCandidates({
-      characterName: "Max",
-      basicDescription: "warme Erzählerstimme",
-      projectDir: "/proj",
+  it("throws when adapter returns no audio candidates", async () => {
+    generateCandidates.mockResolvedValueOnce({
+      sessionId: "vd_sess_empty",
+      candidates: [
+        { id: "candidate-1", label: "A", audioUrl: "", description: "" },
+      ],
     });
 
-    expect(session.candidates).toHaveLength(3);
-    expect(session.candidates[0]?.voiceboxProfileId).toBe("vb-a");
-    expect(session.candidates[1]?.voiceboxProfileId).toBe("");
-    expect(session.candidates[1]?.errorMessage).toContain("zu lang");
-    expect(session.candidates[2]?.voiceboxProfileId).toBe("vb-c");
+    await expect(
+      previewVoiceDesignCandidates({
+        characterName: "Max",
+        basicDescription: "warme Erzählerstimme",
+        projectDir: "/proj",
+      }),
+    ).rejects.toThrow(/Keine Stimm-Kandidaten/);
   });
 });
 
 describe("discardVoiceDesignPreviewSession", () => {
-  it("deletes all candidate profiles", async () => {
-    await discardVoiceDesignPreviewSession({
-      sessionId: "s1",
-      designPrompt: "test",
-      designSpec: null,
-      candidates: [
-        {
-          id: "s1-0",
-          voiceboxProfileId: "vb-a",
-          index: 0,
-          label: "A",
-        },
-        {
-          id: "s1-1",
-          voiceboxProfileId: "vb-b",
-          index: 1,
-          label: "B",
-        },
-      ],
-    });
-
-    expect(deleteVoiceboxProfile).toHaveBeenCalledWith("vb-a");
-    expect(deleteVoiceboxProfile).toHaveBeenCalledWith("vb-b");
+  it("is a no-op for Qwen sessions", async () => {
+    await expect(
+      discardVoiceDesignPreviewSession({
+        sessionId: "s1",
+        designPrompt: "test",
+        designSpec: null,
+        candidates: [
+          {
+            id: "candidate-1",
+            providerSessionId: "vd_sess_test",
+            providerCandidateId: "candidate-1",
+            index: 0,
+            label: "A",
+          },
+        ],
+      }),
+    ).resolves.toBeUndefined();
   });
 });

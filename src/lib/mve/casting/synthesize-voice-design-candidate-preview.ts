@@ -1,15 +1,13 @@
 /**
- * Synthesize preview audio for one voice design candidate (no playback).
+ * Prepare preview playback for one Qwen VoiceDesign candidate (fetch WAV, no TTS).
  * Location: src/lib/mve/casting/synthesize-voice-design-candidate-preview.ts
  */
 
-import { generateVoiceboxSpeech } from "@/lib/api/voicebox-api";
-import { mveDefaultPreviewForCharacter } from "../default-preview-text";
 import type {
   VoiceDesignCandidate,
   VoiceDesignCandidateSynthesisProgress,
 } from "./voice-design-candidate";
-import { voiceDesignCandidateTtsSeed } from "./voice-design-candidate-variation";
+import { fetchVoiceDesignCandidatePlaybackUrl } from "./voice-design-candidate-audio";
 
 export interface SynthesizeVoiceDesignCandidatePreviewParams {
   candidate: VoiceDesignCandidate;
@@ -23,42 +21,31 @@ export interface SynthesizeVoiceDesignCandidatePreviewParams {
 export async function synthesizeVoiceDesignCandidatePreview(
   params: SynthesizeVoiceDesignCandidatePreviewParams,
 ): Promise<VoiceDesignCandidate> {
-  const projectDir = params.projectDir.trim();
-  if (!projectDir) {
-    throw new Error("Lokales Projekt erforderlich für Voicebox.");
+  const audioUrl = params.candidate.audioUrl?.trim();
+  if (!audioUrl) {
+    throw new Error(params.candidate.errorMessage ?? "Kandidaten-Audio fehlt.");
   }
 
-  const previewText =
-    params.previewText?.trim() ||
-    mveDefaultPreviewForCharacter(params.characterName);
   const variationAttempt =
     params.variationAttempt ?? params.candidate.variationAttempt ?? 0;
 
   params.onProgress?.({
     status: "synthesizing",
     percent: 12,
-    message: `Kandidat ${params.candidate.label} wird synthetisiert…`,
+    message: `Kandidat ${params.candidate.label} wird vorbereitet…`,
   });
 
-  const generated = await generateVoiceboxSpeech({
-    text: previewText,
-    profileId: params.candidate.voiceboxProfileId,
-    language: "de",
-    projectDir,
-    engine: "qwen_custom_voice",
-    seed: voiceDesignCandidateTtsSeed(params.candidate.index, variationAttempt),
-    onProgress: (update) => {
-      params.onProgress?.({
-        status: "synthesizing",
-        percent: Math.min(98, update.percent),
-        message: update.message,
-      });
-    },
+  const previewAudioPath = await fetchVoiceDesignCandidatePlaybackUrl(audioUrl);
+
+  params.onProgress?.({
+    status: "synthesizing",
+    percent: 90,
+    message: `Kandidat ${params.candidate.label} bereit…`,
   });
 
   return {
     ...params.candidate,
     variationAttempt,
-    previewAudioPath: generated.audioPath,
+    previewAudioPath,
   };
 }

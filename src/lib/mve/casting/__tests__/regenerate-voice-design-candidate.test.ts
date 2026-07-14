@@ -5,44 +5,43 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/lib/api/voicebox-api", () => ({
-  ensureVoiceboxSidecar: vi.fn().mockResolvedValue(undefined),
-  createDesignedVoiceboxProfile: vi.fn().mockResolvedValue({
-    id: "vb-new",
-    name: "preview",
-    language: "de",
+const generateCandidates = vi.fn();
+
+vi.mock("@/lib/multi-voice-engine/adapters/voice-creation-registry", () => ({
+  resolveVoiceCreationAdapter: () => ({
+    providerId: "qwen-voice-design",
+    generateCandidates,
   }),
-  deleteVoiceboxProfile: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock("../synthesize-voice-design-candidate-preview", () => ({
   synthesizeVoiceDesignCandidatePreview: vi.fn().mockResolvedValue({
-    id: "s1-1",
-    voiceboxProfileId: "vb-new",
+    id: "candidate-1",
+    providerSessionId: "vd_sess_retry",
+    providerCandidateId: "candidate-1",
     index: 1,
     label: "B",
-    previewAudioPath: "/tmp/new.wav",
+    audioUrl: "local://voice-design/sessions/vd_sess_retry/candidate-1.wav",
+    previewAudioPath: "blob:mock",
     variationAttempt: 1,
   }),
 }));
 
-import {
-  createDesignedVoiceboxProfile,
-  deleteVoiceboxProfile,
-} from "@/lib/api/voicebox-api";
 import { regenerateVoiceDesignCandidate } from "../regenerate-voice-design-candidate";
 import { synthesizeVoiceDesignCandidatePreview } from "../synthesize-voice-design-candidate-preview";
 
 const session = {
-  sessionId: "s1",
+  sessionId: "vd_sess_test",
   designPrompt: "warm narrator",
   designSpec: null,
   candidates: [
     {
-      id: "s1-1",
-      voiceboxProfileId: "vb-old",
+      id: "candidate-2",
+      providerSessionId: "vd_sess_test",
+      providerCandidateId: "candidate-2",
       index: 1 as const,
       label: "B" as const,
+      audioUrl: "local://voice-design/sessions/vd_sess_test/candidate-2.wav",
     },
   ],
 };
@@ -50,9 +49,21 @@ const session = {
 describe("regenerateVoiceDesignCandidate", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    generateCandidates.mockResolvedValue({
+      sessionId: "vd_sess_retry",
+      candidates: [
+        {
+          id: "candidate-1",
+          label: "A",
+          audioUrl:
+            "local://voice-design/sessions/vd_sess_retry/candidate-1.wav",
+          description: "warm narrator",
+        },
+      ],
+    });
   });
 
-  it("replaces profile and re-synthesizes one candidate", async () => {
+  it("regenerates one candidate via VoiceCreationAdapter", async () => {
     const result = await regenerateVoiceDesignCandidate({
       session,
       candidate: session.candidates[0]!,
@@ -60,14 +71,15 @@ describe("regenerateVoiceDesignCandidate", () => {
       projectDir: "/proj",
     });
 
-    expect(deleteVoiceboxProfile).toHaveBeenCalledWith("vb-old");
-    expect(createDesignedVoiceboxProfile).toHaveBeenCalledWith(
+    expect(generateCandidates).toHaveBeenCalledWith(
       expect.objectContaining({
-        designPrompt: expect.stringContaining("variant"),
+        candidateCount: 1,
+        description: expect.stringContaining("variant"),
       }),
     );
     expect(synthesizeVoiceDesignCandidatePreview).toHaveBeenCalledTimes(1);
-    expect(result.previewAudioPath).toBe("/tmp/new.wav");
+    expect(result.previewAudioPath).toBe("blob:mock");
     expect(result.variationAttempt).toBe(1);
+    expect(result.providerSessionId).toBe("vd_sess_retry");
   });
 });
