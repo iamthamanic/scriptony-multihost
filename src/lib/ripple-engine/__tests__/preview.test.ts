@@ -1,10 +1,62 @@
 /** @vitest-environment jsdom */
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import {
+  applyStructureDropZoneAcrossLanes,
   applyStructurePreviewToDOM,
+  clearStructureDropZonesForLanes,
   resetStructurePreviewStyles,
 } from "../preview";
 import { buildTestTree } from "../../timeline-tree/__tests__/test-helpers";
+
+describe("applyStructureDropZoneAcrossLanes", () => {
+  let actLane: HTMLDivElement;
+  let sceneLane: HTMLDivElement;
+  let audioLane: HTMLDivElement;
+
+  beforeEach(() => {
+    actLane = document.createElement("div");
+    sceneLane = document.createElement("div");
+    audioLane = document.createElement("div");
+    audioLane.setAttribute("data-audio-lane-drop-stack", "true");
+    document.body.append(actLane, sceneLane, audioLane);
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("paints white insertion slot on structure and extra audio stacks", () => {
+    applyStructureDropZoneAcrossLanes({
+      containerByKind: { act: actLane, scene: sceneLane },
+      startFrame: 10,
+      endFrame: 14,
+      viewStartFrame: 0,
+      pxPerFrame: 2,
+      extraDropZoneStacks: [audioLane],
+    });
+
+    const actZone = actLane.querySelector("[data-structure-drop-zone]");
+    const audioZone = audioLane.querySelector("[data-structure-drop-zone]");
+    expect(actZone).not.toBeNull();
+    expect(audioZone).not.toBeNull();
+    expect(actZone?.className).toContain("border-white");
+    expect(audioZone?.className).toContain("border-white");
+  });
+
+  it("clears drop zones on structure lanes and extra stacks", () => {
+    applyStructureDropZoneAcrossLanes({
+      containerByKind: { act: actLane },
+      startFrame: 0,
+      endFrame: 4,
+      viewStartFrame: 0,
+      pxPerFrame: 1,
+      extraDropZoneStacks: [audioLane],
+    });
+    clearStructureDropZonesForLanes({ act: actLane }, [audioLane]);
+    expect(actLane.querySelector("[data-structure-drop-zone]")).toBeNull();
+    expect(audioLane.querySelector("[data-structure-drop-zone]")).toBeNull();
+  });
+});
 
 describe("applyStructurePreviewToDOM", () => {
   let container: HTMLDivElement;

@@ -97,10 +97,11 @@ export function timeSecFromTimelineDropEvent(
   clientX: number,
   scrollEl: HTMLElement,
   pxPerSec: number,
+  contentOriginEl?: HTMLElement | null,
 ): number {
   if (pxPerSec <= 0) return 0;
-  const rect = scrollEl.getBoundingClientRect();
-  const localX = clientX - rect.left;
+  const anchorEl = contentOriginEl ?? scrollEl;
+  const localX = clientX - anchorEl.getBoundingClientRect().left;
   return Math.max(0, (scrollEl.scrollLeft + localX) / pxPerSec);
 }
 

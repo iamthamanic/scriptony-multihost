@@ -4,7 +4,11 @@
  */
 
 import { cn } from "../../../lib/utils";
-import { getLaneType, LANE_UI } from "../../../lib/audio-lane";
+import {
+  getLaneType,
+  LANE_UI,
+  resolveLaneHeightPx,
+} from "../../../lib/audio-lane";
 import { AudioClipLaneSidebar } from "./AudioClipLaneSidebar";
 import { AudioClipLaneContent } from "./AudioClipLaneContent";
 import type { AudioClip } from "../../../lib/types";
@@ -13,6 +17,7 @@ import type { useTimelineAddAudio } from "../../../hooks/useTimelineAddAudio";
 import type { useCharacterLaneMap } from "../../../hooks/useCharacterLaneMap";
 import type { TimelineSceneRef } from "../../../lib/timeline-add-audio";
 import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
+import type { MveStructurePickerRefs } from "../../structure/timeline/mve/MveStructureScenePickerModal";
 import type { MveLineClipHandlers } from "./AudioClipLaneContent";
 import type { MveLaneLinkControlProps } from "./AudioClipLaneSidebar";
 
@@ -34,6 +39,7 @@ export interface AudioClipLaneTracksProps {
   viewStartSec?: number;
   totalWidthPx: number;
   scenes?: TimelineSceneRef[];
+  structurePicker?: MveStructurePickerRefs;
   sceneBlocks?: SceneTimeBlock[];
   laneGroups: Record<number, AudioClip[]>;
   sortedLaneIndices: number[];
@@ -67,6 +73,7 @@ export interface AudioClipLaneTracksProps {
     | "isReordering"
   > & { allClips?: AudioClip[] };
   mveLines?: MveLineClipHandlers;
+  readingSpeedWpm?: number;
   onAddMveTextBlock?: (payload: {
     laneIndex: number;
     characterId: string;
@@ -88,10 +95,12 @@ export interface AudioClipLaneTracksProps {
   >;
 }
 
-function laneHeight(expandedLane: number | null, laneIndex: number): number {
-  return expandedLane === laneIndex
-    ? LANE_UI.heightExpanded
-    : LANE_UI.heightCompact;
+function laneHeight(
+  expandedLane: number | null,
+  laneIndex: number,
+  hasContent = true,
+): number {
+  return resolveLaneHeightPx(laneIndex, expandedLane, hasContent);
 }
 
 export function AudioClipLaneTracks({
@@ -99,6 +108,7 @@ export function AudioClipLaneTracks({
   viewStartSec = 0,
   totalWidthPx,
   scenes = [],
+  structurePicker,
   sceneBlocks = [],
   laneGroups,
   sortedLaneIndices,
@@ -114,6 +124,7 @@ export function AudioClipLaneTracks({
   addAudio,
   characterLanes,
   mveLines,
+  readingSpeedWpm,
   onAddMveTextBlock,
   linkedSceneIdForLane,
   getMveLaneLinkForLane,
@@ -149,10 +160,15 @@ export function AudioClipLaneTracks({
     <>
       {sortedLaneIndices.map((laneIndex) => {
         const expanded = expandedLane === laneIndex;
-        const height = laneHeight(expandedLane, laneIndex);
         const clips = laneGroups[laneIndex] ?? [];
         const locked = laneState.getLaneState(laneIndex)?.locked ?? false;
         const character = characterLanes?.getCharacterForLane(laneIndex);
+        const characterId = characterLanes?.characterIdForLane(laneIndex);
+        const linesForCharacter = characterId
+          ? (mveLines?.linesByCharacterId?.get(characterId) ?? [])
+          : [];
+        const hasContent = clips.length > 0 || linesForCharacter.length > 0;
+        const height = laneHeight(expandedLane, laneIndex, hasContent);
 
         if (labelMode === "sidebar") {
           return (
@@ -162,10 +178,12 @@ export function AudioClipLaneTracks({
               laneIndex={laneIndex}
               expanded={expanded}
               expandedLane={expandedLane}
+              hasContent={hasContent}
               locked={locked}
               character={character}
               addAudio={addAudio}
               scenes={scenes}
+              structurePicker={structurePicker}
               currentTimeSec={currentTimeSec}
               onExpandedLaneChange={onExpandedLaneChange}
               onMuteChange={laneState.setMute}
@@ -214,6 +232,7 @@ export function AudioClipLaneTracks({
             allClips={allClips}
             characterLanes={characterLanes}
             mveLines={mveLines}
+            readingSpeedWpm={readingSpeedWpm}
             className={className}
           />
         );

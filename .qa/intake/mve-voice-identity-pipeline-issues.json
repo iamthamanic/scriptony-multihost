@@ -1,0 +1,69 @@
+{
+  "epicSlug": "mve-voice-identity-pipeline",
+  "designPath": ".qa/design/mve-voice-identity-pipeline.md",
+  "defaultLabels": ["P1"],
+  "issues": [
+    {
+      "title": "Spike: Qwen3 VoiceDesign runtime and local API contract",
+      "featureSlug": "mve-qwen-voicedesign-spike",
+      "priority": "P0",
+      "labels": ["P0", "needs-design"],
+      "dependsOn": [],
+      "body": "## Intent\nQwen3-TTS VoiceDesign (`generate_voice_design`) lokal verifizieren und einen festen API-Vertrag für Scriptony festlegen — unabhängig von Voicebox.\n\n## User Journey\n1. Entwickler startet lokalen VoiceDesign-Provider\n2. `POST /voice-design/generate` mit Beschreibung liefert WAV-Kandidaten\n3. Entscheidung (Sidecar vs. Tauri-Subprozess) ist dokumentiert\n\n## Problem\nVoicebox hat keinen VoiceDesign-Adapter; das bisherige A2-Workaround (3× `designed` + CustomVoice) erzeugt keine echte Identität. Ohne Spike ist Slice A2 unsicher.\n\n## Solution\n- HF-Modell `Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign` evaluieren (VRAM, Latenz, DE/EN)\n- OpenAPI-Sketch in `.qa/design/mve-voice-identity-pipeline.md` bestätigen/ergänzen\n- PoC: ein Kandidat aus Beschreibung + Preview-Text\n- Sidecar-Entscheidung: neuer Tauri-Sidecar vs. Erweiterung `sidecar-lifecycle` — mit Begründung\n- Kein Produktionscode außer optionalem `scripts/spike-qwen-voicedesign.sh`\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Modell nicht auf Apple Silicon / CUDA verfügbar → CPU-Fallback dokumentieren\n- Kandidaten-Count >4 → API-Limit festlegen\n- Voicebox parallel auf Port — kein Port-Konflikt\n\n## Acceptance\n- [ ] Spike-Dokument in `.qa/design/mve-voice-identity-pipeline.md` § Spike Results\n- [ ] Request/Response-Schema für `generate` und `materialize` final\n- [ ] Sidecar-Architektur-Entscheidung mit Pros/Cons\n- [ ] Mindestens ein manuell erzeugtes WAV aus DE-Beschreibung als Evidence-Pfad notiert\n\n## Design\nEpic: `.qa/design/mve-voice-identity-pipeline.md`\n\n## Runner\nLabels: P0, needs-design\nFeature slug: `mve-qwen-voicedesign-spike`"
+    },
+    {
+      "title": "MVE schema: voice identity fields and VoiceCreationAdapter",
+      "featureSlug": "mve-voice-identity-schema",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": [],
+      "body": "## Intent\n`MveVoiceProfile` und Adapter-Interfaces trennen **Voice Identity** (Creation/Clone) von **Performance** (`MveLineDirection`).\n\n## User Journey\n1. System speichert designed/cloned/preset Stimmen mit klarem `creationMode`\n2. Render und Casting lesen Identity-Felder statt Voicebox-Workarounds\n\n## Problem\nHeute: nur `engine`, `type`, `description`, `designSpec` — kein `provider`/`model`, kein `referenceText`/`clonePrompt`, falsches `supportsVoiceGenerationFromPrompt` auf Voicebox.\n\n## Solution\n- Erweitere `voice-profile.ts`: `creationMode`, `provider`, `model`, `identityPrompt`, `referenceAudioAssetId`, `referenceText`, `clonePromptAssetId`\n- Neues Interface `VoiceCreationAdapter` in `adapters/voice-creation-adapter.ts` (`generateCandidates`, `materialize`)\n- SQLite-Migration in `project-schema.ts` / LocalBackend\n- `voicebox.adapter.ts`: `supportsVoiceGenerationFromPrompt: false`\n- Registry: `resolveVoiceCreationAdapter(providerId)`\n- Unit-Tests für Schema + Registry\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | no |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Bestehende Profile ohne neue Felder → Defaults (`creationMode` aus `type` ableiten)\n- `referenceAudioUrl` vs. `referenceAudioAssetId` — beide übergangsweise, Asset-ID bevorzugt\n\n## Acceptance\n- [ ] Zod-Schema + Migration für neue Felder\n- [ ] `VoiceCreationAdapter` Interface exportiert\n- [ ] Voicebox-Capabilities korrigiert\n- [ ] `npm run verify -- --frontend` grün\n\n## Design\nEpic: `.qa/design/mve-voice-identity-pipeline.md`\n\n## Runner\nLabels: P0\nFeature slug: `mve-voice-identity-schema`"
+    },
+    {
+      "title": "Qwen VoiceDesign provider: generate candidates endpoint",
+      "featureSlug": "mve-qwen-voicedesign-generate",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": [
+        "Spike: Qwen3 VoiceDesign runtime and local API contract",
+        "MVE schema: voice identity fields and VoiceCreationAdapter"
+      ],
+      "body": "## Intent\nLokaler Provider `qwen-voice-design` implementieren: Beschreibung → N Audio-Kandidaten für das Voice Studio.\n\n## User Journey\n1. Nutzer beschreibt Stimme im Charakter-Modal\n2. System ruft `POST /voice-design/generate` auf\n3. A/B/C (oder 4) Kandidaten-WAVs liegen lokal bereit zum Abspielen\n\n## Problem\n`preview-voice-design-candidates.ts` erzeugt 3× Voicebox `designed` Profile — technisch falsch für Identity.\n\n## Solution\n- `qwen-voice-design.adapter.ts` implementiert `VoiceCreationAdapter.generateCandidates`\n- Lokale Route (Sidecar/Tauri): `POST /voice-design/generate`\n- Request: `description`, `previewText`, `language`, `candidateCount`\n- Response: `candidates[]` mit `id`, `audioUrl`, `description`\n- Global Loading Progress für >5s\n- Tests mit HTTP-Mock; kein UI in diesem Slice\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | hidden |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Sidecar nicht gestartet → klare DE-Fehlermeldung + Retry\n- Leere Beschreibung → Validation 400\n- Kandidat-Generierung teilweise fehlgeschlagen → partielle Liste + Warning\n\n## Acceptance\n- [ ] Adapter registriert unter `qwen-voice-design`\n- [ ] Generate-Endpoint liefert ≥1 WAV pro Kandidat\n- [ ] Unit-Tests für Adapter + Route-Handler\n- [ ] Evidence-Pfad in `.qa/evidence/mve-voice-identity-pipeline/`\n\n## Design\nEpic: `.qa/design/mve-voice-identity-pipeline.md`\n\n## Blockers\nDepends on Spike + Schema slices\n\n## Runner\nLabels: P0\nFeature slug: `mve-qwen-voicedesign-generate`"
+    },
+    {
+      "title": "Materialize designed voice: save WAV and Qwen Base clone",
+      "featureSlug": "mve-voice-materialize-clone",
+      "priority": "P0",
+      "labels": ["P0"],
+      "dependsOn": ["Qwen VoiceDesign provider: generate candidates endpoint"],
+      "body": "## Intent\nNach Kandidaten-Auswahl: Referenz-WAV persistieren, Qwen Base Clone erzeugen, `MveVoiceProfile` mit stabiler Identity anlegen.\n\n## User Journey\n1. Nutzer wählt Kandidat B und gibt Namen ein\n2. System materialisiert Stimme (WAV + referenceText + clone prompt)\n3. Charakter erhält wiederverwendbares VoiceProfile (`creationMode: designed`)\n\n## Problem\nAktuell speichert Save ein Voicebox-designed Profil ohne echten Clone-Prompt — Stimme driftet zwischen Zeilen.\n\n## Solution\n- `POST /voice-design/materialize` in lokalem Provider\n- WAV → Projekt-Asset (`referenceAudioAssetId`)\n- `referenceText` = Preview-Satz\n- Clone via Voicebox Qwen Base (`request-voice-clone.ts` / `uploadVoiceboxProfileSample`)\n- `clonePromptAssetId` oder `baseVoiceId` setzen\n- `materialize` auf `VoiceCreationAdapter`; Tests mit gemocktem Voicebox\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | hidden |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Voicebox für Clone offline → materialize schlägt fehl, Kandidat-WAV bleibt\n- Consent fehlt bei späterem Clone aus Aufnahme — bei designed: `not_required`\n- Doppelter Name im Projekt → Validierung\n\n## Acceptance\n- [ ] Materialize erzeugt persistiertes `MveVoiceProfile` mit allen Identity-Feldern\n- [ ] Voicebox Clone wird aufgerufen (Integrationstest/Mock)\n- [ ] Roundtrip-Test: generate → materialize → Profil lesbar\n\n## Design\nEpic: `.qa/design/mve-voice-identity-pipeline.md`\n\n## Blockers\nDepends on generate provider slice\n\n## Runner\nLabels: P0\nFeature slug: `mve-voice-materialize-clone`"
+    },
+    {
+      "title": "Migrate voice design casting to VoiceCreationAdapter",
+      "featureSlug": "mve-casting-creation-migration",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["Materialize designed voice: save WAV and Qwen Base clone"],
+      "body": "## Intent\nBestehenden Voice-Studio-Flow (A/B/C, Play, Save) auf die neue Identity-Pipeline umstellen — UI bleibt, Backend wechselt.\n\n## User Journey\n1. Nutzer: Beschreibung → „Stimme erzeugen“\n2. Drei Kandidaten aus Qwen VoiceDesign (nicht Voicebox designed)\n3. Speichern → nur MVE-gespeicherte Stimmen im Dropdown (`design-saved`)\n\n## Problem\n`preview-voice-design-candidates.ts`, `save-voice-design-candidate.ts` rufen direkt `createDesignedVoiceboxProfile` auf.\n\n## Solution\n- Casting-Services delegieren an `resolveVoiceCreationAdapter('qwen-voice-design')`\n- Entfernen/deprecaten: 3× `__preview-*` Voicebox-Profile-Strategie (A2)\n- `purgeOrphanVoiceDesignPreviewProfiles` anpassen oder entfernen\n- `VoiceProfileEditorModal` + `save-voice-design-candidate` → materialize\n- Playwright: bestehende Specs auf neuen Mock-Pfad\n- `list-design-saved-voice-entries` Filter bleibt gültig\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | hidden |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Alte gespeicherte Voicebox-designed Profile → weiter abspielbar bis Migrations-Slice\n- Regenerate einzelner Kandidat → generate mit Variation-Seed\n\n## Acceptance\n- [ ] Preview erzeugt Kandidaten ohne `createDesignedVoiceboxProfile`\n- [ ] Save ruft materialize auf\n- [ ] Playwright voice-design Spec grün\n- [ ] Keine neuen `__preview-*` Voicebox-Profile in Happy Path\n\n## Design\nEpic: `.qa/design/mve-voice-identity-pipeline.md`\n\n## Blockers\nDepends on materialize slice\n\n## Runner\nLabels: P1\nFeature slug: `mve-casting-creation-migration`"
+    },
+    {
+      "title": "Line render: identity plus LineDirection instruct on TTS",
+      "featureSlug": "mve-render-performance-instruct",
+      "priority": "P1",
+      "labels": ["P1"],
+      "dependsOn": ["MVE schema: voice identity fields and VoiceCreationAdapter"],
+      "body": "## Intent\nDialog-Rendering trennt **Identity** (Profil/Clone) von **Performance** (`MveLineDirection`) — `instruct` auf jedem TTS-Call, nicht nur Preview.\n\n## User Journey\n1. Charakter hat materialisierte Stimme\n2. Timeline-Zeile mit Regie („langsam, gereizt“)\n3. Gerendertes Audio nutzt stabile Identity + Zeilen-Performance\n\n## Problem\n`voicebox.adapter.ts` `renderLine` ignoriert `direction`; `instruct` nur im Preview-Pfad.\n\n## Solution\n- `voice-prompt-compiler.ts`: `compilePerformanceInstruct(identity, direction)`\n- `voicebox.adapter.ts`: `generateVoiceboxSpeech` mit `instruct` wenn `creationMode` designed/cloned\n- Snapshot in `createMveLineRenderSnapshot` inkl. direction\n- Tests: identity-only vs. identity+direction unterschiedliche Payloads\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | yes |\n| Cloud session | partial (wenn hybrid TTS) |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Preset-Stimmen (Kokoro): kein identity instruct, nur direction falls unterstützt\n- `directorNote` > API-Limit → truncate mit Warning\n\n## Acceptance\n- [ ] `renderLine` übergibt instruct für designed/cloned profiles\n- [ ] Unit-Tests für Compiler + Adapter\n- [ ] Bestehende MVE render-line Tests grün\n\n## Design\nEpic: `.qa/design/mve-voice-identity-pipeline.md`\n\n## Runner\nLabels: P1\nFeature slug: `mve-render-performance-instruct`"
+    },
+    {
+      "title": "ElevenLabs Voice Design adapter (cloud hybrid, deferred)",
+      "featureSlug": "mve-elevenlabs-voice-design",
+      "priority": "P2",
+      "labels": ["P2"],
+      "dependsOn": [
+        "MVE schema: voice identity fields and VoiceCreationAdapter",
+        "Migrate voice design casting to VoiceCreationAdapter"
+      ],
+      "body": "## Intent\nOptionaler Cloud-Provider für Voice Design via ElevenLabs `POST /v1/text-to-voice/design` — gleiche Casting-Oberfläche, anderer Adapter.\n\n## User Journey\n1. Nutzer mit Cloud-Session wählt Provider „ElevenLabs“\n2. Beschreibung → Previews → Save wie lokal\n3. Materialize speichert Cloud-Voice-ID in `MveVoiceProfile`\n\n## Problem\nCloud-Freeze; ElevenLabs hat Voice Design API, Scriptony nutzt sie nicht.\n\n## Solution\n- `elevenlabs-voice-design.adapter.ts` implementiert `VoiceCreationAdapter`\n- `canUseCloudSession()` Gate in UI\n- `elevenlabs-api.ts` erweitern (design + save voice)\n- Kein Blocker für lokales MVP\n\n## Runtime\n| Axis | This slice |\n|------|------------|\n| Local (desktop) | hidden |\n| Cloud session | yes (hybrid gate) |\n| Appwrite Functions | skip |\n\n## Edge Cases\n- Kein API-Key → Provider ausgeblendet\n- Rate limits → Retry + Toast\n\n## Acceptance\n- [ ] Adapter hinter Cloud-Gate\n- [ ] Mindestens ein Mock-Test für design → save flow\n- [ ] Dokumentation in Epic Runtime-Matrix\n\n## Design\nEpic: `.qa/design/mve-voice-identity-pipeline.md`\n\n## Blockers\nDepends on schema + casting migration\n\n## Runner\nLabels: P2\nFeature slug: `mve-elevenlabs-voice-design`"
+    }
+  ]
+}

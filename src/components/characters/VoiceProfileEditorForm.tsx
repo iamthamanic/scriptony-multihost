@@ -9,10 +9,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { Textarea } from "@/components/ui/textarea";
 import { mveDefaultPreviewForCharacter } from "@/lib/mve/default-preview-text";
+import {
+  isProfileVoiceProvider,
+  resolveVoiceProviderId,
+  type VoiceProviderId,
+} from "@/lib/config/voice-providers";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 import type { MveVoiceConsent } from "@/lib/multi-voice-engine/schema/voice-consent";
+import {
+  emptyVoiceDesignSpec,
+  type MveVoiceDesignSpec,
+} from "@/lib/multi-voice-engine/schema/voice-design-spec";
+import type {
+  VoiceDesignCandidate,
+  VoiceDesignCandidateSynthesisProgress,
+} from "@/lib/mve/casting/voice-design-candidate";
+import { VoiceDesignDescriptionPanel } from "./VoiceDesignDescriptionPanel";
 import { VoiceProfileFutureSections } from "./VoiceProfileFutureSections";
 import type { VoiceTuneSubmitOptions } from "./VoiceStudioTuneSection";
 
@@ -24,12 +37,16 @@ export interface VoiceProfileEditorFormProps {
   profile?: MveVoiceProfile | null;
   previewText: string;
   description: string;
+  designSpec: MveVoiceDesignSpec;
   speed: number;
   voiceId?: string;
   isPlaying: boolean;
   generateBusy?: boolean;
   generateDisabled?: boolean;
   generateHint?: string;
+  showDesignVoice?: boolean;
+  designVoiceDisabled?: boolean;
+  onDesignFromDescription?: () => void;
   cloneBusy?: boolean;
   cloneDisabled?: boolean;
   cloneStartBusy?: boolean;
@@ -38,6 +55,16 @@ export interface VoiceProfileEditorFormProps {
   latestConsent?: MveVoiceConsent | null;
   onPreviewTextChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
+  onDesignSpecChange: (spec: MveVoiceDesignSpec) => void;
+  designCandidates?: VoiceDesignCandidate[];
+  candidateSynthesisProgress?: Record<
+    string,
+    VoiceDesignCandidateSynthesisProgress
+  >;
+  savingCandidateId?: string | null;
+  regeneratingCandidateId?: string | null;
+  onSaveDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
+  onRegenerateDesignCandidate?: (candidate: VoiceDesignCandidate) => void;
   onSpeedChange: (value: number) => void;
   onPlayPreview: () => void;
   onVoiceAssignedProfile: (profile: MveVoiceProfile) => void;
@@ -49,6 +76,8 @@ export interface VoiceProfileEditorFormProps {
   onCloneRevoke?: () => void;
   onCloneStart?: () => void;
   onTuneSubmit?: (options: VoiceTuneSubmitOptions) => void;
+  voiceProvider?: VoiceProviderId;
+  onVoiceProviderChange?: (provider: VoiceProviderId) => void;
 }
 
 export function VoiceProfileEditorForm({
@@ -59,12 +88,16 @@ export function VoiceProfileEditorForm({
   profile,
   previewText,
   description,
+  designSpec,
   speed,
   voiceId,
   isPlaying,
   generateBusy,
   generateDisabled,
   generateHint,
+  showDesignVoice,
+  designVoiceDisabled,
+  onDesignFromDescription,
   cloneBusy,
   cloneDisabled,
   cloneStartBusy,
@@ -73,6 +106,13 @@ export function VoiceProfileEditorForm({
   latestConsent,
   onPreviewTextChange,
   onDescriptionChange,
+  onDesignSpecChange,
+  designCandidates,
+  candidateSynthesisProgress,
+  savingCandidateId,
+  regeneratingCandidateId,
+  onSaveDesignCandidate,
+  onRegenerateDesignCandidate,
   onSpeedChange,
   onPlayPreview,
   onVoiceAssignedProfile,
@@ -81,6 +121,8 @@ export function VoiceProfileEditorForm({
   onCloneRevoke,
   onCloneStart,
   onTuneSubmit,
+  voiceProvider,
+  onVoiceProviderChange,
 }: VoiceProfileEditorFormProps) {
   return (
     <div className="space-y-4 py-1">
@@ -92,8 +134,9 @@ export function VoiceProfileEditorForm({
         profile={profile}
         previewText={previewText}
         onAssignedProfile={onVoiceAssignedProfile}
+        provider={voiceProvider}
+        onProviderChange={onVoiceProviderChange}
         showLabel
-        label="Stimme (Kokoro lokal)"
       />
 
       <div className="space-y-1.5">
@@ -143,19 +186,13 @@ export function VoiceProfileEditorForm({
         />
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="mve-voice-desc" className="text-xs font-bold">
-          Beschreibung (optional)
-        </Label>
-        <Textarea
-          id="mve-voice-desc"
-          value={description}
-          onChange={(e) => onDescriptionChange(e.target.value)}
-          rows={3}
-          className="text-sm resize-none"
-          placeholder="z. B. warme, ruhige Erzählerstimme mit leichtem Akzent"
-        />
-      </div>
+      <VoiceDesignDescriptionPanel
+        description={description}
+        designSpec={designSpec}
+        disabled={generateBusy}
+        onDescriptionChange={onDescriptionChange}
+        onDesignSpecChange={onDesignSpecChange}
+      />
 
       <VoiceProfileFutureSections
         description={description}
@@ -164,11 +201,23 @@ export function VoiceProfileEditorForm({
         generateBusy={generateBusy}
         generateDisabled={generateDisabled}
         generateHint={generateHint}
+        showDesign={showDesignVoice}
+        designDisabled={designVoiceDisabled}
+        onDesignFromDescription={onDesignFromDescription}
+        designCandidates={designCandidates}
+        candidateSynthesisProgress={candidateSynthesisProgress}
+        savingCandidateId={savingCandidateId}
+        regeneratingCandidateId={regeneratingCandidateId}
+        onSaveDesignCandidate={onSaveDesignCandidate}
+        onRegenerateDesignCandidate={onRegenerateDesignCandidate}
         cloneBusy={cloneBusy}
         cloneDisabled={cloneDisabled}
         cloneStartBusy={cloneStartBusy}
         tuneBusy={tuneBusy}
         tuneDisabled={tuneDisabled}
+        showClone={isProfileVoiceProvider(
+          voiceProvider ?? resolveVoiceProviderId(profile?.engine),
+        )}
         onSuggestFromDescription={onSuggestFromDescription}
         onCloneSubmit={onCloneSubmit}
         onCloneRevoke={onCloneRevoke}

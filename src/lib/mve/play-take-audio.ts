@@ -15,7 +15,7 @@ export async function playMveTakeAudio(audioUrl: string): Promise<void> {
   }
   if (audioUrl.startsWith("dummy://")) {
     throw new Error(
-      "Dummy-Take ohne Datei — mit Kokoro-Stimme rendern für hörbares Audio.",
+      "Dummy-Take ohne Datei — mit Voicebox-Stimme rendern für hörbares Audio.",
     );
   }
 

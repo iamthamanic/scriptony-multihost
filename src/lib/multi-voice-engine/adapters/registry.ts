@@ -3,10 +3,11 @@
  * Location: src/lib/multi-voice-engine/adapters/registry.ts
  */
 
+import { DEFAULT_VOICE_ENGINE } from "@/lib/config/voice-engine";
 import type { VoiceEngineAdapter } from "./voice-engine-adapter";
 import { UnknownVoiceEngineError } from "./voice-engine-adapter";
 
-const DEFAULT_ENGINE = "kokoro";
+const DEFAULT_ENGINE = DEFAULT_VOICE_ENGINE;
 
 export class VoiceEngineRegistry {
   private readonly adapters = new Map<string, VoiceEngineAdapter>();
@@ -17,9 +18,10 @@ export class VoiceEngineRegistry {
 
   resolve(engine: string | undefined | null): VoiceEngineAdapter {
     const key = engine?.trim() || DEFAULT_ENGINE;
-    const adapter = this.adapters.get(key);
+    const normalized = key === "kokoro" ? "voicebox" : key;
+    const adapter = this.adapters.get(normalized);
     if (!adapter) {
-      throw new UnknownVoiceEngineError(key);
+      throw new UnknownVoiceEngineError(normalized);
     }
     return adapter;
   }

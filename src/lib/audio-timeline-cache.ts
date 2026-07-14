@@ -49,6 +49,47 @@ export function addClipToAudioTimelineCache(
   );
 }
 
+/** Insert or merge clip by id (e.g. shell → upload with peaks). */
+export function upsertClipInAudioTimelineCache(
+  queryClient: QueryClient,
+  projectId: string,
+  clip: AudioClip,
+): void {
+  queryClient.setQueryData<AudioTimelineData>(
+    queryKeys.timeline.audioByProject(projectId),
+    (old) => {
+      const sceneId = clip.sceneId;
+      if (!old) {
+        return {
+          acts: [],
+          sequences: [],
+          scenes: [],
+          tracksByScene: {},
+          clipsByScene: { [sceneId]: [clip] },
+          voiceAssignments: {},
+        };
+      }
+      const existing = old.clipsByScene[sceneId] ?? [];
+      const idx = existing.findIndex((c) => c.id === clip.id);
+      const nextClips =
+        idx === -1
+          ? sortSceneClips([...existing, clip])
+          : sortSceneClips([
+              ...existing.slice(0, idx),
+              { ...existing[idx], ...clip },
+              ...existing.slice(idx + 1),
+            ]);
+      return {
+        ...old,
+        clipsByScene: {
+          ...old.clipsByScene,
+          [sceneId]: nextClips,
+        },
+      };
+    },
+  );
+}
+
 /** Drop deleted clips so empty lanes vanish immediately. */
 export function removeClipsFromAudioTimelineCache(
   queryClient: QueryClient,

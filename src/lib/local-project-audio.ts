@@ -8,6 +8,7 @@ import {
 } from "@/lib/api-adapter/runtime-dispatch";
 import { LocalStorageService } from "@/backend/local/LocalStorageService";
 import { decodeAudioFileToPeaks } from "./timeline-add-audio";
+import { resolveLocalAudioPlaybackUrl } from "./local-audio-playback-url";
 
 export async function resolveClipPlaybackUrl(
   audioFileId: string | undefined,
@@ -21,8 +22,7 @@ export async function resolveClipPlaybackUrl(
   try {
     const backend = requireLocalBackend();
     const abs = `${backend.localProject.dirPath}/${audioFileId.replace(/^\/+/, "")}`;
-    const { convertFileSrc } = await import("@tauri-apps/api/core");
-    return convertFileSrc(abs);
+    return await resolveLocalAudioPlaybackUrl(abs);
   } catch {
     return null;
   }

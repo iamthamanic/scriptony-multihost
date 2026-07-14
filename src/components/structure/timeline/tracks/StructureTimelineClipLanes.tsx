@@ -20,6 +20,7 @@ export interface StructureTimelineClipLanesBaseProps {
   viewStartSec: number;
   totalWidthPx: number;
   scenes?: TimelineSceneRef[];
+  structurePicker?: import("../../../structure/timeline/mve/MveStructureScenePickerModal").MveStructurePickerRefs;
   sceneBlocks?: SceneTimeBlock[];
   acts?: Act[];
   sequences?: Sequence[];
@@ -52,6 +53,7 @@ export interface StructureTimelineClipLanesBaseProps {
     | "isReordering"
   > & { allClips?: AudioClip[] };
   mveLines?: import("../../../timeline/audio/AudioClipLaneContent").MveLineClipHandlers;
+  readingSpeedWpm?: number;
   onAddMveTextBlock?: (payload: {
     laneIndex: number;
     characterId: string;

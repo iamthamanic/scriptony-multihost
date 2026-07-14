@@ -204,6 +204,8 @@
     --color-neutral-600: oklch(0.439 0 0);
     --color-neutral-700: oklch(0.371 0 0);
     --color-neutral-900: oklch(0.205 0 0);
+    --color-zinc-900: oklch(0.21 0.006 285.885);
+    --color-zinc-950: oklch(0.141 0.005 285.823);
     --color-black: #000;
     --color-white: #fff;
     --spacing: 0.25rem;
@@ -9244,4 +9246,210 @@ span[data-type="character-mention"]:hover {
   padding-left: 6px;
   padding-right: 6px;
   background-clip: content-box;
+}
+
+/* MVE dialog clip toolbar hover/focus (Regie/Enhance/Delete/Takes/Audio-Add
+   icon buttons — #49). src/index.css is a frozen Tailwind v4 snapshot with no
+   live build step, so utility classes added after the snapshot (hover:bg-white/*,
+   hover:text-white, hover:bg-red-500/20, hover:text-red-300, focus:ring-1,
+   focus:ring-white/50) never emit CSS and render with zero hover/focus
+   feedback. These are hand-added here to match already-used Tailwind syntax.
+   Being unlayered, they also win over the shadcn Button "ghost" variant's
+   dark:hover:bg-primary/* rules (which live in @layer utilities) without any
+   className changes on the buttons themselves. */
+@media (hover: hover) {
+  .hover\:bg-white\/10:hover {
+    background-color: var(--color-white);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .hover\:bg-white\/10:hover {
+      background-color: color-mix(
+        in oklab,
+        var(--color-white) 10%,
+        transparent
+      );
+    }
+  }
+}
+
+@media (hover: hover) {
+  .hover\:bg-white\/20:hover {
+    background-color: var(--color-white);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .hover\:bg-white\/20:hover {
+      background-color: color-mix(
+        in oklab,
+        var(--color-white) 20%,
+        transparent
+      );
+    }
+  }
+}
+
+@media (hover: hover) {
+  .hover\:bg-white\/30:hover {
+    background-color: var(--color-white);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .hover\:bg-white\/30:hover {
+      background-color: color-mix(
+        in oklab,
+        var(--color-white) 30%,
+        transparent
+      );
+    }
+  }
+}
+
+@media (hover: hover) {
+  .hover\:text-white:hover {
+    color: var(--color-white);
+  }
+}
+
+@media (hover: hover) {
+  .hover\:bg-red-500\/20:hover {
+    background-color: var(--color-red-500);
+  }
+
+  @supports (color: color-mix(in lab, red, red)) {
+    .hover\:bg-red-500\/20:hover {
+      background-color: color-mix(
+        in oklab,
+        var(--color-red-500) 20%,
+        transparent
+      );
+    }
+  }
+}
+
+@media (hover: hover) {
+  .hover\:text-red-300:hover {
+    color: var(--color-red-300);
+  }
+}
+
+.focus\:ring-1:focus {
+  --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0
+    calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+.focus\:ring-white\/50:focus {
+  --tw-ring-color: var(--color-white);
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  .focus\:ring-white\/50:focus {
+    --tw-ring-color: color-mix(in oklab, var(--color-white) 50%, transparent);
+  }
+}
+
+/* MVE dialog clip card base contrast (#49). bg-zinc-900/95 is the card's own
+   always-dark backdrop (MveDialogClipCard) and bg-zinc-950(/95)/text-zinc-950
+   are the MveEmotionChip pill colors — none of the zinc-* scale was ever
+   captured in this frozen snapshot, so the card rendered with almost no
+   background at all and every hover overlay on top of it looked "invisible"
+   because there was nothing to contrast against. focus-visible:ring-1/
+   ring-white/50 were also missing (used by the audio "+" button and the
+   emotion-chip remove button focus rings). Hand-added to match already-used
+   Tailwind syntax, same approach as the hover/focus block above. */
+.bg-zinc-900\/95 {
+  background-color: var(--color-zinc-900);
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  .bg-zinc-900\/95 {
+    background-color: color-mix(
+      in oklab,
+      var(--color-zinc-900) 95%,
+      transparent
+    );
+  }
+}
+
+.bg-zinc-950 {
+  background-color: var(--color-zinc-950);
+}
+
+.bg-zinc-950\/95 {
+  background-color: var(--color-zinc-950);
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  .bg-zinc-950\/95 {
+    background-color: color-mix(
+      in oklab,
+      var(--color-zinc-950) 95%,
+      transparent
+    );
+  }
+}
+
+.text-zinc-950 {
+  color: var(--color-zinc-950);
+}
+
+.dark\:bg-white:is(.dark *) {
+  background-color: var(--color-white);
+}
+
+.dark\:text-zinc-950:is(.dark *) {
+  color: var(--color-zinc-950);
+}
+
+.focus-visible\:ring-1:focus-visible {
+  --tw-ring-shadow: var(--tw-ring-inset,) 0 0 0
+    calc(1px + var(--tw-ring-offset-width)) var(--tw-ring-color, currentcolor);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow),
+    var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow);
+}
+
+.focus-visible\:ring-white\/50:focus-visible {
+  --tw-ring-color: var(--color-white);
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  .focus-visible\:ring-white\/50:focus-visible {
+    --tw-ring-color: color-mix(in oklab, var(--color-white) 50%, transparent);
+  }
+}
+
+.dark\:focus-visible\:ring-zinc-900\/40:is(.dark *):focus-visible {
+  --tw-ring-color: var(--color-zinc-900);
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  .dark\:focus-visible\:ring-zinc-900\/40:is(.dark *):focus-visible {
+    --tw-ring-color: color-mix(
+      in oklab,
+      var(--color-zinc-900) 40%,
+      transparent
+    );
+  }
+}
+
+/* Radix popover/dropdown menus use z-[110] (T32) but this frozen snapshot never
+   included the arbitrary z-index utility — portal content stacked at auto. */
+.z-\[110\] {
+  z-index: 110;
+}
+
+@media (hover: hover) {
+  .dark\:hover\:bg-white\/90:is(.dark *):hover {
+    background-color: var(--color-white);
+  }
+}
+
+@supports (color: color-mix(in lab, red, red)) {
+  .dark\:hover\:bg-white\/90:is(.dark *):hover {
+    background-color: color-mix(in oklab, var(--color-white) 90%, transparent);
+  }
 }

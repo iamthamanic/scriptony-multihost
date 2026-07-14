@@ -6,10 +6,13 @@
 import {
   createMveLine,
   getMveLineByAudioClipId,
+  getMveLinesByScene,
+  updateMveLine,
 } from "@/lib/api-adapter/mve-adapter";
 import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { AudioClip } from "@/lib/types";
+import { findBindableTextOnlyLine } from "@/lib/mve/mve-dialog-clip-dedup";
 
 function isMveDialogClip(clip: AudioClip): boolean {
   const trackType = clip.trackType ?? "dialog";
@@ -33,6 +36,22 @@ export async function ensureMveLineForClip(
 
   const existing = await getMveLineByAudioClipId(params.clip.id);
   if (existing) return existing;
+
+  const sceneId = params.clip.sceneId;
+  if (sceneId) {
+    const sceneLines = await getMveLinesByScene(sceneId);
+    const bindable = findBindableTextOnlyLine(sceneLines, {
+      sceneId,
+      characterId: params.characterId ?? params.clip.characterId,
+    });
+    if (bindable) {
+      return updateMveLine(bindable.id, {
+        audioClipId: params.clip.id,
+        status: "dirty",
+        text: params.text ?? params.clip.content ?? bindable.text,
+      });
+    }
+  }
 
   const trackType = params.clip.trackType ?? "dialog";
   return createMveLine(params.projectId, {

@@ -64,6 +64,7 @@ export class LocalMveVoiceProfileRepository {
       baseVoiceId: payload.baseVoiceId,
       referenceAudioUrl: payload.referenceAudioUrl,
       description: payload.description,
+      designSpec: payload.designSpec ?? undefined,
       attributes: payload.attributes,
       defaultSettings: payload.defaultSettings,
       consentStatus: payload.consentStatus ?? "not_required",
@@ -77,10 +78,10 @@ export class LocalMveVoiceProfileRepository {
     await this.db.run(
       `INSERT INTO ${TABLE.MVE_VOICE_PROFILES} (
         id, project_id, user_id, character_id, name, language, engine, profile_type,
-        status, base_voice_id, reference_audio_url, description, attributes_json,
+        status, base_voice_id, reference_audio_url, description, design_spec_json, attributes_json,
         default_settings_json, consent_status, commercial_use_allowed, preview_text,
         version, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         profile.id,
         projectId,
@@ -94,6 +95,7 @@ export class LocalMveVoiceProfileRepository {
         profile.baseVoiceId ?? null,
         profile.referenceAudioUrl ?? null,
         profile.description ?? null,
+        profile.designSpec ? JSON.stringify(profile.designSpec) : null,
         profile.attributes ? JSON.stringify(profile.attributes) : null,
         profile.defaultSettings
           ? JSON.stringify(profile.defaultSettings)
@@ -164,6 +166,10 @@ export class LocalMveVoiceProfileRepository {
     if (patch.description !== undefined) {
       setParts.push("description = ?");
       values.push(patch.description ?? null);
+    }
+    if (patch.designSpec !== undefined) {
+      setParts.push("design_spec_json = ?");
+      values.push(patch.designSpec ? JSON.stringify(patch.designSpec) : null);
     }
     if (patch.attributes !== undefined) {
       setParts.push("attributes_json = ?");

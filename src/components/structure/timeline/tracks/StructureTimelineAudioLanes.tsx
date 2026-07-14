@@ -11,7 +11,6 @@ import {
   useCallback,
   type RefObject,
 } from "react";
-import { Plus } from "lucide-react";
 import { useProjectClipLanes } from "../../../../hooks/useProjectClipLanes";
 import { useTimelineAddAudio } from "../../../../hooks/useTimelineAddAudio";
 import { useMveLines } from "../../../../hooks/useMveLines";
@@ -24,7 +23,10 @@ import type { TimelineSceneRef } from "../../../../lib/timeline-add-audio";
 import type { MveLine } from "../../../../lib/multi-voice-engine/schema/line";
 import { LANE_UI, laneIndexToTrackType } from "../../../../lib/audio-lane";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
-import type { SceneTimeBlock } from "@/lib/mve/resolve-scene-at-timeline-sec";
+import {
+  nextLineOrderIndexForScene,
+  type SceneTimeBlock,
+} from "@/lib/mve/resolve-scene-at-timeline-sec";
 import {
   buildStructurePickerTree,
   findSceneLabelInTree,
@@ -35,18 +37,27 @@ import {
   StructureTimelineClipLaneContent,
   StructureTimelineClipLaneLabels,
 } from "./StructureTimelineClipLanes";
-import { MetronomeSettingsButton } from "../modals/MetronomeSettingsButton";
+import {
+  StructureTimelineAudioSectionFooter,
+  StructureTimelineAudioSectionHeader,
+} from "./StructureTimelineAudioSectionChrome";
+import { useQueryClient } from "@tanstack/react-query";
+import { updateClip } from "@/lib/api-adapter/clips-adapter";
+import { decodeLocalAudioToPeaks } from "@/lib/mve/decode-local-audio-to-peaks";
+import { queryKeys } from "@/lib/react-query";
 import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
 
 export interface StructureTimelineAudioLanesProps {
   projectId: string;
   projectType?: string;
+  readingSpeedWpm?: number;
   pxPerSec: number;
   viewStartSec: number;
   totalWidthPx: number;
   currentTimeSec: number;
   linkedLaneAudio?: LinkedLaneAudioContext;
   sceneBlocksRef?: RefObject<SceneTimeBlock[]>;
+  onStructureSynced?: () => void | Promise<void>;
 }
 
 export function useStructureTimelineAudioLanes(
@@ -54,12 +65,20 @@ export function useStructureTimelineAudioLanes(
 ) {
   const [expandedLane, setExpandedLane] = useState<number | null>(null);
   const lanes = useProjectClipLanes(props.projectId, props.projectType);
-  const mve = useMveLines(props.projectId);
+  const mve = useMveLines(props.projectId, {
+    projectType: props.projectType,
+    readingSpeedWpm: props.readingSpeedWpm,
+    getSceneBlocks: () => props.sceneBlocksRef?.current ?? [],
+    getPxPerSec: () => props.pxPerSec,
+    onStructureSynced: props.onStructureSynced,
+  });
   const mveRender = useMveLineRender(props.projectId);
   const mveLaneLinks = useMveLaneLinks(props.projectId);
   const mveVoices = useMveVoiceProfiles(props.projectId);
   const metronome = useMetronomeSettings(props.projectId);
+  const queryClient = useQueryClient();
   const backfilledClipIds = useRef(new Set<string>());
+  const backfilledWaveformClipIds = useRef(new Set<string>());
 
   useEffect(() => {
     if (!mve.enabled || mve.isLoading) return;
@@ -93,6 +112,34 @@ export function useStructureTimelineAudioLanes(
     mve.ensureForClip,
     lanes.characterLanes,
   ]);
+
+  useEffect(() => {
+    if (!isLocalProfile()) return;
+    void (async () => {
+      for (const clip of lanes.allClips) {
+        if (backfilledWaveformClipIds.current.has(clip.id)) continue;
+        if (!clip.audioFileId || clip.waveformData?.length) {
+          if (clip.audioFileId) backfilledWaveformClipIds.current.add(clip.id);
+          continue;
+        }
+        const trackType = clip.trackType ?? "dialog";
+        if (trackType !== "dialog" && trackType !== "narrator") continue;
+
+        backfilledWaveformClipIds.current.add(clip.id);
+        try {
+          const decoded = await decodeLocalAudioToPeaks(clip.audioFileId, 64);
+          if (decoded.peaks.length === 0) continue;
+          await updateClip(clip.id, { waveformData: decoded.peaks });
+          void queryClient.invalidateQueries({
+            queryKey: queryKeys.timeline.audioByProject(props.projectId),
+          });
+        } catch (err) {
+          backfilledWaveformClipIds.current.delete(clip.id);
+          console.warn("[MVE] Waveform backfill failed:", clip.id, err);
+        }
+      }
+    })();
+  }, [lanes.allClips, props.projectId, queryClient]);
 
   const getMveRenderBlockReason = useCallback(
     (line: MveLine) => {
@@ -144,6 +191,14 @@ export function useStructureTimelineAudioLanes(
       await mve.moveLineToScene(lineId, targetSceneId, sceneBlocks);
     },
     [mve, sceneBlocks],
+  );
+
+  const handleReorderLineInScene = useCallback(
+    async (lineId: string, sceneId: string, targetIndex: number) => {
+      if (!mve.enabled) return;
+      await mve.reorderLineInScene(lineId, sceneId, targetIndex);
+    },
+    [mve],
   );
 
   const structurePickerTree = useMemo(
@@ -220,21 +275,52 @@ export function useStructureTimelineAudioLanes(
     ],
   );
 
+  const structurePicker = useMemo(
+    () =>
+      mve.enabled
+        ? {
+            acts: lanes.acts,
+            sequences: lanes.sequences,
+            scenes: lanes.scenes,
+          }
+        : undefined,
+    [mve.enabled, lanes.acts, lanes.sequences, lanes.scenes],
+  );
+
+  const getSceneLabel = useCallback(
+    (sceneId: string) => findSceneLabelInTree(structurePickerTree, sceneId),
+    [structurePickerTree],
+  );
+
+  const handleDeleteLine = useCallback(
+    async (lineId: string) => {
+      if (!mve.enabled) return;
+      await mve.deleteLine(lineId);
+    },
+    [mve],
+  );
+
   const mveLines = useMemo(
     () =>
       mve.enabled && props.projectId
         ? {
             projectId: props.projectId,
+            projectType: props.projectType,
             lineByClipId: mve.lineByClipId,
             linesByCharacterId,
+            structurePicker,
             onSaveText: mve.saveLineText,
             onSaveDirection: mve.saveLineDirection,
             onBindAudioClip: mve.bindAudioClip,
             onMoveLineToScene: handleMoveLineToScene,
+            onReorderLineInScene: handleReorderLineInScene,
+            onSyncSceneForDraft: mve.syncSceneForDraftLine,
             linkedSceneIdForLane,
             getRenderBlockReason: getMveRenderBlockReason,
             onRenderLine: mveRender.renderLine,
             isRenderingLineId: mveRender.renderingLineId,
+            getSceneLabel,
+            onDeleteLine: handleDeleteLine,
           }
         : undefined,
     [
@@ -244,12 +330,18 @@ export function useStructureTimelineAudioLanes(
       mve.saveLineDirection,
       mve.bindAudioClip,
       handleMoveLineToScene,
+      handleReorderLineInScene,
+      handleDeleteLine,
+      mve.syncSceneForDraftLine,
       linesByCharacterId,
       props.projectId,
+      props.projectType,
       mveRender.renderLine,
       mveRender.renderingLineId,
       getMveRenderBlockReason,
       linkedSceneIdForLane,
+      structurePicker,
+      getSceneLabel,
     ],
   );
 
@@ -309,17 +401,19 @@ export function useStructureTimelineAudioLanes(
       startSec: number;
     }) => {
       if (!mve.enabled) return;
-      const orderIndex = lanes.scenes.findIndex(
-        (s: TimelineSceneRef) => s.id === payload.sceneId,
+      const orderIndex = nextLineOrderIndexForScene(
+        mve.lines,
+        payload.sceneId,
+        payload.characterId,
       );
       await mve.createLine({
         sceneId: payload.sceneId,
         characterId: payload.characterId,
         text: "",
-        orderIndex: Math.max(orderIndex, 0),
+        orderIndex,
       });
     },
-    [mve, lanes.scenes],
+    [mve],
   );
 
   const laneProps = {
@@ -327,6 +421,7 @@ export function useStructureTimelineAudioLanes(
     viewStartSec: props.viewStartSec,
     totalWidthPx: props.totalWidthPx,
     scenes: lanes.scenes,
+    structurePicker,
     sceneBlocks,
     laneGroups: lanes.laneGroups,
     sortedLaneIndices: lanes.sortedLaneIndices,
@@ -356,6 +451,7 @@ export function useStructureTimelineAudioLanes(
     },
     mveLines,
     onAddMveTextBlock: mve.enabled ? handleAddMveTextBlock : undefined,
+    readingSpeedWpm: props.readingSpeedWpm,
     linkedSceneIdForLane,
     getMveLaneLinkForLane,
     mveLaneLinkBase,
@@ -393,33 +489,18 @@ export function StructureTimelineAudioLaneLabels({
         className="hidden"
         onChange={addAudio.onFileInputChange}
       />
-      <div
-        className="border-b border-border px-2 py-1 flex items-center justify-between gap-2 bg-card/80"
-        style={{ minHeight: "1.75rem" }}
-      >
-        <span className="text-[9px] font-semibold text-foreground">
-          Audio-Spuren
-        </span>
-        {metronome && isLocalProfile() ? (
-          <MetronomeSettingsButton
-            config={metronome.config}
-            onSave={metronome.setConfig}
-          />
-        ) : null}
-      </div>
+      <StructureTimelineAudioSectionHeader
+        side="labels"
+        metronome={metronome}
+      />
       <StructureTimelineClipLaneLabels {...laneProps} fullWidthSidebar />
-      <div className="border-t border-border px-2 py-2 bg-card/80">
-        <button
-          type="button"
-          disabled={addAudio.isBusy}
-          onClick={() => void addAudio.addSfxLane()}
-          className="flex items-center justify-center gap-1 w-full py-1 text-[10px] rounded border border-dashed border-orange-400/60 text-muted-foreground hover:text-foreground hover:bg-orange-500/10 disabled:opacity-50"
-          aria-label="SFX-Spur hinzufügen"
-        >
-          <Plus className="size-3" />
-          SFX
-        </button>
-      </div>
+      <StructureTimelineAudioSectionFooter
+        side="labels"
+        addAudio={{
+          isBusy: addAudio.isBusy,
+          addSfxLane: addAudio.addSfxLane,
+        }}
+      />
     </div>
   );
 }
@@ -427,10 +508,14 @@ export function StructureTimelineAudioLaneLabels({
 /** Scroll area: clip lanes aligned with structure timeline width. */
 export function StructureTimelineAudioLaneScrollRows({
   laneProps,
+  metronome,
   isLoading,
+  scrollStackRef,
 }: {
   laneProps: ReturnType<typeof useStructureTimelineAudioLanes>["laneProps"];
+  metronome?: ReturnType<typeof useStructureTimelineAudioLanes>["metronome"];
   isLoading: boolean;
+  scrollStackRef?: RefObject<HTMLDivElement | null>;
 }) {
   if (isLoading) {
     return (
@@ -445,7 +530,18 @@ export function StructureTimelineAudioLaneScrollRows({
 
   return (
     <div className="relative border-t-2 border-primary/30 shrink-0">
-      <StructureTimelineClipLaneContent {...laneProps} />
+      <StructureTimelineAudioSectionHeader
+        side="scroll"
+        metronome={metronome}
+      />
+      <div
+        ref={scrollStackRef}
+        data-testid="timeline-audio-dialog-scroll-stack"
+        className="relative"
+      >
+        <StructureTimelineClipLaneContent {...laneProps} />
+      </div>
+      <StructureTimelineAudioSectionFooter side="scroll" />
     </div>
   );
 }
@@ -473,6 +569,7 @@ export function StructureTimelineAudioLanesStack(
       >
         <StructureTimelineAudioLaneScrollRows
           laneProps={laneProps}
+          metronome={metronome}
           isLoading={lanes.isLoading}
         />
       </div>

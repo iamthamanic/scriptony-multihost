@@ -19,7 +19,7 @@ export default defineConfig({
     ? undefined
     : {
         command:
-          "VITE_SCRIPTONY_RUNTIME=local VITE_SCRIPTONY_ALLOW_BROWSER_LOCAL=1 npm run dev:vite",
+          "VITE_SCRIPTONY_RUNTIME=local VITE_SCRIPTONY_ALLOW_BROWSER_LOCAL=1 VITE_DEFAULT_VOICE_ENGINE=voicebox npm run dev:vite",
         url: baseURL,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

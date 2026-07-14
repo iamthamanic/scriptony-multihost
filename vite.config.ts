@@ -390,6 +390,22 @@ export default defineConfig(({ mode }) => {
     secure: false,
   };
 
+  // Voicebox TTS — same-origin in dev (Tauri devUrl is localhost:3000; Voicebox CORS rejects that origin)
+  const voiceboxTarget =
+    env.VITE_VOICEBOX_BASE_URL?.trim() || "http://127.0.0.1:17493";
+  if (isProxyTargetHostAllowed(voiceboxTarget, allowedProxyTargetHosts)) {
+    proxy["/__voicebox"] = {
+      target: voiceboxTarget,
+      changeOrigin: true,
+      secure: false,
+      rewrite: (p) => p.replace(/^\/__voicebox/, "") || "/",
+    };
+  } else if (isDev) {
+    console.warn(
+      `[vite.config] VITE_VOICEBOX_BASE_URL host not allowed for dev proxy: ${voiceboxTarget}`,
+    );
+  }
+
   return {
     define:
       isDev && resolvedFunctionDomainMapRaw
@@ -505,7 +521,8 @@ export default defineConfig(({ mode }) => {
           ? true
           : "localhost",
       strictPort: true,
-      open: true,
+      /** Tauri WebView loads this URL — browser auto-open is only for `npm run dev:web`. */
+      open: process.env.SCRIPTONY_OPEN_BROWSER === "1",
       proxy,
     },
   };

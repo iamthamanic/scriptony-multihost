@@ -11,7 +11,10 @@ import type {
 } from "../timeline-tree/types";
 import { DEFAULT_MIN_ITEM_DURATION_FRAMES } from "../timeline-tree/types";
 import { validateTimelineTree } from "../timeline-tree/invariants";
-import { repackPackedTimeline } from "../timeline-tree/repair";
+import {
+  repackPackedTimeline,
+  repairTimelineTree,
+} from "../timeline-tree/repair";
 import {
   cloneTimelineTree,
   diffChangedIds,
@@ -311,6 +314,7 @@ export function reparentStructureItem(
   repackPackedTimeline(next, minDur);
   finalizeHierarchyBubble(next, item.id, minDur);
   enforceParentShellsFromChildren(next, minDur);
+  repairTimelineTree(next, { minItemDurationFrames: minDur });
 
   const errors = validateTimelineTree(next, { minItemDurationFrames: minDur });
   if (errors.length > 0) {

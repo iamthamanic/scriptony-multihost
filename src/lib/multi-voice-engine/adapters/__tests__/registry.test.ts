@@ -27,15 +27,15 @@ describe("VoiceEngineRegistry", () => {
     expect(() => registry.resolve("piper")).toThrow(UnknownVoiceEngineError);
   });
 
-  it("defaults to kokoro when engine empty", () => {
+  it("defaults to voicebox when engine empty", () => {
     const registry = new VoiceEngineRegistry();
     registry.register({
-      engineName: "kokoro",
+      engineName: "voicebox",
       capabilities: dummyVoiceEngineAdapter.capabilities,
       renderLine: dummyVoiceEngineAdapter.renderLine.bind(
         dummyVoiceEngineAdapter,
       ),
     });
-    expect(registry.resolve("").engineName).toBe("kokoro");
+    expect(registry.resolve("").engineName).toBe("voicebox");
   });
 });

@@ -19,7 +19,7 @@ export interface UseMveTextBlockUploadRecordOptions {
   enabled: boolean;
   projectId: string | undefined;
   effectiveSceneId: string | null;
-  createClipShell: () => Promise<AudioClip>;
+  createClipShell: (sceneIdOverride?: string) => Promise<AudioClip>;
   cacheAndBind: (clip: AudioClip) => Promise<void>;
   syncClipIfProject: () => Promise<void>;
   sceneSelection: Pick<
@@ -30,7 +30,7 @@ export interface UseMveTextBlockUploadRecordOptions {
 }
 
 export interface UseMveTextBlockUploadRecordResult {
-  uploadFile: (file: File) => Promise<void>;
+  uploadFile: (file: File, sceneIdOverride?: string) => Promise<void>;
 }
 
 export function useMveTextBlockUploadRecord({
@@ -52,24 +52,27 @@ export function useMveTextBlockUploadRecord({
   );
 
   const uploadFile = useCallback(
-    async (file: File) => {
+    async (file: File, sceneIdOverride?: string) => {
       if (!enabled) return;
       if (!projectId) {
         toast.info("Upload nur in geöffneten lokalen Projekten.");
         return;
       }
-      if (!effectiveSceneId) {
+      const activeSceneId = sceneIdOverride ?? effectiveSceneId;
+      if (!activeSceneId) {
         requestScene("upload", file);
         return;
       }
       setIsUploading(true);
       try {
-        const clip = await createClipShell();
+        const clip = await createClipShell(activeSceneId);
         const persisted = await persistClipAudioFile(file);
         const updated = await updateClip(clip.id, {
           audioFileId: persisted.storagePath,
-          startSec: 0,
-          endSec: persisted.durationSec,
+          startSec: clip.startSec,
+          endSec: clip.startSec + persisted.durationSec,
+          waveformData:
+            persisted.peaks.length > 0 ? persisted.peaks : undefined,
         });
         await cacheAndBind(updated);
         await syncClipIfProject();

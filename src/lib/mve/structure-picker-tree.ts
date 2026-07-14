@@ -22,6 +22,17 @@ export interface StructurePickerSceneNode {
   label: string;
 }
 
+export interface StructurePickerDiagnostic {
+  code:
+    | "scene_missing_parent"
+    | "scene_parent_is_act"
+    | "sequence_missing_act"
+    | "act_without_sequences"
+    | "sequence_without_scenes";
+  message: string;
+  nodeId?: string;
+}
+
 function actLabel(act: Act, index: number): string {
   const title = act.title?.trim();
   return title
@@ -45,6 +56,75 @@ function sceneLabel(scene: Scene): string {
   return "Szene";
 }
 
+const DIRECT_SCENES_SUFFIX = "__direct_scenes";
+
+/** Dev/support: explain why acts or scenes may be missing from the picker tree. */
+export function diagnoseStructurePicker(
+  acts: Act[],
+  sequences: Sequence[],
+  scenes: Scene[],
+): StructurePickerDiagnostic[] {
+  const actIds = new Set(acts.map((a) => a.id));
+  const sequenceIds = new Set(sequences.map((s) => s.id));
+  const diagnostics: StructurePickerDiagnostic[] = [];
+
+  for (const scene of scenes) {
+    const parentId = scene.sequenceId?.trim();
+    if (!parentId) {
+      diagnostics.push({
+        code: "scene_missing_parent",
+        message: `Szene „${sceneLabel(scene)}“ hat keine Sequenz-Zuordnung (parent_id leer).`,
+        nodeId: scene.id,
+      });
+      continue;
+    }
+    if (actIds.has(parentId) && !sequenceIds.has(parentId)) {
+      diagnostics.push({
+        code: "scene_parent_is_act",
+        message: `Szene „${sceneLabel(scene)}“ hängt direkt unter einem Akt statt unter einer Sequenz — wird unter „Szenen (direkt unter Akt)“ angezeigt.`,
+        nodeId: scene.id,
+      });
+    } else if (!sequenceIds.has(parentId) && !actIds.has(parentId)) {
+      diagnostics.push({
+        code: "scene_missing_parent",
+        message: `Szene „${sceneLabel(scene)}“ verweist auf unbekannten Parent „${parentId}“.`,
+        nodeId: scene.id,
+      });
+    }
+  }
+
+  for (const seq of sequences) {
+    if (!seq.actId?.trim() || !actIds.has(seq.actId)) {
+      diagnostics.push({
+        code: "sequence_missing_act",
+        message: `Sequenz „${sequenceLabel(seq, 0)}“ hat keinen gültigen Akt-Parent.`,
+        nodeId: seq.id,
+      });
+    }
+    const hasScenes = scenes.some((s) => s.sequenceId?.trim() === seq.id);
+    if (!hasScenes) {
+      diagnostics.push({
+        code: "sequence_without_scenes",
+        message: `Sequenz „${sequenceLabel(seq, 0)}“ enthält noch keine Szenen — im Picker sichtbar, aber ohne Auswahl.`,
+        nodeId: seq.id,
+      });
+    }
+  }
+
+  for (const act of acts) {
+    const actSequences = sequences.filter((s) => s.actId === act.id);
+    if (actSequences.length === 0) {
+      diagnostics.push({
+        code: "act_without_sequences",
+        message: `Akt „${actLabel(act, 0)}“ hat noch keine Sequenzen.`,
+        nodeId: act.id,
+      });
+    }
+  }
+
+  return diagnostics;
+}
+
 export function buildStructurePickerTree(
   acts: Act[],
   sequences: Sequence[],
@@ -63,7 +143,10 @@ export function buildStructurePickerTree(
       (b.orderIndex ?? b.sceneNumber ?? 0),
   );
 
+  const actIds = new Set(sortedActs.map((a) => a.id));
+  const sequenceIds = new Set(sortedSequences.map((s) => s.id));
   const scenesBySequence = new Map<string, StructurePickerSceneNode[]>();
+  const scenesByActDirect = new Map<string, StructurePickerSceneNode[]>();
   const orphanScenes: StructurePickerSceneNode[] = [];
 
   for (const scene of sortedScenes) {
@@ -71,11 +154,19 @@ export function buildStructurePickerTree(
       id: scene.id,
       label: sceneLabel(scene),
     };
-    const seqId = scene.sequenceId?.trim();
-    if (seqId) {
-      const list = scenesBySequence.get(seqId) ?? [];
+    const parentId = scene.sequenceId?.trim();
+    if (!parentId) {
+      orphanScenes.push(node);
+      continue;
+    }
+    if (sequenceIds.has(parentId)) {
+      const list = scenesBySequence.get(parentId) ?? [];
       list.push(node);
-      scenesBySequence.set(seqId, list);
+      scenesBySequence.set(parentId, list);
+    } else if (actIds.has(parentId)) {
+      const list = scenesByActDirect.get(parentId) ?? [];
+      list.push(node);
+      scenesByActDirect.set(parentId, list);
     } else {
       orphanScenes.push(node);
     }
@@ -92,7 +183,7 @@ export function buildStructurePickerTree(
       scenes: seqScenes,
     };
     const actId = seq.actId?.trim();
-    if (actId) {
+    if (actId && actIds.has(actId)) {
       const list = sequencesByAct.get(actId) ?? [];
       list.push(node);
       sequencesByAct.set(actId, list);
@@ -101,11 +192,22 @@ export function buildStructurePickerTree(
     }
   }
 
-  const tree: StructurePickerActNode[] = sortedActs.map((act, i) => ({
-    id: act.id,
-    label: actLabel(act, i),
-    sequences: sequencesByAct.get(act.id) ?? [],
-  }));
+  const tree: StructurePickerActNode[] = sortedActs.map((act, i) => {
+    const actSequences = [...(sequencesByAct.get(act.id) ?? [])];
+    const directScenes = scenesByActDirect.get(act.id) ?? [];
+    if (directScenes.length > 0) {
+      actSequences.push({
+        id: `${act.id}${DIRECT_SCENES_SUFFIX}`,
+        label: "Szenen (direkt unter Akt)",
+        scenes: directScenes,
+      });
+    }
+    return {
+      id: act.id,
+      label: actLabel(act, i),
+      sequences: actSequences,
+    };
+  });
 
   if (orphanSequences.length > 0 || orphanScenes.length > 0) {
     tree.push({
@@ -126,11 +228,7 @@ export function buildStructurePickerTree(
     });
   }
 
-  return tree.filter(
-    (act) =>
-      act.sequences.some((seq) => seq.scenes.length > 0) ||
-      act.id === "__orphan__",
-  );
+  return tree;
 }
 
 export function findSceneLabelInTree(
@@ -151,4 +249,16 @@ export function isSceneInTree(
   sceneId: string,
 ): boolean {
   return findSceneLabelInTree(tree, sceneId) !== undefined;
+}
+
+export function countSelectableScenesInTree(
+  tree: StructurePickerActNode[],
+): number {
+  let count = 0;
+  for (const act of tree) {
+    for (const seq of act.sequences) {
+      count += seq.scenes.length;
+    }
+  }
+  return count;
 }

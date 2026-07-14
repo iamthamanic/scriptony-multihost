@@ -23,19 +23,23 @@ import {
 
 export interface UseTimelineZoomOptions {
   scrollRef: RefObject<HTMLDivElement | null>;
-  trackLabelsRef: RefObject<HTMLDivElement | null>;
   viewStartSecRef: RefObject<number>;
   pxPerSecRef: RefObject<number>;
   totalDurationSec: number;
+  /**
+   * Fixed non-timeline width inside the scroller (sticky label column).
+   * Viewport width and zoom cursor anchors are measured after this inset.
+   */
+  originInsetPx?: number;
   onScroll?: () => void;
 }
 
 export function useTimelineZoom({
   scrollRef,
-  trackLabelsRef,
   viewStartSecRef,
   pxPerSecRef,
   totalDurationSec,
+  originInsetPx = 0,
   onScroll,
 }: UseTimelineZoomOptions) {
   const [zoom, setZoom] = useState(0);
@@ -48,6 +52,8 @@ export function useTimelineZoom({
   const prevFitPxPerSecRef = useRef(FALLBACK_MIN_PX_PER_SEC);
   const onScrollRef = useRef(onScroll);
   onScrollRef.current = onScroll;
+  const originInsetRef = useRef(originInsetPx);
+  originInsetRef.current = originInsetPx;
 
   pxPerSecRef.current = pxPerSec;
 
@@ -57,7 +63,9 @@ export function useTimelineZoom({
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setViewportWidth(entry.contentRect.width);
+        setViewportWidth(
+          Math.max(0, entry.contentRect.width - originInsetRef.current),
+        );
       }
     });
 
@@ -68,19 +76,21 @@ export function useTimelineZoom({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    setViewportWidth(Math.max(0, el.clientWidth - originInsetPx));
+  }, [originInsetPx, scrollRef]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
 
     const handleScroll = () => {
       setScrollLeft(el.scrollLeft);
       viewStartSecRef.current = el.scrollLeft / (pxPerSecRef.current || 1);
       onScrollRef.current?.();
-      const labels = trackLabelsRef.current;
-      if (labels && labels.scrollTop !== el.scrollTop) {
-        labels.scrollTop = el.scrollTop;
-      }
     };
     el.addEventListener("scroll", handleScroll);
     return () => el.removeEventListener("scroll", handleScroll);
-  }, [pxPerSecRef, scrollRef, trackLabelsRef, viewStartSecRef]);
+  }, [pxPerSecRef, scrollRef, viewStartSecRef]);
 
   useEffect(() => {
     if (!viewportWidth || totalDurationSec <= 0) return;
@@ -165,7 +175,9 @@ export function useTimelineZoom({
         const zoomDelta = -e.deltaY * 0.001;
         const newZoom = Math.max(0, Math.min(1, zoom + zoomDelta));
         const rect = scrollRef.current?.getBoundingClientRect();
-        const cursorX = rect ? e.clientX - rect.left : viewportWidth / 2;
+        const cursorX = rect
+          ? e.clientX - rect.left - originInsetRef.current
+          : viewportWidth / 2;
         setZoomAroundCursor(newZoom, cursorX);
       }
     },

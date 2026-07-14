@@ -3,7 +3,8 @@
  * Location: src/components/characters/VoiceProfileEditorModal.tsx
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -16,9 +17,37 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useMveVoicePreview } from "@/hooks/useMveVoicePreview";
+import { useGlobalLoadingProgress } from "@/hooks/useGlobalLoadingProgress";
 import { useSaveVoiceProfile } from "@/hooks/useSaveVoiceProfile";
-import { useLocalVoices } from "@/hooks/useLocalVoices";
+import {
+  prefetchAllVoiceboxVoiceProfiles,
+  useTtsVoiceProfiles,
+} from "@/hooks/useTtsVoiceProfiles";
+import { DEFAULT_VOICE_ENGINE } from "@/lib/config/voice-engine";
+import {
+  isVoiceboxBackedProvider,
+  resolveVoiceProviderId,
+  voiceProviderLabel,
+  type VoiceProviderId,
+} from "@/lib/config/voice-providers";
+import { voiceboxModelStatusHint } from "@/lib/voicebox/voicebox-model-status";
+import { warmUpVoiceboxQwenTtsDeduped } from "@/lib/voicebox/voicebox-tts-warmup";
 import { generateVoiceFromDescription } from "@/lib/mve/casting/generate-voice-from-description";
+import { compileVoiceDesignPrompt } from "@/lib/mve/casting/compile-voice-design-prompt";
+import { clampVoiceDesignBasePrompt } from "@/lib/mve/casting/voice-design-field-help";
+import {
+  discardVoiceDesignPreviewSession,
+  previewVoiceDesignCandidates,
+} from "@/lib/mve/casting/preview-voice-design-candidates";
+import { synthesizeVoiceDesignCandidatePreviews } from "@/lib/mve/casting/synthesize-voice-design-candidate-previews";
+import { regenerateVoiceDesignCandidate } from "@/lib/mve/casting/regenerate-voice-design-candidate";
+import type {
+  VoiceDesignCandidate,
+  VoiceDesignCandidateSynthesisProgress,
+  VoiceDesignPreviewSession,
+} from "@/lib/mve/casting/voice-design-candidate";
+import { usePersistMvePreviewText } from "@/hooks/usePersistMvePreviewText";
+import { saveVoiceDesignCandidate } from "@/lib/mve/casting/save-voice-design-candidate";
 import { createTunedVoiceProfile } from "@/lib/mve/tune/create-tuned-voice-profile";
 import {
   createMveVoiceProfile,
@@ -31,13 +60,18 @@ import {
   submitVoiceCloneConsent,
 } from "@/lib/mve/safety/submit-voice-clone-consent";
 import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
-import { KOKORO_VOICE_CATALOG } from "@/lib/api/kokoro-voice-catalog";
 import { mveDefaultPreviewForCharacter } from "@/lib/mve/default-preview-text";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 import type { MveVoiceConsent } from "@/lib/multi-voice-engine/schema/voice-consent";
 import { VoiceProfileEditorForm } from "./VoiceProfileEditorForm";
+import { VoiceDesignSaveDialog } from "./VoiceDesignSaveDialog";
 import type { VoiceTuneSubmitOptions } from "./VoiceStudioTuneSection";
+import {
+  emptyVoiceDesignSpec,
+  type MveVoiceDesignSpec,
+} from "@/lib/multi-voice-engine/schema/voice-design-spec";
+import { isDesktopShell } from "@/runtime/detect-runtime";
 
 export interface VoiceProfileEditorModalProps {
   open: boolean;
@@ -67,9 +101,30 @@ export function VoiceProfileEditorModal({
     profile?.previewText ?? mveDefaultPreviewForCharacter(characterName),
   );
   const [description, setDescription] = useState(profile?.description ?? "");
+  const [designSpec, setDesignSpec] = useState<MveVoiceDesignSpec>(
+    profile?.designSpec ?? emptyVoiceDesignSpec(),
+  );
+  const [designPreviewSession, setDesignPreviewSession] =
+    useState<VoiceDesignPreviewSession | null>(null);
+  const [saveCandidate, setSaveCandidate] =
+    useState<VoiceDesignCandidate | null>(null);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [savingCandidateId, setSavingCandidateId] = useState<string | null>(
+    null,
+  );
+  const [regeneratingCandidateId, setRegeneratingCandidateId] = useState<
+    string | null
+  >(null);
+  const [candidateSynthesisProgress, setCandidateSynthesisProgress] = useState<
+    Record<string, VoiceDesignCandidateSynthesisProgress>
+  >({});
+  const designPreviewSessionRef = useRef<VoiceDesignPreviewSession | null>(
+    null,
+  );
   const [speed, setSpeed] = useState(profile?.defaultSettings?.speed ?? 1);
   const [generateHint, setGenerateHint] = useState<string | undefined>();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isDesigning, setIsDesigning] = useState(false);
   const [isCloneBusy, setIsCloneBusy] = useState(false);
   const [isCloneStartBusy, setIsCloneStartBusy] = useState(false);
   const [isTuneBusy, setIsTuneBusy] = useState(false);
@@ -78,28 +133,133 @@ export function VoiceProfileEditorModal({
   );
   const [tuneSourceProfile, setTuneSourceProfile] =
     useState<MveVoiceProfile | null>(null);
+  const [voiceProvider, setVoiceProvider] = useState<VoiceProviderId>(
+    resolveVoiceProviderId(profile?.engine),
+  );
+  const providerSyncKeyRef = useRef<string | null>(null);
+  const editorInitKeyRef = useRef<string | null>(null);
+  const qwenWarmupAttemptedRef = useRef(false);
+  const queryClient = useQueryClient();
 
-  const localVoices = useLocalVoices({
+  const buildEditorInitKey = useCallback(
+    () => `${characterId}:${profile?.id ?? "none"}`,
+    [characterId, profile?.id],
+  );
+
+  const localVoices = useTtsVoiceProfiles({
     projectDir,
-    enabled: open && Boolean(projectDir),
+    provider: voiceProvider,
+    enabled: open && (Boolean(projectDir) || voiceProvider === "elevenlabs"),
   });
 
   const refreshSaved = useCallback(() => onSaved(), [onSaved]);
   const { playPreview, isPlaying } = useMveVoicePreview();
+  const { runWithProgress } = useGlobalLoadingProgress();
   const { saveVoiceProfile, isSaving } = useSaveVoiceProfile(refreshSaved);
 
+  const handlePreviewTextPersisted = useCallback((text: string) => {
+    setActiveProfile((prev) => (prev ? { ...prev, previewText: text } : prev));
+  }, []);
+
+  usePersistMvePreviewText({
+    profileId: activeProfile?.id,
+    previewText,
+    enabled: open,
+    onPersisted: handlePreviewTextPersisted,
+  });
+
   useEffect(() => {
-    if (!open) return;
-    setActiveProfile(profile ?? null);
-    setPreviewText(
-      profile?.previewText ?? mveDefaultPreviewForCharacter(characterName),
-    );
-    setDescription(profile?.description ?? "");
-    setSpeed(profile?.defaultSettings?.speed ?? 1);
-    setGenerateHint(undefined);
-    setLatestConsent(null);
-    setTuneSourceProfile(null);
-  }, [open, profile, characterName]);
+    if (!open) {
+      providerSyncKeyRef.current = null;
+      editorInitKeyRef.current = null;
+      qwenWarmupAttemptedRef.current = false;
+      return;
+    }
+
+    const initKey = buildEditorInitKey();
+    const shouldInitialize = editorInitKeyRef.current !== initKey;
+    if (shouldInitialize) {
+      editorInitKeyRef.current = initKey;
+      setActiveProfile(profile ?? null);
+      setPreviewText(
+        profile?.previewText ?? mveDefaultPreviewForCharacter(characterName),
+      );
+      setDescription(clampVoiceDesignBasePrompt(profile?.description ?? ""));
+      setDesignSpec(profile?.designSpec ?? emptyVoiceDesignSpec());
+      setDesignPreviewSession(null);
+      designPreviewSessionRef.current = null;
+      setCandidateSynthesisProgress({});
+      setSaveCandidate(null);
+      setSaveDialogOpen(false);
+      setRegeneratingCandidateId(null);
+      setSpeed(profile?.defaultSettings?.speed ?? 1);
+      setGenerateHint(undefined);
+      setLatestConsent(null);
+      setTuneSourceProfile(null);
+    }
+
+    const syncKey = characterId;
+    const shouldSyncProvider = providerSyncKeyRef.current !== syncKey;
+    providerSyncKeyRef.current = syncKey;
+    if (shouldSyncProvider) {
+      setVoiceProvider(resolveVoiceProviderId(profile?.engine));
+    }
+  }, [open, profile, characterName, characterId, buildEditorInitKey]);
+
+  useEffect(() => {
+    if (!open || !projectDir) return;
+    void prefetchAllVoiceboxVoiceProfiles(queryClient, projectDir);
+  }, [open, projectDir, queryClient]);
+
+  useEffect(() => {
+    if (
+      !open ||
+      !projectDir ||
+      !isDesktopShell() ||
+      qwenWarmupAttemptedRef.current
+    ) {
+      return;
+    }
+    if (
+      activeProfile?.type === "tuned" &&
+      activeProfile.baseVoiceId &&
+      !tuneSourceProfile
+    ) {
+      return;
+    }
+    qwenWarmupAttemptedRef.current = true;
+
+    const warmupProfileId =
+      resolveMveTtsVoiceId(activeProfile, tuneSourceProfile) ??
+      resolveMveTtsVoiceId(profile, null);
+    let cancelled = false;
+
+    void runWithProgress({
+      id: `voicebox-qwen-warmup-${projectDir}`,
+      title: "Stimme",
+      initialMessage: "Qwen TTS-Modell wird vorbereitet…",
+      initialPercent: 8,
+      run: async (report) => {
+        if (cancelled) return;
+        await warmUpVoiceboxQwenTtsDeduped({
+          projectDir,
+          profileId: warmupProfileId,
+          onProgress: report,
+        });
+      },
+    }).catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+    projectDir,
+    profile,
+    activeProfile,
+    tuneSourceProfile,
+    runWithProgress,
+  ]);
 
   useEffect(() => {
     if (!open || !activeProfile?.id) {
@@ -130,6 +290,8 @@ export function VoiceProfileEditorModal({
   const handleVoiceAssigned = useCallback(
     (assigned: MveVoiceProfile) => {
       setActiveProfile(assigned);
+      if (assigned.description) setDescription(assigned.description);
+      if (assigned.designSpec) setDesignSpec(assigned.designSpec);
       refreshSaved();
     },
     [refreshSaved],
@@ -143,6 +305,7 @@ export function VoiceProfileEditorModal({
       profileId: activeProfile.id,
       previewText,
       description,
+      designSpec,
       defaultSettings: { speed },
     });
     if (ok) onOpenChange(false);
@@ -150,15 +313,15 @@ export function VoiceProfileEditorModal({
 
   const catalogVoices = localVoices.data?.voices?.length
     ? localVoices.data.voices
-    : KOKORO_VOICE_CATALOG;
+    : [];
 
   const handleSuggestFromDescription = useCallback(async () => {
     if (!description.trim()) return;
 
-    if (localVoices.data && !localVoices.data.kokoroReady) {
+    if (localVoices.data && !localVoices.data.engineReady) {
       toast.error(
-        localVoices.data.kokoroError ??
-          "Kokoro ist noch nicht bereit — Vorschau ggf. erst nach Sidecar-Start.",
+        localVoices.data.engineError ??
+          `${localVoices.data.providerLabel} ist noch nicht bereit.`,
       );
     }
 
@@ -171,6 +334,8 @@ export function VoiceProfileEditorModal({
         characterName,
         description,
         voices: catalogVoices,
+        providerLabel:
+          localVoices.data?.providerLabel ?? voiceProviderLabel(voiceProvider),
         existingProfile: activeProfile,
         previewText,
       });
@@ -199,7 +364,290 @@ export function VoiceProfileEditorModal({
     previewText,
     projectId,
     refreshSaved,
+    voiceProvider,
   ]);
+
+  const handleDesignFromDescription = useCallback(async () => {
+    const designPrompt = compileVoiceDesignPrompt({
+      basicDescription: description,
+      designSpec,
+    });
+    if (!designPrompt.trim()) return;
+
+    if (!isLocalProfile() || !isDesktopShell()) {
+      toast.error("Prompt-to-Voice nur lokal in der Desktop-App verfügbar.");
+      return;
+    }
+    if (!projectDir) {
+      toast.error("Lokales Projekt erforderlich für Voicebox.");
+      return;
+    }
+
+    if (designPreviewSessionRef.current) {
+      await discardVoiceDesignPreviewSession(designPreviewSessionRef.current);
+      designPreviewSessionRef.current = null;
+      setDesignPreviewSession(null);
+      setCandidateSynthesisProgress({});
+    }
+
+    setIsDesigning(true);
+    setGenerateHint(undefined);
+    setCandidateSynthesisProgress({});
+    try {
+      const session = await previewVoiceDesignCandidates({
+        characterName,
+        basicDescription: description,
+        designSpec,
+        previewText,
+        projectDir,
+      });
+
+      const pendingProgress = Object.fromEntries(
+        session.candidates.map((candidate) => [
+          candidate.id,
+          candidate.errorMessage
+            ? {
+                status: "error" as const,
+                percent: 0,
+                message: candidate.errorMessage,
+              }
+            : {
+                status: "pending" as const,
+                percent: 0,
+                message: "Wartet auf Synthese…",
+              },
+        ]),
+      );
+
+      designPreviewSessionRef.current = session;
+      setDesignPreviewSession(session);
+      setCandidateSynthesisProgress(pendingProgress);
+
+      const synthesizedCandidates =
+        await synthesizeVoiceDesignCandidatePreviews({
+          session,
+          characterName,
+          previewText,
+          projectDir,
+          onCandidateProgress: (candidateId, progress) => {
+            setCandidateSynthesisProgress((prev) => ({
+              ...prev,
+              [candidateId]: progress,
+            }));
+          },
+          onCandidateUpdated: (candidate) => {
+            setDesignPreviewSession((prev) => {
+              if (!prev) return prev;
+              const candidates = prev.candidates.map((entry) =>
+                entry.id === candidate.id ? candidate : entry,
+              );
+              const nextSession = { ...prev, candidates };
+              designPreviewSessionRef.current = nextSession;
+              return nextSession;
+            });
+          },
+        });
+
+      const updatedSession: VoiceDesignPreviewSession = {
+        ...session,
+        candidates: synthesizedCandidates,
+      };
+      designPreviewSessionRef.current = updatedSession;
+      setDesignPreviewSession(updatedSession);
+
+      const readyCount = synthesizedCandidates.filter(
+        (c) => c.previewAudioPath,
+      ).length;
+      if (readyCount === synthesizedCandidates.length) {
+        setGenerateHint(
+          "Drei Kandidaten bereit — anhören und eine Stimme speichern.",
+        );
+      } else if (readyCount > 0) {
+        setGenerateHint(
+          `${readyCount} von ${synthesizedCandidates.length} Kandidaten bereit — fehlgeschlagene erneut erzeugen.`,
+        );
+      } else {
+        setGenerateHint("Synthese fehlgeschlagen — bitte erneut versuchen.");
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error
+          ? err.message
+          : "Stimme konnte nicht erzeugt werden.",
+      );
+    } finally {
+      setIsDesigning(false);
+    }
+  }, [characterName, description, designSpec, previewText, projectDir]);
+
+  const handleRegenerateDesignCandidate = useCallback(
+    async (candidate: VoiceDesignCandidate) => {
+      if (!designPreviewSession || !projectDir) return;
+
+      setRegeneratingCandidateId(candidate.id);
+      setCandidateSynthesisProgress((prev) => ({
+        ...prev,
+        [candidate.id]: {
+          status: "synthesizing",
+          percent: 4,
+          message: `Kandidat ${candidate.label} wird neu erzeugt…`,
+        },
+      }));
+
+      try {
+        const updated = await regenerateVoiceDesignCandidate({
+          session: designPreviewSession,
+          candidate,
+          characterName,
+          previewText,
+          projectDir,
+          onProgress: (candidateId, progress) => {
+            setCandidateSynthesisProgress((prev) => ({
+              ...prev,
+              [candidateId]: progress,
+            }));
+          },
+        });
+
+        setDesignPreviewSession((prev) => {
+          if (!prev) return prev;
+          const candidates = prev.candidates.map((entry) =>
+            entry.id === updated.id ? updated : entry,
+          );
+          const nextSession = { ...prev, candidates };
+          designPreviewSessionRef.current = nextSession;
+          return nextSession;
+        });
+
+        const sessionCandidates =
+          designPreviewSessionRef.current?.candidates ?? [];
+        const readyCount = sessionCandidates.filter(
+          (c) => c.previewAudioPath,
+        ).length;
+        const total = sessionCandidates.length;
+        if (readyCount === total) {
+          setGenerateHint(
+            "Drei Kandidaten bereit — anhören und eine Stimme speichern.",
+          );
+        } else if (readyCount > 0) {
+          setGenerateHint(
+            `${readyCount} von ${total} Kandidaten bereit — fehlgeschlagene erneut generieren.`,
+          );
+        } else {
+          setGenerateHint("Synthese fehlgeschlagen — bitte erneut versuchen.");
+        }
+
+        if (!updated.previewAudioPath) {
+          toast.error(
+            `Kandidat ${candidate.label} konnte nicht neu generiert werden.`,
+          );
+        }
+      } catch (err) {
+        setCandidateSynthesisProgress((prev) => ({
+          ...prev,
+          [candidate.id]: {
+            status: "error",
+            percent: 0,
+            message:
+              err instanceof Error ? err.message : "Synthese fehlgeschlagen",
+          },
+        }));
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Kandidat konnte nicht neu generiert werden.",
+        );
+      } finally {
+        setRegeneratingCandidateId(null);
+      }
+    },
+    [characterName, designPreviewSession, previewText, projectDir],
+  );
+
+  const handleSaveDesignCandidateClick = useCallback(
+    (candidate: VoiceDesignCandidate) => {
+      setSaveCandidate(candidate);
+      setSaveDialogOpen(true);
+    },
+    [],
+  );
+
+  const handleSaveDesignCandidateConfirm = useCallback(
+    async (voiceName: string) => {
+      if (!saveCandidate || !designPreviewSession || !projectDir) return;
+
+      setSavingCandidateId(saveCandidate.id);
+      try {
+        const result = await runWithProgress({
+          id: `voicebox-save-${saveCandidate.voiceboxProfileId}`,
+          title: "Stimme speichern",
+          initialMessage: "Stimme wird dem Charakter zugewiesen…",
+          initialPercent: 12,
+          run: () =>
+            saveVoiceDesignCandidate({
+              projectId,
+              characterId,
+              characterName,
+              voiceName,
+              candidate: saveCandidate,
+              session: designPreviewSession,
+              designPrompt: designPreviewSession.designPrompt,
+              designSpec,
+              existingProfile: activeProfile,
+              previewText,
+            }),
+        });
+        setActiveProfile(result.profile);
+        setDescription(result.profile.description ?? description);
+        setDesignSpec(result.profile.designSpec ?? designSpec);
+        setVoiceProvider("voicebox");
+        setGenerateHint(result.hint);
+        designPreviewSessionRef.current = null;
+        setDesignPreviewSession(null);
+        setSaveDialogOpen(false);
+        setSaveCandidate(null);
+        refreshSaved();
+        void prefetchAllVoiceboxVoiceProfiles(queryClient, projectDir);
+        toast.success(`Stimme gespeichert: ${result.voiceboxProfileName}`);
+      } catch (err) {
+        toast.error(
+          err instanceof Error ? err.message : "Speichern fehlgeschlagen.",
+        );
+      } finally {
+        setSavingCandidateId(null);
+      }
+    },
+    [
+      activeProfile,
+      characterId,
+      characterName,
+      description,
+      designPreviewSession,
+      designSpec,
+      previewText,
+      projectDir,
+      projectId,
+      queryClient,
+      refreshSaved,
+      runWithProgress,
+      saveCandidate,
+    ],
+  );
+
+  const handleModalOpenChange = useCallback(
+    (nextOpen: boolean) => {
+      if (!nextOpen && designPreviewSessionRef.current) {
+        void discardVoiceDesignPreviewSession(
+          designPreviewSessionRef.current,
+        ).finally(() => {
+          designPreviewSessionRef.current = null;
+          setDesignPreviewSession(null);
+        });
+      }
+      onOpenChange(nextOpen);
+    },
+    [onOpenChange],
+  );
 
   const ensureProfileForClone =
     useCallback(async (): Promise<MveVoiceProfile> => {
@@ -207,7 +655,7 @@ export function VoiceProfileEditorModal({
       const created = await createMveVoiceProfile(projectId, {
         name: `${characterName.trim() || "Charakter"} — Stimme`,
         characterId,
-        engine: "kokoro",
+        engine: DEFAULT_VOICE_ENGINE,
         language: "de",
         status: "draft",
         consentStatus: "pending",
@@ -300,7 +748,7 @@ export function VoiceProfileEditorModal({
       });
       setActiveProfile(result.profile);
       refreshSaved();
-      toast.success("Stimme geklont (Stub) — Vorschau abspielbar.");
+      toast.success("Stimme geklont — Vorschau abspielbar.");
     } catch (err) {
       const refreshed = await getMveVoiceProfile(profileId);
       if (refreshed) setActiveProfile(refreshed);
@@ -349,8 +797,27 @@ export function VoiceProfileEditorModal({
     [activeProfile, projectId, refreshSaved],
   );
 
+  const compiledDesignPrompt = compileVoiceDesignPrompt({
+    basicDescription: description,
+    designSpec,
+  });
+
+  const saveCandidateDefaultName = saveCandidate
+    ? `${characterName.trim() || "Charakter"} — Kandidat ${saveCandidate.label}`
+    : "";
+
+  const modelStatusHint =
+    localVoices.data?.engineReady &&
+    isVoiceboxBackedProvider(voiceProvider) &&
+    !localVoices.data.voiceboxModelLoaded
+      ? voiceboxModelStatusHint({
+          modelLoaded: localVoices.data.voiceboxModelLoaded,
+          modelDownloaded: localVoices.data.voiceboxModelDownloaded,
+        })
+      : undefined;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleModalOpenChange}>
       <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Charakterstimme — {characterName}</DialogTitle>
@@ -368,12 +835,18 @@ export function VoiceProfileEditorModal({
           profile={activeProfile}
           previewText={previewText}
           description={description}
+          designSpec={designSpec}
           speed={speed}
           voiceId={voiceId}
           isPlaying={isPlaying}
-          generateBusy={isGenerating}
+          generateBusy={isGenerating || isDesigning}
           generateDisabled={localVoices.isLoading}
           generateHint={generateHint}
+          showDesignVoice={isDesktopShell() && Boolean(projectDir)}
+          designVoiceDisabled={
+            !isLocalProfile() || !compiledDesignPrompt.trim()
+          }
+          onDesignFromDescription={() => void handleDesignFromDescription()}
           cloneBusy={isCloneBusy}
           cloneStartBusy={isCloneStartBusy}
           cloneDisabled={!isLocalProfile()}
@@ -382,6 +855,15 @@ export function VoiceProfileEditorModal({
           latestConsent={latestConsent}
           onPreviewTextChange={setPreviewText}
           onDescriptionChange={setDescription}
+          onDesignSpecChange={setDesignSpec}
+          designCandidates={designPreviewSession?.candidates ?? []}
+          candidateSynthesisProgress={candidateSynthesisProgress}
+          savingCandidateId={savingCandidateId}
+          regeneratingCandidateId={regeneratingCandidateId}
+          onRegenerateDesignCandidate={(c) =>
+            void handleRegenerateDesignCandidate(c)
+          }
+          onSaveDesignCandidate={handleSaveDesignCandidateClick}
           onSpeedChange={setSpeed}
           onPlayPreview={() =>
             playPreview({
@@ -390,6 +872,7 @@ export function VoiceProfileEditorModal({
               characterName,
               previewText,
               speed,
+              engine: activeProfile?.engine,
             })
           }
           onVoiceAssignedProfile={handleVoiceAssigned}
@@ -400,7 +883,18 @@ export function VoiceProfileEditorModal({
           onCloneRevoke={() => void handleCloneRevoke()}
           onCloneStart={() => void handleCloneStart()}
           onTuneSubmit={(options) => void handleTuneSubmit(options)}
+          voiceProvider={voiceProvider}
+          onVoiceProviderChange={setVoiceProvider}
         />
+
+        {modelStatusHint ? (
+          <p
+            className="text-[11px] text-amber-600 dark:text-amber-500 px-1"
+            data-testid="voice-editor-model-status"
+          >
+            {modelStatusHint}
+          </p>
+        ) : null}
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button
@@ -426,6 +920,14 @@ export function VoiceProfileEditorModal({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <VoiceDesignSaveDialog
+        open={saveDialogOpen}
+        onOpenChange={setSaveDialogOpen}
+        defaultName={saveCandidateDefaultName}
+        busy={Boolean(savingCandidateId)}
+        onConfirm={(name) => void handleSaveDesignCandidateConfirm(name)}
+      />
     </Dialog>
   );
 }

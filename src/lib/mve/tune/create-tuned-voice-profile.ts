@@ -41,7 +41,7 @@ export function voiceTuneBlockedReason(
     return "Nur eine Tune-Ebene erlaubt — wähle die Basis-Stimme.";
   }
   if (!resolveMveTtsVoiceId(profile)) {
-    return "Basis-Stimme hat keine Kokoro-Zuordnung.";
+    return "Basis-Stimme hat keine Voicebox-Zuordnung.";
   }
   return "Stimme kann nicht getunt werden.";
 }

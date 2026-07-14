@@ -5,6 +5,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildStructurePickerTree,
+  countSelectableScenesInTree,
+  diagnoseStructurePicker,
   findSceneLabelInTree,
   isSceneInTree,
 } from "./structure-picker-tree";
@@ -16,6 +18,16 @@ const act: Act = {
   actNumber: 1,
   title: "Setup",
   orderIndex: 0,
+  createdAt: "",
+  updatedAt: "",
+};
+
+const act2: Act = {
+  id: "act-2",
+  projectId: "p1",
+  actNumber: 2,
+  title: "Hauptteil",
+  orderIndex: 1,
   createdAt: "",
   updatedAt: "",
 };
@@ -50,6 +62,43 @@ describe("buildStructurePickerTree", () => {
     expect(tree[0].sequences[0].scenes[0].label).toContain("Meeting");
   });
 
+  it("keeps acts visible even when they have no scenes yet", () => {
+    const emptySeq: Sequence = {
+      id: "seq-empty",
+      actId: "act-2",
+      sequenceNumber: 1,
+      title: "Leer",
+      orderIndex: 0,
+      createdAt: "",
+      updatedAt: "",
+    };
+    const tree = buildStructurePickerTree(
+      [act, act2],
+      [seq, emptySeq],
+      [scene],
+    );
+    const hauptteil = tree.find((a) => a.id === "act-2");
+    expect(hauptteil).toBeDefined();
+    expect(hauptteil?.sequences[0]?.scenes).toHaveLength(0);
+  });
+
+  it("places scenes parented to act under a direct bucket", () => {
+    const directScene: Scene = {
+      ...scene,
+      id: "scene-direct",
+      sequenceId: "act-1",
+      title: "Direct",
+    };
+    const tree = buildStructurePickerTree([act], [seq], [directScene]);
+    const directBucket = tree[0].sequences.find((s) =>
+      s.label.includes("direkt unter Akt"),
+    );
+    expect(directBucket?.scenes.some((s) => s.id === "scene-direct")).toBe(
+      true,
+    );
+    expect(countSelectableScenesInTree(tree)).toBe(1);
+  });
+
   it("places scenes without sequence under orphan bucket", () => {
     const orphan: Scene = {
       ...scene,
@@ -64,6 +113,36 @@ describe("buildStructurePickerTree", () => {
         s.scenes.some((sc) => sc.id === "scene-orphan"),
       ),
     ).toBe(true);
+  });
+});
+
+describe("diagnoseStructurePicker", () => {
+  it("reports act-parented scenes and empty sequences", () => {
+    const directScene: Scene = {
+      ...scene,
+      id: "scene-direct",
+      sequenceId: "act-1",
+    };
+    const emptySeq: Sequence = {
+      id: "seq-empty",
+      actId: "act-2",
+      sequenceNumber: 1,
+      title: "Leer",
+      orderIndex: 0,
+      createdAt: "",
+      updatedAt: "",
+    };
+    const diagnostics = diagnoseStructurePicker(
+      [act, act2],
+      [seq, emptySeq],
+      [scene, directScene],
+    );
+    expect(diagnostics.some((d) => d.code === "scene_parent_is_act")).toBe(
+      true,
+    );
+    expect(diagnostics.some((d) => d.code === "sequence_without_scenes")).toBe(
+      true,
+    );
   });
 });
 

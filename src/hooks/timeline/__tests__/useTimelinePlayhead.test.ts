@@ -13,14 +13,12 @@ describe("useTimelinePlayhead (legacy shim)", () => {
 
   it("re-exports transport seek/play aliases", () => {
     const scrollRef = { current: null as HTMLDivElement | null };
-    const trackLabelsRef = { current: null };
     const viewStartSecRef = { current: 0 };
 
     const { result } = renderHook(() =>
       useTimelinePlayhead({
         durationSec: 10,
         scrollRef,
-        trackLabelsRef,
         viewStartSec: 0,
         pxPerSec: 100,
         viewStartSecRef,

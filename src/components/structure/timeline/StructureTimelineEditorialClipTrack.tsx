@@ -39,6 +39,7 @@ export function StructureTimelineEditorialClipTrack({
 }: StructureTimelineEditorialClipTrackProps) {
   return (
     <div
+      data-testid="timeline-content-film-clip"
       className="relative border-b border-border bg-muted/20 ring-1 ring-inset ring-zinc-500/15 dark:ring-zinc-400/20"
       style={{ height: `${height}px` }}
     >

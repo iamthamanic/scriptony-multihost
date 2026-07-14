@@ -1,9 +1,9 @@
 /**
- * Score Kokoro catalog voices against extracted attributes and description text.
+ * Score Voicebox voice catalog entries against extracted attributes and description text.
  * Location: src/lib/mve/casting/match-voice-from-description.ts
  */
 
-import type { VoiceEntry } from "@/lib/api/local-tts-api";
+import type { VoiceEntry } from "@/lib/api/voice-entry";
 import type { MveVoiceAttributes } from "@/lib/multi-voice-engine/schema/voice-profile";
 import { extractVoiceAttributesFromDescription } from "./extract-voice-attributes-from-description";
 

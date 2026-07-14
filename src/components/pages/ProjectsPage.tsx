@@ -7759,12 +7759,6 @@ function ProjectDetail({
 
           <CollapsibleContent>
             <ProjectSectionFrame>
-              {showCharacterVoiceSection && cloudSession === false && (
-                <p className="text-xs text-muted-foreground mb-3 rounded border border-dashed border-border px-3 py-2">
-                  Cloud-TTS-Stimmen erfordern Cloud-Login. Kokoro-Stimmen lokal
-                  nutzbar.
-                </p>
-              )}
               <div className="space-y-3">
                 {charactersState.map((character) => (
                   <CharacterCard

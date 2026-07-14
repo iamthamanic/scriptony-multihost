@@ -52,7 +52,7 @@ Vom ersten Logline bis zum finalen Shot — alles in einer Anwendung, alles auf 
 | **Film-Projekt**         | Drehbuch-Editor, Shots, Clips, Beat-Timeline, Charaktere, Worldbuilding, Style-Guide     |
 | **Serien-Projekt**       | Staffel-/Episoden-Struktur, sonst identisch zu Film                                      |
 | **Buch-Projekt**         | Buch-Editor mit Kapitelhierarchie, Lesedauer-Timeline, Konzeptblöcke                     |
-| **Hörbuch-Projekt**      | Stereo-Audio-Timeline, Voice-Casting, Aufnahmesessions, TTS-Integration                  |
+| **Hörbuch-Projekt**      | Stereo-Audio-Timeline, Voice-Casting, Aufnahmesessions, TTS (Voicebox lokal, Kokoro Fallback) |
 | **Projektstruktur**      | Hierarchische Knoten: Akt → Sequenz → Szene → Shot → Clip (Film) / Kapitel (Buch)        |
 | **Story Beats**          | Lite-7, Save the Cat (15 Beats), Hero's Journey (12), Syd Field (3-Act), Seven Point (7) |
 | **Narrative Struktur**   | 3-Akt, 4-Akt, 5-Akt (Theater), 3-Teilig (Buch)                                           |
@@ -227,7 +227,7 @@ Self-Hosted-Anleitung ausführlich: [`docs/SELF_HOSTING.md`](docs/SELF_HOSTING.m
 
 ## Für Entwickler
 
-**Desktop (Standard):** [`docs/DESKTOP_FIRST_DEV.md`](docs/DESKTOP_FIRST_DEV.md) — `npm run dev:desktop`, lokale `.scriptony`-Projekte, ohne Appwrite im Alltag. Architektur (3 Achsen): [`docs/ARCHITECTURE_LOCAL_CLOUD.md`](docs/ARCHITECTURE_LOCAL_CLOUD.md), Domänen-Glossar: [`docs/DOMAIN_GLOSSAR.md`](docs/DOMAIN_GLOSSAR.md). Agent-Regeln: [`AGENTS.md`](AGENTS.md). Cloud/Docker: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md).
+**Desktop (Standard):** [`docs/DESKTOP_FIRST_DEV.md`](docs/DESKTOP_FIRST_DEV.md) — `npm run dev:desktop`, lokale `.scriptony`-Projekte, ohne Appwrite im Alltag. Architektur (3 Achsen): [`docs/ARCHITECTURE_LOCAL_CLOUD.md`](docs/ARCHITECTURE_LOCAL_CLOUD.md), Feature-Matrix Lokal/Cloud/API: [`docs/FEATURE_LOCAL_CLOUD_MATRIX.md`](docs/FEATURE_LOCAL_CLOUD_MATRIX.md), Domänen-Glossar: [`docs/DOMAIN_GLOSSAR.md`](docs/DOMAIN_GLOSSAR.md). Agent-Regeln: [`AGENTS.md`](AGENTS.md). Cloud/Docker: [`docs/GETTING_STARTED.md`](docs/GETTING_STARTED.md).
 
 ### Projektstruktur
 
@@ -368,6 +368,11 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 
 <!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
 
+- **2026-07-12** — MVE Dialog-Audio: Audiolänge ersetzt WPM im Header bei gebundenem Clip; Waveform-Peaks beim Upload/Record persistiert (local desktop)
+- **2026-07-12** — Voicebox Auto-Start auf macOS für Charakterstimmen-Vorschau + aktualisierte Banner-Copy (local desktop)
+- **2026-07-12** — MVE Dialog-Clips: kompakte Lane (210px), scrollbarer Text, WPM-/Audio-Dauer-Chips, Contenteditable-Editor mit Tag-Chips (local desktop, #49)
+- **2026-07-10** — Desktop: Voicebox als Standard-TTS (Kokoro via `VITE_DEFAULT_VOICE_ENGINE=kokoro`), MVE Multi-Textblock-Reihenfolge + Scene-Shell-Sync, Visual Editor (embedded, dev)
+- **2026-07-05** — Structure Timeline: Row-Pair-Layout mit sticky Labels (CapCut-Stil), Playhead/Scrub über Content-Origin-Anker (#49, local desktop)
 - **2026-06-27** — MVE 0.4 (#16): Voice Studio UI — Generate/Clone/Tune aktiv im Charakterstimme-Modal
 - **2026-06-27** — MVE 0.4 (#14): Voice Clone Request — lifecycle, consent-gated start, `/voices/clone` route
 - **2026-06-27** — MVE 0.4 (#15): Voice Tune — non-destructives Preset-Profil (`type=tuned`, local desktop)
@@ -378,8 +383,6 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 - **2026-06-26** — T31: Metronom-Count-in vor Audio-Aufnahme (BPM/Takt einstellbar, local desktop)
 - **2026-06-26** — T30: Lane-Link-Icon + hierarchischer Act/Sequence/Scene-Modal für MVE-Dialog-Spuren (local desktop)
 - **2026-06-26** — T29: Szene verlängert sich per Ripple, wenn MVE-Textblock-Audio länger als die Szene ist (local desktop)
-- **2026-06-26** — ECC: `@ecc-check`, `@commit-pr-safe`, `npm run verify`; GitHub CI nutzt verify (hart); pre-push ohne Shim AI Review
-- **2026-06-16** — Ticket gate: scoped `SHIM_CHANGED_FILES`, Fallow, Codex fallback, `TEST_COVERAGE_REGISTRY` (process/docs)
 
 ---
 

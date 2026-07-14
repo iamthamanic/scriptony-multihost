@@ -5,6 +5,7 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { assignMveVoiceToCharacter } from "../assign-voice-profile";
+import { DEFAULT_VOICE_ENGINE } from "@/lib/config/voice-engine";
 
 vi.mock("@/lib/api-adapter/mve-adapter", () => ({
   createMveVoiceProfile: vi.fn(),
@@ -55,7 +56,7 @@ describe("assignMveVoiceToCharacter", () => {
 
     expect(updateMveVoiceProfile).toHaveBeenCalledWith("mve_voice_1", {
       baseVoiceId: "af_bella",
-      engine: "kokoro",
+      engine: DEFAULT_VOICE_ENGINE,
       status: "ready",
       previewText: expect.stringContaining("Max"),
     });
@@ -77,7 +78,7 @@ describe("assignMveVoiceToCharacter", () => {
       expect.objectContaining({
         characterId: "char_1",
         baseVoiceId: "af_bella",
-        engine: "kokoro",
+        engine: DEFAULT_VOICE_ENGINE,
         status: "ready",
       }),
     );

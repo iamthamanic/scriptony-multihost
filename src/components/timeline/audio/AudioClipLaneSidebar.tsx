@@ -5,7 +5,11 @@
 
 import { useState } from "react";
 import { cn } from "../../../lib/utils";
-import { getLaneType, LANE_UI } from "../../../lib/audio-lane";
+import {
+  getLaneType,
+  LANE_UI,
+  resolveLaneHeightPx,
+} from "../../../lib/audio-lane";
 import { isCharacterDialogLane } from "../../../lib/character-lane-map";
 import { TrackHeader } from "../../audio/track-header/TrackHeader";
 import { AddAudioTimelineMenu } from "./AddAudioTimelineMenu";
@@ -20,6 +24,7 @@ import type {
 } from "../../../lib/types";
 import type { AudioClipLaneTracksProps } from "./AudioClipLaneTracks";
 import type { TimelineSceneRef } from "../../../lib/timeline-add-audio";
+import type { MveStructurePickerRefs } from "../../structure/timeline/mve/MveStructureScenePickerModal";
 
 export interface MveLaneLinkControlProps {
   enabled?: boolean;
@@ -34,10 +39,12 @@ export interface MveLaneLinkControlProps {
   onRemoveLink?: () => Promise<void>;
 }
 
-function laneHeight(expandedLane: number | null, laneIndex: number): number {
-  return expandedLane === laneIndex
-    ? LANE_UI.heightExpanded
-    : LANE_UI.heightCompact;
+function laneHeight(
+  expandedLane: number | null,
+  laneIndex: number,
+  hasContent = true,
+): number {
+  return resolveLaneHeightPx(laneIndex, expandedLane, hasContent);
 }
 
 function renderAddAudioMenu(
@@ -71,10 +78,13 @@ export interface AudioClipLaneSidebarProps {
   laneIndex: number;
   expanded: boolean;
   expandedLane: number | null;
+  /** Lane has no text blocks/clips yet — shrinks compact height. Defaults to true. */
+  hasContent?: boolean;
   locked: boolean;
   character?: Character;
   addAudio?: AudioClipLaneTracksProps["addAudio"];
   scenes?: TimelineSceneRef[];
+  structurePicker?: MveStructurePickerRefs;
   currentTimeSec: number;
   onExpandedLaneChange?: (laneIndex: number | null) => void;
   onMuteChange: (laneIndex: number, mute: boolean) => void;
@@ -102,10 +112,12 @@ export function AudioClipLaneSidebar({
   laneIndex,
   expanded,
   expandedLane,
+  hasContent = true,
   locked,
   character,
   addAudio,
   scenes,
+  structurePicker,
   currentTimeSec,
   onExpandedLaneChange,
   onMuteChange,
@@ -124,7 +136,7 @@ export function AudioClipLaneSidebar({
 }: AudioClipLaneSidebarProps) {
   const [linkModalOpen, setLinkModalOpen] = useState(false);
   const laneType = getLaneType(laneIndex);
-  const height = laneHeight(expandedLane, laneIndex);
+  const height = laneHeight(expandedLane, laneIndex, hasContent);
   const isDialog = isCharacterDialogLane(laneIndex);
 
   const headerAddon = isDialog ? (
@@ -132,7 +144,7 @@ export function AudioClipLaneSidebar({
       laneIndex={laneIndex}
       character={character}
       disabled={(addAudio?.isBusy ?? false) || locked || !onAddMveTextBlock}
-      scenes={scenes}
+      structurePicker={structurePicker}
       linkedSceneId={linkedSceneId}
       onAddTextBlock={({ characterId, sceneId }) =>
         onAddMveTextBlock?.({
@@ -162,6 +174,7 @@ export function AudioClipLaneSidebar({
           className,
         )}
         style={{ height: `${height}px` }}
+        data-testid={`audio-lane-sidebar-${laneIndex}`}
         onDoubleClick={() =>
           onExpandedLaneChange?.(expanded ? null : laneIndex)
         }

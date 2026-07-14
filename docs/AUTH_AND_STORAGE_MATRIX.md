@@ -4,7 +4,7 @@ Stand: 2026-05-24
 
 Kurzreferenz: **wann braucht die App ein Appwrite-JWT**, und **wo liegen Daten**. Ergänzt [AUTH_TRANSPORT_VERTRAG_2026-04-08.md](AUTH_TRANSPORT_VERTRAG_2026-04-08.md) (Cloud-HTTP-Transport) um Local-first und Desktop-Hybrid.
 
-Siehe auch: `src/lib/api-adapter/runtime-dispatch.ts`, `src/lib/auth/`, Ticket [T60](../tickets/todo-T60-implementation-ui-local-timeline-editor-without-jwt.md).
+Siehe auch: [FEATURE_LOCAL_CLOUD_MATRIX.md](FEATURE_LOCAL_CLOUD_MATRIX.md) (Feature-Übersicht), `src/lib/api-adapter/runtime-dispatch.ts`, `src/lib/auth/`, Ticket [T60](../tickets/todo-T60-implementation-ui-local-timeline-editor-without-jwt.md).
 
 ---
 

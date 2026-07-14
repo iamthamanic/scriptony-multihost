@@ -26,11 +26,13 @@ export interface MveSceneOption {
 
 export interface UseMveTextBlockAudioOptions {
   projectId: string | undefined;
+  projectType?: string;
   lineId: string;
   characterId: string | undefined;
   sceneId: string | undefined;
   scenes: MveSceneOption[];
   text: string;
+  timelineStartSec?: number;
   onBindAudioClip?: (lineId: string, clipId: string | null) => Promise<void>;
 }
 
@@ -48,16 +50,18 @@ export interface MveTextBlockAudioState {
   requestSceneForAction: (action: MveAudioAction) => void;
   setSelectedSceneId: (id: string | null) => void;
   cancelSceneSelection: () => void;
-  confirmSceneSelection: () => void;
+  confirmSceneSelection: (pickedSceneId?: string) => void;
 }
 
 export function useMveTextBlockAudio({
   projectId,
+  projectType,
   lineId,
   characterId,
   sceneId,
   scenes,
   text,
+  timelineStartSec,
   onBindAudioClip,
 }: UseMveTextBlockAudioOptions): MveTextBlockAudioState {
   const enabled = Boolean(onBindAudioClip);
@@ -72,10 +76,12 @@ export function useMveTextBlockAudio({
     useMveTextBlockAudioClip({
       enabled,
       projectId,
+      projectType,
       lineId,
       characterId,
       effectiveSceneId,
       text,
+      timelineStartSec,
       onBindAudioClip,
     });
 
@@ -105,6 +111,26 @@ export function useMveTextBlockAudio({
     setIsUploading,
   });
 
+  const runGenerate = useCallback(
+    async (activeSceneId: string) => {
+      setIsGenerating(true);
+      try {
+        await renderLine(lineId, 1);
+        const clip = await createClipShell(activeSceneId);
+        await cacheAndBind(clip);
+        await syncClipIfProject();
+        toast.success("Audio generiert und verknüpft.");
+      } catch (err) {
+        const msg =
+          err instanceof Error ? err.message : "Generierung fehlgeschlagen.";
+        toast.error(msg);
+      } finally {
+        setIsGenerating(false);
+      }
+    },
+    [renderLine, lineId, createClipShell, cacheAndBind, syncClipIfProject],
+  );
+
   const generate = useCallback(async () => {
     if (!enabled) return;
     if (!projectId) {
@@ -119,32 +145,24 @@ export function useMveTextBlockAudio({
       sceneSelection.requestSceneForAction("generate");
       return;
     }
-    setIsGenerating(true);
-    try {
-      await renderLine(lineId, 1);
-      const clip = await createClipShell();
-      await cacheAndBind(clip);
-      await syncClipIfProject();
-      toast.success("Audio generiert und verknüpft.");
-    } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : "Generierung fehlgeschlagen.";
-      toast.error(msg);
-    } finally {
-      setIsGenerating(false);
-    }
+    await runGenerate(effectiveSceneId);
   }, [
     enabled,
     projectId,
     characterId,
     effectiveSceneId,
-    renderLine,
-    lineId,
-    createClipShell,
-    cacheAndBind,
-    syncClipIfProject,
+    runGenerate,
     sceneSelection,
   ]);
+
+  const runRecord = useCallback(
+    (activeSceneId: string) => {
+      if (!activeSceneId) return;
+      sceneSelection.setSelectedSceneId(activeSceneId);
+      void startRecording(0, 0);
+    },
+    [startRecording, sceneSelection],
+  );
 
   const startRecord = useCallback(() => {
     if (!enabled) return;
@@ -156,34 +174,44 @@ export function useMveTextBlockAudio({
       sceneSelection.requestSceneForAction("record");
       return;
     }
-    void startRecording(0, 0);
-  }, [enabled, projectId, effectiveSceneId, startRecording, sceneSelection]);
+    runRecord(effectiveSceneId);
+  }, [enabled, projectId, effectiveSceneId, runRecord, sceneSelection]);
 
   const stopRecord = useCallback(() => {
     void stopRecording();
   }, [stopRecording]);
 
-  const confirmSceneSelection = useCallback(() => {
-    if (!enabled) return;
-    const action = sceneSelection.confirm();
-    if (!action || !effectiveSceneId) return;
-    if (action === "generate") {
-      void generate();
-    } else if (action === "record") {
-      void startRecord();
-    } else if (action === "upload") {
-      const file = sceneSelection.queuedFile;
-      sceneSelection.cancel();
-      if (file) void uploadFile(file);
-    }
-  }, [
-    enabled,
-    effectiveSceneId,
-    generate,
-    startRecord,
-    uploadFile,
-    sceneSelection,
-  ]);
+  const confirmSceneSelection = useCallback(
+    (pickedSceneId?: string) => {
+      if (!enabled) return;
+      const action = sceneSelection.confirm();
+      const resolvedSceneId = pickedSceneId ?? effectiveSceneId;
+      if (!action || !resolvedSceneId) return;
+      if (pickedSceneId) {
+        sceneSelection.setSelectedSceneId(pickedSceneId);
+      }
+      if (action === "generate") {
+        void runGenerate(resolvedSceneId);
+      } else if (action === "record") {
+        runRecord(resolvedSceneId);
+      } else if (action === "upload") {
+        const file = sceneSelection.queuedFile;
+        sceneSelection.cancel();
+        if (file) {
+          sceneSelection.setSelectedSceneId(resolvedSceneId);
+          void uploadFile(file, resolvedSceneId);
+        }
+      }
+    },
+    [
+      enabled,
+      effectiveSceneId,
+      runGenerate,
+      runRecord,
+      uploadFile,
+      sceneSelection,
+    ],
+  );
 
   return {
     isGenerating,

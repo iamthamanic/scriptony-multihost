@@ -103,6 +103,51 @@ const MveTextBlockLanePreviewPage = lazy(() =>
     default: module.MveTextBlockLanePreviewPage,
   })),
 );
+const MveEmptyTextBlockShellPreviewPage = lazy(() =>
+  import("../components/qa/MveEmptyTextBlockShellPreviewPage").then(
+    (module) => ({
+      default: module.MveEmptyTextBlockShellPreviewPage,
+    }),
+  ),
+);
+const MveTextBlockOrderSyncPreviewPage = lazy(() =>
+  import("../components/qa/MveTextBlockOrderSyncPreviewPage").then(
+    (module) => ({
+      default: module.MveTextBlockOrderSyncPreviewPage,
+    }),
+  ),
+);
+const MveDialogClipInlineSlice3PreviewPage = lazy(() =>
+  import("../components/qa/MveDialogClipInlineSlice3PreviewPage").then(
+    (module) => ({
+      default: module.MveDialogClipInlineSlice3PreviewPage,
+    }),
+  ),
+);
+const MveDialogLaneLayoutFixesPreviewPage = lazy(() =>
+  import("../components/qa/MveDialogLaneLayoutFixesPreviewPage").then(
+    (module) => ({
+      default: module.MveDialogLaneLayoutFixesPreviewPage,
+    }),
+  ),
+);
+const MveDialogLaneScrollCompactPreviewPage = lazy(() =>
+  import("../components/qa/MveDialogLaneScrollCompactPreviewPage").then(
+    (module) => ({
+      default: module.MveDialogLaneScrollCompactPreviewPage,
+    }),
+  ),
+);
+const TimelineRowAlignmentPreviewPage = lazy(() =>
+  import("../components/qa/TimelineRowAlignmentPreviewPage").then((module) => ({
+    default: module.TimelineRowAlignmentPreviewPage,
+  })),
+);
+const TimelineRowAlignmentTauriPage = lazy(() =>
+  import("../components/qa/TimelineRowAlignmentTauriPage").then((module) => ({
+    default: module.TimelineRowAlignmentTauriPage,
+  })),
+);
 const ScriptonyAssistant = lazy(() =>
   import("../components/assistant/ScriptonyAssistant").then((module) => ({
     default: module.ScriptonyAssistant,
@@ -239,6 +284,48 @@ export function AppContent() {
       case "qa-mve-text-block-lane":
         return import.meta.env.DEV ? (
           <MveTextBlockLanePreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-mve-empty-text-block-shell":
+        return import.meta.env.DEV ? (
+          <MveEmptyTextBlockShellPreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-mve-textblock-order-sync":
+        return import.meta.env.DEV ? (
+          <MveTextBlockOrderSyncPreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-mve-dialog-clip-inline-slice3":
+        return import.meta.env.DEV ? (
+          <MveDialogClipInlineSlice3PreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-mve-dialog-lane-layout-fixes":
+        return import.meta.env.DEV ? (
+          <MveDialogLaneLayoutFixesPreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-mve-dialog-lane-scroll-compact":
+        return import.meta.env.DEV ? (
+          <MveDialogLaneScrollCompactPreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-timeline-row-alignment":
+        return import.meta.env.DEV ? (
+          <TimelineRowAlignmentPreviewPage />
+        ) : (
+          <HomePage onNavigate={onNavigate} />
+        );
+      case "qa-timeline-row-alignment-tauri":
+        return import.meta.env.DEV ? (
+          <TimelineRowAlignmentTauriPage />
         ) : (
           <HomePage onNavigate={onNavigate} />
         );

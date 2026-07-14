@@ -2,8 +2,8 @@
  * Hook fuer TTS-Generierung — Cloud und Lokal.
  *
  * T31: TTS-Pipeline und Audio-Generierung.
- * - startTts: Erstellt TTS-Job (Cloud) oder ruft Kokoro Sidecar (Lokal)
- * - startLocalTts: Direkte Kokoro-Synthese ohne Job-Queue
+ * - startTts: Erstellt TTS-Job (Cloud) oder ruft Voicebox (Lokal)
+ * - startLocalTts: Direkte Voicebox-Synthese ohne Job-Queue
  * - useTtsJobStatus: Pollt Cloud-Job-Status (2s Intervall)
  *
  * Security: setTimeout-Chain statt setInterval verhindert ueberlappende
@@ -15,13 +15,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { createTtsJob, getTtsStatus } from "../lib/api/audio-tts-api";
 import {
-  ensureKokoroSidecar,
-  synthesizeLocal,
-  isKokoroHealthy,
-} from "../lib/api/local-tts-api";
+  ensureVoiceboxAvailable,
+  generateVoiceboxSpeech,
+  isVoiceboxHealthy,
+} from "../lib/api/voicebox-api";
 import { queryKeys } from "../lib/react-query";
 import type { TtsJobPayload, TtsJobStatus } from "../lib/api/audio-tts-api";
-import type { LocalTtsPayload } from "../lib/api/local-tts-api";
+import type { LocalTtsPayload } from "../lib/api/voice-entry";
 import { isFeatureEnabled } from "../lib/feature-flags";
 import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
 import { requireCapability } from "@/capabilities/registry";
@@ -78,7 +78,7 @@ export function useTtsGeneration({
     };
   }, []);
 
-  // ── Lokale TTS via Kokoro (kein Cloud-API) ──────────────────────────────
+  // ── Lokale TTS via Voicebox (Kokoro nur intern in Voicebox) ─────────────
 
   const startLocalTts = useCallback(
     async (payload: LocalTtsPayload, sceneIdOverride?: string) => {
@@ -100,19 +100,25 @@ export function useTtsGeneration({
       cancelledRef.current = false;
 
       try {
-        // Sidecar starten (falls noch nicht laufend)
-        await ensureKokoroSidecar(projectDir);
-
-        const healthy = await isKokoroHealthy();
+        await ensureVoiceboxAvailable();
+        const healthy = await isVoiceboxHealthy();
         if (!healthy) {
           throw new Error(
-            "Kokoro-Server nicht erreichbar. Bitte Seite neu laden.",
+            "Lokaler TTS-Dienst ist nicht erreichbar. Scriptony startet ihn automatisch im Hintergrund.",
           );
         }
 
         toast.info("TTS wird lokal generiert…");
-        const result = await synthesizeLocal(payload);
+        const vb = await generateVoiceboxSpeech({
+          text: payload.text,
+          profileId: payload.voice,
+          projectDir,
+        });
         if (cancelledRef.current) return;
+        const result = {
+          audioPath: vb.audioPath,
+          duration: vb.durationMs != null ? vb.durationMs / 1000 : undefined,
+        };
 
         setLocalAudioPath(result.audioPath);
         setProgress(100);
@@ -298,7 +304,7 @@ export function useTtsGeneration({
   const startTts = useCallback(
     async (payload: TtsJobPayload, sceneIdOverride?: string) => {
       if (isLocalProfile()) {
-        // Local mode: use Kokoro directly
+        // Local mode: Voicebox (Kokoro presets run inside Voicebox)
         await startLocalTts(
           {
             text: payload.text,

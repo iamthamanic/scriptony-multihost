@@ -150,6 +150,18 @@ export class LocalAudioRepository implements AudioRepository {
 			setParts.push("order_index = ?");
 			values.push(patch.orderIndex);
 		}
+		if (patch.audioFileId !== undefined) {
+			setParts.push("cloud_audio_file_id = ?");
+			values.push(patch.audioFileId ?? null);
+		}
+		if (patch.waveformData !== undefined) {
+			setParts.push("waveform_json = ?");
+			values.push(
+				patch.waveformData?.length
+					? JSON.stringify(patch.waveformData)
+					: null,
+			);
+		}
 
 		setParts.push("version = version + 1");
 		setParts.push("updated_at = ?");

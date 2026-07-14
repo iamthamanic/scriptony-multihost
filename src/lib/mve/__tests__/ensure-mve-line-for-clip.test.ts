@@ -12,13 +12,17 @@ vi.mock("@/lib/api-adapter/runtime-dispatch", () => ({
 
 vi.mock("@/lib/api-adapter/mve-adapter", () => ({
   getMveLineByAudioClipId: vi.fn(),
+  getMveLinesByScene: vi.fn(),
   createMveLine: vi.fn(),
+  updateMveLine: vi.fn(),
 }));
 
 import { isLocalProfile } from "@/lib/api-adapter/runtime-dispatch";
 import {
   createMveLine,
   getMveLineByAudioClipId,
+  getMveLinesByScene,
+  updateMveLine,
 } from "@/lib/api-adapter/mve-adapter";
 import { ensureMveLineForClip } from "../ensure-mve-line-for-clip";
 
@@ -42,6 +46,7 @@ describe("ensureMveLineForClip", () => {
     vi.clearAllMocks();
     vi.mocked(isLocalProfile).mockReturnValue(true);
     vi.mocked(getMveLineByAudioClipId).mockResolvedValue(null);
+    vi.mocked(getMveLinesByScene).mockResolvedValue([]);
     vi.mocked(createMveLine).mockResolvedValue({
       id: "line_1",
       sceneId: "scene_1",
@@ -95,6 +100,47 @@ describe("ensureMveLineForClip", () => {
       clip: baseClip,
     });
     expect(line?.id).toBe("existing");
+    expect(createMveLine).not.toHaveBeenCalled();
+  });
+
+  it("binds existing text-only line instead of creating duplicate", async () => {
+    vi.mocked(getMveLinesByScene).mockResolvedValue([
+      {
+        id: "line_text",
+        sceneId: "scene_1",
+        orderIndex: 0,
+        type: "dialogue",
+        characterId: "char_a",
+        text: "Vorhanden.",
+        status: "draft",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]);
+    vi.mocked(updateMveLine).mockResolvedValue({
+      id: "line_text",
+      sceneId: "scene_1",
+      orderIndex: 0,
+      type: "dialogue",
+      characterId: "char_a",
+      text: "Hallo.",
+      status: "dirty",
+      audioClipId: "clip_1",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+
+    const line = await ensureMveLineForClip({
+      projectId: "proj_1",
+      clip: { ...baseClip, characterId: "char_a" },
+      characterId: "char_a",
+    });
+
+    expect(line?.audioClipId).toBe("clip_1");
+    expect(updateMveLine).toHaveBeenCalledWith(
+      "line_text",
+      expect.objectContaining({ audioClipId: "clip_1" }),
+    );
     expect(createMveLine).not.toHaveBeenCalled();
   });
 });

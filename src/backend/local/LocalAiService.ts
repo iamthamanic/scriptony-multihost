@@ -2,7 +2,7 @@
  * LocalAiService — vereinfachter AI-Service fuer lokale Provider.
  *
  * Ersetzt HybridAiService im Local Mode.
- * Kommuniziert direkt mit lokalen Sidecars (Kokoro, Piper etc.)
+ * Kommuniziert direkt mit lokalen Sidecars (Voicebox, Piper etc.)
  * ohne Umweg ueber Cloud-Funktionen.
  *
  * SRP: Nur AI-Interaktion, keine Job-Verwaltung oder Asset-Speicherung.
@@ -11,8 +11,11 @@
  */
 
 import type { AiService, AiPromptPayload, AiPromptResult } from "../ScriptonyBackend";
-import { synthesizeLocal, listLocalVoices } from "../../lib/api/local-tts-api";
-import { ensureKokoroSidecar } from "../../lib/api/local-tts-api";
+import {
+  generateVoiceboxSpeech,
+  listVoiceboxVoiceEntries,
+  ensureVoiceboxAvailable,
+} from "../../lib/api/voicebox-api";
 import { isDesktopShell } from "../../runtime/detect-runtime";
 
 export class LocalAiService implements AiService {
@@ -158,7 +161,7 @@ export class LocalAiService implements AiService {
   // ── TTS-Spezifische Erweiterungen (nicht im AiService Interface) ──────────
 
   /**
-   * Synthesize text to speech via local Kokoro server.
+   * Synthesize text to speech via local Voicebox (incl. Kokoro presets).
    */
   async synthesizeTts(
     text: string,
@@ -169,23 +172,24 @@ export class LocalAiService implements AiService {
       throw new Error("Project directory required for local TTS");
     }
 
-    await ensureKokoroSidecar(this.projectDir);
+    await ensureVoiceboxAvailable();
 
-    const result = await synthesizeLocal({
+    const result = await generateVoiceboxSpeech({
       text,
-      voice,
-      speed: speed ?? 1.0,
-      format: "wav",
+      profileId: voice,
+      projectDir: this.projectDir,
     });
 
-    return { audioPath: result.audioPath, duration: result.duration };
+    return {
+      audioPath: result.audioPath,
+      duration: (result.durationMs ?? 0) / 1000,
+    };
   }
 
   /**
-   * List available voices from local Kokoro server.
+   * List available voices from Voicebox (profiles + presets).
    */
   async listVoices() {
-    const result = await listLocalVoices(this.projectDir ?? undefined);
-    return result.voices;
+    return listVoiceboxVoiceEntries();
   }
 }

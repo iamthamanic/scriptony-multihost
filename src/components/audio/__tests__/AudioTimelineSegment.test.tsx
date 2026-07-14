@@ -12,6 +12,12 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 
+vi.mock("../AudioTimelineMveDialogSegment", () => ({
+  AudioTimelineMveDialogSegment: () => (
+    <div data-testid="audio-timeline-mve-dialog-segment" />
+  ),
+}));
+
 vi.mock("../AudioTimelineSegmentMveText", () => ({
   AudioTimelineSegmentMveText: () => null,
 }));
@@ -235,5 +241,31 @@ describe("AudioTimelineSegment — Accessibility", () => {
     render(<AudioTimelineSegment item={clip} pxPerSec={20} />);
     const segment = screen.getByLabelText(/dialog/);
     expect(segment.getAttribute("title")).toContain("Generiert");
+  });
+
+  it("delegates to MveDialogSegment when mve line bound", () => {
+    const line = {
+      id: "line-1",
+      sceneId: "scene-1",
+      orderIndex: 0,
+      type: "dialogue" as const,
+      status: "ready" as const,
+      text: "Hi",
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+    };
+    render(
+      <AudioTimelineSegment
+        item={mockClip}
+        pxPerSec={20}
+        mveLine={line}
+        mveProjectId="proj-1"
+        onMveSaveText={vi.fn()}
+        onMveSaveDirection={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByTestId("audio-timeline-mve-dialog-segment"),
+    ).toBeTruthy();
   });
 });

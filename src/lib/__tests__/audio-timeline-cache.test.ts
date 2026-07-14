@@ -3,6 +3,7 @@ import { QueryClient } from "@tanstack/react-query";
 import {
   addClipToAudioTimelineCache,
   removeClipsFromAudioTimelineCache,
+  upsertClipInAudioTimelineCache,
 } from "../../lib/audio-timeline-cache";
 import { queryKeys } from "../../lib/react-query";
 import type { AudioTimelineData } from "../../lib/types/audio-timeline";
@@ -42,6 +43,35 @@ describe("audio-timeline-cache", () => {
       queryKeys.timeline.audioByProject("p1"),
     );
     expect(next?.clipsByScene.s1?.map((c) => c.id)).toEqual(["c1", "c2"]);
+  });
+
+  it("upsertClipInAudioTimelineCache merges clip fields by id", () => {
+    const qc = new QueryClient();
+    const data: AudioTimelineData = {
+      acts: [],
+      sequences: [],
+      scenes: [],
+      tracksByScene: {},
+      clipsByScene: {
+        s1: [{ ...clip("c1", 100), waveformData: undefined, endSec: 1 }],
+      },
+      voiceAssignments: {},
+    };
+    qc.setQueryData(queryKeys.timeline.audioByProject("p1"), data);
+
+    upsertClipInAudioTimelineCache(qc, "p1", {
+      ...clip("c1", 100),
+      endSec: 27,
+      waveformData: [0.2, 0.8],
+    });
+
+    const next = qc.getQueryData<AudioTimelineData>(
+      queryKeys.timeline.audioByProject("p1"),
+    );
+    const updated = next?.clipsByScene.s1?.[0];
+    expect(updated?.endSec).toBe(27);
+    expect(updated?.waveformData).toEqual([0.2, 0.8]);
+    expect(next?.clipsByScene.s1).toHaveLength(1);
   });
 
   it("removeClipsFromAudioTimelineCache drops empty scene buckets", () => {

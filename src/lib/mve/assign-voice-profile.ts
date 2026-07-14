@@ -1,5 +1,5 @@
 /**
- * Upsert MVE VoiceProfile for a project character (local Kokoro MVP).
+ * Upsert MVE VoiceProfile for a project character (local Voicebox).
  * Location: src/lib/mve/assign-voice-profile.ts
  */
 
@@ -7,6 +7,7 @@ import {
   createMveVoiceProfile,
   updateMveVoiceProfile,
 } from "@/lib/api-adapter/mve-adapter";
+import { DEFAULT_VOICE_ENGINE } from "@/lib/config/voice-engine";
 import type { MveVoiceProfile } from "@/lib/multi-voice-engine/schema/voice-profile";
 import { mveDefaultPreviewForCharacter } from "./default-preview-text";
 
@@ -31,7 +32,7 @@ export async function assignMveVoiceToCharacter(
   if (params.existingProfile) {
     return updateMveVoiceProfile(params.existingProfile.id, {
       baseVoiceId: params.voiceId,
-      engine: params.engine ?? "kokoro",
+      engine: params.engine ?? DEFAULT_VOICE_ENGINE,
       status: "ready",
       previewText,
     });
@@ -40,7 +41,7 @@ export async function assignMveVoiceToCharacter(
   return createMveVoiceProfile(params.projectId, {
     name: `${params.characterName.trim() || "Charakter"} — Stimme`,
     characterId: params.characterId,
-    engine: params.engine ?? "kokoro",
+    engine: params.engine ?? DEFAULT_VOICE_ENGINE,
     baseVoiceId: params.voiceId,
     previewText,
     status: "ready",

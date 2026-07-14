@@ -30,6 +30,8 @@ export interface PendingStructureImageDrop {
 
 export interface UseStructureTimelineImageDropOptions {
   scrollRef: RefObject<HTMLDivElement | null>;
+  /** Element where timeline t=0 lives (scrolls with content). */
+  contentOriginRef?: RefObject<HTMLElement | null>;
   pxPerSec: number;
   isAudioProject: boolean;
   isFilmProject: boolean;
@@ -60,6 +62,7 @@ export function useStructureTimelineImageDrop(
 ) {
   const {
     scrollRef,
+    contentOriginRef,
     pxPerSec,
     isAudioProject,
     isFilmProject,
@@ -80,9 +83,14 @@ export function useStructureTimelineImageDrop(
     (clientX: number) => {
       const scrollEl = scrollRef.current;
       if (!scrollEl) return 0;
-      return timeSecFromTimelineDropEvent(clientX, scrollEl, pxPerSec);
+      return timeSecFromTimelineDropEvent(
+        clientX,
+        scrollEl,
+        pxPerSec,
+        contentOriginRef?.current ?? null,
+      );
     },
-    [pxPerSec, scrollRef],
+    [contentOriginRef, pxPerSec, scrollRef],
   );
 
   const onSceneImageFileDrop = useCallback(

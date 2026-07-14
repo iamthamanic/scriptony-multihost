@@ -89,37 +89,6 @@ export const STORAGE_KEYS = {
 } as const;
 
 // =============================================================================
-// Feature Flags
-// =============================================================================
-
-export const FEATURE_FLAGS = {
-  /**
-   * Enable auto-migration on app start
-   */
-  AUTO_MIGRATION: true,
-
-  /**
-   * Enable ScriptonyAssistant @// functionality
-   */
-  ASSISTANT_REFERENCES: true,
-
-  /**
-   * Enable image uploads
-   */
-  IMAGE_UPLOADS: true,
-
-  /**
-   * Enable dark mode
-   */
-  DARK_MODE: true,
-
-  /**
-   * Enable multilingual support
-   */
-  I18N: true,
-} as const;
-
-// =============================================================================
 // User Roles
 // =============================================================================
 

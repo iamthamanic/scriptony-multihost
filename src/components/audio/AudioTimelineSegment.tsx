@@ -20,9 +20,12 @@ import { formatDurationSec } from "../../lib/audio-utils";
 import { hasOverlap } from "../../lib/audio-lane";
 import { cn } from "../../lib/utils";
 import { ClipLanePopover } from "./ClipLanePopover";
-import { AudioTimelineSegmentMveText } from "./AudioTimelineSegmentMveText";
+import { AudioTimelineMveDialogSegment } from "./AudioTimelineMveDialogSegment";
 import type { MveLine } from "@/lib/multi-voice-engine/schema/line";
 import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-direction";
+import type { Character } from "@/lib/types";
+import type { MveStructurePickerRefs } from "../structure/timeline/mve/MveStructureScenePickerModal";
+import type { MveSceneOption } from "@/hooks/useMveTextBlockAudio";
 
 const TYPE_COLORS: Record<string, string> = {
   dialog: "bg-amber-500 border-amber-600",
@@ -62,6 +65,14 @@ interface AudioTimelineSegmentProps {
   mveRenderBlockReason?: string;
   onMveRenderLine?: (lineId: string) => Promise<unknown>;
   mveIsRendering?: boolean;
+  mveProjectType?: string;
+  mveCharacter?: Character;
+  mveSceneLabel?: string;
+  mveSceneBlock?: { startSec: number; endSec: number };
+  mveScenes?: MveSceneOption[];
+  mveStructurePicker?: MveStructurePickerRefs;
+  onMveBindAudioClip?: (lineId: string, clipId: string | null) => Promise<void>;
+  onMveDeleteLine?: (lineId: string) => Promise<void>;
 }
 
 export function AudioTimelineSegment({
@@ -80,6 +91,14 @@ export function AudioTimelineSegment({
   mveRenderBlockReason,
   onMveRenderLine,
   mveIsRendering,
+  mveProjectType,
+  mveCharacter,
+  mveSceneLabel,
+  mveSceneBlock,
+  mveScenes,
+  mveStructurePicker,
+  onMveBindAudioClip,
+  onMveDeleteLine,
 }: AudioTimelineSegmentProps) {
   // T28: Union-Typ — unterscheide Track (Legacy) vs Clip (neu)
   const isClip = "startSec" in item;
@@ -110,6 +129,7 @@ export function AudioTimelineSegment({
   const showMveEditor =
     isClip &&
     mveLine &&
+    mveProjectId &&
     onMveSaveText &&
     onMveSaveDirection &&
     (trackType === "dialog" || trackType === "narrator");
@@ -249,6 +269,35 @@ export function AudioTimelineSegment({
     ? `Geschätzt: ${trackType}: ${content || "(kein Text)"}, Dauer ${formatDurationSec(durationSec)}, ${wordCount} Wörter${roughWpm > 0 ? `, ~${roughWpm} WPM` : ""}`
     : `${trackType}: ${content}, Dauer ${formatDurationSec(durationSec)}`;
 
+  if (showMveEditor && mveLine && mveProjectId && isClip) {
+    return (
+      <AudioTimelineMveDialogSegment
+        clip={item as AudioClip}
+        line={mveLine}
+        pxPerSec={pxPerSec}
+        viewStartSec={viewStartSec}
+        isEditable={isEditable}
+        onTrimEnd={onTrimEnd}
+        allClips={allClips}
+        onLaneChange={onLaneChange}
+        projectId={mveProjectId}
+        projectType={mveProjectType}
+        sceneLabel={mveSceneLabel}
+        sceneBlock={mveSceneBlock}
+        character={mveCharacter}
+        scenes={mveScenes}
+        structurePicker={mveStructurePicker}
+        onSaveText={onMveSaveText}
+        onSaveDirection={onMveSaveDirection}
+        onBindAudioClip={onMveBindAudioClip}
+        onDeleteLine={onMveDeleteLine}
+        renderBlockReason={mveRenderBlockReason}
+        onRenderLine={onMveRenderLine}
+        isRendering={mveIsRendering}
+      />
+    );
+  }
+
   return (
     <div
       className={cn(
@@ -310,20 +359,7 @@ export function AudioTimelineSegment({
             onLaneChange={onLaneChange}
           />
         )}
-        {showMveEditor && mveLine ? (
-          <AudioTimelineSegmentMveText
-            line={mveLine}
-            projectId={mveProjectId ?? ""}
-            disabled={!isEditable}
-            onSaveText={onMveSaveText!}
-            onSaveDirection={onMveSaveDirection!}
-            renderBlockReason={mveRenderBlockReason}
-            onRenderLine={onMveRenderLine}
-            isRendering={mveIsRendering}
-          />
-        ) : (
-          <span className="truncate font-medium">{content || "…"}</span>
-        )}
+        <span className="truncate font-medium">{content || "…"}</span>
         <div className="flex items-center gap-1 shrink-0">
           {/* T31: TTS-Button nur auf geschätzten Clips mit handler.
                Mindestbreite verhindert UI-Überlappung bei schmalen Segmenten. */}

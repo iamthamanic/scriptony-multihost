@@ -12,6 +12,7 @@ import {
   MveVoiceProfileStatusSchema,
   MveVoiceProfileTypeSchema,
 } from "./enums";
+import { MveVoiceDesignSpecSchema } from "./voice-design-spec";
 
 export const MveVoiceAttributesSchema = z.object({
   genderPresentation: z
@@ -36,6 +37,10 @@ export const MveVoiceRenderSettingsSchema = z
     stability: z.number().min(0).max(1).optional(),
     similarity: z.number().min(0).max(1).optional(),
     speed: z.number().min(0.25).max(4).optional(),
+    seed: z.number().int().min(0).optional(),
+    guidance: z.number().min(0).max(1).optional(),
+    temperature: z.number().min(0).max(2).optional(),
+    variationStrength: z.number().min(0).max(1).optional(),
   })
   .strict();
 export type MveVoiceRenderSettings = z.infer<
@@ -54,6 +59,7 @@ export const MveVoiceProfileSchema = z.object({
   baseVoiceId: MveIdSchema.optional(),
   referenceAudioUrl: z.string().url().optional(),
   description: z.string().max(2000).optional(),
+  designSpec: MveVoiceDesignSpecSchema.optional(),
   attributes: MveVoiceAttributesSchema.optional(),
   defaultSettings: MveVoiceRenderSettingsSchema.optional(),
   consentStatus: MveConsentStatusSchema.default("not_required"),

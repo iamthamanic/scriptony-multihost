@@ -95,7 +95,7 @@ export function TrackHeader({
   return (
     <div
       className={cn(
-        "box-border flex flex-col justify-between gap-1",
+        "box-border flex flex-col justify-start gap-1",
         "h-full min-h-0 w-full min-w-0 max-w-full overflow-hidden",
         "border-l-[3px] pl-2 pr-2 pt-1 pb-1",
         "bg-card/95",

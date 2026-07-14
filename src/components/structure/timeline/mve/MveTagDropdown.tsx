@@ -14,13 +14,19 @@ import {
   DropdownMenuTrigger,
 } from "../../../ui/dropdown-menu";
 import { MVE_TAGS, formatMveTag, type MveTag } from "../../../../lib/mve/tags";
+import { cn } from "../../../../lib/utils";
 
 export interface MveTagDropdownProps {
   onInsert: (tag: MveTag) => void;
   disabled?: boolean;
+  compact?: boolean;
 }
 
-export function MveTagDropdown({ onInsert, disabled }: MveTagDropdownProps) {
+export function MveTagDropdown({
+  onInsert,
+  disabled,
+  compact,
+}: MveTagDropdownProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -28,12 +34,16 @@ export function MveTagDropdown({ onInsert, disabled }: MveTagDropdownProps) {
           type="button"
           variant="ghost"
           size="sm"
+          className={cn(
+            compact && "h-7 w-7 p-0",
+            "text-white hover:bg-white/10 hover:text-white",
+          )}
           disabled={disabled}
           aria-label="Tags einfügen"
           title="Tags"
         >
-          <Tag className="size-4 mr-1.5" />
-          Tags
+          <Tag className={cn("size-4", !compact && "mr-1.5")} />
+          {!compact ? "Tags" : null}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="max-h-60 overflow-y-auto">

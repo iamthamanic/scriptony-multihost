@@ -70,8 +70,28 @@ UI (pages/hooks)
 | Project open / SQLite | `LocalBackend`, `LocalProjectOpenGuard`, `src/local/` |
 | Assets on disk | `src/local/` + Tauri FS capabilities |
 | Jobs (optional) | Sidecar `VITE_SCRIPTONY_SIDECAR_PORT` (default 3765) |
+| Local TTS (MVE + scenes) | **Voicebox** (`http://127.0.0.1:17493`) — auto-launches on macOS via `open -a`; Kokoro-Stimmen nur als Voicebox-Presets |
 
 Facade: `src/utils/api.tsx` delegates `projectsApi`, `worldsApi`, `categoriesApi`, `itemsApi` to adapters.
+
+### Local TTS (Voicebox)
+
+**Product rule:** Voicebox is a **headless TTS backend** only. Users configure voices, preview, and generate **entirely in Scriptony** — never in the Voicebox UI. Scriptony auto-starts the service in the background on macOS (`open -gj`). Kokoro-Stimmen laufen **nur** als Voicebox-Presets (`GET /profiles/presets/kokoro`) — kein eigenes Kokoro-Sidecar mehr in Scriptony.
+
+Install once (macOS): `./scripts/install-voicebox-macos.sh` → `/Applications/Voicebox.app`
+
+```bash
+# .env.local (optional)
+VITE_DEFAULT_VOICE_ENGINE=voicebox   # default when unset
+VITE_VOICEBOX_BASE_URL=http://127.0.0.1:17493   # Vite dev proxies via /__voicebox (same-origin CORS)
+VITE_VOICEBOX_APP_PATH=/Applications/Voicebox.app
+```
+
+**Scriptony UI today:** list/create profiles via REST (`GET/POST /profiles`), assign to characters, preview, scene/MVE TTS via `/generate`. Kokoro-Presets erscheinen in der Stimmenliste wie normale Voicebox-Stimmen.
+
+**Still to build in Scriptony** (API exists, UI stub): clone samples upload (`POST /profiles/{id}/samples`), model download status, tuned voices — see Voicebox OpenAPI at `http://127.0.0.1:17493/docs`.
+
+See `src/lib/config/voice-engine.ts`.
 
 ---
 
@@ -126,4 +146,4 @@ Legacy full gate (Appwrite deploy): `npm run checks`. Include `src-tauri/` in sc
 
 ---
 
-**See also:** [LOCAL_PROJECT_FORMAT.md](LOCAL_PROJECT_FORMAT.md), [GETTING_STARTED.md](GETTING_STARTED.md)
+**See also:** [FEATURE_LOCAL_CLOUD_MATRIX.md](FEATURE_LOCAL_CLOUD_MATRIX.md) (Lokal / Appwrite / API pro Feature), [LOCAL_PROJECT_FORMAT.md](LOCAL_PROJECT_FORMAT.md), [GETTING_STARTED.md](GETTING_STARTED.md)
