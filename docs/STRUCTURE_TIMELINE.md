@@ -52,6 +52,16 @@ flowchart LR
 
 `BeatTrack`, `ActTrack`, `SequenceTrack`, `SceneTrack`, `ShotTrack`, `StructureTimelineAudioLanes`.
 
+## Layout (row-pair shell)
+
+Each timeline row is a DOM flex pair `[sticky label | content]` inside one vertical stack and horizontal `scrollRef` (#49–#51):
+
+- **Structure rows:** Zeit/Ruler, Beat, Act, Sequence, Scene, Shot (film)
+- **Audio DAW:** section header, each dialog/SFX lane, section footer (`StructureTimelineAudioRowPairs`)
+- **Film production:** Clip (NLE), Musik, SFX (`StructureTimelineFilmProductionRowPairs`)
+
+Labels use `position: sticky; left: 0` (248px with audio lanes, else 96px). Playhead/scrub/drop anchor on `timeline-content-origin` at `left: labelWidth`.
+
 ## Layout sources
 
 - **Canonical (film/hybrid):** `src/lib/timeline-tree/projectBlocks.ts` + `buildTree.ts`
