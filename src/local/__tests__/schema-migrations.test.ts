@@ -99,4 +99,28 @@ describe("schema-migrations", () => {
     ).toBe(SCHEMA_VERSION);
     await db.close();
   });
+
+  it("migrateLocalDb adds voice identity columns at v8", async () => {
+    const db = await LocalDb.createInMemory();
+    await migrateLocalDb(db);
+
+    const column = await db.all(
+      `PRAGMA table_info(${TABLE.MVE_VOICE_PROFILES})`,
+    );
+    const names = column.map((c) => String(c.name));
+    expect(names).toContain("creation_mode");
+    expect(names).toContain("provider");
+    expect(names).toContain("model");
+    expect(names).toContain("identity_prompt");
+    expect(names).toContain("reference_audio_asset_id");
+    expect(names).toContain("reference_text");
+    expect(names).toContain("clone_prompt_asset_id");
+    expect(
+      Number(
+        (await db.get(`SELECT value FROM schema_meta WHERE key = 'version'`))
+          ?.value,
+      ),
+    ).toBe(8);
+    await db.close();
+  });
 });

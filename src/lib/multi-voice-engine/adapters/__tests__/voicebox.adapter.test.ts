@@ -31,6 +31,12 @@ describe("VoiceboxVoiceEngineAdapter", () => {
     vi.clearAllMocks();
   });
 
+  it("does not claim prompt-to-voice generation (VoiceDesign is separate provider)", () => {
+    expect(
+      voiceboxVoiceEngineAdapter.capabilities.supportsVoiceGenerationFromPrompt,
+    ).toBe(false);
+  });
+
   it("renders line via Voicebox generate API", async () => {
     const result = await voiceboxVoiceEngineAdapter.renderLine({
       lineId: "mve_line_1",

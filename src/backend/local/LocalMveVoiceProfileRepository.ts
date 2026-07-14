@@ -60,6 +60,13 @@ export class LocalMveVoiceProfileRepository {
       engine: payload.engine ?? "elevenlabs",
       type: payload.type ?? "default",
       status: payload.status ?? "draft",
+      creationMode: payload.creationMode,
+      provider: payload.provider,
+      model: payload.model,
+      identityPrompt: payload.identityPrompt,
+      referenceAudioAssetId: payload.referenceAudioAssetId,
+      referenceText: payload.referenceText,
+      clonePromptAssetId: payload.clonePromptAssetId,
       characterId: payload.characterId,
       baseVoiceId: payload.baseVoiceId,
       referenceAudioUrl: payload.referenceAudioUrl,
@@ -78,10 +85,12 @@ export class LocalMveVoiceProfileRepository {
     await this.db.run(
       `INSERT INTO ${TABLE.MVE_VOICE_PROFILES} (
         id, project_id, user_id, character_id, name, language, engine, profile_type,
-        status, base_voice_id, reference_audio_url, description, design_spec_json, attributes_json,
+        status, creation_mode, provider, model, identity_prompt,
+        reference_audio_asset_id, reference_text, clone_prompt_asset_id,
+        base_voice_id, reference_audio_url, description, design_spec_json, attributes_json,
         default_settings_json, consent_status, commercial_use_allowed, preview_text,
         version, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         profile.id,
         projectId,
@@ -92,6 +101,13 @@ export class LocalMveVoiceProfileRepository {
         profile.engine,
         profile.type,
         profile.status,
+        profile.creationMode ?? null,
+        profile.provider ?? null,
+        profile.model ?? null,
+        profile.identityPrompt ?? null,
+        profile.referenceAudioAssetId ?? null,
+        profile.referenceText ?? null,
+        profile.clonePromptAssetId ?? null,
         profile.baseVoiceId ?? null,
         profile.referenceAudioUrl ?? null,
         profile.description ?? null,
@@ -154,6 +170,34 @@ export class LocalMveVoiceProfileRepository {
     if (patch.status !== undefined) {
       setParts.push("status = ?");
       values.push(patch.status);
+    }
+    if (patch.creationMode !== undefined) {
+      setParts.push("creation_mode = ?");
+      values.push(patch.creationMode ?? null);
+    }
+    if (patch.provider !== undefined) {
+      setParts.push("provider = ?");
+      values.push(patch.provider ?? null);
+    }
+    if (patch.model !== undefined) {
+      setParts.push("model = ?");
+      values.push(patch.model ?? null);
+    }
+    if (patch.identityPrompt !== undefined) {
+      setParts.push("identity_prompt = ?");
+      values.push(patch.identityPrompt ?? null);
+    }
+    if (patch.referenceAudioAssetId !== undefined) {
+      setParts.push("reference_audio_asset_id = ?");
+      values.push(patch.referenceAudioAssetId ?? null);
+    }
+    if (patch.referenceText !== undefined) {
+      setParts.push("reference_text = ?");
+      values.push(patch.referenceText ?? null);
+    }
+    if (patch.clonePromptAssetId !== undefined) {
+      setParts.push("clone_prompt_asset_id = ?");
+      values.push(patch.clonePromptAssetId ?? null);
     }
     if (patch.baseVoiceId !== undefined) {
       setParts.push("base_voice_id = ?");

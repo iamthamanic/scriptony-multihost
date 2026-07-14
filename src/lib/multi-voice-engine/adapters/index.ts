@@ -10,6 +10,8 @@ import { getDefaultVoiceEngineRegistry } from "./registry";
 
 export * from "./voice-engine-adapter";
 export * from "./registry";
+export * from "./voice-creation-adapter";
+export * from "./voice-creation-registry";
 export * from "./voicebox.adapter";
 export * from "./elevenlabs.adapter";
 export * from "./dummy.adapter";

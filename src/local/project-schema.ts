@@ -15,7 +15,7 @@
  * Current schema version. Bumped when tables or columns are added/changed.
  * Migrations run from the current version to SCHEMA_VERSION.
  */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 /** Table holding schema version metadata inside each local database. */
 export const SCHEMA_META_TABLE = "schema_meta";
@@ -83,6 +83,13 @@ export const MVE_SCHEMA_STATEMENTS: readonly string[] = [
   reference_audio_url   TEXT,
   description           TEXT,
   design_spec_json      TEXT,
+  creation_mode         TEXT,
+  provider              TEXT,
+  model                 TEXT,
+  identity_prompt       TEXT,
+  reference_audio_asset_id TEXT,
+  reference_text        TEXT,
+  clone_prompt_asset_id TEXT,
   attributes_json       TEXT,
   default_settings_json TEXT,
   consent_status        TEXT NOT NULL DEFAULT 'not_required',
@@ -151,6 +158,17 @@ export const MVE_VOICE_STUDIO_SCHEMA_STATEMENTS: readonly string[] = [
 /** Schema v7 — structured voice design spec on MVE voice profiles. */
 export const MIGRATION_V7_STATEMENTS: readonly string[] = [
   `ALTER TABLE ${TABLE.MVE_VOICE_PROFILES} ADD COLUMN design_spec_json TEXT`,
+];
+
+/** Schema v8 — voice identity fields (creationMode, provider, clone assets). */
+export const MIGRATION_V8_STATEMENTS: readonly string[] = [
+  `ALTER TABLE ${TABLE.MVE_VOICE_PROFILES} ADD COLUMN creation_mode TEXT`,
+  `ALTER TABLE ${TABLE.MVE_VOICE_PROFILES} ADD COLUMN provider TEXT`,
+  `ALTER TABLE ${TABLE.MVE_VOICE_PROFILES} ADD COLUMN model TEXT`,
+  `ALTER TABLE ${TABLE.MVE_VOICE_PROFILES} ADD COLUMN identity_prompt TEXT`,
+  `ALTER TABLE ${TABLE.MVE_VOICE_PROFILES} ADD COLUMN reference_audio_asset_id TEXT`,
+  `ALTER TABLE ${TABLE.MVE_VOICE_PROFILES} ADD COLUMN reference_text TEXT`,
+  `ALTER TABLE ${TABLE.MVE_VOICE_PROFILES} ADD COLUMN clone_prompt_asset_id TEXT`,
 ];
 
 /** Idempotent DDL for schema v5 (MVE render jobs + takes). */

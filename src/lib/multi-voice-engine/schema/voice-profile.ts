@@ -9,8 +9,10 @@ import {
   MveEnergySchema,
   MveIdSchema,
   MvePaceSchema,
+  MveVoiceCreationModeSchema,
   MveVoiceProfileStatusSchema,
   MveVoiceProfileTypeSchema,
+  MveVoiceProviderSchema,
 } from "./enums";
 import { MveVoiceDesignSpecSchema } from "./voice-design-spec";
 
@@ -56,6 +58,14 @@ export const MveVoiceProfileSchema = z.object({
   engine: z.string().min(1).max(64),
   type: MveVoiceProfileTypeSchema.default("default"),
   status: MveVoiceProfileStatusSchema.default("draft"),
+  /** Identity origin — inferred from `type` when omitted on legacy rows. */
+  creationMode: MveVoiceCreationModeSchema.optional(),
+  provider: MveVoiceProviderSchema.optional(),
+  model: z.string().min(1).max(128).optional(),
+  identityPrompt: z.string().max(2000).optional(),
+  referenceAudioAssetId: MveIdSchema.optional(),
+  referenceText: z.string().max(5000).optional(),
+  clonePromptAssetId: MveIdSchema.optional(),
   baseVoiceId: MveIdSchema.optional(),
   referenceAudioUrl: z.string().url().optional(),
   description: z.string().max(2000).optional(),
