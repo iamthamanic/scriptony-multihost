@@ -27,6 +27,9 @@ pub fn run() {
       commands::sidecar::spawn_sidecar,
       commands::sidecar::stop_sidecar,
       commands::sidecar::sidecar_health,
+      commands::voice_design_sidecar::spawn_voice_design_sidecar,
+      commands::voice_design_sidecar::stop_voice_design_sidecar,
+      commands::voice_design_sidecar::voice_design_sidecar_health,
       commands::voicebox::start_voicebox_app,
       commands::voicebox::voicebox_server_health,
     ])

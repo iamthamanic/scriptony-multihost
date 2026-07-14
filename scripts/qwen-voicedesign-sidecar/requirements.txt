@@ -1,0 +1,4 @@
+fastapi>=0.115.0
+uvicorn>=0.32.0
+# Optional for real generation (not required when QWEN_VOICEDESIGN_STUB=1):
+# qwen-tts torch soundfile
