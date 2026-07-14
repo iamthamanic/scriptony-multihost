@@ -13,6 +13,7 @@ import {
   parsePresetVoiceEntryId,
   resolveVoiceboxProfileIdForSelection,
 } from "@/lib/api/voicebox-api";
+import { compilePerformanceInstruct } from "@/lib/mve/casting/voice-prompt-compiler";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
 import type { RenderLineInput, RenderLineOutput } from "../schema/render-line";
 import type { VoiceEngineAdapter } from "./voice-engine-adapter";
@@ -87,11 +88,23 @@ export class VoiceboxVoiceEngineAdapter implements VoiceEngineAdapter {
 
     await ensureVoiceboxAvailable();
 
+    const { instruct, warnings } = compilePerformanceInstruct(
+      {
+        identityPrompt: input.voice.identityPrompt,
+        description: input.voice.description,
+        designSpec: input.voice.designSpec,
+        creationMode: input.voice.creationMode,
+        profileType: input.voice.type,
+      },
+      input.direction,
+    );
+
     const result = await generateVoiceboxSpeech({
       text: input.text,
       profileId,
       language: input.language,
       projectDir: input.projectDir,
+      instruct,
     });
 
     if (!result.audioPath?.trim()) {
@@ -101,6 +114,7 @@ export class VoiceboxVoiceEngineAdapter implements VoiceEngineAdapter {
     return {
       audioUrl: result.audioPath,
       durationMs: result.durationMs,
+      warnings,
     };
   }
 }
