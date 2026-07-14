@@ -8,10 +8,7 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAudioLaneState } from "@/hooks/useAudioLaneState";
-import {
-  StructureTimelineAudioLaneLabels,
-  StructureTimelineAudioLaneScrollRows,
-} from "@/components/structure/timeline/tracks/StructureTimelineAudioLanes";
+import { StructureTimelineAudioRowPairs } from "@/components/structure/timeline/tracks/StructureTimelineAudioLanes";
 import { DEFAULT_METRONOME_CONFIG } from "@/lib/audio/metronome-config";
 import { timeSecFromTimelineClientX } from "@/hooks/timeline/timeline-scrub-utils";
 import type { useStructureTimelineAudioLanes } from "@/components/structure/timeline/tracks/StructureTimelineAudioLanes";
@@ -237,27 +234,16 @@ export function TimelineRowAlignmentPreviewPage() {
                 />
               </div>
 
-              {/* Audio lanes: sidebar labels | scroll rows */}
-              <div className="flex">
-                <div
-                  className={STICKY_CELL_CLASS}
-                  style={{ width: `${LABEL_W}px` }}
-                >
-                  <StructureTimelineAudioLaneLabels
-                    laneProps={laneProps}
-                    addAudio={addAudio}
-                    metronome={metronome}
-                    isLoading={false}
-                  />
-                </div>
-                <div className="shrink-0" style={{ width: `${TOTAL_WIDTH}px` }}>
-                  <StructureTimelineAudioLaneScrollRows
-                    laneProps={laneProps}
-                    metronome={metronome}
-                    isLoading={false}
-                  />
-                </div>
-              </div>
+              {/* Audio lanes: per-lane row pairs (#50) */}
+              <StructureTimelineAudioRowPairs
+                laneProps={laneProps}
+                addAudio={addAudio}
+                metronome={metronome}
+                isLoading={false}
+                labelCellClassName={STICKY_CELL_CLASS}
+                labelColumnWidthPx={LABEL_W}
+                totalWidthPx={TOTAL_WIDTH}
+              />
 
               {/* Row: Film clip */}
               <div className="flex">

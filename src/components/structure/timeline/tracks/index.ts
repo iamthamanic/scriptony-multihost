@@ -6,6 +6,7 @@ export { ShotTrack, ShotTrackLabel } from "./ShotTrack";
 export {
   StructureTimelineAudioLaneLabels,
   StructureTimelineAudioLaneScrollRows,
+  StructureTimelineAudioRowPairs,
   StructureTimelineAudioLanesStack,
   useStructureTimelineAudioLanes,
   type StructureTimelineAudioLanesProps,

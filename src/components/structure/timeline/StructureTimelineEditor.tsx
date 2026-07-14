@@ -134,8 +134,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/react-query";
 import {
   useStructureTimelineAudioLanes,
-  StructureTimelineAudioLaneLabels,
-  StructureTimelineAudioLaneScrollRows,
+  StructureTimelineAudioRowPairs,
 } from "./tracks/StructureTimelineAudioLanes";
 import { SceneAudioLaneLinkSection } from "../../timeline/SceneAudioLaneLinkSection";
 import { useSceneAudioLaneLinks } from "../../../hooks/useSceneAudioLaneLinks";
@@ -5844,29 +5843,18 @@ export function StructureTimelineEditor({
             )}
           </TimelineStructureSelectionStack>
 
-          {/* Audio lanes: sidebar labels | scroll rows (per-lane pairing → #50) */}
+          {/* Audio lanes: per-lane row pairs (#50) */}
           {showAudioDawLaneRows && (
-            <div className="flex">
-              <div
-                className={TIMELINE_STICKY_LABEL_CELL_CLASS}
-                style={{ width: `${timelineLabelColumnWidthPx}px` }}
-              >
-                <StructureTimelineAudioLaneLabels
-                  laneProps={timelineAudio.laneProps}
-                  addAudio={timelineAudio.addAudio}
-                  metronome={timelineAudio.metronome}
-                  isLoading={timelineAudio.lanes.isLoading}
-                />
-              </div>
-              <div className="shrink-0" style={{ width: `${totalWidthPx}px` }}>
-                <StructureTimelineAudioLaneScrollRows
-                  laneProps={timelineAudio.laneProps}
-                  metronome={timelineAudio.metronome}
-                  isLoading={timelineAudio.lanes.isLoading}
-                  scrollStackRef={audioDialogScrollStackRef}
-                />
-              </div>
-            </div>
+            <StructureTimelineAudioRowPairs
+              laneProps={timelineAudio.laneProps}
+              addAudio={timelineAudio.addAudio}
+              metronome={timelineAudio.metronome}
+              isLoading={timelineAudio.lanes.isLoading}
+              scrollStackRef={audioDialogScrollStackRef}
+              labelCellClassName={TIMELINE_STICKY_LABEL_CELL_CLASS}
+              labelColumnWidthPx={timelineLabelColumnWidthPx}
+              totalWidthPx={totalWidthPx}
+            />
           )}
           {/* Film production: Clip/Musik/SFX labels | tracks */}
           {showFilmProductionTracks && (
