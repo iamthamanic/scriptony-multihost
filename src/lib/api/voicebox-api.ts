@@ -632,6 +632,7 @@ async function startVoiceboxGeneration(params: {
   language?: string;
   engine?: string;
   seed?: number;
+  instruct?: string;
 }): Promise<VoiceboxGenerationRecord> {
   const body: Record<string, unknown> = {
     text: params.text,
@@ -643,6 +644,10 @@ async function startVoiceboxGeneration(params: {
   }
   if (params.seed != null && params.seed >= 0) {
     body.seed = params.seed;
+  }
+  const instruct = params.instruct?.trim();
+  if (instruct) {
+    body.instruct = instruct;
   }
 
   const resp = await fetch(`${baseUrl()}/generate`, {
@@ -686,6 +691,7 @@ export async function generateVoiceboxSpeech(params: {
   projectDir?: string;
   engine?: string;
   seed?: number;
+  instruct?: string;
   onProgress?: LoadingProgressReporter;
 }): Promise<VoiceboxGenerateResult> {
   if (!isDesktopShell()) {
@@ -726,6 +732,7 @@ export async function generateVoiceboxSpeech(params: {
         language,
         engine,
         seed: params.seed,
+        instruct: params.instruct,
       });
 
       const record = await resolveVoiceboxGenerationRecord(

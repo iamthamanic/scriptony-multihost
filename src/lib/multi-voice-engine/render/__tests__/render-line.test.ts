@@ -135,6 +135,16 @@ describe("createMveLineRenderSnapshot", () => {
     expect(snap.line.text).toBe("Hallo Welt.");
     expect(snap.voice.engine).toBe("dummy");
   });
+
+  it("includes line direction on snapshot", () => {
+    const direction = { emotion: "tense" as const, pace: "slow" as const };
+    const snap = createMveLineRenderSnapshot(
+      { ...sampleLine, direction },
+      sampleVoice,
+    );
+    expect(snap.direction).toEqual(direction);
+    expect(snap.line.direction).toEqual(direction);
+  });
 });
 
 describe("renderMveLine", () => {
