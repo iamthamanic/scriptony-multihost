@@ -21,7 +21,11 @@ import { useMetronomeSettings } from "../../../../hooks/useMetronomeSettings";
 import type { LinkedLaneAudioContext } from "../../../../hooks/useTimelineAddAudio";
 import type { TimelineSceneRef } from "../../../../lib/timeline-add-audio";
 import type { MveLine } from "../../../../lib/multi-voice-engine/schema/line";
-import { LANE_UI, laneIndexToTrackType } from "../../../../lib/audio-lane";
+import {
+  LANE_UI,
+  laneIndexToTrackType,
+  resolveLaneHeightPx,
+} from "../../../../lib/audio-lane";
 import { resolveMveTtsVoiceId } from "@/lib/mve/resolve-tts-voice-id";
 import {
   nextLineOrderIndexForScene,
@@ -41,6 +45,8 @@ import {
   StructureTimelineAudioSectionFooter,
   StructureTimelineAudioSectionHeader,
 } from "./StructureTimelineAudioSectionChrome";
+import { AudioClipLaneSidebar } from "../../../timeline/audio/AudioClipLaneSidebar";
+import { AudioClipLaneContent } from "../../../timeline/audio/AudioClipLaneContent";
 import { useQueryClient } from "@tanstack/react-query";
 import { updateClip } from "@/lib/api-adapter/clips-adapter";
 import { decodeLocalAudioToPeaks } from "@/lib/mve/decode-local-audio-to-peaks";
@@ -542,6 +548,247 @@ export function StructureTimelineAudioLaneScrollRows({
         <StructureTimelineClipLaneContent {...laneProps} />
       </div>
       <StructureTimelineAudioSectionFooter side="scroll" />
+    </div>
+  );
+}
+
+/** Per-lane row pairs: header, each lane [sidebar | content], footer (#50). */
+export function StructureTimelineAudioRowPairs({
+  laneProps,
+  addAudio,
+  metronome,
+  isLoading,
+  scrollStackRef,
+  labelCellClassName,
+  labelColumnWidthPx,
+  totalWidthPx,
+}: {
+  laneProps: ReturnType<typeof useStructureTimelineAudioLanes>["laneProps"];
+  addAudio: ReturnType<typeof useStructureTimelineAudioLanes>["addAudio"];
+  metronome?: ReturnType<typeof useStructureTimelineAudioLanes>["metronome"];
+  isLoading: boolean;
+  scrollStackRef?: RefObject<HTMLDivElement | null>;
+  labelCellClassName: string;
+  labelColumnWidthPx: number;
+  totalWidthPx: number;
+}) {
+  const {
+    sortedLaneIndices,
+    laneGroups,
+    expandedLane,
+    handlers,
+    laneState,
+    characterLanes,
+    mveLines,
+    linkedSceneIdForLane,
+    getMveLaneLinkForLane,
+    mveLaneLinkBase,
+    pxPerSec,
+    viewStartSec,
+    scenes,
+    structurePicker,
+    sceneBlocks,
+    currentTimeSec,
+    onExpandedLaneChange,
+    onAddMveTextBlock,
+    readingSpeedWpm,
+    allClips,
+  } = laneProps;
+
+  if (isLoading) {
+    return (
+      <div className="flex border-t-2 border-primary/30">
+        <div
+          className={labelCellClassName}
+          style={{ width: `${labelColumnWidthPx}px` }}
+        >
+          <div className="px-2 py-2 text-[9px] text-muted-foreground">
+            Audio…
+          </div>
+        </div>
+        <div
+          className="flex items-center px-3 text-xs text-muted-foreground shrink-0"
+          style={{ width: `${totalWidthPx}px`, height: LANE_UI.heightCompact }}
+        >
+          Audio-Spuren werden geladen…
+        </div>
+      </div>
+    );
+  }
+
+  const laneHasContent = (laneIndex: number) => {
+    const clips = laneGroups[laneIndex] ?? [];
+    const characterId = characterLanes?.characterIdForLane(laneIndex);
+    const linesForCharacter = characterId
+      ? (mveLines?.linesByCharacterId?.get(characterId) ?? [])
+      : [];
+    return clips.length > 0 || linesForCharacter.length > 0;
+  };
+
+  return (
+    <div className="border-t-2 border-primary/30 bg-muted/15 shrink-0">
+      <input
+        ref={addAudio.fileInputRef}
+        type="file"
+        accept="audio/*"
+        className="hidden"
+        onChange={addAudio.onFileInputChange}
+      />
+
+      {/* Header row pair */}
+      <div className="flex">
+        <div
+          className={labelCellClassName}
+          style={{ width: `${labelColumnWidthPx}px` }}
+        >
+          <StructureTimelineAudioSectionHeader
+            side="labels"
+            metronome={metronome}
+          />
+        </div>
+        <div className="shrink-0" style={{ width: `${totalWidthPx}px` }}>
+          <StructureTimelineAudioSectionHeader
+            side="scroll"
+            metronome={metronome}
+          />
+        </div>
+      </div>
+
+      {/* Per-lane row pairs */}
+      <div
+        ref={scrollStackRef}
+        data-testid="timeline-audio-dialog-scroll-stack"
+        className="relative"
+      >
+        {sortedLaneIndices.length === 0 ? (
+          <div className="flex">
+            <div
+              className={labelCellClassName}
+              style={{ width: `${labelColumnWidthPx}px` }}
+            >
+              <div
+                className="border-b border-border px-2 flex items-center bg-card text-[9px] text-muted-foreground"
+                style={{ height: `${LANE_UI.heightCompact}px` }}
+              >
+                Audio-Spuren (Struktur anlegen)
+              </div>
+            </div>
+            <div
+              className="shrink-0 border-b border-border bg-muted/10"
+              style={{
+                width: `${totalWidthPx}px`,
+                height: `${LANE_UI.heightCompact}px`,
+              }}
+            />
+          </div>
+        ) : (
+          sortedLaneIndices.map((laneIndex) => {
+            const expanded = expandedLane === laneIndex;
+            const clips = laneGroups[laneIndex] ?? [];
+            const locked = laneState.getLaneState(laneIndex)?.locked ?? false;
+            const character = characterLanes?.getCharacterForLane(laneIndex);
+            const hasContent = laneHasContent(laneIndex);
+            const height = resolveLaneHeightPx(
+              laneIndex,
+              expandedLane,
+              hasContent,
+            );
+
+            return (
+              <div key={`audio-row-${laneIndex}`} className="flex">
+                <div
+                  className={labelCellClassName}
+                  style={{ width: `${labelColumnWidthPx}px` }}
+                >
+                  <AudioClipLaneSidebar
+                    fullWidth
+                    laneIndex={laneIndex}
+                    expanded={expanded}
+                    expandedLane={expandedLane}
+                    hasContent={hasContent}
+                    locked={locked}
+                    character={character}
+                    addAudio={addAudio}
+                    scenes={scenes ?? []}
+                    structurePicker={structurePicker}
+                    currentTimeSec={currentTimeSec ?? 0}
+                    onExpandedLaneChange={onExpandedLaneChange}
+                    onMuteChange={laneState.setMute}
+                    onSoloChange={laneState.setSolo}
+                    onVolumeChange={laneState.setVolume}
+                    onPanChange={laneState.setPan}
+                    onFxSlotChange={handlers.handleFxSlotChange}
+                    onFxChainEnabledChange={handlers.handleFxChainEnabledChange}
+                    onRecordToggle={
+                      addAudio
+                        ? () =>
+                            addAudio.toggleRecord(
+                              laneIndex,
+                              currentTimeSec ?? 0,
+                            )
+                        : undefined
+                    }
+                    onDeleteLane={handlers.handleDeleteLane}
+                    onAddMveTextBlock={onAddMveTextBlock}
+                    linkedSceneId={linkedSceneIdForLane?.(laneIndex)}
+                    mveLaneLink={
+                      mveLaneLinkBase?.enabled && getMveLaneLinkForLane
+                        ? {
+                            ...mveLaneLinkBase,
+                            ...getMveLaneLinkForLane(laneIndex),
+                          }
+                        : undefined
+                    }
+                    allClips={allClips ?? []}
+                  />
+                </div>
+                <div
+                  className="shrink-0"
+                  style={{ width: `${totalWidthPx}px` }}
+                >
+                  <AudioClipLaneContent
+                    laneIndex={laneIndex}
+                    height={height}
+                    totalWidthPx={totalWidthPx}
+                    scenes={scenes ?? []}
+                    sceneBlocks={sceneBlocks ?? []}
+                    clips={clips}
+                    pxPerSec={pxPerSec}
+                    viewStartSec={viewStartSec ?? 0}
+                    laneState={laneState}
+                    onTrimEnd={handlers.handleTrimEnd}
+                    onLaneChange={handlers.handleLaneChange}
+                    onGenerateTts={handlers.handleGenerateTts}
+                    allClips={allClips ?? []}
+                    characterLanes={characterLanes}
+                    mveLines={mveLines}
+                    readingSpeedWpm={readingSpeedWpm}
+                  />
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Footer row pair */}
+      <div className="flex">
+        <div
+          className={labelCellClassName}
+          style={{ width: `${labelColumnWidthPx}px` }}
+        >
+          <StructureTimelineAudioSectionFooter
+            side="labels"
+            addAudio={{
+              isBusy: addAudio.isBusy,
+              addSfxLane: addAudio.addSfxLane,
+            }}
+          />
+        </div>
+        <div className="shrink-0" style={{ width: `${totalWidthPx}px` }}>
+          <StructureTimelineAudioSectionFooter side="scroll" />
+        </div>
+      </div>
     </div>
   );
 }
