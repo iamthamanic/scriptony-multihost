@@ -33,6 +33,29 @@ export interface QwenVoiceDesignGenerateResponse {
   warnings?: string[];
 }
 
+export interface QwenVoiceDesignMaterializeRequest {
+  sessionId: string;
+  candidateId: string;
+  name: string;
+  previewText: string;
+  projectId: string;
+  projectDir: string;
+}
+
+export interface QwenVoiceDesignVoiceProfileDraft {
+  creationMode: "designed";
+  provider: "qwen";
+  model: string;
+}
+
+export interface QwenVoiceDesignMaterializeResponse {
+  referenceAudioAssetId: string;
+  referenceAudioUrl: string;
+  referenceText: string;
+  identityPrompt: string;
+  voiceProfileDraft: QwenVoiceDesignVoiceProfileDraft;
+}
+
 export interface QwenVoiceDesignHealth {
   ok: boolean;
   model: string;
@@ -95,6 +118,33 @@ export function validateQwenVoiceDesignGenerateRequest(
     throw new QwenVoiceDesignValidationError(
       "temperatures muss dieselbe Länge wie candidateCount haben.",
     );
+  }
+}
+
+export function validateQwenVoiceDesignMaterializeRequest(
+  input: QwenVoiceDesignMaterializeRequest,
+): void {
+  if (!input.sessionId?.trim()) {
+    throw new QwenVoiceDesignValidationError("sessionId ist erforderlich.");
+  }
+  if (!input.candidateId?.trim()) {
+    throw new QwenVoiceDesignValidationError("candidateId ist erforderlich.");
+  }
+  if (!input.name?.trim()) {
+    throw new QwenVoiceDesignValidationError(
+      "Bitte einen Namen für die Stimme eingeben.",
+    );
+  }
+  if (!input.previewText?.trim()) {
+    throw new QwenVoiceDesignValidationError(
+      "Preview-Text darf nicht leer sein.",
+    );
+  }
+  if (!input.projectId?.trim()) {
+    throw new QwenVoiceDesignValidationError("projectId ist erforderlich.");
+  }
+  if (!input.projectDir?.trim()) {
+    throw new QwenVoiceDesignValidationError("projectDir ist erforderlich.");
   }
 }
 
@@ -184,6 +234,26 @@ export async function generateQwenVoiceDesignCandidates(
         language: input.language.trim(),
         candidateCount,
         ...(input.temperatures ? { temperatures: input.temperatures } : {}),
+      }),
+    },
+  );
+}
+
+export async function materializeQwenVoiceDesign(
+  input: QwenVoiceDesignMaterializeRequest,
+): Promise<QwenVoiceDesignMaterializeResponse> {
+  validateQwenVoiceDesignMaterializeRequest(input);
+  return sidecarFetch<QwenVoiceDesignMaterializeResponse>(
+    "/voice-design/materialize",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        sessionId: input.sessionId.trim(),
+        candidateId: input.candidateId.trim(),
+        name: input.name.trim(),
+        previewText: input.previewText.trim(),
+        projectId: input.projectId.trim(),
+        projectDir: input.projectDir.trim(),
       }),
     },
   );

@@ -368,6 +368,7 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 
 <!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
 
+- **2026-07-14** — MVE Voice Materialize (#57): `POST /voice-design/materialize`, WAV → Projekt-Asset, Voicebox Qwen Base Clone, `MveVoiceProfile` Identity-Felder (local desktop)
 - **2026-07-14** — MVE Qwen VoiceDesign Provider (#56): lokaler Sidecar (Port 3767), `VoiceCreationAdapter.generateCandidates`, `POST /voice-design/generate` (local desktop)
 - **2026-07-14** — MVE Voice Identity Pipeline (#55): `MveVoiceProfile` um `creationMode`, `provider`, `model`, Identity-/Clone-Asset-Felder; SQLite v8; `VoiceCreationAdapter` + Registry; Voicebox ohne `supportsVoiceGenerationFromPrompt` (local desktop)
 - **2026-07-12** — MVE Dialog-Audio: Audiolänge ersetzt WPM im Header bei gebundenem Clip; Waveform-Peaks beim Upload/Record persistiert (local desktop)

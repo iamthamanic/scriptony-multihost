@@ -18,9 +18,11 @@ import { getVoiceDesignSidecarAuthToken } from "@/lib/local/voice-design-sidecar
 import {
   generateQwenVoiceDesignCandidates,
   getQwenVoiceDesignHealth,
+  materializeQwenVoiceDesign,
   QwenVoiceDesignSidecarError,
   QwenVoiceDesignValidationError,
   validateQwenVoiceDesignGenerateRequest,
+  validateQwenVoiceDesignMaterializeRequest,
 } from "../qwen-voice-design-api";
 
 describe("qwen-voice-design-api", () => {
@@ -148,5 +150,54 @@ describe("qwen-voice-design-api", () => {
   it("returns null health outside desktop shell", async () => {
     vi.mocked(isDesktopShell).mockReturnValue(false);
     await expect(getQwenVoiceDesignHealth()).resolves.toBeNull();
+  });
+
+  it("rejects empty materialize name", () => {
+    expect(() =>
+      validateQwenVoiceDesignMaterializeRequest({
+        sessionId: "vd_sess_abc",
+        candidateId: "candidate-1",
+        name: "  ",
+        previewText: "Test",
+        projectId: "proj_1",
+        projectDir: "/tmp/project.scriptony",
+      }),
+    ).toThrow(QwenVoiceDesignValidationError);
+  });
+
+  it("posts materialize request with bearer token", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({
+          referenceAudioAssetId: "asset_uuid",
+          referenceAudioUrl: "assets/voice-refs/pazuzu.wav",
+          referenceText: "Natürlich habe ich recht.",
+          identityPrompt: "Weibliche Stimme",
+          voiceProfileDraft: {
+            creationMode: "designed",
+            provider: "qwen",
+            model: "Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign",
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    const result = await materializeQwenVoiceDesign({
+      sessionId: "vd_sess_abc",
+      candidateId: "candidate-1",
+      name: "Pazuzu",
+      previewText: "Natürlich habe ich recht.",
+      projectId: "proj_1",
+      projectDir: "/tmp/project.scriptony",
+    });
+
+    expect(result.referenceAudioUrl).toBe("assets/voice-refs/pazuzu.wav");
+    const [url, init] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("http://127.0.0.1:3767/voice-design/materialize");
+    expect(init.method).toBe("POST");
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      "Bearer test-token",
+    );
   });
 });

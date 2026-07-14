@@ -6,9 +6,12 @@ Set QWEN_VOICEDESIGN_STUB=1 for dev/CI without GPU or qwen-tts.
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import secrets
 import struct
+import uuid
 import wave
 from pathlib import Path
 from typing import Any
@@ -91,6 +94,29 @@ class GenerateResponse(BaseModel):
     sessionId: str
     candidates: list[CandidateResponse]
     warnings: list[str] = []
+
+
+class MaterializeRequest(BaseModel):
+    sessionId: str = Field(..., min_length=1, max_length=128)
+    candidateId: str = Field(..., min_length=1, max_length=64)
+    name: str = Field(..., min_length=1, max_length=200)
+    previewText: str = Field(..., min_length=1, max_length=500)
+    projectId: str = Field(..., min_length=1, max_length=128)
+    projectDir: str = Field(..., min_length=1, max_length=4096)
+
+
+class VoiceProfileDraft(BaseModel):
+    creationMode: str = "designed"
+    provider: str = "qwen"
+    model: str = MODEL
+
+
+class MaterializeResponse(BaseModel):
+    referenceAudioAssetId: str
+    referenceAudioUrl: str
+    referenceText: str
+    identityPrompt: str
+    voiceProfileDraft: VoiceProfileDraft
 
 
 app = FastAPI(title="scriptony-qwen-voicedesign")
@@ -214,6 +240,15 @@ def generate_voice_design(body: GenerateRequest) -> GenerateResponse:
     session_id = f"vd_sess_{secrets.token_hex(6)}"
     session_dir = SESSIONS_DIR / session_id
     session_dir.mkdir(parents=True, exist_ok=True)
+    session_meta = {
+        "description": body.description,
+        "previewText": body.previewText,
+        "language": body.language,
+    }
+    (session_dir / "session.json").write_text(
+        json.dumps(session_meta, ensure_ascii=False),
+        encoding="utf-8",
+    )
 
     warnings: list[str] = []
     candidates: list[CandidateResponse] = []
@@ -259,6 +294,74 @@ def generate_voice_design(body: GenerateRequest) -> GenerateResponse:
         sessionId=session_id,
         candidates=candidates,
         warnings=warnings,
+    )
+
+
+def _sanitize_voice_filename(name: str) -> str:
+    safe = re.sub(r"[^a-zA-Z0-9._-]+", "_", name.strip()).strip("._")
+    return safe if safe else "voice-ref"
+
+
+def _resolve_session_dir(session_id: str) -> Path:
+    if not re.fullmatch(r"vd_sess_[a-f0-9]+", session_id):
+        raise HTTPException(status_code=400, detail="Invalid sessionId format")
+    session_dir = SESSIONS_DIR / session_id
+    if not session_dir.is_dir():
+        raise HTTPException(status_code=404, detail="Voice design session not found")
+    return session_dir
+
+
+@app.post("/voice-design/materialize", dependencies=[Depends(require_auth)])
+def materialize_voice_design(body: MaterializeRequest) -> MaterializeResponse:
+    if not body.name.strip():
+        raise HTTPException(status_code=400, detail="name must not be empty")
+    if not body.previewText.strip():
+        raise HTTPException(status_code=400, detail="previewText must not be empty")
+
+    session_dir = _resolve_session_dir(body.sessionId)
+    candidate_id = body.candidateId.strip()
+    if not re.fullmatch(r"candidate-[1-4]", candidate_id):
+        raise HTTPException(status_code=400, detail="Invalid candidateId format")
+
+    wav_path = session_dir / f"{candidate_id}.wav"
+    if not wav_path.is_file():
+        raise HTTPException(status_code=404, detail="Candidate audio not found")
+
+    meta_path = session_dir / "session.json"
+    identity_prompt = body.name
+    if meta_path.is_file():
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+            identity_prompt = str(meta.get("description") or identity_prompt).strip()
+        except json.JSONDecodeError:
+            pass
+
+    project_dir = Path(body.projectDir).expanduser().resolve()
+    if not project_dir.is_dir():
+        raise HTTPException(status_code=400, detail="projectDir does not exist")
+
+    voice_refs_dir = project_dir / "assets" / "voice-refs"
+    voice_refs_dir.mkdir(parents=True, exist_ok=True)
+
+    base_name = _sanitize_voice_filename(body.name)
+    dest_name = f"{base_name}.wav"
+    dest_path = voice_refs_dir / dest_name
+    attempt = 0
+    while dest_path.exists():
+        attempt += 1
+        dest_name = f"{base_name}_{attempt + 1}.wav"
+        dest_path = voice_refs_dir / dest_name
+
+    dest_path.write_bytes(wav_path.read_bytes())
+    relative_path = f"assets/voice-refs/{dest_name}"
+    reference_text = body.previewText.strip()
+
+    return MaterializeResponse(
+        referenceAudioAssetId=str(uuid.uuid4()),
+        referenceAudioUrl=relative_path,
+        referenceText=reference_text,
+        identityPrompt=identity_prompt,
+        voiceProfileDraft=VoiceProfileDraft(),
     )
 
 
