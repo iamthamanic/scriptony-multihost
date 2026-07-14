@@ -300,8 +300,10 @@ import type { MveLineDirection } from "@/lib/multi-voice-engine/schema/line-dire
 import type {
   MveLineStatus,
   MveLineType,
+  MveVoiceCreationMode,
   MveVoiceProfileStatus,
   MveVoiceProfileType,
+  MveVoiceProvider,
   MveConsentStatus,
   MveAudioJobStatus,
   MveTakeStatus,
@@ -377,6 +379,13 @@ export interface MveVoiceProfileCreatePayload {
   engine?: string;
   type?: MveVoiceProfileType;
   status?: MveVoiceProfileStatus;
+  creationMode?: MveVoiceCreationMode;
+  provider?: MveVoiceProvider;
+  model?: string;
+  identityPrompt?: string;
+  referenceAudioAssetId?: string;
+  referenceText?: string;
+  clonePromptAssetId?: string;
   baseVoiceId?: string;
   referenceAudioUrl?: string;
   description?: string;
@@ -396,6 +405,13 @@ export interface MveVoiceProfileUpdatePayload {
   engine?: string;
   type?: MveVoiceProfileType;
   status?: MveVoiceProfileStatus;
+  creationMode?: MveVoiceCreationMode | null;
+  provider?: MveVoiceProvider | null;
+  model?: string | null;
+  identityPrompt?: string | null;
+  referenceAudioAssetId?: string | null;
+  referenceText?: string | null;
+  clonePromptAssetId?: string | null;
   baseVoiceId?: string | null;
   referenceAudioUrl?: string | null;
   description?: string | null;

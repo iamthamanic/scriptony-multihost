@@ -75,7 +75,7 @@ export class VoiceboxVoiceEngineAdapter implements VoiceEngineAdapter {
   readonly capabilities = {
     supportsTextToSpeech: true,
     supportsVoiceCloning: true,
-    supportsVoiceGenerationFromPrompt: true,
+    supportsVoiceGenerationFromPrompt: false,
     supportsVoiceTuning: false,
     supportsPerformanceReference: false,
     supportsEmotion: true,

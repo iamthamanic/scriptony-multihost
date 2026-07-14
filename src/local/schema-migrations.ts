@@ -14,6 +14,7 @@ import {
   MVE_RENDER_SCHEMA_STATEMENTS,
   MVE_VOICE_STUDIO_SCHEMA_STATEMENTS,
   MIGRATION_V7_STATEMENTS,
+  MIGRATION_V8_STATEMENTS,
 } from "./project-schema";
 
 /** Idempotent DDL for schema v2 (story_beats). */
@@ -144,6 +145,20 @@ export async function ensureMveVoiceProfileDesignSpecColumn(
   }
 }
 
+/** Repair DBs stamped v8 before identity columns existed on fresh CREATE TABLE. */
+export async function ensureMveVoiceProfileIdentityColumns(
+  db: LocalDb,
+): Promise<void> {
+  const hasProfiles = await tableExists(db, TABLE.MVE_VOICE_PROFILES);
+  if (!hasProfiles) return;
+  if (await columnExists(db, TABLE.MVE_VOICE_PROFILES, "creation_mode")) {
+    return;
+  }
+  for (const stmt of MIGRATION_V8_STATEMENTS) {
+    await db.run(stmt);
+  }
+}
+
 /** Apply pending migrations up to SCHEMA_VERSION. */
 export async function migrateLocalDb(db: LocalDb): Promise<void> {
   let version = await readSchemaVersion(db);
@@ -202,6 +217,13 @@ export async function migrateLocalDb(db: LocalDb): Promise<void> {
 
   if (version < 7) {
     version = 7;
+    await setSchemaVersion(db, version);
+  }
+
+  await ensureMveVoiceProfileIdentityColumns(db);
+
+  if (version < 8) {
+    version = 8;
     await setSchemaVersion(db, version);
   }
 

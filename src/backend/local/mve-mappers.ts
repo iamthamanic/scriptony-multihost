@@ -16,6 +16,8 @@ import {
   parseMveVoiceProfile,
 } from "@/lib/multi-voice-engine/schema/parse";
 import { DEFAULT_VOICE_ENGINE } from "@/lib/config/voice-engine";
+import { inferCreationModeFromProfileType } from "@/lib/multi-voice-engine/schema/voice-identity";
+import type { MveVoiceCreationMode } from "@/lib/multi-voice-engine/schema/enums";
 
 function parseJson<T>(value: unknown, field: string): T | undefined {
   if (value == null || value === "") return undefined;
@@ -59,6 +61,12 @@ export function mapMveVoiceProfileRow(
   row: Record<string, unknown>,
 ): MveVoiceProfile {
   const projectId = String(row.project_id ?? "");
+  const profileType = row.profile_type ?? "default";
+  const creationModeRaw = row.creation_mode
+    ? String(row.creation_mode)
+    : undefined;
+  const creationMode = (creationModeRaw ??
+    inferCreationModeFromProfileType(String(profileType))) as MveVoiceCreationMode;
   const candidate = {
     id: String(row.id ?? ""),
     userId: String(row.user_id ?? "local-user"),
@@ -66,8 +74,21 @@ export function mapMveVoiceProfileRow(
     name: String(row.name ?? ""),
     language: row.language ?? "de",
     engine: row.engine ?? DEFAULT_VOICE_ENGINE,
-    type: row.profile_type ?? "default",
+    type: profileType,
     status: row.status ?? "draft",
+    creationMode,
+    provider: row.provider ? String(row.provider) : undefined,
+    model: row.model ? String(row.model) : undefined,
+    identityPrompt:
+      row.identity_prompt != null ? String(row.identity_prompt) : undefined,
+    referenceAudioAssetId: row.reference_audio_asset_id
+      ? String(row.reference_audio_asset_id)
+      : undefined,
+    referenceText:
+      row.reference_text != null ? String(row.reference_text) : undefined,
+    clonePromptAssetId: row.clone_prompt_asset_id
+      ? String(row.clone_prompt_asset_id)
+      : undefined,
     characterId: row.character_id ? String(row.character_id) : undefined,
     baseVoiceId: row.base_voice_id ? String(row.base_voice_id) : undefined,
     referenceAudioUrl: row.reference_audio_url

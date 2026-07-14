@@ -368,6 +368,7 @@ In Blender: _Edit → Preferences → Add-ons → Install from Disk_ → `script
 
 <!-- Agents: append newest line first (max 10). See .cursor/readme-contract.md -->
 
+- **2026-07-14** — MVE Voice Identity Pipeline (#55): `MveVoiceProfile` um `creationMode`, `provider`, `model`, Identity-/Clone-Asset-Felder; SQLite v8; `VoiceCreationAdapter` + Registry; Voicebox ohne `supportsVoiceGenerationFromPrompt` (local desktop)
 - **2026-07-12** — MVE Dialog-Audio: Audiolänge ersetzt WPM im Header bei gebundenem Clip; Waveform-Peaks beim Upload/Record persistiert (local desktop)
 - **2026-07-12** — Voicebox Auto-Start auf macOS für Charakterstimmen-Vorschau + aktualisierte Banner-Copy (local desktop)
 - **2026-07-12** — MVE Dialog-Clips: kompakte Lane (210px), scrollbarer Text, WPM-/Audio-Dauer-Chips, Contenteditable-Editor mit Tag-Chips (local desktop, #49)

@@ -121,3 +121,20 @@ export type MveAudioJobStatus = z.infer<typeof MveAudioJobStatusSchema>;
 
 export const MveTakeStatusSchema = z.enum(["processing", "ready", "failed"]);
 export type MveTakeStatus = z.infer<typeof MveTakeStatusSchema>;
+
+/** How a voice identity was created (distinct from performance / LineDirection). */
+export const MveVoiceCreationModeSchema = z.enum([
+  "designed",
+  "cloned",
+  "preset",
+  "recorded",
+]);
+export type MveVoiceCreationMode = z.infer<typeof MveVoiceCreationModeSchema>;
+
+/** Provider that materialized the voice identity (not the render engine alias). */
+export const MveVoiceProviderSchema = z.enum([
+  "qwen",
+  "voicebox",
+  "elevenlabs",
+]);
+export type MveVoiceProvider = z.infer<typeof MveVoiceProviderSchema>;
